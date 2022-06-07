@@ -1,6 +1,11 @@
-add_requires("glad", "glfw")
+add_requires("glad", "glfw", "glm","assimp")
+target("ThirdParty")
+    set_kind("static")
+    add_files("src/ThirdParty/stb_image/*.cpp") 
 
 target("Renderer")
     set_kind("binary")
     add_files("src/*.cpp") 
-    add_packages("glad", "glfw")
+    add_files("src/Render/*.cpp") 
+    add_deps("ThirdParty")
+    add_packages("glad", "glfw", "glm","assimp")
