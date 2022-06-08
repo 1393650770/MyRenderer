@@ -39,3 +39,4 @@ x64/
 .vs/
 CMakeFiles/
 .xmake/
+.vsxmake2019/

@@ -1,24 +1,24 @@
-
-#ifndef SHADER_H
-#define SHADER_H
+#pragma once
+#ifndef GL_Shader
+#define GL_Shader
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
-
+#include"GL_ENUM.h"
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <iostream>
 namespace MXRender
 {
-    class Shader
+    class GL_Shader
     {
     public:
         // 程序ID
         unsigned int ID;
         // 构造器读取并构建着色器 
-        Shader(const GLchar* vertexPath=nullptr, const GLchar* fragmentPath=nullptr, const GLchar* geometryPath=nullptr,const GLchar* computePath=nullptr);
-        ~Shader();
+        GL_Shader(const GLchar* vertexPath=nullptr, const GLchar* fragmentPath=nullptr, const GLchar* geometryPath=nullptr,const GLchar* computePath=nullptr);
+        ~GL_Shader();
         // 使用/激活程序
         void use(); // uniform工具函数
         void setBool(const std::string& name, bool value)const;

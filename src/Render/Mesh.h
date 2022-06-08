@@ -1,3 +1,4 @@
+#pragma once
 #ifndef MESH_H
 #define MESH_H
 #include <glad/glad.h> // 所有头文件
