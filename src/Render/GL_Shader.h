@@ -1,6 +1,6 @@
 #pragma once
-#ifndef GL_Shader
-#define GL_Shader
+#ifndef _GL_SHADER_
+#define _GL_SHADER_
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>

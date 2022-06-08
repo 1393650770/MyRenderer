@@ -12,7 +12,7 @@ namespace MXRender
         setupMesh();
     }
 
-    void Mesh::Draw(Shader& shader)
+    void Mesh::Draw(GL_Shader& shader)
     {
         // bind appropriate textures
         unsigned int diffuseNr = 1;
@@ -49,7 +49,7 @@ namespace MXRender
         glActiveTexture(GL_TEXTURE0);
     }
 
-    void Mesh::DrawArray(Shader* shader, int diffuse, int specular, int emission)
+    void Mesh::DrawArray(GL_Shader* shader, int diffuse, int specular, int emission)
     {
 
         glActiveTexture(GL_TEXTURE0);

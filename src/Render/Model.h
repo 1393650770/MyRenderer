@@ -1,6 +1,6 @@
 #pragma once
-#ifndef MODEL_H
-#define MODEL_H
+#ifndef _MODEL_
+#define _MODEL_
 
 #include <glad/glad.h>                 //所有头文件 
 #include <glm/glm.hpp>
@@ -10,7 +10,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include "Mesh.h"
-#include "Shader.h"
+#include "GL_Shader.h"
 
 #include <string>
 #include <fstream>
@@ -35,7 +35,7 @@ namespace MXRender
 
         Model(string const& path, bool gamma = false);
 
-        void Draw(Shader& shader);
+        void Draw(GL_Shader& shader);
 
     private:
     

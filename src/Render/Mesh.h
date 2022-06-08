@@ -1,10 +1,10 @@
 #pragma once
-#ifndef MESH_H
-#define MESH_H
+#ifndef _MESH_
+#define _MESH_
 #include <glad/glad.h> // 所有头文件
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include "Shader.h"
+#include "GL_Shader.h"
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -47,10 +47,10 @@ namespace MXRender
         unsigned int VAO;
 
         Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures);
-        void DrawArray(Shader* shader, int diffuse, int specular, int emission);
+        void DrawArray(GL_Shader* shader, int diffuse, int specular, int emission);
         Mesh(float vertices[]);
 
-        void Draw(Shader& shader);
+        void Draw(GL_Shader& shader);
 
     private:
 

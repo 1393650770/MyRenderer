@@ -131,28 +131,28 @@ xmake version 2.6.7+dev.a3f81d902
 
   <PropertyGroup Label="XmakePath" Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">
     <XmakeBuilDir>$(XmakeProjectDir)\build</XmakeBuilDir>
-    <XmakeConfigDir></XmakeConfigDir>
+    <XmakeConfigDir>$(XmakeProjectDir)\.</XmakeConfigDir>
     <XmakeConfigFileDir></XmakeConfigFileDir>
     <XmakeTargetDir></XmakeTargetDir>
     <XmakeRunDir></XmakeRunDir>
   </PropertyGroup>
   <PropertyGroup Label="XmakePath" Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
     <XmakeBuilDir>$(XmakeProjectDir)\build</XmakeBuilDir>
-    <XmakeConfigDir></XmakeConfigDir>
+    <XmakeConfigDir>$(XmakeProjectDir)\.</XmakeConfigDir>
     <XmakeConfigFileDir></XmakeConfigFileDir>
     <XmakeTargetDir></XmakeTargetDir>
     <XmakeRunDir></XmakeRunDir>
   </PropertyGroup>
   <PropertyGroup Label="XmakePath" Condition="'$(Configuration)|$(Platform)'=='debug|x64'">
     <XmakeBuilDir>$(XmakeProjectDir)\build</XmakeBuilDir>
-    <XmakeConfigDir></XmakeConfigDir>
+    <XmakeConfigDir>$(XmakeProjectDir)\.</XmakeConfigDir>
     <XmakeConfigFileDir></XmakeConfigFileDir>
     <XmakeTargetDir></XmakeTargetDir>
     <XmakeRunDir></XmakeRunDir>
   </PropertyGroup>
   <PropertyGroup Label="XmakePath" Condition="'$(Configuration)|$(Platform)'=='release|x64'">
     <XmakeBuilDir>$(XmakeProjectDir)\build</XmakeBuilDir>
-    <XmakeConfigDir></XmakeConfigDir>
+    <XmakeConfigDir>$(XmakeProjectDir)\.</XmakeConfigDir>
     <XmakeConfigFileDir></XmakeConfigFileDir>
     <XmakeTargetDir></XmakeTargetDir>
     <XmakeRunDir></XmakeRunDir>
@@ -172,6 +172,9 @@ xmake version 2.6.7+dev.a3f81d902
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
     <ClCompile Include="$(XmakeProjectDir)\src\Render\GL_Shader.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Render\GL_State.cpp">
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
     <ClCompile Include="$(XmakeProjectDir)\src\Render\GL_Texture.cpp">

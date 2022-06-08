@@ -52,6 +52,9 @@ xmake version 2.6.7+dev.a3f81d902
     <ClCompile Include="$(XmakeProjectDir)\src\Render\GL_Shader.cpp">
       <Filter>src\Render</Filter>
     </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Render\GL_State.cpp">
+      <Filter>src\Render</Filter>
+    </ClCompile>
     <ClCompile Include="$(XmakeProjectDir)\src\Render\GL_Texture.cpp">
       <Filter>src\Render</Filter>
     </ClCompile>

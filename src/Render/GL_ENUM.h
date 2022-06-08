@@ -1,3 +1,7 @@
+#pragma once
+#ifndef _MXRENDER_ENUM_
+#define _MXRENDER_ENUM_
+
 
 namespace MXRender
 {
@@ -27,9 +31,17 @@ namespace MXRender
         ENUM_TYPE_RTX,
         ENUM_TYPE_DYNAMIC_COLOR,
     };
-    enum class ENUM_PASS_TYPE {
+    enum class ENUM_PASS_TYPE 
+    {
         ENUM_TYPE_INVALID=0,
         ENUM_PASS_COLOR,
         ENUM_PASS_DEPTH,
     };
+
+    enum class ENUM_STATE_TYPE
+    {
+
+    };
+
 } // namespace name
+#endif // !_MXRENDER_ENUM_

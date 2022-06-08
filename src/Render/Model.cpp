@@ -10,7 +10,7 @@ namespace MXRender
         loadModel(path);
     }
 
-    void Model::Draw(Shader& shader)
+    void Model::Draw(GL_Shader& shader)
     {
         for (unsigned int i = 0; i < meshes.size(); i++)
             meshes[i].Draw(shader);
