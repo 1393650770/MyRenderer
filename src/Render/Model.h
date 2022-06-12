@@ -10,7 +10,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include "Mesh.h"
-#include "GL_Shader.h"
+#include "../RHI/GL_Shader.h"
 
 #include <string>
 #include <fstream>

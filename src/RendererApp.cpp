@@ -1,13 +1,15 @@
 #include<iostream>
-#include"Render/GL_Framebuffer.h"
-#include"Render/GL_Shader.h"
-#include"Render/GL_Texture.h"
 #include"Render/Mesh.h"
 #include"Render/Model.h"
+#include"Runtime/Window.h"
+#include"Runtime/DeferRender.h"
 
 int main()
 {
-    MXRender::GL_Shader test_shader();
-    MXRender::Model model();
+    std::shared_ptr<MXRender::DeferRender> defer_render = std::make_shared<MXRender::DeferRender>();
+    MXRender::Window my_window;
+
+    my_window.run(defer_render);
+
     return 0;
 }

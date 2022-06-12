@@ -31,13 +31,13 @@ xmake version 2.6.7+dev.a3f81d902
 
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{DC9734EC-8F20-46FD-B345-BFAD5B9D80B8}</ProjectGuid>
+    <ProjectGuid>{E9BCD1C6-5A78-48C8-939A-9BFA51937BDE}</ProjectGuid>
     <Configuration Condition="'$(Configuration)' == ''">release</Configuration>
     <Platform Condition="'$(Platform)' == ''">Win32</Platform>
     <XmakeScriptDir>..\..</XmakeScriptDir>
     <XmakeProjectDir>..\..</XmakeProjectDir>
     <XmakeProjectFile><!-- nil --></XmakeProjectFile>
-    <XmakeTarget>Renderer</XmakeTarget>
+    <XmakeTarget>RHI</XmakeTarget>
   </PropertyGroup>
   <PropertyGroup Label="XmakeProgram">
     <XmakeProgramDir Condition="'$(XmakeProgramDir)' == ''">$(XMAKE_PROGRAM_DIR)</XmakeProgramDir>
@@ -45,12 +45,12 @@ xmake version 2.6.7+dev.a3f81d902
   </PropertyGroup>
   <Import Project="$(XmakeProgramDir)\plugins\project\vsxmake\vsproj\Xmake.Defaults.props" />
   <PropertyGroup Label="XmakeConfig" Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">
-    <XmakeBasename>Renderer</XmakeBasename>
-    <XmakeFilename>Renderer.exe</XmakeFilename>
+    <XmakeBasename>RHI</XmakeBasename>
+    <XmakeFilename>RHI.lib</XmakeFilename>
     <XmakeMode>debug</XmakeMode>
     <XmakePlat>windows</XmakePlat>
     <XmakeArch>x86</XmakeArch>
-    <XmakeKind>binary</XmakeKind>
+    <XmakeKind>static</XmakeKind>
     <XmakeDefault>true</XmakeDefault>
     <XmakeDefines>GLFW_INCLUDE_NONE</XmakeDefines>
     <XmakeLanguages></XmakeLanguages>
@@ -61,17 +61,17 @@ xmake version 2.6.7+dev.a3f81d902
     <XmakeRunEnvs>PATH=C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\4d07a257d6ec41b6afb6ee5ccd101bc9\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\8eba7f0a08d64bdf8a9c5b8b8c80e519\lib;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\2c1d0010add14150b141c00ab9a0177f\lib;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b9a04ca4e8be4596982b1f2ea59d484c\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\4d07a257d6ec41b6afb6ee5ccd101bc9\bin;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\8eba7f0a08d64bdf8a9c5b8b8c80e519\bin;C:\Users\Admin\AppData\Local\.xmake\packages\c\cmake\3.22.1\33174cd752934705b9e583491cc925c6\bin;C:\Users\Admin\AppData\Local\.xmake\packages\o\opengl\latest\211379a6b5ca44ac96c02258817ddd07\bin;C:\Users\Admin\AppData\Local\.xmake\packages\g\glm\0.9.9+8\32d5691c480f471f934dd95ba9c80650\bin;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\2c1d0010add14150b141c00ab9a0177f\bin;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b9a04ca4e8be4596982b1f2ea59d484c\bin;$([System.Environment]::GetEnvironmentVariable('PATH'))</XmakeRunEnvs>
     <XmakeConfigFlags></XmakeConfigFlags>
     <XmakeIncludeDirs>C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\4d07a257d6ec41b6afb6ee5ccd101bc9\include;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\8eba7f0a08d64bdf8a9c5b8b8c80e519\include;C:\Users\Admin\AppData\Local\.xmake\packages\g\glm\0.9.9+8\32d5691c480f471f934dd95ba9c80650\include;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\2c1d0010add14150b141c00ab9a0177f\include;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b9a04ca4e8be4596982b1f2ea59d484c\include</XmakeIncludeDirs>
-    <XmakeLinkDirs>C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\4d07a257d6ec41b6afb6ee5ccd101bc9\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\8eba7f0a08d64bdf8a9c5b8b8c80e519\lib;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\2c1d0010add14150b141c00ab9a0177f\lib;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b9a04ca4e8be4596982b1f2ea59d484c\lib;$(XmakeProjectDir)\build\windows\x86\debug</XmakeLinkDirs>
+    <XmakeLinkDirs>C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\4d07a257d6ec41b6afb6ee5ccd101bc9\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\8eba7f0a08d64bdf8a9c5b8b8c80e519\lib;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\2c1d0010add14150b141c00ab9a0177f\lib;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b9a04ca4e8be4596982b1f2ea59d484c\lib</XmakeLinkDirs>
     <XmakeSourceDirs></XmakeSourceDirs>
     <XmakePrecompiledHeader><!-- nil --></XmakePrecompiledHeader>
   </PropertyGroup>
   <PropertyGroup Label="XmakeConfig" Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
-    <XmakeBasename>Renderer</XmakeBasename>
-    <XmakeFilename>Renderer.exe</XmakeFilename>
+    <XmakeBasename>RHI</XmakeBasename>
+    <XmakeFilename>RHI.lib</XmakeFilename>
     <XmakeMode>release</XmakeMode>
     <XmakePlat>windows</XmakePlat>
     <XmakeArch>x86</XmakeArch>
-    <XmakeKind>binary</XmakeKind>
+    <XmakeKind>static</XmakeKind>
     <XmakeDefault>true</XmakeDefault>
     <XmakeDefines>GLFW_INCLUDE_NONE</XmakeDefines>
     <XmakeLanguages></XmakeLanguages>
@@ -82,17 +82,17 @@ xmake version 2.6.7+dev.a3f81d902
     <XmakeRunEnvs>PATH=C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\4d07a257d6ec41b6afb6ee5ccd101bc9\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\8eba7f0a08d64bdf8a9c5b8b8c80e519\lib;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\2c1d0010add14150b141c00ab9a0177f\lib;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b9a04ca4e8be4596982b1f2ea59d484c\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\4d07a257d6ec41b6afb6ee5ccd101bc9\bin;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\8eba7f0a08d64bdf8a9c5b8b8c80e519\bin;C:\Users\Admin\AppData\Local\.xmake\packages\c\cmake\3.22.1\33174cd752934705b9e583491cc925c6\bin;C:\Users\Admin\AppData\Local\.xmake\packages\o\opengl\latest\211379a6b5ca44ac96c02258817ddd07\bin;C:\Users\Admin\AppData\Local\.xmake\packages\g\glm\0.9.9+8\32d5691c480f471f934dd95ba9c80650\bin;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\2c1d0010add14150b141c00ab9a0177f\bin;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b9a04ca4e8be4596982b1f2ea59d484c\bin;$([System.Environment]::GetEnvironmentVariable('PATH'))</XmakeRunEnvs>
     <XmakeConfigFlags></XmakeConfigFlags>
     <XmakeIncludeDirs>C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\4d07a257d6ec41b6afb6ee5ccd101bc9\include;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\8eba7f0a08d64bdf8a9c5b8b8c80e519\include;C:\Users\Admin\AppData\Local\.xmake\packages\g\glm\0.9.9+8\32d5691c480f471f934dd95ba9c80650\include;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\2c1d0010add14150b141c00ab9a0177f\include;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b9a04ca4e8be4596982b1f2ea59d484c\include</XmakeIncludeDirs>
-    <XmakeLinkDirs>C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\4d07a257d6ec41b6afb6ee5ccd101bc9\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\8eba7f0a08d64bdf8a9c5b8b8c80e519\lib;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\2c1d0010add14150b141c00ab9a0177f\lib;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b9a04ca4e8be4596982b1f2ea59d484c\lib;$(XmakeProjectDir)\build\windows\x86\release</XmakeLinkDirs>
+    <XmakeLinkDirs>C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\4d07a257d6ec41b6afb6ee5ccd101bc9\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\8eba7f0a08d64bdf8a9c5b8b8c80e519\lib;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\2c1d0010add14150b141c00ab9a0177f\lib;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b9a04ca4e8be4596982b1f2ea59d484c\lib</XmakeLinkDirs>
     <XmakeSourceDirs></XmakeSourceDirs>
     <XmakePrecompiledHeader><!-- nil --></XmakePrecompiledHeader>
   </PropertyGroup>
   <PropertyGroup Label="XmakeConfig" Condition="'$(Configuration)|$(Platform)'=='debug|x64'">
-    <XmakeBasename>Renderer</XmakeBasename>
-    <XmakeFilename>Renderer.exe</XmakeFilename>
+    <XmakeBasename>RHI</XmakeBasename>
+    <XmakeFilename>RHI.lib</XmakeFilename>
     <XmakeMode>debug</XmakeMode>
     <XmakePlat>windows</XmakePlat>
     <XmakeArch>x64</XmakeArch>
-    <XmakeKind>binary</XmakeKind>
+    <XmakeKind>static</XmakeKind>
     <XmakeDefault>true</XmakeDefault>
     <XmakeDefines>GLFW_INCLUDE_NONE</XmakeDefines>
     <XmakeLanguages></XmakeLanguages>
@@ -103,17 +103,17 @@ xmake version 2.6.7+dev.a3f81d902
     <XmakeRunEnvs>PATH=C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\d58ee23747ff411aae74b40986460499\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\0f1d7b80c6f84759bc07798549faa20b\lib;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\84bc4aaf582640a3b4f6df4b4a5401ee\lib;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b5ea843dabd742168c9611e216a46175\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\d58ee23747ff411aae74b40986460499\bin;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\0f1d7b80c6f84759bc07798549faa20b\bin;C:\Users\Admin\AppData\Local\.xmake\packages\c\cmake\3.22.1\33174cd752934705b9e583491cc925c6\bin;C:\Users\Admin\AppData\Local\.xmake\packages\o\opengl\latest\8574311f4b544fa89a3d8c3ee79d1929\bin;C:\Users\Admin\AppData\Local\.xmake\packages\g\glm\0.9.9+8\8335bab7c0314ab9921440de58961aac\bin;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\84bc4aaf582640a3b4f6df4b4a5401ee\bin;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b5ea843dabd742168c9611e216a46175\bin;$([System.Environment]::GetEnvironmentVariable('PATH'))</XmakeRunEnvs>
     <XmakeConfigFlags></XmakeConfigFlags>
     <XmakeIncludeDirs>C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\d58ee23747ff411aae74b40986460499\include;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\0f1d7b80c6f84759bc07798549faa20b\include;C:\Users\Admin\AppData\Local\.xmake\packages\g\glm\0.9.9+8\8335bab7c0314ab9921440de58961aac\include;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\84bc4aaf582640a3b4f6df4b4a5401ee\include;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b5ea843dabd742168c9611e216a46175\include</XmakeIncludeDirs>
-    <XmakeLinkDirs>C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\d58ee23747ff411aae74b40986460499\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\0f1d7b80c6f84759bc07798549faa20b\lib;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\84bc4aaf582640a3b4f6df4b4a5401ee\lib;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b5ea843dabd742168c9611e216a46175\lib;$(XmakeProjectDir)\build\windows\x64\debug</XmakeLinkDirs>
+    <XmakeLinkDirs>C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\d58ee23747ff411aae74b40986460499\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\0f1d7b80c6f84759bc07798549faa20b\lib;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\84bc4aaf582640a3b4f6df4b4a5401ee\lib;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b5ea843dabd742168c9611e216a46175\lib</XmakeLinkDirs>
     <XmakeSourceDirs></XmakeSourceDirs>
     <XmakePrecompiledHeader><!-- nil --></XmakePrecompiledHeader>
   </PropertyGroup>
   <PropertyGroup Label="XmakeConfig" Condition="'$(Configuration)|$(Platform)'=='release|x64'">
-    <XmakeBasename>Renderer</XmakeBasename>
-    <XmakeFilename>Renderer.exe</XmakeFilename>
+    <XmakeBasename>RHI</XmakeBasename>
+    <XmakeFilename>RHI.lib</XmakeFilename>
     <XmakeMode>release</XmakeMode>
     <XmakePlat>windows</XmakePlat>
     <XmakeArch>x64</XmakeArch>
-    <XmakeKind>binary</XmakeKind>
+    <XmakeKind>static</XmakeKind>
     <XmakeDefault>true</XmakeDefault>
     <XmakeDefines>GLFW_INCLUDE_NONE</XmakeDefines>
     <XmakeLanguages></XmakeLanguages>
@@ -124,7 +124,7 @@ xmake version 2.6.7+dev.a3f81d902
     <XmakeRunEnvs>PATH=C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\d58ee23747ff411aae74b40986460499\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\0f1d7b80c6f84759bc07798549faa20b\lib;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\84bc4aaf582640a3b4f6df4b4a5401ee\lib;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b5ea843dabd742168c9611e216a46175\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\d58ee23747ff411aae74b40986460499\bin;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\0f1d7b80c6f84759bc07798549faa20b\bin;C:\Users\Admin\AppData\Local\.xmake\packages\c\cmake\3.22.1\33174cd752934705b9e583491cc925c6\bin;C:\Users\Admin\AppData\Local\.xmake\packages\o\opengl\latest\8574311f4b544fa89a3d8c3ee79d1929\bin;C:\Users\Admin\AppData\Local\.xmake\packages\g\glm\0.9.9+8\8335bab7c0314ab9921440de58961aac\bin;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\84bc4aaf582640a3b4f6df4b4a5401ee\bin;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b5ea843dabd742168c9611e216a46175\bin;$([System.Environment]::GetEnvironmentVariable('PATH'))</XmakeRunEnvs>
     <XmakeConfigFlags></XmakeConfigFlags>
     <XmakeIncludeDirs>C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\d58ee23747ff411aae74b40986460499\include;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\0f1d7b80c6f84759bc07798549faa20b\include;C:\Users\Admin\AppData\Local\.xmake\packages\g\glm\0.9.9+8\8335bab7c0314ab9921440de58961aac\include;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\84bc4aaf582640a3b4f6df4b4a5401ee\include;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b5ea843dabd742168c9611e216a46175\include</XmakeIncludeDirs>
-    <XmakeLinkDirs>C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\d58ee23747ff411aae74b40986460499\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\0f1d7b80c6f84759bc07798549faa20b\lib;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\84bc4aaf582640a3b4f6df4b4a5401ee\lib;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b5ea843dabd742168c9611e216a46175\lib;$(XmakeProjectDir)\build\windows\x64\release</XmakeLinkDirs>
+    <XmakeLinkDirs>C:\Users\Admin\AppData\Local\.xmake\packages\g\glad\v0.1.36\d58ee23747ff411aae74b40986460499\lib;C:\Users\Admin\AppData\Local\.xmake\packages\g\glfw\3.3.6\0f1d7b80c6f84759bc07798549faa20b\lib;C:\Users\Admin\AppData\Local\.xmake\packages\a\assimp\v5.2.4\84bc4aaf582640a3b4f6df4b4a5401ee\lib;C:\Users\Admin\AppData\Local\.xmake\packages\z\zlib\v1.2.12\b5ea843dabd742168c9611e216a46175\lib</XmakeLinkDirs>
     <XmakeSourceDirs></XmakeSourceDirs>
     <XmakePrecompiledHeader><!-- nil --></XmakePrecompiledHeader>
   </PropertyGroup>
@@ -165,13 +165,19 @@ xmake version 2.6.7+dev.a3f81d902
   </ItemGroup>
   <ItemGroup>
 
-    <ClCompile Include="$(XmakeProjectDir)\src\Render\Mesh.cpp">
+    <ClCompile Include="$(XmakeProjectDir)\src\RHI\GL_ENUM.cpp">
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
-    <ClCompile Include="$(XmakeProjectDir)\src\Render\Model.cpp">
+    <ClCompile Include="$(XmakeProjectDir)\src\RHI\GL_Framebuffer.cpp">
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
-    <ClCompile Include="$(XmakeProjectDir)\src\RendererApp.cpp">
+    <ClCompile Include="$(XmakeProjectDir)\src\RHI\GL_Shader.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\RHI\GL_State.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\RHI\GL_Texture.cpp">
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
 
@@ -186,18 +192,6 @@ xmake version 2.6.7+dev.a3f81d902
 
   </ItemGroup>
   <!-- <ItemGroup>
-    <ProjectReference Include="..\RHI\RHI.vcxproj">
-      <Project>{E9BCD1C6-5A78-48C8-939A-9BFA51937BDE}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\Runtime\Runtime.vcxproj">
-      <Project>{688689CE-6D31-493B-BD70-5DF65A0FBEFB}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\ThirdParty\ThirdParty.vcxproj">
-      <Project>{834C862B-6A8C-42D9-AAD3-25AFE3063EA2}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\Utils\Utils.vcxproj">
-      <Project>{C8CD3D87-3BC4-4DAC-83B2-CAAC2B84D2DC}</Project>
-    </ProjectReference>
 
   </ItemGroup> -->
   <Import Project="$(XmakeProgramDir)\plugins\project\vsxmake\vsproj\Xmake.targets" />
