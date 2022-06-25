@@ -1,8 +1,4 @@
 #include "Model.h"
-
-#define STB_IMAGE_IMPLEMENTATION
-#include"../ThirdParty/stb_image/stb_image.h"
-
 namespace MXRender
 {
     Model::Model(string const& path, bool gamma):gammaCorrection(gamma)

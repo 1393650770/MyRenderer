@@ -12,12 +12,6 @@ xmake version 2.6.7+dev.a3f81d902
     <Filter Include="Properties">
       <UniqueIdentifier>{CC7C6180-942D-056E-3227-E6A2B3FB19CD}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src">
-      <UniqueIdentifier>{491FBF00-292E-479F-8C8F-7A2AC045023A}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\RHI">
-      <UniqueIdentifier>{64A53339-3309-4D7C-BE40-CBC898B9A918}</UniqueIdentifier>
-    </Filter>
 
   </ItemGroup>
   <ItemGroup>
@@ -43,21 +37,6 @@ xmake version 2.6.7+dev.a3f81d902
   </ItemGroup>
   <ItemGroup>
 
-    <ClCompile Include="$(XmakeProjectDir)\src\RHI\GL_ENUM.cpp">
-      <Filter>src\RHI</Filter>
-    </ClCompile>
-    <ClCompile Include="$(XmakeProjectDir)\src\RHI\GL_Framebuffer.cpp">
-      <Filter>src\RHI</Filter>
-    </ClCompile>
-    <ClCompile Include="$(XmakeProjectDir)\src\RHI\GL_Shader.cpp">
-      <Filter>src\RHI</Filter>
-    </ClCompile>
-    <ClCompile Include="$(XmakeProjectDir)\src\RHI\GL_State.cpp">
-      <Filter>src\RHI</Filter>
-    </ClCompile>
-    <ClCompile Include="$(XmakeProjectDir)\src\RHI\GL_Texture.cpp">
-      <Filter>src\RHI</Filter>
-    </ClCompile>
 
 
 

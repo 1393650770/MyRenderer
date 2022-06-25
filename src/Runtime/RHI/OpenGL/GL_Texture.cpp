@@ -1,7 +1,7 @@
 #include"GL_Texture.h"
 #include<iostream>
 #include <glad/glad.h>
-#include"../ThirdParty/stb_image/stb_image.h"
+#include"../../../ThirdParty/stb_image/stb_image.h"
 namespace MXRender
 {
     GL_Texture::GL_Texture(/* args */)
@@ -46,19 +46,59 @@ namespace MXRender
 
     }
 
-    GL_Texture::GL_Texture(unsigned width,unsigned height,unsigned internalformat, unsigned dataformat)
+    GL_Texture::GL_Texture(ENUM_TEXTURE_TYPE _type, unsigned width,unsigned height, unsigned samples, unsigned internalformat, unsigned dataformat)
     {
         if (is_valid())
             return;
         glGenTextures(1, &id);
-        glBindTexture(GL_TEXTURE_2D, id);
-        glTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, internalformat, dataformat, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-        type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
+
+        switch (_type)
+        {
+        case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_NOT_VALID:
+            break;
+        case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_2D:
+        {    
+            type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
+            bind();
+
+            glTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, internalformat, dataformat, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+            break;
+        }
+        case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_MULTISAMPLE:
+        {    
+            type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_MULTISAMPLE;
+            bind();
+
+            glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, internalformat, width, height, GL_TRUE);
+            break;
+        }
+        case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_DEPTH:
+        {
+            type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_DEPTH;
+            bind();
+
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+            GLfloat borderColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+            glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+            break;
+        }
+        default:
+
+            break;
+        }
+
         unbind();
     }
 
@@ -97,7 +137,11 @@ namespace MXRender
             break;
         case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_2D:
         case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_DYNAMIC:
+        case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_DEPTH:
             gl_type = GL_TEXTURE_2D;
+            break;
+        case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_MULTISAMPLE:
+            gl_type = GL_TEXTURE_2D_MULTISAMPLE;
             break;
         case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP:
             gl_type = GL_TEXTURE_CUBE_MAP;
@@ -106,6 +150,11 @@ namespace MXRender
             break;
         }
         return gl_type;
+    }
+
+    unsigned GL_Texture::get_type() const
+    {
+        return TranslateTextureTypeToGL(type);
     }
     
     void GL_Texture::unbind()
@@ -124,7 +173,7 @@ namespace MXRender
         glBindTexture(TranslateTextureTypeToGL(type), id);
     }
 
-    unsigned GL_Texture::get_id()
+    unsigned GL_Texture::get_id() const
     {
         if (!is_valid())
             return 0;
@@ -141,7 +190,7 @@ namespace MXRender
         type = ENUM_TEXTURE_TYPE::ENUM_TYPE_NOT_VALID;
     }
 
-    bool GL_Texture::is_valid()
+    bool GL_Texture::is_valid() const
     {
         return type != ENUM_TEXTURE_TYPE::ENUM_TYPE_NOT_VALID;
     }

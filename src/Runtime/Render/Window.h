@@ -5,13 +5,13 @@
 #include<memory>
 namespace MXRender
 {
-	class Render;
+	class MyRender;
 	class Window
 	{
 	public:
 		Window();
 		virtual ~Window();
-		void run(std::shared_ptr<Render> render);
+		void run(std::shared_ptr<MyRender> render);
 	private:
 		GLFWwindow* window;
 		float deltaTime = 0.0f;	

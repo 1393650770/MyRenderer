@@ -131,28 +131,28 @@ xmake version 2.6.7+dev.a3f81d902
 
   <PropertyGroup Label="XmakePath" Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">
     <XmakeBuilDir>$(XmakeProjectDir)\build</XmakeBuilDir>
-    <XmakeConfigDir>$(XmakeProjectDir)\.</XmakeConfigDir>
+    <XmakeConfigDir></XmakeConfigDir>
     <XmakeConfigFileDir></XmakeConfigFileDir>
     <XmakeTargetDir></XmakeTargetDir>
     <XmakeRunDir></XmakeRunDir>
   </PropertyGroup>
   <PropertyGroup Label="XmakePath" Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
     <XmakeBuilDir>$(XmakeProjectDir)\build</XmakeBuilDir>
-    <XmakeConfigDir>$(XmakeProjectDir)\.</XmakeConfigDir>
+    <XmakeConfigDir></XmakeConfigDir>
     <XmakeConfigFileDir></XmakeConfigFileDir>
     <XmakeTargetDir></XmakeTargetDir>
     <XmakeRunDir></XmakeRunDir>
   </PropertyGroup>
   <PropertyGroup Label="XmakePath" Condition="'$(Configuration)|$(Platform)'=='debug|x64'">
     <XmakeBuilDir>$(XmakeProjectDir)\build</XmakeBuilDir>
-    <XmakeConfigDir>$(XmakeProjectDir)\.</XmakeConfigDir>
+    <XmakeConfigDir></XmakeConfigDir>
     <XmakeConfigFileDir></XmakeConfigFileDir>
     <XmakeTargetDir></XmakeTargetDir>
     <XmakeRunDir></XmakeRunDir>
   </PropertyGroup>
   <PropertyGroup Label="XmakePath" Condition="'$(Configuration)|$(Platform)'=='release|x64'">
     <XmakeBuilDir>$(XmakeProjectDir)\build</XmakeBuilDir>
-    <XmakeConfigDir>$(XmakeProjectDir)\.</XmakeConfigDir>
+    <XmakeConfigDir></XmakeConfigDir>
     <XmakeConfigFileDir></XmakeConfigFileDir>
     <XmakeTargetDir></XmakeTargetDir>
     <XmakeRunDir></XmakeRunDir>
@@ -160,21 +160,94 @@ xmake version 2.6.7+dev.a3f81d902
 
   <Import Project="$(XmakeProgramDir)\plugins\project\vsxmake\vsproj\Xmake.props" />
   <ItemGroup>
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\Mesh\Mesh.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\Mesh\Model.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\FrameBuffer.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\GraphicsContext.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_Framebuffer.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_Shader.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_State.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_Texture.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\RenderEnum.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\RenderPass.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\RenderState.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\Shader.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\UniformBuffer.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\VertexArray.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\VertexBuffer.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\Render\DefaultSetting.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\Render\DeferRender.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\Render\MyRender.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\Render\RenderState.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\Render\Window.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\Utils\Singleton.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\ThirdParty\stb_image\stb_image.h" />
 
 
   </ItemGroup>
   <ItemGroup>
 
-    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\DefaultSetting.cpp">
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\Mesh\Mesh.cpp">
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
-    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\DeferRender.cpp">
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\Mesh\Model.cpp">
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
-    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\Render.cpp">
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\FrameBuffer.cpp">
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
-    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\Window.cpp">
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\GraphicsContext.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_Framebuffer.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_Shader.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_State.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_Texture.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\RenderEnum.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\RenderPass.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\RenderState.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\Shader.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\UniformBuffer.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\VertexArray.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\VertexBuffer.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\Render\DefaultSetting.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\Render\DeferRender.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\Render\MyRender.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\Render\RenderState.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\Render\Window.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\Utils\Singleton.cpp">
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
 

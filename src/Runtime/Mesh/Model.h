@@ -1,6 +1,10 @@
 #pragma once
+
 #ifndef _MODEL_
 #define _MODEL_
+
+#define STB_IMAGE_IMPLEMENTATION
+#include"../../ThirdParty/stb_image/stb_image.h"
 
 #include <glad/glad.h>                 //所有头文件 
 #include <glm/glm.hpp>
@@ -10,7 +14,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include "Mesh.h"
-#include "../RHI/GL_Shader.h"
+#include "../RHI/OpenGL/GL_Shader.h"
 
 #include <string>
 #include <fstream>

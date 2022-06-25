@@ -41,6 +41,9 @@ xmake version 2.6.7+dev.a3f81d902
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="$(XmakeProjectDir)\src\ThirdParty\stb_image\stb_image.h">
+      <Filter>src\ThirdParty\stb_image</Filter>
+    </ClInclude>
 
 
   </ItemGroup>

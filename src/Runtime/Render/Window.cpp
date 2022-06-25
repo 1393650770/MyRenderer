@@ -3,7 +3,8 @@
 #include"../Utils/Singleton.h"
 #include"DefaultSetting.h"
 #include <glad/glad.h>
-#include"Render.h"
+#include"MyRender.h"
+
 MXRender::Window::Window()
 {
     glfwInit();
@@ -40,7 +41,7 @@ MXRender::Window::~Window()
     glfwTerminate();
 }
 
-void MXRender::Window::run(std::shared_ptr<Render> render)
+void MXRender::Window::run(std::shared_ptr<MyRender> render)
 {
     while (!glfwWindowShouldClose(window))
     {

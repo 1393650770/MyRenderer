@@ -15,9 +15,6 @@ xmake version 2.6.7+dev.a3f81d902
     <Filter Include="src">
       <UniqueIdentifier>{491FBF00-292E-479F-8C8F-7A2AC045023A}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\Render">
-      <UniqueIdentifier>{EC378141-A4EE-4B06-B626-1DC2186BC9F5}</UniqueIdentifier>
-    </Filter>
 
   </ItemGroup>
   <ItemGroup>
@@ -43,12 +40,6 @@ xmake version 2.6.7+dev.a3f81d902
   </ItemGroup>
   <ItemGroup>
 
-    <ClCompile Include="$(XmakeProjectDir)\src\Render\Mesh.cpp">
-      <Filter>src\Render</Filter>
-    </ClCompile>
-    <ClCompile Include="$(XmakeProjectDir)\src\Render\Model.cpp">
-      <Filter>src\Render</Filter>
-    </ClCompile>
     <ClCompile Include="$(XmakeProjectDir)\src\RendererApp.cpp">
       <Filter>src</Filter>
     </ClCompile>

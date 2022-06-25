@@ -53,7 +53,7 @@ xmake version 2.6.7+dev.a3f81d902
     <XmakeKind>binary</XmakeKind>
     <XmakeDefault>true</XmakeDefault>
     <XmakeDefines>GLFW_INCLUDE_NONE</XmakeDefines>
-    <XmakeLanguages></XmakeLanguages>
+    <XmakeLanguages>cxx20</XmakeLanguages>
     <XmakeSubSystem>console</XmakeSubSystem>
     <XmakeCudaVersion><!-- nil --></XmakeCudaVersion>
     <XmakeWindowsSdkVersion><!-- nil --></XmakeWindowsSdkVersion>
@@ -74,7 +74,7 @@ xmake version 2.6.7+dev.a3f81d902
     <XmakeKind>binary</XmakeKind>
     <XmakeDefault>true</XmakeDefault>
     <XmakeDefines>GLFW_INCLUDE_NONE</XmakeDefines>
-    <XmakeLanguages></XmakeLanguages>
+    <XmakeLanguages>cxx20</XmakeLanguages>
     <XmakeSubSystem>console</XmakeSubSystem>
     <XmakeCudaVersion><!-- nil --></XmakeCudaVersion>
     <XmakeWindowsSdkVersion><!-- nil --></XmakeWindowsSdkVersion>
@@ -95,7 +95,7 @@ xmake version 2.6.7+dev.a3f81d902
     <XmakeKind>binary</XmakeKind>
     <XmakeDefault>true</XmakeDefault>
     <XmakeDefines>GLFW_INCLUDE_NONE</XmakeDefines>
-    <XmakeLanguages></XmakeLanguages>
+    <XmakeLanguages>cxx20</XmakeLanguages>
     <XmakeSubSystem>console</XmakeSubSystem>
     <XmakeCudaVersion><!-- nil --></XmakeCudaVersion>
     <XmakeWindowsSdkVersion><!-- nil --></XmakeWindowsSdkVersion>
@@ -116,7 +116,7 @@ xmake version 2.6.7+dev.a3f81d902
     <XmakeKind>binary</XmakeKind>
     <XmakeDefault>true</XmakeDefault>
     <XmakeDefines>GLFW_INCLUDE_NONE</XmakeDefines>
-    <XmakeLanguages></XmakeLanguages>
+    <XmakeLanguages>cxx20</XmakeLanguages>
     <XmakeSubSystem>console</XmakeSubSystem>
     <XmakeCudaVersion><!-- nil --></XmakeCudaVersion>
     <XmakeWindowsSdkVersion><!-- nil --></XmakeWindowsSdkVersion>
@@ -131,28 +131,28 @@ xmake version 2.6.7+dev.a3f81d902
 
   <PropertyGroup Label="XmakePath" Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">
     <XmakeBuilDir>$(XmakeProjectDir)\build</XmakeBuilDir>
-    <XmakeConfigDir>$(XmakeProjectDir)\.</XmakeConfigDir>
+    <XmakeConfigDir></XmakeConfigDir>
     <XmakeConfigFileDir></XmakeConfigFileDir>
     <XmakeTargetDir></XmakeTargetDir>
     <XmakeRunDir></XmakeRunDir>
   </PropertyGroup>
   <PropertyGroup Label="XmakePath" Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
     <XmakeBuilDir>$(XmakeProjectDir)\build</XmakeBuilDir>
-    <XmakeConfigDir>$(XmakeProjectDir)\.</XmakeConfigDir>
+    <XmakeConfigDir></XmakeConfigDir>
     <XmakeConfigFileDir></XmakeConfigFileDir>
     <XmakeTargetDir></XmakeTargetDir>
     <XmakeRunDir></XmakeRunDir>
   </PropertyGroup>
   <PropertyGroup Label="XmakePath" Condition="'$(Configuration)|$(Platform)'=='debug|x64'">
     <XmakeBuilDir>$(XmakeProjectDir)\build</XmakeBuilDir>
-    <XmakeConfigDir>$(XmakeProjectDir)\.</XmakeConfigDir>
+    <XmakeConfigDir></XmakeConfigDir>
     <XmakeConfigFileDir></XmakeConfigFileDir>
     <XmakeTargetDir></XmakeTargetDir>
     <XmakeRunDir></XmakeRunDir>
   </PropertyGroup>
   <PropertyGroup Label="XmakePath" Condition="'$(Configuration)|$(Platform)'=='release|x64'">
     <XmakeBuilDir>$(XmakeProjectDir)\build</XmakeBuilDir>
-    <XmakeConfigDir>$(XmakeProjectDir)\.</XmakeConfigDir>
+    <XmakeConfigDir></XmakeConfigDir>
     <XmakeConfigFileDir></XmakeConfigFileDir>
     <XmakeTargetDir></XmakeTargetDir>
     <XmakeRunDir></XmakeRunDir>
@@ -165,12 +165,6 @@ xmake version 2.6.7+dev.a3f81d902
   </ItemGroup>
   <ItemGroup>
 
-    <ClCompile Include="$(XmakeProjectDir)\src\Render\Mesh.cpp">
-      <CompileAs>CompileAsCpp</CompileAs>
-    </ClCompile>
-    <ClCompile Include="$(XmakeProjectDir)\src\Render\Model.cpp">
-      <CompileAs>CompileAsCpp</CompileAs>
-    </ClCompile>
     <ClCompile Include="$(XmakeProjectDir)\src\RendererApp.cpp">
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
@@ -186,17 +180,8 @@ xmake version 2.6.7+dev.a3f81d902
 
   </ItemGroup>
   <!-- <ItemGroup>
-    <ProjectReference Include="..\RHI\RHI.vcxproj">
-      <Project>{E9BCD1C6-5A78-48C8-939A-9BFA51937BDE}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\Runtime\Runtime.vcxproj">
       <Project>{688689CE-6D31-493B-BD70-5DF65A0FBEFB}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\ThirdParty\ThirdParty.vcxproj">
-      <Project>{834C862B-6A8C-42D9-AAD3-25AFE3063EA2}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\Utils\Utils.vcxproj">
-      <Project>{C8CD3D87-3BC4-4DAC-83B2-CAAC2B84D2DC}</Project>
     </ProjectReference>
 
   </ItemGroup> -->

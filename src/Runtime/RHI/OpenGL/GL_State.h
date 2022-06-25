@@ -4,7 +4,7 @@
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
-#include"GL_ENUM.h"
+#include"../RenderEnum.h"
 #include <string>
 #include<vector>
 #include <fstream>

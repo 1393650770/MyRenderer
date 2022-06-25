@@ -4,7 +4,7 @@
 #include <glad/glad.h> // 所有头文件
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include "../RHI/GL_Shader.h"
+#include "../RHI/OpenGL/GL_Shader.h"
 #include <string>
 #include <fstream>
 #include <sstream>

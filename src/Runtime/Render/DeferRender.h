@@ -1,12 +1,12 @@
 #pragma once
 #ifndef _DEFERRENDER_
 #define _DEFERRENDER_
-#include "Render.h"
+#include "MyRender.h"
 
 namespace MXRender
 {
     class DeferRender :
-        public Render
+        public MyRender
     {
     public:
         DeferRender();
