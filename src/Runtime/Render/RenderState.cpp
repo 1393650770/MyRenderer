@@ -1,9 +1,11 @@
 #include "..\RHI\RenderState.h"
-
-MXRender::RenderState::RenderState()
+namespace MXRender
 {
-}
+	RenderState::RenderState()
+	{
+	}
 
-MXRender::RenderState::~RenderState()
-{
+	RenderState::~RenderState()
+	{
+	}
 }

@@ -148,9 +148,19 @@ namespace MXRender
         glDeleteProgram(ID);
     }
 
-    void GL_Shader::use()
+    unsigned GL_Shader::get_id() const
+    {
+        return ID;
+    }
+
+    void GL_Shader::bind() const
     {
         glUseProgram(ID);
+    }
+
+    void GL_Shader::unbind() const
+    {
+        glUseProgram(0);
     }
 
     void GL_Shader::setBool(const std::string& name, bool value) const

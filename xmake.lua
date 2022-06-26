@@ -4,6 +4,7 @@ add_rules("plugin.vsxmake.autoupdate")
 
 target("Runtime")
     set_kind("static")
+    set_languages("c++20")  
     add_files("src/Runtime/Mesh/*.cpp") 
     add_files("src/Runtime/Render/*.cpp") 
     add_files("src/Runtime/RHI/OpenGL/*.cpp") 

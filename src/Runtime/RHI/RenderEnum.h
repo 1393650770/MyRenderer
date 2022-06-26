@@ -34,6 +34,12 @@ namespace MXRender
 		ENUM_TYPE_2D_DYNAMIC,
 	};
 
+	enum class ENUM_SHADER_TYPE
+	{
+		ENUM_TYPE_NOT_VALID = 0,
+
+	};
+
 
 	/// Texture formats:
 	enum class ENUM_TEXTURE_FORMAT

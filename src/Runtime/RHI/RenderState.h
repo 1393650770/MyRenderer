@@ -19,13 +19,10 @@ namespace MXRender
     private:
 
     public:
-        static ENUM_RENDER_API_TYPE render_api_type;
+        static inline ENUM_RENDER_API_TYPE render_api_type = ENUM_RENDER_API_TYPE::OpenGL;
 
         RenderState();
         virtual ~RenderState();
-
-
-
 
     };
 
