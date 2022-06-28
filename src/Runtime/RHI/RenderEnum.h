@@ -24,6 +24,62 @@ namespace MXRender
 		Count
 	};
 
+
+	enum class ENUM_RENDER_DATA_TYPE
+	{
+		None = 0, 
+		Float, 
+		Float2, 
+		Float3, 
+		Float4, 
+		Mat3, 
+		Mat4, 
+		Int, 
+		Int2, 
+		Int3, 
+		Int4, 
+		Bool,
+
+		Count
+	};
+
+	enum class ENUM_RENDER_DATA_USAGE_TYPE
+	{
+		NONE = 0,
+		STATIC_DRAW,
+		DYNAMIC_DRAW,
+
+		COUNT
+	};
+	
+	struct ENUM_RENDER_ATTRIBUTE_TYPE
+	{
+		enum Enum 
+		{
+			None = 0,
+			Position = 1,
+			Normal = 2,
+			Tangent = 3,
+			Bitangent = 4,
+			Color0 = 5,
+			Color1 = 6,
+			Color2 = 7,
+			Color3 = 8,
+			Indices = 9,
+			Weight = 10,
+			TexCoord0 = 11,
+			TexCoord1 = 12,
+			TexCoord2 = 13,
+			TexCoord3 = 14,
+			TexCoord4 = 15,
+			TexCoord5 = 16,
+			TexCoord6 = 17,
+			TexCoord7 = 18,
+
+			Count = 19,
+		};
+	}; 
+
 	enum class ENUM_TEXTURE_TYPE
 	{
 		ENUM_TYPE_NOT_VALID = 0,

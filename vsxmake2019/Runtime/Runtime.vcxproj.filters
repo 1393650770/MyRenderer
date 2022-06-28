@@ -71,7 +71,16 @@ xmake version 2.6.7+dev.a3f81d902
     <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\GraphicsContext.h">
       <Filter>src\Runtime\RHI</Filter>
     </ClInclude>
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\IndexBuffer.h">
+      <Filter>src\Runtime\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_ElementBuffer.h">
+      <Filter>src\Runtime\RHI\OpenGL</Filter>
+    </ClInclude>
     <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_Framebuffer.h">
+      <Filter>src\Runtime\RHI\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_IndexBuffer.h">
       <Filter>src\Runtime\RHI\OpenGL</Filter>
     </ClInclude>
     <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_Shader.h">
@@ -81,6 +90,15 @@ xmake version 2.6.7+dev.a3f81d902
       <Filter>src\Runtime\RHI\OpenGL</Filter>
     </ClInclude>
     <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_Texture.h">
+      <Filter>src\Runtime\RHI\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_Utils.h">
+      <Filter>src\Runtime\RHI\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_VertexArray.h">
+      <Filter>src\Runtime\RHI\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_VertexBuffer.h">
       <Filter>src\Runtime\RHI\OpenGL</Filter>
     </ClInclude>
     <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\RenderEnum.h">
@@ -142,7 +160,16 @@ xmake version 2.6.7+dev.a3f81d902
     <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\GraphicsContext.cpp">
       <Filter>src\Runtime\RHI</Filter>
     </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\IndexBuffer.cpp">
+      <Filter>src\Runtime\RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_ElementBuffer.cpp">
+      <Filter>src\Runtime\RHI\OpenGL</Filter>
+    </ClCompile>
     <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_Framebuffer.cpp">
+      <Filter>src\Runtime\RHI\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_IndexBuffer.cpp">
       <Filter>src\Runtime\RHI\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_Shader.cpp">
@@ -152,6 +179,15 @@ xmake version 2.6.7+dev.a3f81d902
       <Filter>src\Runtime\RHI\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_Texture.cpp">
+      <Filter>src\Runtime\RHI\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_Utils.cpp">
+      <Filter>src\Runtime\RHI\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_VertexArray.cpp">
+      <Filter>src\Runtime\RHI\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\OpenGL\GL_VertexBuffer.cpp">
       <Filter>src\Runtime\RHI\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\RenderEnum.cpp">

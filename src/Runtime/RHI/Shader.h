@@ -19,7 +19,9 @@ namespace MXRender
     public:
         Shader()=default;
         virtual ~Shader();
+
         virtual unsigned get_id() const = 0;
+        
         virtual void bind() const =0; // uniform工具函数
         virtual void unbind() const = 0; // uniform工具函数
         virtual void setBool(const std::string& name, bool value)const = 0;

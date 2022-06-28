@@ -1,1 +1,11 @@
-#include "FrameBuffer.h"
+#include "VertexArray.h"
+
+
+namespace MXRender
+{
+	VertexArray::~VertexArray()
+	{
+	}
+}
+
+
