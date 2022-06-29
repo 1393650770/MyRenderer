@@ -20,7 +20,6 @@ namespace MXRender
     {
     private:
         unsigned id;
-        std::shared_ptr<float> data_array;
         std::shared_ptr<VertexBuffer> layout;
         std::shared_ptr<IndexBuffer> ebo;
     public:

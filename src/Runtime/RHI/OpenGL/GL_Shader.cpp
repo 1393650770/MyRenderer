@@ -14,7 +14,7 @@ namespace MXRender
         std::ifstream gShaderFile;
         std::ifstream cShaderFile;
         // 保证ifstream对象可以抛出异常： 
-        vShaderFile.exceptions (std::ifstream::failbit | std::ifstream::badbit); 
+        vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit); 
         fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
         gShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
         cShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);

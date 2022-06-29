@@ -18,7 +18,8 @@ namespace MXRender
     private:
 
     public:
-        
+        static GLenum Translate_API_UsageEnum_To_Opengl(ENUM_RENDER_DATA_USAGE_TYPE usage);
+        static GLenum Translate_API_DataTypeEnum_To_Opengl(ENUM_RENDER_DATA_TYPE data_type);
 
     };
     

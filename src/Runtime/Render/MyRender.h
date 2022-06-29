@@ -10,6 +10,7 @@ namespace MXRender
 		MyRender();
 		virtual ~MyRender();
 		virtual void run() = 0;
+		virtual void init() = 0;
 	private:
 
 	};

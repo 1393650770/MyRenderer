@@ -43,6 +43,8 @@ namespace MXRender
         std::vector<Layout_Element>::iterator end() { return layout.end(); }
         std::vector<Layout_Element>::const_iterator begin() const { return layout.cbegin(); }
         std::vector<Layout_Element>::const_iterator end() const { return layout.cend(); }
+        const unsigned& get_stride() const;
+        const unsigned int& get_offset(ENUM_RENDER_ATTRIBUTE_TYPE::Enum attribute_type) const;
     };
 
 
@@ -57,10 +59,16 @@ namespace MXRender
         virtual void bind() const = 0;
         virtual void unbind() const = 0;
 
-        virtual void set_data(const void* data, unsigned size) = 0;
+        virtual void set_alldata(const void* data, unsigned size) = 0;
+        virtual void set_subdata(const void* data,unsigned offset, unsigned size) = 0;
 
         virtual const Layout& get_layout() const = 0;
         virtual void set_layout(const Layout& layout) = 0;
+
+        static std::shared_ptr<VertexBuffer> CreateVertexBuffer(const void* vertices, unsigned size, ENUM_RENDER_DATA_USAGE_TYPE usage = ENUM_RENDER_DATA_USAGE_TYPE::DYNAMIC_DRAW);
+
+        static std::shared_ptr<VertexBuffer> CreateVertexBuffer(std::shared_ptr<std::vector<float>> vertices, unsigned size, ENUM_RENDER_DATA_USAGE_TYPE usage = ENUM_RENDER_DATA_USAGE_TYPE::DYNAMIC_DRAW);
+
     };
 
 }

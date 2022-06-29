@@ -177,6 +177,7 @@ xmake version 2.6.7+dev.a3f81d902
     <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\RenderEnum.h" />
     <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\RenderPass.h" />
     <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\RenderState.h" />
+    <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\RenderUtils.h" />
     <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\Shader.h" />
     <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\UniformBuffer.h" />
     <ClInclude Include="$(XmakeProjectDir)\src\Runtime\RHI\VertexArray.h" />
@@ -242,6 +243,9 @@ xmake version 2.6.7+dev.a3f81d902
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
     <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\RenderState.cpp">
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\RenderUtils.cpp">
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
     <ClCompile Include="$(XmakeProjectDir)\src\Runtime\RHI\Shader.cpp">

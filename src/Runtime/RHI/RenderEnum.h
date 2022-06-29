@@ -29,15 +29,13 @@ namespace MXRender
 	{
 		None = 0, 
 		Float, 
-		Float2, 
-		Float3, 
-		Float4, 
+		Half,
 		Mat3, 
 		Mat4, 
 		Int, 
-		Int2, 
-		Int3, 
-		Int4, 
+		Uint8,
+		Uint10,
+		Int16, 
 		Bool,
 
 		Count

@@ -16,16 +16,24 @@ namespace MXRender
     class GL_IndexBuffer :public IndexBuffer
     {
     private:
-
+        std::shared_ptr<std::vector<unsigned int>> index_data;
+        unsigned id;
+        unsigned index_data_size;
+        ENUM_RENDER_DATA_USAGE_TYPE usage;
     public:
-        GL_IndexBuffer(/* args */);
+        GL_IndexBuffer(const void* _index_array,unsigned size ,ENUM_RENDER_DATA_USAGE_TYPE data_usage);
+        GL_IndexBuffer(std::shared_ptr<std::vector<unsigned int>> _index_array, unsigned size, ENUM_RENDER_DATA_USAGE_TYPE data_usage);
+
         virtual ~GL_IndexBuffer();
 
         void bind() const override;
         void unbind() const override;
 
-        void set_data(const void* data, unsigned size) override;
+        void set_alldata(const void* _index_array, unsigned size) override;
 
+        void set_subdata(const void* _index_array, unsigned offset, unsigned size) override;
+
+        unsigned get_count() const override;
 
     };
     

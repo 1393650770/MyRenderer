@@ -4,7 +4,10 @@
 #include"DefaultSetting.h"
 #include <glad/glad.h>
 #include"MyRender.h"
-
+#include"../RHI/VertexArray.h"
+#include"../RHI/VertexBuffer.h"
+#include"../RHI/IndexBuffer.h"
+#include"../RHI/Shader.h"
 MXRender::Window::Window()
 {
     glfwInit();
@@ -33,6 +36,7 @@ MXRender::Window::Window()
             glViewport(0, 0, Singleton<DefaultSetting>::get_instance().width, Singleton<DefaultSetting>::get_instance().height);
         }
     }
+
  }
 
 MXRender::Window::~Window()
@@ -43,15 +47,18 @@ MXRender::Window::~Window()
 
 void MXRender::Window::run(std::shared_ptr<MyRender> render)
 {
+    render->init();
+
     while (!glfwWindowShouldClose(window))
     {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+        glfwPollEvents();
+
 
         render->run();
 
         glfwSwapBuffers(window);
-        glfwPollEvents();
     }
 }

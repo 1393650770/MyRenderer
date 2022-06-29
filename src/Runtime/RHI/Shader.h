@@ -41,7 +41,8 @@ namespace MXRender
         virtual void SetUniform2f(const char* paraNameString, float param1, float param2) = 0;
         virtual void SetUniform1i(const char* paraNameString, int slot) = 0;
 
-        static std::shared_ptr<Shader> CreateShader(const std::string& vertexPath = nullptr, const std::string& fragmentPath = nullptr, const std::string& geometryPath = nullptr, const const std::string& computePath = nullptr);
+        static std::shared_ptr<Shader> CreateShader(const char* vertexPath = nullptr, const char* fragmentPath = nullptr, const char* geometryPath = nullptr, const char* computePath = nullptr);
+    
     };
 
 

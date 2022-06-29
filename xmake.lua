@@ -1,12 +1,12 @@
 add_requires("glad", "glfw", "glm","assimp")
-add_rules("plugin.vsxmake.autoupdate")
+--add_rules("plugin.vsxmake.autoupdate")
 
 
 target("Runtime")
     set_kind("static")
     set_languages("c++20")  
     add_files("src/Runtime/Mesh/*.cpp") 
-    add_files("src/Runtime/Render/*.cpp") 
+    add_files("src/Runtime/Render/*.cpp")  
     add_files("src/Runtime/RHI/OpenGL/*.cpp") 
     add_files("src/Runtime/RHI/*.cpp") 
     add_files("src/Runtime/Utils/*.cpp") 
@@ -30,3 +30,8 @@ target("Renderer")
     add_deps("Runtime")
     add_files("src/*.cpp") 
     add_packages("glad", "glfw", "glm","assimp")
+
+    after_build(function (target)
+        os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)/Shader")
+    end)
+    
