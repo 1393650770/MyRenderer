@@ -33,11 +33,12 @@
 
 build/
 building/
-CpuRayTracingRenderer.dir/
-CpuRayTracingRenderer_library.dir/
-x64/
 .vs/
 CMakeFiles/
 .xmake/
 .vsxmake2019/
 vsxmake2019
+vsxmake2019/
+
+
+
