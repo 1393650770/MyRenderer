@@ -1,13 +1,6 @@
-#include"GL_State.h"
+#include"GL_ElementBuffer.h"
 namespace MXRender
 {
-    GL_State::GL_State(/* args */)
-    {
 
-    }
-    
-    GL_State::~GL_State()
-    {
-    }
     
 }

@@ -17,9 +17,11 @@ void MXRender::DeferRender::run()
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	shader->bind();
+
 	vertex_array->bind();
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 	vertex_array->unbind();
+
 	shader->unbind();
 	
 }
@@ -47,6 +49,7 @@ void MXRender::DeferRender::init()
 
 	vertex_buffer = VertexBuffer::CreateVertexBuffer(vertices_test, sizeof(float)* vertices_test.get()->size());
 	index_buffer = IndexBuffer::CreateIndexBuffer(indices_test, sizeof(unsigned int)* indices_test.get()->size());
+	
 	vertex_array->set_indexbuffer(index_buffer);
 	vertex_buffer->set_layout({ {ENUM_RENDER_DATA_TYPE::Float,3,ENUM_RENDER_ATTRIBUTE_TYPE::Position} });
 	vertex_array->set_vertexbuffer(vertex_buffer);

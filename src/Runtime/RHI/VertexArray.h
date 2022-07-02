@@ -25,6 +25,7 @@ namespace MXRender
         virtual void unbind() const = 0;
 
         virtual void set_vertexbuffer(const std::shared_ptr < VertexBuffer>& _vertex_buffer)=0;
+
         virtual void set_indexbuffer(const std::shared_ptr < IndexBuffer>& _index_buffer) = 0;
 
         static std::shared_ptr<VertexArray> CreateVertexArray();

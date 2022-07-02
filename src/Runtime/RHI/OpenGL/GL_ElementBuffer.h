@@ -12,14 +12,7 @@
 #include <iostream>
 namespace MXRender
 {
-    class GL_State
-    {
-    private:
 
-    public:
-        GL_State(/* args */);
-        virtual ~GL_State();
-    };
     
 }
 #endif
