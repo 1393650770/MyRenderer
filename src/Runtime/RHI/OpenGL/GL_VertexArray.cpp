@@ -34,6 +34,7 @@ namespace MXRender
         layout->bind();
         auto& opengl_layout = layout->get_layout();
         unsigned index = 0;
+
         for (auto& it : opengl_layout )
         {
             GLenum opengl_data_type= GL_Utils::Translate_API_DataTypeEnum_To_Opengl(it.data_type);
@@ -43,29 +44,31 @@ namespace MXRender
             case MXRender::ENUM_RENDER_DATA_TYPE::Float:
             case MXRender::ENUM_RENDER_DATA_TYPE::Half:
             {
-
+                glEnableVertexAttribArray(index);
                 glVertexAttribPointer(index, 
-                    it.num, opengl_data_type, 
+                    it.num, 
+                    opengl_data_type, 
                     it.normalized ? GL_TRUE : GL_FALSE, 
-                    opengl_layout.get_stride()* opengl_data_size,
+                    opengl_layout.get_stride() * opengl_data_size,
                     (void* )(opengl_layout.get_offset(it.attributr_type) * opengl_data_size)
                 );
-                glEnableVertexAttribArray(index);
+
+                std::cout <<index<<"---" << it.num << "---" << opengl_layout.get_stride() * opengl_data_size <<  "----" << opengl_layout.get_offset(it.attributr_type) <<"---" << opengl_data_size <<"---"<< opengl_data_type << std::endl;
                 break;
             }
-
             case MXRender::ENUM_RENDER_DATA_TYPE::Int:
             case MXRender::ENUM_RENDER_DATA_TYPE::Uint8:
             case MXRender::ENUM_RENDER_DATA_TYPE::Uint10:
             case MXRender::ENUM_RENDER_DATA_TYPE::Int16:
             case MXRender::ENUM_RENDER_DATA_TYPE::Bool:
             {
+                glEnableVertexAttribArray(index);
                 glVertexAttribIPointer(index,
                     it.num, opengl_data_type,
                     opengl_layout.get_stride() * opengl_data_size,
                     (void*)(opengl_layout.get_offset(it.attributr_type) * opengl_data_size)
                 );
-                glEnableVertexAttribArray(index);
+                
                 break;
             }
             default:
@@ -75,6 +78,8 @@ namespace MXRender
             }
             index++;
         }
+
+
     }
 
     void GL_VertexArray::set_indexbuffer(const std::shared_ptr<IndexBuffer>& _index_buffer)

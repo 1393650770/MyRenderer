@@ -20,6 +20,9 @@ namespace MXRender
         glCreateBuffers(1, &id);
         glBindBuffer(GL_ARRAY_BUFFER, id);
         glBufferData(GL_ARRAY_BUFFER, size, data.get()->data(), GL_Utils::Translate_API_UsageEnum_To_Opengl(usage_type));
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        std::cout << size << std::endl;
+        
     }
 
     GL_VertexBuffer::~GL_VertexBuffer()

@@ -14,9 +14,7 @@ namespace MXRender
 		{
 			offset[element.attributr_type] = stride;
 			stride += element.num;
-			
 		}
-		
 	}
 
 
