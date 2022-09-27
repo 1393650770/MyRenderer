@@ -41,7 +41,7 @@ namespace MXRender
     {
         if (Device.expired())
         {
-            return;
+            return -1;
         }
         std::shared_ptr<VK_Device> DeviceSharedPtr = Device.lock();
 

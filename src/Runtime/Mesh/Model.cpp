@@ -1,4 +1,6 @@
 #include "Model.h"
+
+
 namespace MXRender
 {
     Model::Model(string const& path, bool gamma):gammaCorrection(gamma)

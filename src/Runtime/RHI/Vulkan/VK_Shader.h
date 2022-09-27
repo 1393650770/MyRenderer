@@ -1,10 +1,13 @@
 #pragma once
 #ifndef _VK_SHADER_
 #define _VK_SHADER_
+
 #include<vulkan/vulkan.h>
 #include <string>
 #include<vector>
+#include<unordered_map>
 #include<memory>
+#include<tuple>
 #include"glm/glm.hpp"
 #include "../RenderEnum.h"
 #include "../Shader.h"
@@ -19,15 +22,15 @@ namespace MXRender
         
         std::vector<char> readFile(const std::string& filename);
         VkShaderModule createShaderModule(const std::vector<char>& code);
-
+        std::tuple<VkDeviceSize, VkBuffer, VkDeviceMemory>& getUniformTuple(const std::string& name);
     protected:
         // 程序ID
         unsigned int ID;
         VkShaderModule ShaderModules[ENUM_SHADER_STAGE::NumStages];
         std::weak_ptr<VK_Device> Device;
 
-        std::vector<VkBuffer> UniformBuffers;
-        std::vector<VkDeviceMemory> UniformBuffersMemory;
+        mutable std::unordered_map<std::string,std::tuple<VkDeviceSize,VkBuffer, VkDeviceMemory>> Uniformmap;
+
     public:
 
         
@@ -39,7 +42,7 @@ namespace MXRender
         
         virtual void bind() const ; // uniform工具函数
         virtual void unbind() const ; // uniform工具函数
-        virtual void setBool(const std::string& name, bool value)const ;
+        virtual void setBool(const std::string& name, bool value) const;
         virtual void setInt(const std::string& name, int value)const ;
         virtual void setFloat(const std::string& name, float value)const ;
         virtual void setVec2(const std::string& name, const glm::vec2& value) const ;
@@ -56,7 +59,7 @@ namespace MXRender
         virtual void SetUniform2f(const char* paraNameString, float param1, float param2) ;
         virtual void SetUniform1i(const char* paraNameString, int slot) ;
 
-
+        virtual void addUniformName(const std::string& name, uint64_t uniformSize) ;
     };
 
 

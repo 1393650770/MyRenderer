@@ -1,6 +1,8 @@
 #pragma once
+
 #ifndef _GL_SHADER_
 #define _GL_SHADER_
+
 #include"../Shader.h"
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -38,6 +40,9 @@ namespace MXRender
         void SetUniform1f(const char* paraNameString, float param) override;
         void SetUniform2f(const char* paraNameString, float param1, float param2) override;
         void SetUniform1i(const char* paraNameString, int slot) override;
+
+        virtual void addUnifromName(const std::string& name, uint64_t uniformSize) ;
+
     };
 }
 #endif

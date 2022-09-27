@@ -21,7 +21,7 @@ namespace MXRender
         virtual ~Shader();
 
         virtual unsigned get_id() const = 0;
-        
+
         virtual void bind() const =0; // uniform工具函数
         virtual void unbind() const = 0; // uniform工具函数
         virtual void setBool(const std::string& name, bool value)const = 0;
@@ -40,6 +40,10 @@ namespace MXRender
         virtual void SetUniform1f(const char* paraNameString, float param) = 0;
         virtual void SetUniform2f(const char* paraNameString, float param1, float param2) = 0;
         virtual void SetUniform1i(const char* paraNameString, int slot) = 0;
+
+        //New api
+        virtual void addUnifromName(const std::string& name, uint64_t uniformSize) = 0;
+
 
         static std::shared_ptr<Shader> CreateShader(const char* vertexPath = nullptr, const char* fragmentPath = nullptr, const char* geometryPath = nullptr, const char* computePath = nullptr);
     

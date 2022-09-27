@@ -47,6 +47,11 @@ namespace MXRender
 		return shaderModule;
 	}
 
+	std::tuple<VkDeviceSize, VkBuffer, VkDeviceMemory>& VK_Shader::getUniformTuple(const std::string& name)
+	{
+		return Uniformmap[name];
+	}
+
 
 	VK_Shader::VK_Shader(std::shared_ptr<VK_Device> InDevice, VkShaderStageFlagBits InStageFlag, const std::string& vertexPath, const std::string& fragmentPath, const std::string& geometryPath, const std::string& computePath)
 	{
@@ -89,80 +94,263 @@ namespace MXRender
 
 	void VK_Shader::setBool(const std::string& name, bool value) const
 	{
-		if (Device.expired())
+		if (Device.expired()||Uniformmap.contains(name)==false)
 		{
 			return;
 		}
 		VkDeviceSize buffer_size= sizeof(bool);
-		VkBuffer uniform_buffers;
-		VkDeviceMemory uniform_buffersMemory;
-		VK_Utils::CreateVKBuffer(Device, buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniform_buffers, uniform_buffersMemory);
+		if (buffer_size != std::get<0>(Uniformmap[name]))
+		{
+			return ;
+		}
 		void* data;
-		vkMapMemory(Device.lock()->Device, uniform_buffersMemory,0,buffer_size,0,&data);
+		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]),0, buffer_size,0,&data);
 		memcpy(data,&value,sizeof(value));
-		vkUnmapMemory(Device.lock()->Device, uniform_buffersMemory);
+		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
 	
 	}
 
 	void VK_Shader::setInt(const std::string& name, int value) const
 	{
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		VkDeviceSize buffer_size = sizeof(int);
+		if (buffer_size != std::get<0>(Uniformmap[name]))
+		{
+			return;
+		}
+		void* data;
+		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		memcpy(data, &value, sizeof(value));
+		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::setFloat(const std::string& name, float value) const
 	{
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		VkDeviceSize buffer_size = sizeof(float);
+		if (buffer_size != std::get<0>(Uniformmap[name]))
+		{
+			return;
+		}
+		void* data;
+		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		memcpy(data, &value, sizeof(value));
+		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::setVec2(const std::string& name, const glm::vec2& value) const
 	{
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		VkDeviceSize buffer_size = sizeof(glm::vec2);
+		if (buffer_size != std::get<0>(Uniformmap[name]))
+		{
+			return;
+		}
+		void* data;
+		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		memcpy(data, &value, sizeof(value));
+		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::setVec2(const std::string& name, float x, float y) const
 	{
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		glm::vec2 cur_vec2;
+		cur_vec2.x=x;
+		cur_vec2.y=y;
+		setVec2(name,cur_vec2);
 	}
 
 	void VK_Shader::setVec3(const std::string& name, const glm::vec3& value) const
 	{
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		VkDeviceSize buffer_size = sizeof(glm::vec3);
+		if (buffer_size != std::get<0>(Uniformmap[name]))
+		{
+			return;
+		}
+		void* data;
+		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		memcpy(data, &value, sizeof(value));
+		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::setVec3(const std::string& name, float x, float y, float z) const
 	{
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		glm::vec3 cur_vec3;
+		cur_vec3.x = x;
+		cur_vec3.y = y;
+		cur_vec3.z = z;
+		setVec3(name, cur_vec3);
 	}
 
 	void VK_Shader::setVec4(const std::string& name, const glm::vec4& value) const
 	{
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		VkDeviceSize buffer_size = sizeof(glm::vec4);
+		if (buffer_size != std::get<0>(Uniformmap[name]))
+		{
+			return;
+		}
+		void* data;
+		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		memcpy(data, &value, sizeof(value));
+		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::setVec4(const std::string& name, float x, float y, float z, float w) const
 	{
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		glm::vec4 cur_vec4;
+		cur_vec4.x = x;
+		cur_vec4.y = y;
+		cur_vec4.z = z;
+		cur_vec4.w = w; 
+		setVec3(name, cur_vec4);
 	}
 
 	void VK_Shader::setMat2(const std::string& name, const glm::mat2& mat) const
 	{
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		VkDeviceSize buffer_size = sizeof(glm::mat2);
+		if (buffer_size != std::get<0>(Uniformmap[name]))
+		{
+			return;
+		}
+		void* data;
+		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		memcpy(data, &mat, sizeof(mat));
+		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::setMat3(const std::string& name, const glm::mat3& mat) const
 	{
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		VkDeviceSize buffer_size = sizeof(glm::mat3);
+		if (buffer_size != std::get<0>(Uniformmap[name]))
+		{
+			return;
+		}
+		void* data;
+		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		memcpy(data, &mat, sizeof(mat));
+		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::setMat4(const std::string& name, const glm::mat4& mat) const
 	{
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		VkDeviceSize buffer_size = sizeof(glm::mat4);
+		if (buffer_size != std::get<0>(Uniformmap[name]))
+		{
+			return;
+		}
+		void* data;
+		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		memcpy(data, &mat, sizeof(mat));
+		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::SetUniform3f(const char* paraNameString, glm::vec3 param)
 	{
+		std::string name(paraNameString);
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		VkDeviceSize buffer_size = sizeof(glm::vec3);
+		if (buffer_size != std::get<0>(Uniformmap[name]))
+		{
+			return;
+		}
+		void* data;
+		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		memcpy(data, &param, sizeof(param));
+		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::SetUniform1f(const char* paraNameString, float param)
 	{
+		std::string name(paraNameString);
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		VkDeviceSize buffer_size = sizeof(float);
+		if (buffer_size != std::get<0>(Uniformmap[name]))
+		{
+			return;
+		}
+		void* data;
+		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		memcpy(data, &param, sizeof(param));
+		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::SetUniform2f(const char* paraNameString, float param1, float param2)
 	{
+		std::string name(paraNameString);
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		glm::vec2 cur_vec2;
+		cur_vec2.x = param1;
+		cur_vec2.y = param2;
+		setVec2(name, cur_vec2);
 	}
 
 	void VK_Shader::SetUniform1i(const char* paraNameString, int slot)
 	{
+		std::string name(paraNameString);
+		if (Device.expired() || Uniformmap.contains(name) == false)
+		{
+			return;
+		}
+		setInt(name,slot);
 	}
+
+	void VK_Shader::addUniformName(const std::string& name, uint64_t uniformSize)
+	{
+		Uniformmap[name] = std::make_tuple(uniformSize, VkBuffer(), VkDeviceMemory());
+		VK_Utils::CreateVKBuffer(Device,uniformSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,std::get<1>(Uniformmap[name]), std::get<2>(Uniformmap[name]));
+	}
+
+
 
 
 
