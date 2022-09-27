@@ -19,15 +19,19 @@ namespace MXRender
         
         std::vector<char> readFile(const std::string& filename);
         VkShaderModule createShaderModule(const std::vector<char>& code);
+
     protected:
         // ≥Ã–ÚID
         unsigned int ID;
-
+        VkShaderModule ShaderModules[ENUM_SHADER_STAGE::NumStages];
         std::weak_ptr<VK_Device> Device;
+
+        std::vector<VkBuffer> UniformBuffers;
+        std::vector<VkDeviceMemory> UniformBuffersMemory;
     public:
 
         
-        VK_Shader(std::shared_ptr<VK_Device> InDevice, VkShaderStageFlagBits InStageFlag, const std::string& vertexPath = nullptr, const std::string& fragmentPath = nullptr, const std::string& geometryPath = nullptr, const std::string& computePath = nullptr);
+        VK_Shader(std::shared_ptr<VK_Device> InDevice, VkShaderStageFlagBits InStageFlag, const std::string& vertexPath = "", const std::string& fragmentPath = "", const std::string& geometryPath = "", const std::string& computePath = "");
         
         virtual ~VK_Shader();
 

@@ -1,8 +1,10 @@
 
-#include <iostream>
-#include <fstream>
+
 #include"VK_Shader.h"
 #include"Vk_Device.h"
+#include <iostream>
+#include <fstream>
+#include"VK_Utils.h"
 
 namespace MXRender
 {
@@ -49,11 +51,32 @@ namespace MXRender
 	VK_Shader::VK_Shader(std::shared_ptr<VK_Device> InDevice, VkShaderStageFlagBits InStageFlag, const std::string& vertexPath, const std::string& fragmentPath, const std::string& geometryPath, const std::string& computePath)
 	{
 		Device=InDevice;
-
+		if (Device.expired() == false)
+		{
+			if(vertexPath.size()>0)
+				ShaderModules[ENUM_SHADER_STAGE::Shader_Vertex]= createShaderModule(readFile(vertexPath));
+			if (fragmentPath.size() > 0)
+				ShaderModules[ENUM_SHADER_STAGE::Shader_Pixel] = createShaderModule(readFile(fragmentPath));
+			if (geometryPath.size() > 0)
+				ShaderModules[ENUM_SHADER_STAGE::Shader_Geometry] = createShaderModule(readFile(geometryPath));
+			if (computePath.size() > 0)
+				ShaderModules[ENUM_SHADER_STAGE::Shader_Compute] = createShaderModule(readFile(computePath));
+		}
 	}
 
 	VK_Shader::~VK_Shader()
 	{
+		if (Device.expired() == false)
+		{
+			for (size_t i = 0; i < ENUM_SHADER_STAGE::NumStages; i++)
+			{
+				if (ShaderModules[i] != VK_NULL_HANDLE)
+				{
+					vkDestroyShaderModule(Device.lock()->Device, ShaderModules[i], nullptr);
+				}
+			}
+		}
+		
 	}
 
 	void VK_Shader::bind() const
@@ -66,6 +89,19 @@ namespace MXRender
 
 	void VK_Shader::setBool(const std::string& name, bool value) const
 	{
+		if (Device.expired())
+		{
+			return;
+		}
+		VkDeviceSize buffer_size= sizeof(bool);
+		VkBuffer uniform_buffers;
+		VkDeviceMemory uniform_buffersMemory;
+		VK_Utils::CreateVKBuffer(Device, buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniform_buffers, uniform_buffersMemory);
+		void* data;
+		vkMapMemory(Device.lock()->Device, uniform_buffersMemory,0,buffer_size,0,&data);
+		memcpy(data,&value,sizeof(value));
+		vkUnmapMemory(Device.lock()->Device, uniform_buffersMemory);
+	
 	}
 
 	void VK_Shader::setInt(const std::string& name, int value) const

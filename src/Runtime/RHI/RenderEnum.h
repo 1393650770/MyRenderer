@@ -5,6 +5,8 @@
 
 namespace MXRender
 {
+
+	
 	/// Renderer types:
 	enum class ENUM_RENDER_API_TYPE
 	{
@@ -24,6 +26,25 @@ namespace MXRender
 		Count
 	};
 
+	enum  ENUM_SHADER_STAGE
+	{
+		Shader_Vertex = 0,
+		Shader_Pixel = 1,
+
+		Shader_Geometry = 2,
+
+		Shader_Hull = 3,
+
+		Shader_Domain = 4,
+
+		NumStages,
+
+		MaxNumSets = 8,
+
+		Shader_Compute = 0,
+
+		Invalid = -1,
+	};
 
 	enum class ENUM_RENDER_DATA_TYPE
 	{
