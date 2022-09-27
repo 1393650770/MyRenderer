@@ -1,8 +1,9 @@
 
+#include "VK_DescriptorSets.h"
 #include <iostream>
 #include <fstream>
 #include "VK_Device.h"
-#include "VK_DescriptorSets.h"
+
 
 namespace MXRender
 {
@@ -167,9 +168,10 @@ namespace MXRender
 		return Device;
 	}
 
-	VK_VulkanLayout::VK_VulkanLayout(std::shared_ptr<VK_Device> InDevice, unsigned int InDescriptorSetLayoutNum = 0):Device(InDevice)
+	VK_VulkanLayout::VK_VulkanLayout(std::shared_ptr<VK_Device> InDevice, unsigned int InDescriptorSetLayoutNum ):Device(InDevice)
 	{
-		DescriptorSetLayoutArray.resize(InDescriptorSetLayoutNum);
+		VK_DescriptorSetLayout temp(InDevice);
+		DescriptorSetLayoutArray.resize(InDescriptorSetLayoutNum, temp);
 		
 	}
 
@@ -200,9 +202,9 @@ namespace MXRender
 		return true;
 	}
 
-	std::vector<VkDescriptorSetLayout&> VK_VulkanLayout::getDescriptorSetLayoutData()
+	std::vector<VkDescriptorSetLayout> VK_VulkanLayout::getDescriptorSetLayoutData()
 	{
-		std::vector<VkDescriptorSetLayout&> ret(DescriptorSetLayoutArray.size());
+		std::vector<VkDescriptorSetLayout> ret(DescriptorSetLayoutArray.size());
 
 		for (int i=0;i< DescriptorSetLayoutArray.size();++i)
 		{

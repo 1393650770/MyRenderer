@@ -60,13 +60,13 @@ namespace MXRender
     private:
     protected:
         std::weak_ptr<VK_Device> Device;
-        std::vector<VK_DescriptorSetLayout> DescriptorSetLayoutArray;
+        std::vector < VK_DescriptorSetLayout> DescriptorSetLayoutArray;
         VkPipelineLayout PipelineLayout;
     public:
-        VK_VulkanLayout(std::shared_ptr<VK_Device> InDevice,unsigned int InDescriptorSetLayoutNum=0);
+        VK_VulkanLayout( std::shared_ptr<VK_Device> InDevice,unsigned int InDescriptorSetLayoutNum =0);
         virtual ~VK_VulkanLayout();
         bool compile();
-        std::vector<VkDescriptorSetLayout&> getDescriptorSetLayoutData();
+        std::vector<VkDescriptorSetLayout> getDescriptorSetLayoutData();
         VK_DescriptorSetLayout& getDescriptorSetLayoutByIndex(unsigned int Index);
     };
 
