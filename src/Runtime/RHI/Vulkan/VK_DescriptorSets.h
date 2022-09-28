@@ -5,6 +5,7 @@
 #include <string>
 #include<vector>
 #include<memory>
+#include<unordered_map> 
 #include"glm/glm.hpp"
 #include "../RenderEnum.h"
 #include "../Shader.h"
@@ -34,6 +35,7 @@ namespace MXRender
         unsigned int getMaxDescriptorSets() const;
         const VkDescriptorPool& getDescriptorPool();
         bool allocateDescriptorSet(VkDescriptorSetLayout Layout, VkDescriptorSet& OutSet);
+        bool allocateDescriptorSets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets);
     };
 
     class VK_DescriptorSetLayout
@@ -68,6 +70,25 @@ namespace MXRender
         bool compile();
         std::vector<VkDescriptorSetLayout> getDescriptorSetLayoutData();
         VK_DescriptorSetLayout& getDescriptorSetLayoutByIndex(unsigned int Index);
+    };
+
+
+
+
+
+    class VK_DescriptorSets
+    {
+    private:
+    protected:
+        std::weak_ptr<VK_Device> Device;
+        VkDescriptorSet DescriptorSet;
+    public:
+        VK_DescriptorSets(std::shared_ptr<VK_Device> InDevice);
+        virtual ~VK_DescriptorSets();
+
+        bool UpdateDescriptorSets(const std::string& SetKey, const std::vector<VkDescriptorSetLayout>& SetsLayout,
+            std::vector<VkWriteDescriptorSet>& DSWriters, VkDescriptorSet& OutSets);
+ 
     };
 
 

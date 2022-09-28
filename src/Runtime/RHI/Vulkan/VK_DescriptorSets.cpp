@@ -92,6 +92,17 @@ namespace MXRender
 
 	}
 
+	bool VK_DescriptorPool::allocateDescriptorSets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets)
+	{
+		if (DescriptorPool == VK_NULL_HANDLE || Device.expired())
+		{
+			return false;
+		}
+		VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo = InDescriptorSetAllocateInfo;
+		DescriptorSetAllocateInfo.descriptorPool = DescriptorPool;
+		return vkAllocateDescriptorSets(Device.lock()->Device, &DescriptorSetAllocateInfo, &OutSets) == VK_SUCCESS;;
+	}
+
 	std::weak_ptr<VK_Device> VK_DescriptorPool::getDevice() const
 	{
 		return Device;
@@ -158,6 +169,7 @@ namespace MXRender
 		return true;
 	}
 
+
 	VkDescriptorSetLayout& VK_DescriptorSetLayout::getDescriptorSetLayout()
 	{
 		return DescriptorSetLayout;
@@ -219,6 +231,34 @@ namespace MXRender
 	}
 
 
+
+
+
+	bool VK_DescriptorSets::UpdateDescriptorSets(const std::string& SetKey, const std::vector<VkDescriptorSetLayout>& SetsLayout, std::vector<VkWriteDescriptorSet>& DSWriters, VkDescriptorSet& OutSets)
+	{
+		int WriterNums=DSWriters.size();
+		if (DescriptorSet == VK_NULL_HANDLE|| Device.expired())
+		{
+			return false;
+		}
+		for (int i = 0; i < WriterNums; ++i)
+		{
+			VkWriteDescriptorSet& DWriter= DSWriters[i];
+			DWriter.dstSet= DescriptorSet;
+			vkUpdateDescriptorSets(Device.lock()->Device, 1, &DWriter, 0, nullptr);
+		}
+		return true;
+	}
+
+	VK_DescriptorSets::VK_DescriptorSets(std::shared_ptr<VK_Device> InDevice)
+	{
+		Device=InDevice;
+	}
+
+	VK_DescriptorSets::~VK_DescriptorSets()
+	{
+		
+	}
 
 }
 
