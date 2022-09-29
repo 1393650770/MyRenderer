@@ -18,23 +18,23 @@ namespace MXRender
         bufferInfo.usage = Usage;
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        if (vkCreateBuffer(DeviceSharedPtr->Device, &bufferInfo, nullptr, &Buffer) != VK_SUCCESS) {
+        if (vkCreateBuffer(DeviceSharedPtr->device, &bufferInfo, nullptr, &Buffer) != VK_SUCCESS) {
             throw std::runtime_error("failed to create buffer!");
         }
 
         VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(DeviceSharedPtr->Device, Buffer, &memRequirements);
+        vkGetBufferMemoryRequirements(DeviceSharedPtr->device, Buffer, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = FindMemoryType(Device,memRequirements.memoryTypeBits, Properties);
 
-        if (vkAllocateMemory(DeviceSharedPtr->Device, &allocInfo, nullptr, &BufferMemory) != VK_SUCCESS) {
+        if (vkAllocateMemory(DeviceSharedPtr->device, &allocInfo, nullptr, &BufferMemory) != VK_SUCCESS) {
             throw std::runtime_error("failed to allocate buffer memory!");
         }
 
-        vkBindBufferMemory(DeviceSharedPtr->Device, Buffer, BufferMemory, 0);
+        vkBindBufferMemory(DeviceSharedPtr->device, Buffer, BufferMemory, 0);
     }
 
     uint32_t VK_Utils::FindMemoryType(std::weak_ptr<VK_Device> Device, uint32_t TypeFilter, VkMemoryPropertyFlags Properties)
@@ -46,7 +46,7 @@ namespace MXRender
         std::shared_ptr<VK_Device> DeviceSharedPtr = Device.lock();
 
         VkPhysicalDeviceMemoryProperties MemProperties;
-        vkGetPhysicalDeviceMemoryProperties(DeviceSharedPtr->Gpu, &MemProperties);
+        vkGetPhysicalDeviceMemoryProperties(DeviceSharedPtr->gpu, &MemProperties);
 
         for (uint32_t i = 0; i < MemProperties.memoryTypeCount; i++) {
             if ((TypeFilter & (1 << i)) && (MemProperties.memoryTypes[i].propertyFlags & Properties) == Properties) {

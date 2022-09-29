@@ -9,8 +9,9 @@
 #include<memory>
 #include <optional>
 
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 
-struct GLFWwindow;
 namespace MXRender
 {
     class VK_Device;
@@ -54,7 +55,7 @@ namespace MXRender
         VkInstance instance;
         VkDebugUtilsMessengerEXT debug_messenger;
         VkSurfaceKHR surface;
-        std::unique_ptr<VK_Device> device;
+        std::shared_ptr<VK_Device> device;
 
         VkQueue graphicsQueue;
         VkQueue presentQueue;
@@ -64,7 +65,7 @@ namespace MXRender
         virtual void init() override;
         virtual void pre_init() override;
 
-
+        std::shared_ptr<VK_Device> get_device();
     };
 }
 #endif

@@ -39,7 +39,7 @@ namespace MXRender
 
 		if(Device.expired()==false)
 		{ 
-			if (vkCreateShaderModule(Device.lock()->Device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+			if (vkCreateShaderModule(Device.lock()->device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
 			{
 				throw std::runtime_error("failed to create shader module!");
 			}
@@ -77,7 +77,7 @@ namespace MXRender
 			{
 				if (ShaderModules[i] != VK_NULL_HANDLE)
 				{
-					vkDestroyShaderModule(Device.lock()->Device, ShaderModules[i], nullptr);
+					vkDestroyShaderModule(Device.lock()->device, ShaderModules[i], nullptr);
 				}
 			}
 		}
@@ -104,9 +104,9 @@ namespace MXRender
 			return ;
 		}
 		void* data;
-		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]),0, buffer_size,0,&data);
+		vkMapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]),0, buffer_size,0,&data);
 		memcpy(data,&value,sizeof(value));
-		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
+		vkUnmapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]));
 	
 	}
 
@@ -122,9 +122,9 @@ namespace MXRender
 			return;
 		}
 		void* data;
-		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		vkMapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
 		memcpy(data, &value, sizeof(value));
-		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
+		vkUnmapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::setFloat(const std::string& name, float value) const
@@ -139,9 +139,9 @@ namespace MXRender
 			return;
 		}
 		void* data;
-		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		vkMapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
 		memcpy(data, &value, sizeof(value));
-		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
+		vkUnmapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::setVec2(const std::string& name, const glm::vec2& value) const
@@ -156,9 +156,9 @@ namespace MXRender
 			return;
 		}
 		void* data;
-		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		vkMapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
 		memcpy(data, &value, sizeof(value));
-		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
+		vkUnmapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::setVec2(const std::string& name, float x, float y) const
@@ -185,9 +185,9 @@ namespace MXRender
 			return;
 		}
 		void* data;
-		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		vkMapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
 		memcpy(data, &value, sizeof(value));
-		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
+		vkUnmapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::setVec3(const std::string& name, float x, float y, float z) const
@@ -215,9 +215,9 @@ namespace MXRender
 			return;
 		}
 		void* data;
-		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		vkMapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
 		memcpy(data, &value, sizeof(value));
-		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
+		vkUnmapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::setVec4(const std::string& name, float x, float y, float z, float w) const
@@ -246,9 +246,9 @@ namespace MXRender
 			return;
 		}
 		void* data;
-		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		vkMapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
 		memcpy(data, &mat, sizeof(mat));
-		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
+		vkUnmapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::setMat3(const std::string& name, const glm::mat3& mat) const
@@ -263,9 +263,9 @@ namespace MXRender
 			return;
 		}
 		void* data;
-		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		vkMapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
 		memcpy(data, &mat, sizeof(mat));
-		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
+		vkUnmapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::setMat4(const std::string& name, const glm::mat4& mat) const
@@ -280,9 +280,9 @@ namespace MXRender
 			return;
 		}
 		void* data;
-		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		vkMapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
 		memcpy(data, &mat, sizeof(mat));
-		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
+		vkUnmapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::SetUniform3f(const char* paraNameString, glm::vec3 param)
@@ -298,9 +298,9 @@ namespace MXRender
 			return;
 		}
 		void* data;
-		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		vkMapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
 		memcpy(data, &param, sizeof(param));
-		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
+		vkUnmapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::SetUniform1f(const char* paraNameString, float param)
@@ -316,9 +316,9 @@ namespace MXRender
 			return;
 		}
 		void* data;
-		vkMapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
+		vkMapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]), 0, buffer_size, 0, &data);
 		memcpy(data, &param, sizeof(param));
-		vkUnmapMemory(Device.lock()->Device, std::get<2>(Uniformmap[name]));
+		vkUnmapMemory(Device.lock()->device, std::get<2>(Uniformmap[name]));
 	}
 
 	void VK_Shader::SetUniform2f(const char* paraNameString, float param1, float param2)

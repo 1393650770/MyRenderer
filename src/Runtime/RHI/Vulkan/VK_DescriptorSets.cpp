@@ -8,17 +8,17 @@
 namespace MXRender
 {
 
-	VK_DescriptorPool::VK_DescriptorPool(std::shared_ptr<VK_Device> InDevice, unsigned int InMaxDescriptorSets):Device(InDevice),MaxDescriptorSets(InMaxDescriptorSets)
+	VK_DescriptorPool::VK_DescriptorPool(std::shared_ptr<VK_Device> InDevice, unsigned int InMaxDescriptorSets):device(InDevice),max_descriptorsets(InMaxDescriptorSets)
 	{
-		const unsigned int LimitMaxUniformBuffers = MaxDescriptorSets * 2;
-		const unsigned int LimitMaxSamplers = MaxDescriptorSets / 2;
-		const unsigned int LimitMaxCombinedImageSamplers = MaxDescriptorSets * 3;
-		const unsigned int LimitMaxUniformTexelBuffers = MaxDescriptorSets / 2;
-		const unsigned int LimitMaxStorageTexelBuffers = MaxDescriptorSets / 4;
-		const unsigned int LimitMaxStorageBuffers = MaxDescriptorSets / 4;
-		const unsigned int LimitMaxStorageImage = MaxDescriptorSets / 4;
-		const unsigned int LimitMaxSampledImages = MaxDescriptorSets * 2;
-		const unsigned int LimitMaxInputAttachments = MaxDescriptorSets / 16;
+		const unsigned int LimitMaxUniformBuffers = max_descriptorsets * 2;
+		const unsigned int LimitMaxSamplers = max_descriptorsets / 2;
+		const unsigned int LimitMaxCombinedImageSamplers = max_descriptorsets * 3;
+		const unsigned int LimitMaxUniformTexelBuffers = max_descriptorsets / 2;
+		const unsigned int LimitMaxStorageTexelBuffers = max_descriptorsets / 4;
+		const unsigned int LimitMaxStorageBuffers = max_descriptorsets / 4;
+		const unsigned int LimitMaxStorageImage = max_descriptorsets / 4;
+		const unsigned int LimitMaxSampledImages = max_descriptorsets * 2;
+		const unsigned int LimitMaxInputAttachments = max_descriptorsets / 16;
 
 		std::vector<VkDescriptorPoolSize> Types(10);
 		Types[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -62,89 +62,89 @@ namespace MXRender
 		VkDescriptorPoolCreateInfo PoolInfo;
 		PoolInfo.poolSizeCount = Types.size();
 		PoolInfo.pPoolSizes = Types.data();
-		PoolInfo.maxSets = MaxDescriptorSets;
+		PoolInfo.maxSets = max_descriptorsets;
 
-		if (Device.expired() == false&&vkCreateDescriptorPool(Device.lock()->Device, &PoolInfo, nullptr, &DescriptorPool) != VK_SUCCESS) {
+		if (device.expired() == false&&vkCreateDescriptorPool(device.lock()->device, &PoolInfo, nullptr, &descriptor_pool) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create descriptor pool!");
 		}
 	}
 
 	VK_DescriptorPool::~VK_DescriptorPool()
 	{
-		if (DescriptorPool != VK_NULL_HANDLE&&Device.expired()==false)
+		if (descriptor_pool != VK_NULL_HANDLE&&device.expired()==false)
 		{
-			vkDestroyDescriptorPool(Device.lock()->Device, DescriptorPool, nullptr);
+			vkDestroyDescriptorPool(device.lock()->device, descriptor_pool, nullptr);
 		}
 	}
 
-	bool VK_DescriptorPool::allocateDescriptorSet(VkDescriptorSetLayout Layout, VkDescriptorSet& OutSet)
+	bool VK_DescriptorPool::allocate_descriptorset(VkDescriptorSetLayout Layout, VkDescriptorSet& OutSet)
 	{
-		if (DescriptorPool == VK_NULL_HANDLE|| Device.expired())
+		if (descriptor_pool == VK_NULL_HANDLE|| device.expired())
 		{
 			return false;
 		}
 		VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo;
-		DescriptorSetAllocateInfo.descriptorPool = DescriptorPool;
+		DescriptorSetAllocateInfo.descriptorPool = descriptor_pool;
 		DescriptorSetAllocateInfo.descriptorSetCount = 1;
 		DescriptorSetAllocateInfo.pSetLayouts = &Layout;
 
-		return vkAllocateDescriptorSets(Device.lock()->Device, &DescriptorSetAllocateInfo, &OutSet)== VK_SUCCESS;
+		return vkAllocateDescriptorSets(device.lock()->device, &DescriptorSetAllocateInfo, &OutSet)== VK_SUCCESS;
 
 	}
 
-	bool VK_DescriptorPool::allocateDescriptorSets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets)
+	bool VK_DescriptorPool::allocate_descriptorsets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets)
 	{
-		if (DescriptorPool == VK_NULL_HANDLE || Device.expired())
+		if (descriptor_pool == VK_NULL_HANDLE || device.expired())
 		{
 			return false;
 		}
 		VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo = InDescriptorSetAllocateInfo;
-		DescriptorSetAllocateInfo.descriptorPool = DescriptorPool;
-		return vkAllocateDescriptorSets(Device.lock()->Device, &DescriptorSetAllocateInfo, &OutSets) == VK_SUCCESS;;
+		DescriptorSetAllocateInfo.descriptorPool = descriptor_pool;
+		return vkAllocateDescriptorSets(device.lock()->device, &DescriptorSetAllocateInfo, &OutSets) == VK_SUCCESS;;
 	}
 
-	std::weak_ptr<VK_Device> VK_DescriptorPool::getDevice() const
+	std::weak_ptr<VK_Device> VK_DescriptorPool::get_device() const
 	{
-		return Device;
+		return device;
 	}
 
-	unsigned int VK_DescriptorPool::getMaxDescriptorSets() const
+	unsigned int VK_DescriptorPool::get_max_descriptorsets() const
 	{
-		return MaxDescriptorSets;
+		return max_descriptorsets;
 	}
 
-	const VkDescriptorPool& VK_DescriptorPool::getDescriptorPool()
+	const VkDescriptorPool& VK_DescriptorPool::get_descriptor_pool()
 	{
-		return DescriptorPool;
+		return descriptor_pool;
 	}
 
 
-	VK_DescriptorSetLayout::VK_DescriptorSetLayout(std::shared_ptr<VK_Device> InDevice, unsigned int InMaxBindings):Device(InDevice),MaxBindings(InMaxBindings)
+	VK_DescriptorSetLayout::VK_DescriptorSetLayout(std::shared_ptr<VK_Device> InDevice, unsigned int InMaxBindings):device(InDevice),max_bindings(InMaxBindings)
 	{
 		
 	}
 
 	VK_DescriptorSetLayout::~VK_DescriptorSetLayout()
 	{
-		if (DescriptorSetLayout == VK_NULL_HANDLE || Device.expired())
+		if (descriptorset_layout == VK_NULL_HANDLE || device.expired())
 		{
 			return ;
 		}
-		vkDestroyDescriptorSetLayout(Device.lock()->Device, DescriptorSetLayout, nullptr);
+		vkDestroyDescriptorSetLayout(device.lock()->device, descriptorset_layout, nullptr);
 	}
 
-	void VK_DescriptorSetLayout::addBindingDescriptor(unsigned int DescriptorSetIndex, const VkDescriptorSetLayoutBinding& BindingDescriptor)
+	void VK_DescriptorSetLayout::add_bindingdescriptor(unsigned int DescriptorSetIndex, const VkDescriptorSetLayoutBinding& BindingDescriptor)
 	{
-		if (DescriptorSetIndex >= MaxBindings)
+		if (DescriptorSetIndex >= max_bindings)
 		{
 			return;
 		}
-		if (DescriptorSetIndex > UboLayoutBindingArray.size())
+		if (DescriptorSetIndex > ubo_layout_binding_array.size())
 		{
-			while(DescriptorSetIndex > UboLayoutBindingArray.size())
-				UboLayoutBindingArray.push_back(VkDescriptorSetLayoutBinding());
+			while(DescriptorSetIndex > ubo_layout_binding_array.size())
+				ubo_layout_binding_array.push_back(VkDescriptorSetLayoutBinding());
 		}
-		VkDescriptorSetLayoutBinding& Binding= UboLayoutBindingArray[DescriptorSetIndex];
+		VkDescriptorSetLayoutBinding& Binding= ubo_layout_binding_array[DescriptorSetIndex];
 		Binding.binding= BindingDescriptor.binding;
 		Binding.descriptorCount = BindingDescriptor.descriptorCount;
 		Binding.descriptorType = BindingDescriptor.descriptorType;
@@ -154,105 +154,105 @@ namespace MXRender
 
 	bool VK_DescriptorSetLayout::compile()
 	{
-		if ( Device.expired())
+		if ( device.expired())
 		{
 			return false;
 		}
 		VkDescriptorSetLayoutCreateInfo layoutInfo{};
 		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layoutInfo.bindingCount = UboLayoutBindingArray.size();
-		layoutInfo.pBindings = UboLayoutBindingArray.data();
+		layoutInfo.bindingCount = ubo_layout_binding_array.size();
+		layoutInfo.pBindings = ubo_layout_binding_array.data();
 
-		if (vkCreateDescriptorSetLayout(Device.lock()->Device, &layoutInfo, nullptr, &DescriptorSetLayout) != VK_SUCCESS) {
+		if (vkCreateDescriptorSetLayout(device.lock()->device, &layoutInfo, nullptr, &descriptorset_layout) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create descriptor set layout!");
 		}
 		return true;
 	}
 
 
-	VkDescriptorSetLayout& VK_DescriptorSetLayout::getDescriptorSetLayout()
+	VkDescriptorSetLayout& VK_DescriptorSetLayout::get_descriptorset_layout()
 	{
-		return DescriptorSetLayout;
+		return descriptorset_layout;
 	}
 
-	std::weak_ptr<VK_Device> VK_DescriptorSetLayout::getDevice() const
+	std::weak_ptr<VK_Device> VK_DescriptorSetLayout::get_device() const
 	{
-		return Device;
+		return device;
 	}
 
-	VK_VulkanLayout::VK_VulkanLayout(std::shared_ptr<VK_Device> InDevice, unsigned int InDescriptorSetLayoutNum ):Device(InDevice)
+	VK_VulkanLayout::VK_VulkanLayout(std::shared_ptr<VK_Device> InDevice, unsigned int InDescriptorSetLayoutNum ):device(InDevice)
 	{
 		VK_DescriptorSetLayout temp(InDevice);
-		DescriptorSetLayoutArray.resize(InDescriptorSetLayoutNum, temp);
+		descriptorset_layout_array.resize(InDescriptorSetLayoutNum, temp);
 		
 	}
 
 	VK_VulkanLayout::~VK_VulkanLayout()
 	{
-		if (PipelineLayout == VK_NULL_HANDLE || Device.expired())
+		if (PipelineLayout == VK_NULL_HANDLE || device.expired())
 		{
 			return;
 		}
-		vkDestroyPipelineLayout(Device.lock()->Device, PipelineLayout, nullptr);
+		vkDestroyPipelineLayout(device.lock()->device, PipelineLayout, nullptr);
 	}
 
 	bool VK_VulkanLayout::compile()
 	{
-		if (Device.expired())
+		if (device.expired())
 		{
 			return false;
 		}
 		
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = DescriptorSetLayoutArray.size();
-		pipelineLayoutInfo.pSetLayouts = getDescriptorSetLayoutData().data();
+		pipelineLayoutInfo.setLayoutCount = descriptorset_layout_array.size();
+		pipelineLayoutInfo.pSetLayouts = get_descriptorset_layout_data().data();
 
-		if (vkCreatePipelineLayout(Device.lock()->Device, &pipelineLayoutInfo, nullptr, &PipelineLayout) != VK_SUCCESS) {
+		if (vkCreatePipelineLayout(device.lock()->device, &pipelineLayoutInfo, nullptr, &PipelineLayout) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create pipeline layout!");
 		}
 		return true;
 	}
 
-	std::vector<VkDescriptorSetLayout> VK_VulkanLayout::getDescriptorSetLayoutData()
+	std::vector<VkDescriptorSetLayout> VK_VulkanLayout::get_descriptorset_layout_data()
 	{
-		std::vector<VkDescriptorSetLayout> ret(DescriptorSetLayoutArray.size());
+		std::vector<VkDescriptorSetLayout> ret(descriptorset_layout_array.size());
 
-		for (int i=0;i< DescriptorSetLayoutArray.size();++i)
+		for (int i=0;i< descriptorset_layout_array.size();++i)
 		{
-			ret[i]= DescriptorSetLayoutArray[i].getDescriptorSetLayout();
+			ret[i]= descriptorset_layout_array[i].get_descriptorset_layout();
 		}
 		return ret;
 	}
 
-	VK_DescriptorSetLayout& VK_VulkanLayout::getDescriptorSetLayoutByIndex(unsigned int Index)
+	VK_DescriptorSetLayout& VK_VulkanLayout::get_descriptorset_layout_by_index(unsigned int Index)
 	{
-		return DescriptorSetLayoutArray[Index];
+		return descriptorset_layout_array[Index];
 	}
 
 
 
 
 
-	bool VK_DescriptorSets::UpdateDescriptorSets(const std::string& SetKey, const std::vector<VkDescriptorSetLayout>& SetsLayout, std::vector<VkWriteDescriptorSet>& DSWriters, VkDescriptorSet& OutSets)
+	bool VK_DescriptorSets::update_descriptorsets(const std::string& SetKey, const std::vector<VkDescriptorSetLayout>& SetsLayout, std::vector<VkWriteDescriptorSet>& DSWriters, VkDescriptorSet& OutSets)
 	{
 		int WriterNums=DSWriters.size();
-		if (DescriptorSet == VK_NULL_HANDLE|| Device.expired())
+		if (descriptorset == VK_NULL_HANDLE|| device.expired())
 		{
 			return false;
 		}
 		for (int i = 0; i < WriterNums; ++i)
 		{
 			VkWriteDescriptorSet& DWriter= DSWriters[i];
-			DWriter.dstSet= DescriptorSet;
-			vkUpdateDescriptorSets(Device.lock()->Device, 1, &DWriter, 0, nullptr);
+			DWriter.dstSet= descriptorset;
+			vkUpdateDescriptorSets(device.lock()->device, 1, &DWriter, 0, nullptr);
 		}
 		return true;
 	}
 
 	VK_DescriptorSets::VK_DescriptorSets(std::shared_ptr<VK_Device> InDevice)
 	{
-		Device=InDevice;
+		device=InDevice;
 	}
 
 	VK_DescriptorSets::~VK_DescriptorSets()

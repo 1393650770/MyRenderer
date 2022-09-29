@@ -127,12 +127,12 @@ namespace MXRender
 
         for (const auto& curdevice : devices) {
             if (check_device_suitable(curdevice)) {
-                device->Gpu = curdevice;
+                device->gpu = curdevice;
                 break;
             }
         }
 
-        if (device->Gpu == VK_NULL_HANDLE) {
+        if (device->gpu == VK_NULL_HANDLE) {
             throw std::runtime_error("failed to find a suitable GPU!");
         }
 
@@ -140,7 +140,7 @@ namespace MXRender
 
     void VK_GraphicsContext::create_logical_device()
     {
-        QueueFamilyIndices indices = find_queue_families(device->Gpu);
+        QueueFamilyIndices indices = find_queue_families(device->gpu);
 
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
         std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
@@ -176,12 +176,12 @@ namespace MXRender
             createInfo.enabledLayerCount = 0;
         }
 
-        if (vkCreateDevice(device->Gpu, &createInfo, nullptr, &device->Device) != VK_SUCCESS) {
+        if (vkCreateDevice(device->gpu, &createInfo, nullptr, &device->device) != VK_SUCCESS) {
             throw std::runtime_error("failed to create logical device!");
         }
 
-        vkGetDeviceQueue(device->Device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-        vkGetDeviceQueue(device->Device, indices.presentFamily.value(), 0, &presentQueue);
+        vkGetDeviceQueue(device->device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+        vkGetDeviceQueue(device->device, indices.presentFamily.value(), 0, &presentQueue);
     }
 
     std::vector<const char*> VK_GraphicsContext::get_required_extensions()
@@ -331,13 +331,30 @@ namespace MXRender
 
     VK_GraphicsContext::~VK_GraphicsContext()
     {
-        vkDestroyDevice(device->Device, nullptr);
+        vkDestroyDevice(device->device, nullptr);
 
         if (enableValidationLayers) {
             DestroyDebugUtilsMessengerEXT(instance, debug_messenger, nullptr);
         }
         vkDestroySurfaceKHR(instance, surface, nullptr);
         vkDestroyInstance(instance, nullptr);
+    }
+
+    void VK_GraphicsContext::init()
+    {
+        create_instance();
+        initialize_debugmessenger();
+        initialize_physical_device();
+        create_logical_device();
+    }
+
+    void VK_GraphicsContext::pre_init()
+    {
+    }
+
+    std::shared_ptr<VK_Device> VK_GraphicsContext::get_device()
+    {
+        return  device;
     }
 
 

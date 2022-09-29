@@ -22,54 +22,54 @@ namespace MXRender
     private:
         ;
     protected:
-        std::weak_ptr<VK_Device> Device;
-        const unsigned int MaxDescriptorSets;
-        VkDescriptorPool DescriptorPool;
+        std::weak_ptr<VK_Device> device;
+        const unsigned int max_descriptorsets;
+        VkDescriptorPool descriptor_pool;
     public:
         
         VK_DescriptorPool(std::shared_ptr<VK_Device> InDevice, unsigned int InMaxDescriptorSets);
         
         virtual ~VK_DescriptorPool();
 
-        std::weak_ptr<VK_Device> getDevice() const;
-        unsigned int getMaxDescriptorSets() const;
-        const VkDescriptorPool& getDescriptorPool();
-        bool allocateDescriptorSet(VkDescriptorSetLayout Layout, VkDescriptorSet& OutSet);
-        bool allocateDescriptorSets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets);
+        std::weak_ptr<VK_Device> get_device() const;
+        unsigned int get_max_descriptorsets() const;
+        const VkDescriptorPool& get_descriptor_pool();
+        bool allocate_descriptorset(VkDescriptorSetLayout Layout, VkDescriptorSet& OutSet);
+        bool allocate_descriptorsets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets);
     };
 
     class VK_DescriptorSetLayout
     {
     private:
     protected:
-        const unsigned int MaxBindings;
-        std::weak_ptr<VK_Device> Device;
-        VkDescriptorSetLayout DescriptorSetLayout;
-        std::vector< VkDescriptorSetLayoutBinding > UboLayoutBindingArray;
+        const unsigned int max_bindings;
+        std::weak_ptr<VK_Device> device;
+        VkDescriptorSetLayout descriptorset_layout;
+        std::vector< VkDescriptorSetLayoutBinding > ubo_layout_binding_array;
     public:
         VK_DescriptorSetLayout(std::shared_ptr<VK_Device> InDevice, unsigned int InMaxBindings=10);
 
         virtual ~VK_DescriptorSetLayout();
 
-        void addBindingDescriptor(unsigned int DescriptorSetIndex, const VkDescriptorSetLayoutBinding& BindingDescriptor);
+        void add_bindingdescriptor(unsigned int DescriptorSetIndex, const VkDescriptorSetLayoutBinding& BindingDescriptor);
         bool compile();
-        VkDescriptorSetLayout& getDescriptorSetLayout();
-        std::weak_ptr<VK_Device> getDevice() const;
+        VkDescriptorSetLayout& get_descriptorset_layout();
+        std::weak_ptr<VK_Device> get_device() const;
     };
 
     class VK_VulkanLayout
     {
     private:
     protected:
-        std::weak_ptr<VK_Device> Device;
-        std::vector < VK_DescriptorSetLayout> DescriptorSetLayoutArray;
+        std::weak_ptr<VK_Device> device;
+        std::vector < VK_DescriptorSetLayout> descriptorset_layout_array;
         VkPipelineLayout PipelineLayout;
     public:
         VK_VulkanLayout( std::shared_ptr<VK_Device> InDevice,unsigned int InDescriptorSetLayoutNum =0);
         virtual ~VK_VulkanLayout();
         bool compile();
-        std::vector<VkDescriptorSetLayout> getDescriptorSetLayoutData();
-        VK_DescriptorSetLayout& getDescriptorSetLayoutByIndex(unsigned int Index);
+        std::vector<VkDescriptorSetLayout> get_descriptorset_layout_data();
+        VK_DescriptorSetLayout& get_descriptorset_layout_by_index(unsigned int Index);
     };
 
 
@@ -80,13 +80,13 @@ namespace MXRender
     {
     private:
     protected:
-        std::weak_ptr<VK_Device> Device;
-        VkDescriptorSet DescriptorSet;
+        std::weak_ptr<VK_Device> device;
+        VkDescriptorSet descriptorset;
     public:
         VK_DescriptorSets(std::shared_ptr<VK_Device> InDevice);
         virtual ~VK_DescriptorSets();
 
-        bool UpdateDescriptorSets(const std::string& SetKey, const std::vector<VkDescriptorSetLayout>& SetsLayout,
+        bool update_descriptorsets(const std::string& SetKey, const std::vector<VkDescriptorSetLayout>& SetsLayout,
             std::vector<VkWriteDescriptorSet>& DSWriters, VkDescriptorSet& OutSets);
  
     };
