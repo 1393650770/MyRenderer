@@ -15,7 +15,8 @@ MXRender::Window::Window()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     window = glfwCreateWindow(Singleton<DefaultSetting>::get_instance().width, Singleton<DefaultSetting>::get_instance().height, "MyRender", NULL, NULL);
-    if (window == NULL)
+    glfwSetWindowUserPointer(window, this);
+   if (window == NULL)
     {
         std::cout << " Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -61,4 +62,9 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
 
         glfwSwapBuffers(window);
     }
+}
+
+GLFWwindow* MXRender::Window::GetWindow() const
+{
+    return window;
 }

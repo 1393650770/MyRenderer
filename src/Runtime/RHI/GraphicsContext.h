@@ -12,11 +12,16 @@ namespace MXRender
 {
     class GraphicsContext
     {
+    private:
+    protected:
     public:
         GraphicsContext();
         virtual ~GraphicsContext() = default;
-        
+        virtual void init()=0;
+        virtual void pre_init();
+
         std::unique_ptr<RenderState> render_state;
+
 
     };
 }

@@ -12,6 +12,7 @@ namespace MXRender
 		Window();
 		virtual ~Window();
 		void run(std::shared_ptr<MyRender> render);
+		GLFWwindow* GetWindow() const;
 	private:
 		GLFWwindow* window;
 		float deltaTime = 0.0f;	

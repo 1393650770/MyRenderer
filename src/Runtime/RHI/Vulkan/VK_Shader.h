@@ -16,7 +16,7 @@ namespace MXRender
 {
     class VK_Device;
 
-    class VK_Shader
+    class VK_Shader :public Shader
     {
     private:
         

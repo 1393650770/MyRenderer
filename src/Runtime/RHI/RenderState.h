@@ -17,9 +17,22 @@ namespace MXRender
     class RenderState
     {
     private:
-
+    protected:
+        bool b_depth_test_enable=false;
+        bool b_depth_mask= false;
+        bool b_depth_func=false;
+        ENUM_DEPTH_FUNCTION  e_depth_func= ENUM_DEPTH_FUNCTION::ENUM_NONE;
+        bool b_blend_enable =false;
+        ENUM_BLEND_EQUATION e_blend_equation =ENUM_BLEND_EQUATION::ENUM_NONE;
+        ENUM_BLEND_FACTOR e_blend_left_factor = ENUM_BLEND_FACTOR::ENUM_NONE, e_blend_right_factor = ENUM_BLEND_FACTOR::ENUM_NONE;
+        ENUM_STENCIL_FUNCTION e_stencil_func= ENUM_STENCIL_FUNCTION::ENUM_NONE;
+        bool b_stencil_test_enable=false;
+        uint32_t stencil_mask_num=0;
+        bool b_cull_enable=false;
+        bool b_cull_frontOrback=false;
     public:
         static inline ENUM_RENDER_API_TYPE render_api_type = ENUM_RENDER_API_TYPE::OpenGL;
+
 
         RenderState() ;
         virtual ~RenderState() ;
