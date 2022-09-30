@@ -66,6 +66,8 @@ namespace MXRender
         virtual void pre_init() override;
 
         std::shared_ptr<VK_Device> get_device();
+        VkInstance get_instance();
+        
     };
 }
 #endif

@@ -358,4 +358,9 @@ namespace MXRender
     }
 
 
+	VkInstance VK_GraphicsContext::get_instance()
+	{
+        return instance;
+	}
+
 }

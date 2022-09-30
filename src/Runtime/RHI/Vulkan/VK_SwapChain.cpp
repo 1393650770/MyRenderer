@@ -141,12 +141,12 @@ namespace MXRender
 
 	VK_SwapChain::~VK_SwapChain()
 	{
-
+		destroy(nullptr);
 	}
 
 	void VK_SwapChain::destroy(VK_SwapChainRecreateInfo* RecreateInfo)
 	{
-		bool bRecreate = RecreateInfo ;
+		bool bRecreate = RecreateInfo!=nullptr ;
 		if (bRecreate)
 		{
 			RecreateInfo->swapchain = swapchain;

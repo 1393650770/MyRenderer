@@ -56,7 +56,7 @@ namespace MXRender
 			int* InOutDesiredNumBackBuffers, std::vector<VkImage>& OutImages, int InLockToVsync, VK_SwapChainRecreateInfo* RecreateInfo);
 		virtual ~VK_SwapChain();
 
-		void Destroy(VK_SwapChainRecreateInfo* RecreateInfo);
+		void destroy(VK_SwapChainRecreateInfo* RecreateInfo);
 
 	};
 }
