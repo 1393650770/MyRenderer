@@ -40,10 +40,10 @@ namespace MXRender
 		ViewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
 		ViewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 		ViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		ViewInfo.subresourceRange.baseMipLevel = 0;
-		ViewInfo.subresourceRange.levelCount = 1;
-		ViewInfo.subresourceRange.baseArrayLayer = 0;
-		ViewInfo.subresourceRange.layerCount = 1;
+		ViewInfo.subresourceRange.baseMipLevel = FirstMip;
+		ViewInfo.subresourceRange.levelCount = NumMips;
+		ViewInfo.subresourceRange.baseArrayLayer = ArraySliceIndex;
+		ViewInfo.subresourceRange.layerCount = NumArraySlices;
 
 		if (vkCreateImageView(Device->device, &ViewInfo, nullptr, &OutView) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create image views!");

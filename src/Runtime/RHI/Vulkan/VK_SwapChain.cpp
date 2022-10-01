@@ -161,4 +161,9 @@ namespace MXRender
 		surface = VK_NULL_HANDLE;
 	}
 
+	VkFormat VK_SwapChain::get_image_format() const
+	{
+		return image_format;
+	}
+
 }

@@ -347,7 +347,7 @@ namespace MXRender
 	void VK_Shader::addUniformName(const std::string& name, uint64_t uniformSize)
 	{
 		Uniformmap[name] = std::make_tuple(uniformSize, VkBuffer(), VkDeviceMemory());
-		VK_Utils::CreateVKBuffer(Device,uniformSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,std::get<1>(Uniformmap[name]), std::get<2>(Uniformmap[name]));
+		VK_Utils::Create_VKBuffer(Device,uniformSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,std::get<1>(Uniformmap[name]), std::get<2>(Uniformmap[name]));
 	}
 
 

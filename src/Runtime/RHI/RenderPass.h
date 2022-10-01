@@ -13,6 +13,8 @@
 #include "RenderEnum.h"
 #include<memory>
 #include<string>
+
+namespace MXRender { class GraphicsContext; }
 namespace MXRender
 {
     class FrameBuffer;
@@ -28,12 +30,13 @@ namespace MXRender
     class RenderPass
     {
     private:
+    protected:
         PassInfo pass_info;
     public:
         virtual void initialize(const PassInfo& init_info) = 0;
         virtual void post_initialize();
         virtual void set_commonInfo(const PassInfo& init_info);
-        virtual void prepare_pass_data();
+        virtual void prepare_pass_data(const GraphicsContext& context);
         virtual void initialize_ui_renderbackend();
 
         RenderPass(const PassInfo& init_info);

@@ -10,7 +10,7 @@ namespace MXRender
     {
     }
 
-    void RenderPass::prepare_pass_data()
+    void RenderPass::prepare_pass_data(const GraphicsContext& context)
     {
     }
 
