@@ -1,4 +1,6 @@
 add_requires("vulkansdk","glad", "glfw", "glm","assimp")
+add_rules("mode.debug", "mode.release")
+
 add_rules("plugin.vsxmake.autoupdate")
 
 

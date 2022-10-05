@@ -12,7 +12,7 @@ namespace MXRender
 	protected:
 	public:
 		VkDevice device;
-		VkPhysicalDevice gpu= VK_NULL_HANDLE;
+		VkPhysicalDevice gpu = VK_NULL_HANDLE;
 		VkPhysicalDeviceProperties gpu_props;
 	};
 }

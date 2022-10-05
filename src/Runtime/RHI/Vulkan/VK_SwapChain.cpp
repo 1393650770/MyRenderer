@@ -10,6 +10,7 @@
 #include<memory>
 #include <stdexcept>
 #include "VK_Device.h"
+#include "vulkan/vulkan_core.h"
 
 namespace MXRender
 { 
@@ -30,6 +31,11 @@ namespace MXRender
 			return;
 		}
 		if (RecreateInfo != nullptr && RecreateInfo->swapchain != VK_NULL_HANDLE)
+		{
+			surface = RecreateInfo->surface;
+			RecreateInfo->surface = VK_NULL_HANDLE;
+		}
+		else if (RecreateInfo != nullptr )
 		{
 			surface = RecreateInfo->surface;
 			RecreateInfo->surface = VK_NULL_HANDLE;
@@ -114,6 +120,7 @@ namespace MXRender
 		swapchain_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		swapchain_info.presentMode = present_mode;
 		swapchain_info.oldSwapchain = VK_NULL_HANDLE;
+		swapchain_info.pNext=nullptr;
 
 		if (RecreateInfo != nullptr)
 		{
@@ -122,7 +129,7 @@ namespace MXRender
 
 		swapchain_info.clipped = VK_TRUE;
 		swapchain_info.compositeAlpha = composite_alpha;
-
+		swapchain_info.sType=  VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 		*InOutDesiredNumBackBuffers = desired_num_buffers;
 
 		if (vkCreateSwapchainKHR(device.lock()->device, &swapchain_info, nullptr, &swapchain) != VK_SUCCESS) {
@@ -146,6 +153,10 @@ namespace MXRender
 
 	void VK_SwapChain::destroy(VK_SwapChainRecreateInfo* RecreateInfo)
 	{
+		if (device.expired())
+		{
+			return;
+		}
 		bool bRecreate = RecreateInfo!=nullptr ;
 		if (bRecreate)
 		{
@@ -154,7 +165,9 @@ namespace MXRender
 		}
 		else
 		{
+
 			vkDestroySwapchainKHR(device.lock()->device, swapchain, nullptr);
+
 			vkDestroySurfaceKHR(instance, surface, nullptr);
 		}
 		swapchain = VK_NULL_HANDLE;

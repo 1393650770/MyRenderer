@@ -37,7 +37,9 @@ namespace MXRender
         vkBindBufferMemory(DeviceSharedPtr->device, Buffer, BufferMemory, 0);
     }
 
-    uint32_t VK_Utils::Find_MemoryType(std::weak_ptr<VK_Device> Device, uint32_t TypeFilter, VkMemoryPropertyFlags Properties)
+
+
+	uint32_t VK_Utils::Find_MemoryType(std::weak_ptr<VK_Device> Device, uint32_t TypeFilter, VkMemoryPropertyFlags Properties)
     {
         if (Device.expired())
         {
@@ -121,6 +123,38 @@ namespace MXRender
             return VK_IMAGE_TYPE_MAX_ENUM;
             break;
         }
+	}
+
+	VkFormat VK_Utils::Translate_API_DataTypeEnum_To_Vulkan(ENUM_RENDER_DATA_TYPE data_type)
+	{
+		switch (data_type)
+		{
+		case MXRender::ENUM_RENDER_DATA_TYPE::Float:
+            return VK_FORMAT_R32_SFLOAT;
+            break;
+		case MXRender::ENUM_RENDER_DATA_TYPE::Half:
+			return VK_FORMAT_R16_SFLOAT;
+			break;
+		case MXRender::ENUM_RENDER_DATA_TYPE::Mat3:
+		case MXRender::ENUM_RENDER_DATA_TYPE::Mat4:
+			return VK_FORMAT_R32_SFLOAT;
+			break;
+		case MXRender::ENUM_RENDER_DATA_TYPE::Int:
+			return VK_FORMAT_R32_SINT;
+			break;
+		case MXRender::ENUM_RENDER_DATA_TYPE::Uint8:
+            return VK_FORMAT_R8_UINT;
+		case MXRender::ENUM_RENDER_DATA_TYPE::Uint10:
+			return VK_FORMAT_R16_UINT;
+			break;
+		case MXRender::ENUM_RENDER_DATA_TYPE::Int16:
+			return VK_FORMAT_R16_SINT;
+			break;
+		default:
+			return VK_FORMAT_UNDEFINED;
+			break;
+		}
+		return VK_FORMAT_UNDEFINED;
 	}
 
 }

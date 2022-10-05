@@ -12,12 +12,14 @@
 
 #include "RenderEnum.h"
 
+
 namespace MXRender
 {
     class Framebuffer
     {
     private:
-
+		//std::vector<Texture> color_textures;
+  //      Texture depth_texture;
     public:
         //Ö¡»º³åTextureÃèÊö·û
         struct FrameBufferTextureDescriptor

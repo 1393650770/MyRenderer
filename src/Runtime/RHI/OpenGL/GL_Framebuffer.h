@@ -20,9 +20,9 @@ namespace MXRender
    private:
        unsigned id;
        bool b_is_valid=false;
-       std::vector<GL_Texture> color_textures;
-       GL_Texture depth_texture;
 
+	   std::vector<GL_Texture> color_textures;
+       GL_Texture depth_texture;
        void init_framebuffer();
    public:
        GL_Framebuffer(/* args */);

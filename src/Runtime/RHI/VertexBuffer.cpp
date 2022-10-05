@@ -29,6 +29,12 @@ namespace MXRender
 	{
 		return offset[attribute_type];
 	}
+
+	int Layout::get_layout_element_size() const
+	{
+		return layout.size();
+	}
+
 	std::shared_ptr<VertexBuffer> VertexBuffer::CreateVertexBuffer(const void* vertices, unsigned size, ENUM_RENDER_DATA_USAGE_TYPE usage)
 	{
 		switch (RenderState::render_api_type)

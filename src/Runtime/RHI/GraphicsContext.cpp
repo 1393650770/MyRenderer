@@ -6,4 +6,9 @@ namespace MXRender
 	{
 	}
 
+	void GraphicsContext::pre_init()
+	{
+
+	}
+
 }

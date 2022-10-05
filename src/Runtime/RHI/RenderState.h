@@ -31,7 +31,7 @@ namespace MXRender
         bool b_cull_enable=false;
         bool b_cull_frontOrback=false;
     public:
-        static inline ENUM_RENDER_API_TYPE render_api_type = ENUM_RENDER_API_TYPE::OpenGL;
+        static inline ENUM_RENDER_API_TYPE render_api_type = ENUM_RENDER_API_TYPE::Vulkan;
 
 
         RenderState() ;

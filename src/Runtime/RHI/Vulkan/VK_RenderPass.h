@@ -20,15 +20,17 @@ namespace MXRender
 
     class VK_RenderPass:public RenderPass
     {
+    protected:
+        std::vector<RenderPipelineBase> render_pipeline_array;
     public:
-        virtual void initialize(const PassInfo& init_info) = 0;
+        virtual void initialize(const PassInfo& init_info);
         virtual void post_initialize();
         virtual void set_commonInfo(const PassInfo& init_info);
         virtual void prepare_pass_data();
         virtual void initialize_ui_renderbackend();
-
+        VK_RenderPass();
         VK_RenderPass(const PassInfo& init_info);
-        virtual ~VK_RenderPass() = default;
+        virtual ~VK_RenderPass() ;
 
     };
 

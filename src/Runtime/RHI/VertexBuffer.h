@@ -45,6 +45,7 @@ namespace MXRender
         std::vector<Layout_Element>::const_iterator end() const { return layout.cend(); }
         const unsigned& get_stride() const;
         const unsigned int& get_offset(ENUM_RENDER_ATTRIBUTE_TYPE::Enum attribute_type) const;
+        int get_layout_element_size() const;
     };
 
 
