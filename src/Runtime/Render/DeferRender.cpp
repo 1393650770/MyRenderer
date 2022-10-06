@@ -2,6 +2,8 @@
 #include<Windows.h>
 #include <iostream>
 #include <filesystem>
+#include "../RHI/Vulkan/VK_GraphicsContext.h"
+#include "../RHI/Vulkan/VK_Viewport.h"
 
 MXRender::DeferRender::DeferRender()
 {
@@ -12,20 +14,31 @@ MXRender::DeferRender::~DeferRender()
 {
 }
 
-void MXRender::DeferRender::run()
+void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context, VkSwapchainKHR& swapchain)
 {
-	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
+	if(context.expired()) return ;
+	context.lock()->wait_for_fences();
+	context.lock()->reset_commandbuffer();
+	uint32_t image_index;
+	context.lock()->pre_pass(swapchain, image_index);
 
-	shader->bind();
+	std::vector<RenderPass*> render_pass_vector;
+	context.lock()->draw(render_pass_vector,nullptr);
 
-	vertex_array->bind();
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-	//glDrawArrays(GL_TRIANGLES, 0, 3);
-	vertex_array->unbind();
+	context.lock()->submit(&swapchain,1, image_index);
+	//glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+	//glClear(GL_COLOR_BUFFER_BIT);
 
-	shader->unbind();
+	//shader->bind();
+
+	//vertex_array->bind();
+	//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+	////glDrawArrays(GL_TRIANGLES, 0, 3);
+	//vertex_array->unbind();
+
+	//shader->unbind();
 	
+
 }
 
 void MXRender::DeferRender::init()

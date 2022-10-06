@@ -14,7 +14,7 @@ namespace MXRender
     public:
         DeferRender();
         virtual ~DeferRender();
-        void run() override;
+        void run(std::weak_ptr <VK_GraphicsContext> context, VkSwapchainKHR& swapchain) override;
         void init() override;
     private:
         unsigned int VBO, VAO, EBO;

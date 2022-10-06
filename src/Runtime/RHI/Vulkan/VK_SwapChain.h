@@ -58,6 +58,7 @@ namespace MXRender
 
 		void destroy(VK_SwapChainRecreateInfo* RecreateInfo);
 		VkFormat get_image_format() const;
+		VkSwapchainKHR get_swapchain() const;
 
 	};
 }

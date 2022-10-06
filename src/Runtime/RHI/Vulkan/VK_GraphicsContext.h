@@ -12,6 +12,8 @@
 #include <optional>
 #include "vulkan/vulkan_core.h"
 
+namespace MXRender { class RenderPass; }
+
 
 
 namespace MXRender
@@ -83,6 +85,10 @@ namespace MXRender
         void reset_commandbuffer();
         VkSurfaceKHR get_surface();
         void copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size);
+        void pre_pass(VkSwapchainKHR& swapchain, uint32_t& image_index);
+       
+        void draw(std::vector<RenderPass*> render_pass,RenderPass* return_pass);
+        void submit(VkSwapchainKHR* swapchains, int swapchain_count, uint32_t& image_index);
     };
 }
 #endif

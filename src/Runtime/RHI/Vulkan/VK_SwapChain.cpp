@@ -179,4 +179,9 @@ namespace MXRender
 		return image_format;
 	}
 
+	VkSwapchainKHR VK_SwapChain::get_swapchain() const
+	{
+		return swapchain;
+	}
+
 }

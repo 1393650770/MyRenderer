@@ -10,6 +10,7 @@
 #include <set>
 #include"VK_Device.h"
 #include <stdexcept>
+#include "../RenderPass.h"
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -483,6 +484,72 @@ namespace MXRender
 		vkQueueWaitIdle(graphicsQueue);
 
 		vkFreeCommandBuffers(device->device, command_pool, 1, &commandBuffer);
+	}
+
+	void VK_GraphicsContext::pre_pass(VkSwapchainKHR& swapchain, uint32_t& image_index)
+	{
+		VkResult result = vkAcquireNextImageKHR(device->device, swapchain, UINT64_MAX, image_available_for_render_semaphore, VK_NULL_HANDLE, &image_index);
+
+		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+			//recreateSwapChain();
+			return;
+		}
+		else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+			throw std::runtime_error("failed to acquire swap chain image!");
+		}
+	}
+
+
+
+	void VK_GraphicsContext::draw(std::vector<RenderPass*> render_pass, RenderPass* return_pass)
+	{   
+        
+
+	}
+
+	void VK_GraphicsContext::submit(VkSwapchainKHR* swapchains, int swapchain_count, uint32_t& image_index)
+	{
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+		VkSemaphore waitSemaphores[] = { image_available_for_render_semaphore };
+		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = waitSemaphores;
+		submitInfo.pWaitDstStageMask = waitStages;
+
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &command_buffer;
+
+		VkSemaphore signalSemaphores[] = { image_finished_for_presentation_semaphore };
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = signalSemaphores;
+
+		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, frame_in_flight_fence) != VK_SUCCESS) {
+			throw std::runtime_error("failed to submit draw command buffer!");
+		}
+
+		VkPresentInfoKHR presentInfo{};
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = signalSemaphores;
+
+		presentInfo.swapchainCount = swapchain_count;
+		presentInfo.pSwapchains = swapchains;
+
+		presentInfo.pImageIndices = &image_index;
+
+        VkResult result = vkQueuePresentKHR(presentQueue, &presentInfo);
+
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR ) {
+			
+			//recreateSwapChain();
+		}
+		else if (result != VK_SUCCESS) {
+			throw std::runtime_error("failed to present swap chain image!");
+		}
+
 	}
 
 }

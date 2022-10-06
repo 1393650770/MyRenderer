@@ -24,7 +24,13 @@ namespace MXRender
 
 	VK_Viewport::~VK_Viewport()
 	{
+		for (int i = 0; i < image_array.size(); ++i)
+		{
+			texture_view_array[i].Destroy(device.lock());
+
+		}
 		delete swapchain;
+
 	}
 
 
@@ -59,6 +65,11 @@ namespace MXRender
 			texture_view_array[i].Create(device.lock(),image_array[i], VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT,ENUM_TEXTURE_FORMAT::A8,swapchain->get_image_format(), 0, 1, 0, 1);
 			
 		}
+	}
+
+	VK_SwapChain* VK_Viewport::get_swapchain()
+	{
+		return swapchain;
 	}
 
 }

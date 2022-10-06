@@ -39,6 +39,7 @@ namespace MXRender
         void destroy_swapchain(VK_SwapChainRecreateInfo* RecreateInfo);
         void destroy_image_view();
         void create_image_view_from_swapchain();
+        VK_SwapChain* get_swapchain();
     };
 
 }
