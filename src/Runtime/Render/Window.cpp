@@ -12,6 +12,7 @@
 #include "../RHI/Vulkan/VK_Viewport.h"
 #include "../RHI/Vulkan/VK_SwapChain.h"
 #include <memory>
+#include "Pass/MainCameraRenderPass.h"
 MXRender::Window::Window()
 {
 	glfwInit();
@@ -53,12 +54,11 @@ MXRender::Window::~Window()
 
 void MXRender::Window::run(std::shared_ptr<MyRender> render)
 {
-    render->init();
-	std::shared_ptr <VK_GraphicsContext> context=std::make_shared<VK_GraphicsContext>() ;
-	context->init(window);
-	std::shared_ptr < VK_Viewport> viewport= std::make_shared<VK_Viewport>( context,window, Singleton<DefaultSetting>::get_instance().width, Singleton<DefaultSetting>::get_instance().height,false);
-	viewport->create_image_view_from_swapchain();
+
+	Singleton<DefaultSetting>::get_instance().context->init(window); 
 	
+	render->init(Singleton<DefaultSetting>::get_instance().context,window);
+
 	while (!glfwWindowShouldClose(window))
     {
         float currentFrame = static_cast<float>(glfwGetTime());
@@ -66,8 +66,7 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
         lastFrame = currentFrame;
         glfwPollEvents();
 
-		VkSwapchainKHR swapchain= (viewport->get_swapchain()->get_swapchain());
-        render->run(context, swapchain);
+        render->run(Singleton<DefaultSetting>::get_instance().context);
 
         glfwSwapBuffers(window);
     }

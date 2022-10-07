@@ -14,6 +14,7 @@ namespace MXRender
 		VkDevice device;
 		VkPhysicalDevice gpu = VK_NULL_HANDLE;
 		VkPhysicalDeviceProperties gpu_props;
+		~VK_Device();
 	};
 }
 

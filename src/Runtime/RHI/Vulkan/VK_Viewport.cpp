@@ -3,6 +3,7 @@
 #include "VK_SwapChain.h"
 #include "../GraphicsContext.h"
 #include "VK_GraphicsContext.h"
+#include "VK_Resource.h"
 
 namespace MXRender
 {
@@ -70,6 +71,21 @@ namespace MXRender
 	VK_SwapChain* VK_Viewport::get_swapchain()
 	{
 		return swapchain;
+	}
+
+	int VK_Viewport::get_image_num() const
+	{
+		return image_array.size();
+	}
+
+	std::vector<VkImage>& VK_Viewport::get_image_array()
+	{
+		return image_array;
+	}
+
+	std::vector<VK_TextureView>& VK_Viewport::get_image_view_array()
+	{
+		return texture_view_array;
 	}
 
 }

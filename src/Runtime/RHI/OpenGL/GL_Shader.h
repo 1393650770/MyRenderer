@@ -41,7 +41,7 @@ namespace MXRender
         void SetUniform2f(const char* paraNameString, float param1, float param2) override;
         void SetUniform1i(const char* paraNameString, int slot) override;
 
-        virtual void addUnifromName(const std::string& name, uint64_t uniformSize) ;
+        virtual void addUniformName(const std::string& name, uint64_t uniformSize) ;
 
     };
 }

@@ -43,6 +43,8 @@ namespace MXRender
 
         bool is_valid() const;
 
+        VkAttachmentDescription& get_attachment_description();
+        VkAttachmentReference& get_attachment_reference();
     };
     
 } // namespace name

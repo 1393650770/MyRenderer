@@ -1,5 +1,7 @@
 #include "RenderPass.h"
 #include"RenderState.h"
+#include "GraphicsContext.h"
+#include "Vulkan/VK_Viewport.h"
 namespace MXRender
 {
     void RenderPass::post_initialize()
@@ -19,9 +21,9 @@ namespace MXRender
     }
 
 
-	void RenderPass::draw()
+	void RenderPass::draw(GraphicsContext* context, uint32_t& image_index, VK_Viewport* viewport)
 	{
-
+        
 	}
 
 	std::weak_ptr<MXRender::GraphicsContext> RenderPass::get_context()

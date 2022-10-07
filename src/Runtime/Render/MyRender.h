@@ -4,6 +4,7 @@
 #define _MYRENDER_
 #include <memory>
 #include "vulkan/vulkan_core.h"
+#include "GLFW/glfw3.h"
 namespace MXRender { class VK_GraphicsContext; }
 
 namespace MXRender
@@ -13,8 +14,8 @@ namespace MXRender
 	public:
 		MyRender();
 		virtual ~MyRender();
-		virtual void run(std::weak_ptr <VK_GraphicsContext> context, VkSwapchainKHR& swapchain) = 0;
-		virtual void init() = 0;
+		virtual void run(std::weak_ptr <VK_GraphicsContext> context) = 0;
+		virtual void init(std::weak_ptr <VK_GraphicsContext> context, GLFWwindow* window) = 0;
 	private:
 
 	};

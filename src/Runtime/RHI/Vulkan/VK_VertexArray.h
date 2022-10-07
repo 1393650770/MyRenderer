@@ -2,7 +2,9 @@
 #ifndef _VK_VERTEXARRAY_
 #define _VK_VERTEXARRAY_
 
-#include <glad/glad.h>
+
+#define GLFW_INCLUDE_VULKAN
+
 #include <glm/glm.hpp>
 #include"../RenderEnum.h"
 #include <string>
@@ -11,9 +13,46 @@
 #include <sstream>
 #include <iostream>
 #include"../VertexArray.h"
+#include <array>
+
+#include <stdexcept>
+#include <stddef.h>
+#include "vulkan/vulkan_core.h"
+
 
 namespace MXRender
 {
+	struct SimpleVertex {
+		glm::vec2 pos;
+		glm::vec3 color;
+
+		static VkVertexInputBindingDescription getBindingDescription() 
+		{
+			VkVertexInputBindingDescription bindingDescription{};
+			bindingDescription.binding = 0;
+			bindingDescription.stride = sizeof(SimpleVertex);
+			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+			return bindingDescription;
+		}
+
+		static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() 
+		{
+			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+
+			attributeDescriptions[0].binding = 0;
+			attributeDescriptions[0].location = 0;
+			attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[0].offset = 0;
+
+			attributeDescriptions[1].binding = 0;
+			attributeDescriptions[1].location = 1;
+			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[1].offset = sizeof(glm::vec2);
+
+			return attributeDescriptions;
+		}
+	};
 
 
     class VK_VertexArray:public VertexArray

@@ -4,6 +4,13 @@
 #include <filesystem>
 #include "../RHI/Vulkan/VK_GraphicsContext.h"
 #include "../RHI/Vulkan/VK_Viewport.h"
+#include "../RHI/Vulkan/VK_SwapChain.h"
+#include "../Utils/Singleton.h"
+#include "DefaultSetting.h"
+#include "Pass/MainCameraRenderPass.h"
+#include "GLFW/glfw3.h"
+#include "../RHI/RenderPass.h"
+
 
 MXRender::DeferRender::DeferRender()
 {
@@ -14,18 +21,22 @@ MXRender::DeferRender::~DeferRender()
 {
 }
 
-void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context, VkSwapchainKHR& swapchain)
+void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context)
 {
 	if(context.expired()) return ;
+
+	VkSwapchainKHR& main_swapchain= main_viewport->get_swapchain()->get_swapchain();
 	context.lock()->wait_for_fences();
 	context.lock()->reset_commandbuffer();
-	uint32_t image_index;
-	context.lock()->pre_pass(swapchain, image_index);
+
+	uint32_t image_index=0;
+	context.lock()->pre_pass(main_swapchain, image_index);
 
 	std::vector<RenderPass*> render_pass_vector;
-	context.lock()->draw(render_pass_vector,nullptr);
+	
+	main_camera_pass->draw(context.lock().get(), image_index, main_viewport.get());
 
-	context.lock()->submit(&swapchain,1, image_index);
+	context.lock()->submit(&main_swapchain,1, image_index);
 	//glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 	//glClear(GL_COLOR_BUFFER_BIT);
 
@@ -41,8 +52,17 @@ void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context, VkSw
 
 }
 
-void MXRender::DeferRender::init()
+void MXRender::DeferRender::init(std::weak_ptr <VK_GraphicsContext> context,GLFWwindow* window)
 { 
+	main_viewport = std::make_shared<VK_Viewport>(context.lock(), window, Singleton<DefaultSetting>::get_instance().width, Singleton<DefaultSetting>::get_instance().height, false);
+	
+	main_viewport->create_image_view_from_swapchain();
+
+	PassInfo pass_info;
+	main_camera_pass = std::make_shared<MainCamera_RenderPass>();
+
+	main_camera_pass->initialize(pass_info, context.lock(), main_viewport);
+
 	//float ve[] = {
 	//	// positions          // colors
 	//	0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,

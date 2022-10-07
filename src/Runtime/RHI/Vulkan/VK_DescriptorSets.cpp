@@ -10,6 +10,7 @@ namespace MXRender
 
 	VK_DescriptorPool::VK_DescriptorPool(std::shared_ptr<VK_Device> InDevice, unsigned int InMaxDescriptorSets):device(InDevice),max_descriptorsets(InMaxDescriptorSets)
 	{
+		if (device.expired()) return;
 		const unsigned int LimitMaxUniformBuffers = max_descriptorsets * 2;
 		const unsigned int LimitMaxSamplers = max_descriptorsets / 2;
 		const unsigned int LimitMaxCombinedImageSamplers = max_descriptorsets * 3;
@@ -60,11 +61,13 @@ namespace MXRender
 
 
 		VkDescriptorPoolCreateInfo PoolInfo;
+		PoolInfo.sType= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		PoolInfo.poolSizeCount = Types.size();
 		PoolInfo.pPoolSizes = Types.data();
 		PoolInfo.maxSets = max_descriptorsets;
+		PoolInfo.pNext=0U;
 
-		if (device.expired() == false&&vkCreateDescriptorPool(device.lock()->device, &PoolInfo, nullptr, &descriptor_pool) != VK_SUCCESS) {
+		if (vkCreateDescriptorPool(device.lock()->device, &PoolInfo, nullptr, &descriptor_pool) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create descriptor pool!");
 		}
 	}
@@ -139,9 +142,8 @@ namespace MXRender
 		{
 			return;
 		}
-		if (DescriptorSetIndex > ubo_layout_binding_array.size())
-		{
-			while(DescriptorSetIndex > ubo_layout_binding_array.size())
+		if (DescriptorSetIndex+1 > ubo_layout_binding_array.size())
+		{			while(DescriptorSetIndex+1 > ubo_layout_binding_array.size())
 				ubo_layout_binding_array.push_back(VkDescriptorSetLayoutBinding());
 		}
 		VkDescriptorSetLayoutBinding& Binding= ubo_layout_binding_array[DescriptorSetIndex];

@@ -12,6 +12,10 @@
 #include <optional>
 #include "vulkan/vulkan_core.h"
 
+namespace MXRender { class VK_RenderPass; }
+
+namespace MXRender { class VK_DescriptorPool; }
+
 namespace MXRender { class RenderPass; }
 
 
@@ -57,7 +61,7 @@ namespace MXRender
         QueueFamilyIndices find_queue_families(VkPhysicalDevice device);
         bool check_device_extension_support(VkPhysicalDevice device);
         SwapChainSupportDetails query_swapchain_support(VkPhysicalDevice device);
-
+        void recreate_swapchain(VkSwapchainKHR& swapchain);
     protected:
         VkInstance instance;
         VkDebugUtilsMessengerEXT debug_messenger;
@@ -66,12 +70,16 @@ namespace MXRender
 
         VkQueue graphicsQueue;
         VkQueue presentQueue;
-        
-        VkCommandPool command_pool;
-        VkCommandBuffer command_buffer;
-		VkSemaphore          image_available_for_render_semaphore;
-		VkSemaphore          image_finished_for_presentation_semaphore;
-		VkFence              frame_in_flight_fence;
+
+        static uint8_t const max_frames_in_flight{ 3 };
+        uint8_t   current_frame_index{ 0 };
+        VkCommandPool command_pool[max_frames_in_flight];
+        VkCommandBuffer command_buffer[max_frames_in_flight];
+		VkSemaphore          image_available_for_render_semaphore[max_frames_in_flight];
+		VkSemaphore          image_finished_for_presentation_semaphore[max_frames_in_flight];
+		VkFence              frame_in_flight_fence[max_frames_in_flight];
+
+        std::shared_ptr <VK_DescriptorPool> descriptor_pool;
     public:
         VK_GraphicsContext();
         virtual ~VK_GraphicsContext();
@@ -79,15 +87,18 @@ namespace MXRender
         virtual void pre_init() override;
 
         std::shared_ptr<VK_Device> get_device();
+        std::shared_ptr<VK_DescriptorPool> get_descriptor_pool();
         VkInstance get_instance();
 
         void wait_for_fences();
         void reset_commandbuffer();
         VkSurfaceKHR get_surface();
+        VkCommandBuffer& get_cur_command_buffer() ;
+        uint8_t get_current_frame_index() const;
         void copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size);
+
         void pre_pass(VkSwapchainKHR& swapchain, uint32_t& image_index);
        
-        void draw(std::vector<RenderPass*> render_pass,RenderPass* return_pass);
         void submit(VkSwapchainKHR* swapchains, int swapchain_count, uint32_t& image_index);
     };
 }

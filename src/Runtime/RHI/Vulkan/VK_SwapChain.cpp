@@ -121,7 +121,7 @@ namespace MXRender
 		swapchain_info.presentMode = present_mode;
 		swapchain_info.oldSwapchain = VK_NULL_HANDLE;
 		swapchain_info.pNext=nullptr;
-
+		swapchain_info.flags=0;
 		if (RecreateInfo != nullptr)
 		{
 			swapchain_info.oldSwapchain = RecreateInfo->swapchain;
@@ -136,7 +136,6 @@ namespace MXRender
 			throw std::runtime_error("failed to create swap chain!");
 		}
 
-		unsigned int num_swap_chain_images;
 		vkGetSwapchainImagesKHR(device.lock()->device, swapchain, &num_swap_chain_images, nullptr);
 		OutImages.resize(num_swap_chain_images);
 		vkGetSwapchainImagesKHR(device.lock()->device, swapchain, &num_swap_chain_images, OutImages.data());
@@ -179,9 +178,19 @@ namespace MXRender
 		return image_format;
 	}
 
-	VkSwapchainKHR VK_SwapChain::get_swapchain() const
+	VkSwapchainKHR& VK_SwapChain::get_swapchain() 
 	{
 		return swapchain;
+	}
+
+	VkExtent2D VK_SwapChain::get_extent2D() const
+	{
+		return Image_extent2D;
+	}
+
+	unsigned int VK_SwapChain::get_swap_chain_images_num() const
+	{
+		return num_swap_chain_images;
 	}
 
 }

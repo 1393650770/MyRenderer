@@ -6,6 +6,7 @@
 #include <fstream>
 #include"VK_Utils.h"
 
+
 namespace MXRender
 {
 	std::vector<char> VK_Shader::readFile(const std::string& filename)
@@ -58,14 +59,14 @@ namespace MXRender
 		Device=InDevice;
 		if (Device.expired() == false)
 		{
-			if(vertexPath.size()>0)
-				ShaderModules[ENUM_SHADER_STAGE::Shader_Vertex]= createShaderModule(readFile(vertexPath));
-			if (fragmentPath.size() > 0)
-				ShaderModules[ENUM_SHADER_STAGE::Shader_Pixel] = createShaderModule(readFile(fragmentPath));
-			if (geometryPath.size() > 0)
-				ShaderModules[ENUM_SHADER_STAGE::Shader_Geometry] = createShaderModule(readFile(geometryPath));
-			if (computePath.size() > 0)
-				ShaderModules[ENUM_SHADER_STAGE::Shader_Compute] = createShaderModule(readFile(computePath));
+			if(vertexPath.size()>0&&vertexPath!="")
+				shader_modules[ENUM_SHADER_STAGE::Shader_Vertex]= createShaderModule(readFile(vertexPath));
+			if (fragmentPath.size() > 0 && fragmentPath != "")
+				shader_modules[ENUM_SHADER_STAGE::Shader_Pixel] = createShaderModule(readFile(fragmentPath));
+			if (geometryPath.size() > 0 && geometryPath != "")
+				shader_modules[ENUM_SHADER_STAGE::Shader_Geometry] = createShaderModule(readFile(geometryPath));
+			if (computePath.size() > 0 && computePath != "")
+				shader_modules[ENUM_SHADER_STAGE::Shader_Compute] = createShaderModule(readFile(computePath));
 		}
 	}
 
@@ -75,13 +76,18 @@ namespace MXRender
 		{
 			for (size_t i = 0; i < ENUM_SHADER_STAGE::NumStages; i++)
 			{
-				if (ShaderModules[i] != VK_NULL_HANDLE)
+				if (shader_modules[i] != VK_NULL_HANDLE)
 				{
-					vkDestroyShaderModule(Device.lock()->device, ShaderModules[i], nullptr);
+					vkDestroyShaderModule(Device.lock()->device, shader_modules[i], nullptr);
 				}
 			}
 		}
 		
+	}
+
+	unsigned VK_Shader::get_id() const
+	{
+		return 0;
 	}
 
 	void VK_Shader::bind() const

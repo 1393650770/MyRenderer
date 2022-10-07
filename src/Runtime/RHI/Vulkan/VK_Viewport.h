@@ -40,6 +40,9 @@ namespace MXRender
         void destroy_image_view();
         void create_image_view_from_swapchain();
         VK_SwapChain* get_swapchain();
+        int get_image_num() const;
+        std::vector<VkImage>& get_image_array() ;
+        std::vector<VK_TextureView>& get_image_view_array();
     };
 
 }

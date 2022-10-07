@@ -240,8 +240,11 @@ namespace MXRender
     {
         glUniform1i(glGetUniformLocation(ID, paraNameString), slot);
     }
-    void GL_Shader::addUnifromName(const std::string& name, uint64_t uniformSize)
-    {
-        
-    }
+
+	void GL_Shader::addUniformName(const std::string& name, uint64_t uniformSize)
+	{
+
+	}
+
+
 }

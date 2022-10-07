@@ -1,9 +1,15 @@
 #include "VK_RenderPass.h"
+#include "VK_Viewport.h"
 
 namespace MXRender
 {
 
-	void VK_RenderPass::initialize(const PassInfo& init_info)
+	void VK_RenderPass::initialize(const PassInfo& init_info, std::shared_ptr<GraphicsContext> context)
+	{
+		
+	}
+
+	void VK_RenderPass::initialize(const PassInfo& init_info, std::shared_ptr<VK_GraphicsContext> context, std::weak_ptr<VK_Viewport> viewport)
 	{
 
 	}
@@ -41,6 +47,16 @@ namespace MXRender
 	VK_RenderPass::~VK_RenderPass()
 	{
 
+	}
+
+	VkRenderPass& VK_RenderPass::get_render_pass()
+	{
+		return render_pass;
+	}
+
+	VkPipeline& VK_RenderPass::get_pipeline() 
+	{
+		return pipeline;
 	}
 
 }

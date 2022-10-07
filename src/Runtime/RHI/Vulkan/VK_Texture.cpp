@@ -85,7 +85,17 @@ namespace MXRender
         return type != ENUM_TEXTURE_TYPE::ENUM_TYPE_NOT_VALID;
     }
 
-    VK_Texture::~VK_Texture()
+	VkAttachmentDescription& VK_Texture::get_attachment_description()
+	{
+        return attachment_description;
+	}
+
+	VkAttachmentReference& VK_Texture::get_attachment_reference()
+	{
+        return attachment_reference;
+	}
+
+	VK_Texture::~VK_Texture()
     {
 
     }

@@ -13,7 +13,7 @@ namespace MXRender
     class VK_Device;
 	struct VK_SwapChainRecreateInfo
 	{
-		VkSwapchainKHR swapchain;
+		VkSwapchainKHR swapchain=VK_NULL_HANDLE;
 		VkSurfaceKHR surface;
 	};
 
@@ -49,7 +49,7 @@ namespace MXRender
 		int lock_to_vsync;
 
 		int present_ID = 0;
-
+		unsigned int num_swap_chain_images;
 
 	public:
 		VK_SwapChain(VkInstance InInstance, std::shared_ptr<VK_Device> InDevice, void* WindowHandle, ENUM_TEXTURE_FORMAT& InOutPixelFormat, int Width, int Height, bool bIsFullscreen,
@@ -57,9 +57,12 @@ namespace MXRender
 		virtual ~VK_SwapChain();
 
 		void destroy(VK_SwapChainRecreateInfo* RecreateInfo);
-		VkFormat get_image_format() const;
-		VkSwapchainKHR get_swapchain() const;
 
+		VkFormat get_image_format() const;
+
+		VkSwapchainKHR& get_swapchain() ;
+		VkExtent2D get_extent2D() const;
+		unsigned int get_swap_chain_images_num() const;
 	};
 }
 

@@ -42,7 +42,7 @@ namespace MXRender
         virtual void SetUniform1i(const char* paraNameString, int slot) = 0;
 
         //New api
-        virtual void addUnifromName(const std::string& name, uint64_t uniformSize) = 0;
+        virtual void addUniformName(const std::string& name, uint64_t uniformSize) = 0;
 
 
         static std::shared_ptr<Shader> CreateShader(const char* vertexPath = nullptr, const char* fragmentPath = nullptr, const char* geometryPath = nullptr, const char* computePath = nullptr);

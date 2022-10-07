@@ -15,6 +15,10 @@
 #include<string>
 #include "../RenderPass.h"
 
+namespace MXRender { class VK_Viewport; }
+
+namespace MXRender { class VK_GraphicsContext; }
+
 namespace MXRender
 {
 
@@ -22,8 +26,13 @@ namespace MXRender
     {
     protected:
         std::vector<RenderPipelineBase> render_pipeline_array;
+        std::weak_ptr<VK_GraphicsContext> context;
+        VkRenderPass  render_pass;
+        VkPipeline pipeline;
+        VkPipelineLayout pipeline_layout;
     public:
-        virtual void initialize(const PassInfo& init_info);
+        virtual void initialize(const PassInfo& init_info, std::shared_ptr<GraphicsContext> context);
+        virtual void initialize(const PassInfo& init_info, std::shared_ptr<VK_GraphicsContext> context, std::weak_ptr<VK_Viewport> viewport);
         virtual void post_initialize();
         virtual void set_commonInfo(const PassInfo& init_info);
         virtual void prepare_pass_data();
@@ -31,7 +40,8 @@ namespace MXRender
         VK_RenderPass();
         VK_RenderPass(const PassInfo& init_info);
         virtual ~VK_RenderPass() ;
-
+        virtual VkRenderPass& get_render_pass() ;
+        virtual VkPipeline& get_pipeline() ;
     };
 
 

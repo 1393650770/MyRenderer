@@ -6,16 +6,22 @@
 #include"../RHI/VertexBuffer.h"
 #include"../RHI/IndexBuffer.h"
 #include"../RHI/Shader.h"
+
+namespace MXRender { class MainCamera_RenderPass; }
+
+namespace MXRender { class VK_Viewport; }
 namespace MXRender
 {
     class DeferRender :
         public MyRender
     {
     public:
+        std::shared_ptr < VK_Viewport> main_viewport;
+        std::shared_ptr < MainCamera_RenderPass> main_camera_pass ;
         DeferRender();
         virtual ~DeferRender();
-        void run(std::weak_ptr <VK_GraphicsContext> context, VkSwapchainKHR& swapchain) override;
-        void init() override;
+        void run(std::weak_ptr <VK_GraphicsContext> context) override;
+        void init(std::weak_ptr <VK_GraphicsContext> context, GLFWwindow* window) override;
     private:
         unsigned int VBO, VAO, EBO;
         std::shared_ptr<VertexArray> vertex_array;

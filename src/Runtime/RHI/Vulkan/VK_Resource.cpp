@@ -44,6 +44,7 @@ namespace MXRender
 		ViewInfo.subresourceRange.levelCount = NumMips;
 		ViewInfo.subresourceRange.baseArrayLayer = ArraySliceIndex;
 		ViewInfo.subresourceRange.layerCount = NumArraySlices;
+		ViewInfo.flags=0;
 		ViewInfo.pNext=nullptr;
 		if (vkCreateImageView(Device->device, &ViewInfo, nullptr, &OutView) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create image views!");

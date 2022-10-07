@@ -26,19 +26,19 @@ namespace MXRender
     protected:
         // 程序ID
         unsigned int ID;
-        VkShaderModule ShaderModules[ENUM_SHADER_STAGE::NumStages];
+        
         std::weak_ptr<VK_Device> Device;
 
         mutable std::unordered_map<std::string,std::tuple<VkDeviceSize,VkBuffer, VkDeviceMemory>> Uniformmap;
 
     public:
-
+        VkShaderModule shader_modules[ENUM_SHADER_STAGE::NumStages];
         
         VK_Shader(std::shared_ptr<VK_Device> InDevice, VkShaderStageFlagBits InStageFlag, const std::string& vertexPath = "", const std::string& fragmentPath = "", const std::string& geometryPath = "", const std::string& computePath = "");
         
         virtual ~VK_Shader();
 
-        virtual unsigned get_id() const = 0;
+        virtual unsigned get_id() const ;
         
         virtual void bind() const ; // uniform工具函数
         virtual void unbind() const ; // uniform工具函数
@@ -59,7 +59,7 @@ namespace MXRender
         virtual void SetUniform2f(const char* paraNameString, float param1, float param2) ;
         virtual void SetUniform1i(const char* paraNameString, int slot) ;
 
-        virtual void addUniformName(const std::string& name, uint64_t uniformSize) ;
+        virtual void addUniformName(const std::string& name, uint64_t uniformSize) override;
     };
 
 
