@@ -26,7 +26,7 @@ namespace MXRender
     {
     protected:
         std::vector<RenderPipelineBase> render_pipeline_array;
-        std::weak_ptr<VK_GraphicsContext> context;
+        std::weak_ptr<VK_GraphicsContext> cur_context;
         VkRenderPass  render_pass;
         VkPipeline pipeline;
         VkPipelineLayout pipeline_layout;

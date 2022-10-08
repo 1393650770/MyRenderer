@@ -3,8 +3,9 @@
 #ifndef _MYRENDER_
 #define _MYRENDER_
 #include <memory>
-#include "vulkan/vulkan_core.h"
-#include "GLFW/glfw3.h"
+
+struct GLFWwindow;
+
 namespace MXRender { class VK_GraphicsContext; }
 
 namespace MXRender

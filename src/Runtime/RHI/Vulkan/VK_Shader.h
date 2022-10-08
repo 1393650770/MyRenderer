@@ -32,7 +32,7 @@ namespace MXRender
         mutable std::unordered_map<std::string,std::tuple<VkDeviceSize,VkBuffer, VkDeviceMemory>> Uniformmap;
 
     public:
-        VkShaderModule shader_modules[ENUM_SHADER_STAGE::NumStages];
+        VkShaderModule shader_modules[ENUM_SHADER_STAGE::NumStages]{VK_NULL_HANDLE};
         
         VK_Shader(std::shared_ptr<VK_Device> InDevice, VkShaderStageFlagBits InStageFlag, const std::string& vertexPath = "", const std::string& fragmentPath = "", const std::string& geometryPath = "", const std::string& computePath = "");
         

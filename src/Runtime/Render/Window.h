@@ -1,6 +1,7 @@
 #pragma once
 #ifndef _WINDOW_
 #define _WINDOW_
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include<memory>
 namespace MXRender
@@ -14,7 +15,7 @@ namespace MXRender
 		void run(std::shared_ptr<MyRender> render);
 		GLFWwindow* GetWindow() const;
 	private:
-		GLFWwindow* window;
+		GLFWwindow* window=nullptr;
 		float deltaTime = 0.0f;	
 		float lastFrame = 0.0f;
 	};

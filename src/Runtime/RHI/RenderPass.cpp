@@ -28,7 +28,7 @@ namespace MXRender
 
 	std::weak_ptr<MXRender::GraphicsContext> RenderPass::get_context()
 	{
-        return context;
+        return cur_context;
 	}
 
 	RenderPass::RenderPass()

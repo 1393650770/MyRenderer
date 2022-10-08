@@ -9,13 +9,14 @@
 #include "../DefaultSetting.h"
 #include "../../Utils/Singleton.h"
 #include "vulkan/vulkan_core.h"
+#include "../../RHI/RenderEnum.h"
 namespace MXRender
 {
 
 	void MainCamera_RenderPass::setup_renderpass()
 	{
 		VkAttachmentDescription colorAttachment{};
-		colorAttachment.format = VK_FORMAT_B8G8R8A8_SRGB;
+		colorAttachment.format = Singleton<DefaultSetting>::get_instance().context->get_swapchain_image_format();
 		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -50,14 +51,14 @@ namespace MXRender
 		renderPassInfo.dependencyCount = 1;
 		renderPassInfo.pDependencies = &dependency;
 
-		if (vkCreateRenderPass(context.lock()->get_device()->device, &renderPassInfo, nullptr, &render_pass) != VK_SUCCESS) {
+		if (vkCreateRenderPass(cur_context.lock()->get_device()->device, &renderPassInfo, nullptr, &render_pass) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create render pass!");
 		}
 	}
 
 	void MainCamera_RenderPass::setup_descriptorset_layout()
 	{
-		std::shared_ptr<VK_Device> device = context.lock()->get_device();
+		std::shared_ptr<VK_Device> device = cur_context.lock()->get_device();
 
 		layout=std::make_shared<VK_DescriptorSetLayout>(device,1);
 
@@ -75,9 +76,9 @@ namespace MXRender
 
 	void MainCamera_RenderPass::setup_pipelines()
 	{
-		std::shared_ptr<VK_Device> device= context.lock()->get_device();
+		std::shared_ptr<VK_Device> device= cur_context.lock()->get_device();
 
-		VK_Shader cur_shader(device, VK_SHADER_STAGE_VERTEX_BIT,"Shader/vert.spv","Shader/frag.spv","","");
+		VK_Shader cur_shader(Singleton<DefaultSetting>::get_instance().context->get_device(), VK_SHADER_STAGE_VERTEX_BIT,"Shader/vert.spv","Shader/frag.spv");
 
 		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -155,8 +156,9 @@ namespace MXRender
 
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 1;
-		pipelineLayoutInfo.pSetLayouts = &layout->get_descriptorset_layout();
+		pipelineLayoutInfo.setLayoutCount = 0;//1;
+		//pipelineLayoutInfo.pSetLayouts = &layout->get_descriptorset_layout();
+		pipelineLayoutInfo.pushConstantRangeCount = 0;
 
 		if (vkCreatePipelineLayout(device->device, &pipelineLayoutInfo, nullptr, &pipeline_layout) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create pipeline layout!");
@@ -185,29 +187,24 @@ namespace MXRender
 
 	}
 
-	void MainCamera_RenderPass::setup_framebuffer(std::weak_ptr<VK_Viewport> viewport)
+	void MainCamera_RenderPass::setup_framebuffer()
 	{
-		unsigned int swap_chain_images_num  = viewport.lock()->get_swapchain()->get_swap_chain_images_num();
+		unsigned int swap_chain_images_num  = Singleton<DefaultSetting>::get_instance().context->swapchain_imageviews.size();
 		swapchain_framebuffers.resize(swap_chain_images_num);
-		// create frame buffer for every imageview
+
 		for (int i = 0; i < swap_chain_images_num; i++)
 		{
-			VkImageView framebuffer_attachments_for_image_view[] = {
-				viewport.lock()->get_image_view_array()[i].View
-				 };
-
 			VkFramebufferCreateInfo framebuffer_create_info{};
 			framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebuffer_create_info.flags = 0U;
 			framebuffer_create_info.renderPass = render_pass;
 			framebuffer_create_info.attachmentCount =1;
-			framebuffer_create_info.pAttachments = framebuffer_attachments_for_image_view;
-			framebuffer_create_info.width = Singleton<DefaultSetting>::get_instance().width;
-			framebuffer_create_info.height = Singleton<DefaultSetting>::get_instance().height;
+			framebuffer_create_info.pAttachments = &cur_context.lock()->swapchain_imageviews[i];
+			framebuffer_create_info.width = cur_context.lock()->get_swapchain_extent().width;
+			framebuffer_create_info.height = cur_context.lock()->get_swapchain_extent().height;
 			framebuffer_create_info.layers = 1;
 			
 			if (vkCreateFramebuffer(
-				context.lock()->get_device()->device, &framebuffer_create_info, nullptr, &swapchain_framebuffers[i]) !=
+				cur_context.lock()->get_device()->device, &framebuffer_create_info, nullptr, &swapchain_framebuffers[i]) !=
 				VK_SUCCESS)
 			{
 				throw std::runtime_error("create main camera framebuffer");
@@ -215,20 +212,24 @@ namespace MXRender
 		}
 	}
 
-	void MainCamera_RenderPass::initialize(const PassInfo& init_info, std::shared_ptr<GraphicsContext> context)
+	void MainCamera_RenderPass::initialize(const PassInfo& init_info, std::shared_ptr<GraphicsContext> context) 
 	{
 		pass_info=init_info;
-
+		this->cur_context = Singleton<DefaultSetting>::get_instance().context;
+		setup_renderpass();
+		setup_descriptorset_layout();
+		setup_pipelines();
+		setup_framebuffer();
 	}
 
 	void MainCamera_RenderPass::initialize(const PassInfo& init_info, std::shared_ptr<VK_GraphicsContext> context, std::weak_ptr<VK_Viewport> viewport)
 	{
 		pass_info = init_info;
-		this->context = context;
+		this->cur_context = context;
 		setup_renderpass();
 		setup_descriptorset_layout();
 		setup_pipelines();
-		setup_framebuffer(viewport);
+		setup_framebuffer();
 	}
 
 	void MainCamera_RenderPass::post_initialize()
@@ -248,17 +249,20 @@ namespace MXRender
     }
 
 
-	void MainCamera_RenderPass::draw(GraphicsContext* context, uint32_t& image_index,VK_Viewport* viewport)
+	void MainCamera_RenderPass::draw(GraphicsContext* context)
 	{
-		VK_GraphicsContext* vk_context=dynamic_cast<VK_GraphicsContext*>(context);
-		if(vk_context ==nullptr) return;
-
+		VK_GraphicsContext* vk_context=nullptr;
+		vk_context= dynamic_cast<VK_GraphicsContext*>(context);
+		if (vk_context==nullptr)
+		{	
+			return;
+		}
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = render_pass;
-		renderPassInfo.framebuffer = swapchain_framebuffers[image_index];
+		renderPassInfo.framebuffer = swapchain_framebuffers[vk_context->get_current_swapchain_image_index()];
 		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = viewport->get_swapchain()->get_extent2D();
+		renderPassInfo.renderArea.extent = vk_context->get_swapchain_extent();
 
 		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
 		renderPassInfo.clearValueCount = 1;
@@ -272,8 +276,8 @@ namespace MXRender
 		
 		vk_viewport.x = 0.0f;
 		vk_viewport.y = 0.0f;
-		vk_viewport.width = (float)viewport->get_swapchain()->get_extent2D().width;
-		vk_viewport.height = (float)viewport->get_swapchain()->get_extent2D().height;
+		vk_viewport.width = (float)vk_context->get_swapchain_extent().width;
+		vk_viewport.height = (float)vk_context->get_swapchain_extent().height;
 		vk_viewport.minDepth = 0.0f;
 		vk_viewport.maxDepth = 1.0f;
 
@@ -281,10 +285,12 @@ namespace MXRender
 
 		VkRect2D scissor{};
 		scissor.offset = { 0, 0 };
-		scissor.extent = viewport->get_swapchain()->get_extent2D();
+		scissor.extent = vk_context->get_swapchain_extent();
+
 		vkCmdSetScissor(vk_context->get_cur_command_buffer(), 0, 1, &scissor);
 
 		vkCmdDraw(vk_context->get_cur_command_buffer(), 3, 1, 0, 0);
+
 		vkCmdEndRenderPass(vk_context->get_cur_command_buffer());
 	}
 
@@ -297,8 +303,11 @@ namespace MXRender
 
 	MainCamera_RenderPass::~MainCamera_RenderPass()
 	{
+		vkDestroyPipeline(cur_context.lock()->get_device()->device, pipeline, nullptr);
+		vkDestroyPipelineLayout(cur_context.lock()->get_device()->device, pipeline_layout, nullptr);
+
 		for (auto framebuffer : swapchain_framebuffers) {
-			vkDestroyFramebuffer(context.lock()->get_device()->device, framebuffer, nullptr);
+			vkDestroyFramebuffer(cur_context.lock()->get_device()->device, framebuffer, nullptr);
 		}
 	}
 

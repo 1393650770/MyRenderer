@@ -12,8 +12,8 @@ namespace MXRender
 		std::shared_ptr <VK_GraphicsContext> context;
 		DefaultSetting();
 		virtual ~DefaultSetting();
-		int width = 1900;
-		int height = 1050;
+		int width = 800;
+		int height = 600;
 	private:
 
 	};

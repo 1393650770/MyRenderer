@@ -22,6 +22,27 @@ namespace MXRender
     public:
         static void Create_VKBuffer(std::weak_ptr< VK_Device> Device, VkDeviceSize Size, VkBufferUsageFlags Usage, VkMemoryPropertyFlags Properties, VkBuffer& Buffer, VkDeviceMemory& BufferMemory);
         static void Copy_VKBuffer(std::weak_ptr< VK_Device> Device, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+		static void           Create_Image(VkPhysicalDevice      physical_device,
+			VkDevice              device,
+			uint32_t              image_width,
+			uint32_t              image_height,
+			VkFormat              format,
+			VkImageTiling         image_tiling,
+			VkImageUsageFlags     image_usage_flags,
+			VkMemoryPropertyFlags memory_property_flags,
+			VkImage& image,
+			VkDeviceMemory& memory,
+			VkImageCreateFlags    image_create_flags,
+			uint32_t              array_layers,
+			uint32_t              miplevels);
+		static VkImageView    Create_ImageView(VkDevice           device,
+			VkImage& image,
+			VkFormat           format,
+			VkImageAspectFlags image_aspect_flags,
+			VkImageViewType    view_type,
+			uint32_t           layout_count,
+			uint32_t           miplevels);
+        
         static uint32_t Find_MemoryType(std::weak_ptr< VK_Device> Device, uint32_t TypeFilter, VkMemoryPropertyFlags Properties);
         static VkSampleCountFlagBits Get_SampleCountFlagBits_FromInt(unsigned num);
         static VkImageLayout Translate_Texture_usage_type_To_Vulkan(const ENUM_TEXTURE_USAGE_TYPE& usage_type );

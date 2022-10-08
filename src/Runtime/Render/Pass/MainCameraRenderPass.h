@@ -30,7 +30,7 @@ namespace MXRender
         void setup_renderpass();
         void setup_descriptorset_layout();
         void setup_pipelines();
-        void setup_framebuffer(std::weak_ptr<VK_Viewport> viewport);
+        void setup_framebuffer();
         std::vector<VkFramebuffer> swapchain_framebuffers;
         std::shared_ptr< VK_DescriptorSetLayout> layout;
     public:
@@ -40,7 +40,7 @@ namespace MXRender
         virtual void set_commonInfo(const PassInfo& init_info);
         virtual void prepare_pass_data(const GraphicsContext& context);
         virtual void initialize_ui_renderbackend();
-        virtual void draw(GraphicsContext* context, uint32_t& image_index, VK_Viewport* viewport);
+        virtual void draw(GraphicsContext* context);
         std::weak_ptr<GraphicsContext> get_context();
         MainCamera_RenderPass();
         MainCamera_RenderPass(const PassInfo& init_info);

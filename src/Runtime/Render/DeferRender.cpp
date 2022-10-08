@@ -1,15 +1,17 @@
 #include "DeferRender.h"
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
 #include<Windows.h>
 #include <iostream>
 #include <filesystem>
+
 #include "../RHI/Vulkan/VK_GraphicsContext.h"
 #include "../RHI/Vulkan/VK_Viewport.h"
 #include "../RHI/Vulkan/VK_SwapChain.h"
 #include "../Utils/Singleton.h"
 #include "DefaultSetting.h"
 #include "Pass/MainCameraRenderPass.h"
-#include "GLFW/glfw3.h"
-#include "../RHI/RenderPass.h"
 
 
 MXRender::DeferRender::DeferRender()
@@ -25,30 +27,12 @@ void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context)
 {
 	if(context.expired()) return ;
 
-	VkSwapchainKHR& main_swapchain= main_viewport->get_swapchain()->get_swapchain();
-	context.lock()->wait_for_fences();
-	context.lock()->reset_commandbuffer();
 
-	uint32_t image_index=0;
-	context.lock()->pre_pass(main_swapchain, image_index);
+	context.lock()->pre_pass();
 
-	std::vector<RenderPass*> render_pass_vector;
-	
-	main_camera_pass->draw(context.lock().get(), image_index, main_viewport.get());
+	main_camera_pass->draw(context.lock().get());
 
-	context.lock()->submit(&main_swapchain,1, image_index);
-	//glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-	//glClear(GL_COLOR_BUFFER_BIT);
-
-	//shader->bind();
-
-	//vertex_array->bind();
-	//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-	////glDrawArrays(GL_TRIANGLES, 0, 3);
-	//vertex_array->unbind();
-
-	//shader->unbind();
-	
+	context.lock()->submit();
 
 }
 
@@ -61,7 +45,7 @@ void MXRender::DeferRender::init(std::weak_ptr <VK_GraphicsContext> context,GLFW
 	PassInfo pass_info;
 	main_camera_pass = std::make_shared<MainCamera_RenderPass>();
 
-	main_camera_pass->initialize(pass_info, context.lock(), main_viewport);
+	main_camera_pass->initialize(pass_info, context.lock());
 
 	//float ve[] = {
 	//	// positions          // colors

@@ -38,13 +38,12 @@ namespace MXRender
 		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 		VkShaderModule shaderModule;
 
-		if(Device.expired()==false)
-		{ 
-			if (vkCreateShaderModule(Device.lock()->device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-			{
-				throw std::runtime_error("failed to create shader module!");
-			}
+
+		if (vkCreateShaderModule(Device.lock()->device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to create shader module!");
 		}
+		
 		return shaderModule;
 	}
 
@@ -60,13 +59,27 @@ namespace MXRender
 		if (Device.expired() == false)
 		{
 			if(vertexPath.size()>0&&vertexPath!="")
-				shader_modules[ENUM_SHADER_STAGE::Shader_Vertex]= createShaderModule(readFile(vertexPath));
+			{
+				auto vertShaderCode = readFile(vertexPath);
+				shader_modules[ENUM_SHADER_STAGE::Shader_Vertex]= createShaderModule(vertShaderCode);
+			}
 			if (fragmentPath.size() > 0 && fragmentPath != "")
-				shader_modules[ENUM_SHADER_STAGE::Shader_Pixel] = createShaderModule(readFile(fragmentPath));
+			{
+				
+				auto pixelShaderCode = readFile(fragmentPath);
+				shader_modules[ENUM_SHADER_STAGE::Shader_Pixel] = createShaderModule(pixelShaderCode);
+			}
 			if (geometryPath.size() > 0 && geometryPath != "")
-				shader_modules[ENUM_SHADER_STAGE::Shader_Geometry] = createShaderModule(readFile(geometryPath));
+			{
+
+				auto geometryShaderCode = readFile(geometryPath);
+				shader_modules[ENUM_SHADER_STAGE::Shader_Geometry] = createShaderModule(geometryShaderCode);
+			}
 			if (computePath.size() > 0 && computePath != "")
-				shader_modules[ENUM_SHADER_STAGE::Shader_Compute] = createShaderModule(readFile(computePath));
+			{ 
+				auto computeShaderCode = readFile(computePath);
+				shader_modules[ENUM_SHADER_STAGE::Shader_Compute] = createShaderModule(computeShaderCode);
+			}
 		}
 	}
 

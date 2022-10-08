@@ -42,7 +42,7 @@ namespace MXRender
     private:
     protected:
         PassInfo pass_info;
-        std::weak_ptr<GraphicsContext> context;
+        std::weak_ptr<GraphicsContext> cur_context;
     public:
         virtual void initialize(const PassInfo& init_info, std::shared_ptr<GraphicsContext> context) = 0;
         virtual void post_initialize();
