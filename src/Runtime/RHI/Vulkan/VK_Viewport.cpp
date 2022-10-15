@@ -11,14 +11,14 @@ namespace MXRender
 	VK_Viewport::VK_Viewport(std::shared_ptr<GraphicsContext> Context, void* InWindowHandle, int InSizeX, int InSizeY, bool bInIsFullscreen)
 	{
 		VK_GraphicsContext* graphics_context= dynamic_cast<VK_GraphicsContext*>(Context.get());
-		device=graphics_context->get_device();
+		device=graphics_context->device;
 		if (graphics_context)
 		{
 			int desired_num_backbuffers;
 			ENUM_TEXTURE_FORMAT format= ENUM_TEXTURE_FORMAT::A8;
 			VK_SwapChainRecreateInfo recreate_info;
 			recreate_info.surface= graphics_context->get_surface();
-			swapchain=new VK_SwapChain(graphics_context->get_instance(),graphics_context->get_device(),InWindowHandle, format,InSizeX,InSizeY,bInIsFullscreen, &desired_num_backbuffers, image_array,0, &recreate_info);
+			swapchain=new VK_SwapChain(graphics_context->get_instance(),graphics_context->device,InWindowHandle, format,InSizeX,InSizeY,bInIsFullscreen, &desired_num_backbuffers, image_array,0, &recreate_info);
 			
 		}
 	}

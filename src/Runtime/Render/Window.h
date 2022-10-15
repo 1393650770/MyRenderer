@@ -1,9 +1,15 @@
 #pragma once
 #ifndef _WINDOW_
 #define _WINDOW_
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
+#include <array>
+#include <functional>
+#include <vector>
 #include<memory>
+
 namespace MXRender
 {
 	class MyRender;

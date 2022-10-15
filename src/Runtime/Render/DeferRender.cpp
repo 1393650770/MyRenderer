@@ -38,9 +38,9 @@ void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context)
 
 void MXRender::DeferRender::init(std::weak_ptr <VK_GraphicsContext> context,GLFWwindow* window)
 { 
-	main_viewport = std::make_shared<VK_Viewport>(context.lock(), window, Singleton<DefaultSetting>::get_instance().width, Singleton<DefaultSetting>::get_instance().height, false);
-	
-	main_viewport->create_image_view_from_swapchain();
+	//main_viewport = std::make_shared<VK_Viewport>(context.lock(), window, Singleton<DefaultSetting>::get_instance().width, Singleton<DefaultSetting>::get_instance().height, false);
+	//
+	//main_viewport->create_image_view_from_swapchain();
 
 	PassInfo pass_info;
 	main_camera_pass = std::make_shared<MainCamera_RenderPass>();

@@ -1,32 +1,34 @@
 #include "Window.h"
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 
 #include<iostream>
 #include"../Utils/Singleton.h"
 #include"DefaultSetting.h"
-#include <glad/glad.h>
 
 #include"MyRender.h"
 
-#include"../RHI/VertexArray.h"
-#include"../RHI/VertexBuffer.h"
-#include"../RHI/IndexBuffer.h"
-#include"../RHI/Shader.h"
-#include "../RHI/Vulkan/VK_GraphicsContext.h"
-#include "../RHI/Vulkan/VK_Viewport.h"
-#include "../RHI/Vulkan/VK_SwapChain.h"
 #include "../RHI/Vulkan/VK_Device.h"
 #include <memory>
 #include "Pass/MainCameraRenderPass.h"
+#include "../RHI/Vulkan/VK_GraphicsContext.h"
 
 
 
 MXRender::Window::Window()
 {
 
-
+	if (!glfwInit())
+	{
+		return;
+	}
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+	window = glfwCreateWindow(Singleton<DefaultSetting>::get_instance().width, Singleton<DefaultSetting>::get_instance().height, "MyRender", NULL, NULL);
+	if (!window)
+	{
+		glfwTerminate();
+		return;
+	}
+	glfwSetWindowUserPointer(window, this);
 	//glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	//glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -66,19 +68,8 @@ MXRender::Window::~Window()
 void MXRender::Window::run(std::shared_ptr<MyRender> render)
 {
 
-	glfwInit();
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	window = glfwCreateWindow(Singleton<DefaultSetting>::get_instance().width, Singleton<DefaultSetting>::get_instance().height, "MyRender", NULL, NULL);
-	if (!window)
-	{
-		glfwTerminate();
-		return;
-	}
+	Singleton<DefaultSetting>::get_instance().context->init(this);
 
-	glfwSetWindowUserPointer(window, this);
-
-	Singleton<DefaultSetting>::get_instance().context->init(window); 
-	
 	render->init(Singleton<DefaultSetting>::get_instance().context,window);
 
 	while (!glfwWindowShouldClose(window))
@@ -94,7 +85,7 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
         //glfwSwapBuffers(window);
     }
 	
-	vkDeviceWaitIdle(Singleton<DefaultSetting>::get_instance().context->get_device()->device);
+	vkDeviceWaitIdle(Singleton<DefaultSetting>::get_instance().context->device->device);
 }
 
 GLFWwindow* MXRender::Window::GetWindow() const

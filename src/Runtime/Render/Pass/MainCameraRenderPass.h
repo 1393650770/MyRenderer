@@ -35,6 +35,7 @@ namespace MXRender
         std::shared_ptr< VK_DescriptorSetLayout> layout;
     public:
         virtual void initialize(const PassInfo& init_info,std::shared_ptr<GraphicsContext> context);
+        virtual void initialize(const PassInfo& init_info, std::shared_ptr<VK_GraphicsContext> context);
         virtual void initialize(const PassInfo& init_info, std::shared_ptr<VK_GraphicsContext> context, std::weak_ptr<VK_Viewport> viewport);
         virtual void post_initialize();
         virtual void set_commonInfo(const PassInfo& init_info);

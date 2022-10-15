@@ -24,7 +24,7 @@ namespace MXRender
 		index_data = _index_array;
 		usage = data_usage;
 		index_data_size = size;
-        device=context->get_device();
+        device=context->device;
         init(context,index_data->data(),index_data_size);
 	}
 
