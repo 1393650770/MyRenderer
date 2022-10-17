@@ -13,6 +13,11 @@
 
 namespace MXRender
 {
+    struct SkyboxVertex
+    {
+        
+    };
+
     class VertexArray
     {
     private:

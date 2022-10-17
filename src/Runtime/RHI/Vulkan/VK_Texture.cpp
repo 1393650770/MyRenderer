@@ -3,6 +3,8 @@
 #include <glad/glad.h>
 #include"../../../ThirdParty/stb_image/stb_image.h"
 #include "VK_Utils.h"
+#include "../RenderRource.h"
+#include "../RenderUtils.h"
 namespace MXRender
 {
     VK_Texture::VK_Texture(/* args */)
@@ -19,7 +21,12 @@ namespace MXRender
     {
         if (is_valid())
             return;
-       
+        std::vector<std::shared_ptr<TextureData>> cubemap_testure_data(6);
+        for (int i=0;i<cubemap_texture.size();i++)
+        {
+            cubemap_testure_data[i]=RenderUtils::Load_Texture(cubemap_texture[i],true);
+        }
+
     }
 
     VK_Texture::VK_Texture(ENUM_TEXTURE_TYPE _type, unsigned width,unsigned height, unsigned samples, unsigned internalformat, unsigned dataformat, ENUM_TEXTURE_USAGE_TYPE usage_type)

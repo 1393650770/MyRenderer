@@ -726,8 +726,6 @@ void MXRender::VK_GraphicsContext::cleanup()
 {
 	clean_swapchain();
 
-
-
 	for (size_t i = 0; i < max_frames_in_flight; i++) {
 		vkDestroySemaphore(device->device, image_finished_for_presentation_semaphore[i], nullptr);
 		vkDestroySemaphore(device->device, image_available_for_render_semaphore[i], nullptr);

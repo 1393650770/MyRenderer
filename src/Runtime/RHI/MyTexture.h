@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef _GL_TEXTURE_
-#define _GL_TEXTURE_
+#ifndef _My_TEXTURE_
+#define _My_TEXTURE_
 
 
 #include"GLFW/glfw3.h"

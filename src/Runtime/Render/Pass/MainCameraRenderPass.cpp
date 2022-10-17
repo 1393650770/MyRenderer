@@ -85,7 +85,7 @@ namespace MXRender
 	{
 		std::shared_ptr<VK_Device> device= cur_context.lock()->device;
 
-		VK_Shader cur_shader(device, VK_SHADER_STAGE_VERTEX_BIT,"Shader/vert.spv","Shader/frag.spv");
+		VK_Shader cur_shader(device, VK_SHADER_STAGE_VERTEX_BIT,"Shader/skybox_vert.spv","Shader/skybox_frag.spv");
 
 		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -123,7 +123,7 @@ namespace MXRender
 		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterizer.lineWidth = 1.0f;
 		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-		rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+		rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 		rasterizer.depthBiasEnable = VK_FALSE;
 
 		VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -281,10 +281,10 @@ namespace MXRender
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
 		MVP_Struct ubo{};
-		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.proj = glm::perspective(glm::radians(45.0f), (float)cur_context.lock()->get_swapchain_extent().width / (float)cur_context.lock()->get_swapchain_extent().height, 0.1f, 10.0f);
-		ubo.proj[1][1] *= -1;
+		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 1.0f));
+		ubo.view = glm::mat4(glm::mat3(glm::lookAt(glm::vec3(0.0f, 0.0f, 30.0f), glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 1.0f, 0.0f))));
+		ubo.proj = glm::perspective(glm::radians(45.0f), (float)cur_context.lock()->get_swapchain_extent().width / (float)cur_context.lock()->get_swapchain_extent().height, 0.1f, 100.0f);
+		//ubo.proj[1][1] *= -1;
 
 		void* data;
 		vkMapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0], 0, sizeof(ubo), 0, &data);
@@ -385,7 +385,7 @@ namespace MXRender
 
 		vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &descriptor_sets[0], 0, nullptr);
 
-		vkCmdDraw(vk_context->get_cur_command_buffer(), 3, 1, 0, 0);
+		vkCmdDraw(vk_context->get_cur_command_buffer(), 36, 1, 0, 0);
 
 		vkCmdEndRenderPass(vk_context->get_cur_command_buffer());
 	}
