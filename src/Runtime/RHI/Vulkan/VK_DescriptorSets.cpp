@@ -143,7 +143,8 @@ namespace MXRender
 			return;
 		}
 		if (DescriptorSetIndex+1 > ubo_layout_binding_array.size())
-		{			while(DescriptorSetIndex+1 > ubo_layout_binding_array.size())
+		{			
+			while(DescriptorSetIndex+1 > ubo_layout_binding_array.size())
 				ubo_layout_binding_array.push_back(VkDescriptorSetLayoutBinding());
 		}
 		VkDescriptorSetLayoutBinding& Binding= ubo_layout_binding_array[DescriptorSetIndex];

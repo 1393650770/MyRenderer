@@ -19,6 +19,8 @@ namespace MXRender
 		unsigned id;
         VkAttachmentDescription attachment_description;
         VkAttachmentReference attachment_reference;
+        unsigned width,height, texChannels;
+        VkDeviceSize imageSize;
     public:
         virtual ~VK_Texture();
         VK_Texture();

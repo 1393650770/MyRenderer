@@ -111,7 +111,9 @@ namespace MXRender
 
         VkQueue graphicsQueue;
         VkQueue presentQueue;
- 
+    
+        VkDescriptorPool descriptor_pool;
+
         GLFWwindow* window{ nullptr };
 
         static uint8_t const max_frames_in_flight{ 3 };

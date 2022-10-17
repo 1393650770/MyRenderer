@@ -117,11 +117,7 @@ namespace MXRender
 		ENUM_TYPE_COPY = 3,
 	};
 
-	enum class ENUM_SHADER_TYPE
-	{
-		ENUM_TYPE_NOT_VALID = 0,
 
-	};
 
 
 	/// Texture formats:

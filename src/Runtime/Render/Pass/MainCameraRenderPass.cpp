@@ -10,6 +10,13 @@
 #include "../../Utils/Singleton.h"
 #include "vulkan/vulkan_core.h"
 #include "../../RHI/RenderEnum.h"
+#include "../../RHI/UniformBuffer.h"
+#include "../../RHI/Vulkan/VK_Utils.h"
+#include <chrono>
+
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 namespace MXRender
 {
 
@@ -60,7 +67,7 @@ namespace MXRender
 	{
 		std::shared_ptr<VK_Device> device = cur_context.lock()->device;
 
-		layout=std::make_shared<VK_DescriptorSetLayout>(device,1);
+		descriptorset_layout=std::make_shared<VK_DescriptorSetLayout>(device,1);
 
 		VkDescriptorSetLayoutBinding uboLayoutBinding{};
 		uboLayoutBinding.binding = 0;
@@ -69,9 +76,9 @@ namespace MXRender
 		uboLayoutBinding.pImmutableSamplers = nullptr;
 		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-		layout->add_bindingdescriptor(0, uboLayoutBinding);
+		descriptorset_layout->add_bindingdescriptor(0, uboLayoutBinding);
 
-		layout->compile();
+		descriptorset_layout->compile();
 	}
 
 	void MainCamera_RenderPass::setup_pipelines()
@@ -116,7 +123,7 @@ namespace MXRender
 		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterizer.lineWidth = 1.0f;
 		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-		rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+		rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		rasterizer.depthBiasEnable = VK_FALSE;
 
 		VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -150,8 +157,9 @@ namespace MXRender
 
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 0;
-		pipelineLayoutInfo.pushConstantRangeCount = 0;
+		pipelineLayoutInfo.setLayoutCount = 1;
+		//pipelineLayoutInfo.pushConstantRangeCount = 0;
+		pipelineLayoutInfo.pSetLayouts = &descriptorset_layout->get_descriptorset_layout();
 
 		if (vkCreatePipelineLayout(cur_context.lock()->device->device, &pipelineLayoutInfo, nullptr, &pipeline_layout) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create pipeline layout!");
@@ -203,7 +211,88 @@ namespace MXRender
 		}
 	}
 
-	void MainCamera_RenderPass::initialize(const PassInfo& init_info, std::shared_ptr<GraphicsContext> context) 
+	void MainCamera_RenderPass::setup_uniformbuffer()
+	{
+		VkDeviceSize bufferSize = sizeof(MVP_Struct);
+
+		uniform_buffers.resize(1);
+		uniform_buffers_memory.resize(1);
+
+		for (size_t i = 0; i < 1; i++) {
+			VK_Utils::Create_VKBuffer( cur_context.lock()->device,bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniform_buffers[i], uniform_buffers_memory[i]);
+		}
+	}
+
+	void MainCamera_RenderPass::setup_descriptorpool()
+	{
+		VkDescriptorPoolSize poolSize{};
+		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSize.descriptorCount = static_cast<uint32_t>(3);
+
+		VkDescriptorPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolInfo.poolSizeCount = 1;
+		poolInfo.pPoolSizes = &poolSize;
+		poolInfo.maxSets = static_cast<uint32_t>(3);
+
+		if (vkCreateDescriptorPool(cur_context.lock()->device->device, &poolInfo, nullptr, &descriptor_pool) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create descriptor pool!");
+		}
+	}
+
+	void MainCamera_RenderPass::setup_descriptorsets()
+	{
+		
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = descriptor_pool;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = &descriptorset_layout->get_descriptorset_layout();
+		descriptor_sets.resize(1);
+		if (vkAllocateDescriptorSets(cur_context.lock()->device->device, &allocInfo, descriptor_sets.data()) != VK_SUCCESS) {
+			throw std::runtime_error("failed to allocate descriptor sets!");
+		}
+
+		for (size_t i = 0; i < 1; i++) {
+			VkDescriptorBufferInfo bufferInfo{};
+			bufferInfo.buffer = uniform_buffers[i];
+			bufferInfo.offset = 0;
+			bufferInfo.range = sizeof(MVP_Struct);
+
+			VkWriteDescriptorSet descriptorWrite{};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstSet = descriptor_sets[i];
+			descriptorWrite.dstBinding = 0;
+			descriptorWrite.dstArrayElement = 0;
+			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.pBufferInfo = &bufferInfo;
+
+			vkUpdateDescriptorSets(cur_context.lock()->device->device, 1, &descriptorWrite, 0, nullptr);
+		}
+		
+	}
+
+	void MainCamera_RenderPass::update_uniformbuffer()
+	{
+		static auto startTime = std::chrono::high_resolution_clock::now();
+
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+		MVP_Struct ubo{};
+		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.proj = glm::perspective(glm::radians(45.0f), (float)cur_context.lock()->get_swapchain_extent().width / (float)cur_context.lock()->get_swapchain_extent().height, 0.1f, 10.0f);
+		ubo.proj[1][1] *= -1;
+
+		void* data;
+		vkMapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0], 0, sizeof(ubo), 0, &data);
+		memcpy(data, &ubo, sizeof(ubo));
+		vkUnmapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0]);
+	}	
+
+	void MainCamera_RenderPass::initialize(const PassInfo& init_info, std::shared_ptr<GraphicsContext> context)
 	{
 	}
 
@@ -215,6 +304,9 @@ namespace MXRender
 		setup_descriptorset_layout();
 		setup_pipelines();
 		setup_framebuffer();
+		setup_uniformbuffer();
+		setup_descriptorpool();
+		setup_descriptorsets();
 	}
 
 	void MainCamera_RenderPass::initialize(const PassInfo& init_info, std::shared_ptr<VK_GraphicsContext> context)
@@ -225,6 +317,9 @@ namespace MXRender
 		setup_descriptorset_layout();
 		setup_pipelines();
 		setup_framebuffer();
+		setup_uniformbuffer();
+		setup_descriptorpool();
+		setup_descriptorsets();
 	}
 
 	void MainCamera_RenderPass::post_initialize()
@@ -246,6 +341,8 @@ namespace MXRender
 
 	void MainCamera_RenderPass::draw(GraphicsContext* context)
 	{
+		update_uniformbuffer();
+
 		VK_GraphicsContext* vk_context=nullptr;
 		vk_context= dynamic_cast<VK_GraphicsContext*>(context);
 		if (vk_context==nullptr)
@@ -286,6 +383,8 @@ namespace MXRender
 
 		vkCmdSetScissor(vk_context->get_cur_command_buffer(), 0, 1, &scissor);
 
+		vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &descriptor_sets[0], 0, nullptr);
+
 		vkCmdDraw(vk_context->get_cur_command_buffer(), 3, 1, 0, 0);
 
 		vkCmdEndRenderPass(vk_context->get_cur_command_buffer());
@@ -302,10 +401,19 @@ namespace MXRender
 	{
 		vkDestroyPipeline(cur_context.lock()->device->device, pipeline, nullptr);
 		vkDestroyPipelineLayout(cur_context.lock()->device->device, pipeline_layout, nullptr);
+		vkDestroyRenderPass(cur_context.lock()->device->device, render_pass, nullptr);
 
-		for (auto framebuffer : swapchain_framebuffers) {
-			vkDestroyFramebuffer(cur_context.lock()->device->device, framebuffer, nullptr);
+		for (size_t i = 0; i < swapchain_framebuffers.size(); i++) {
+			vkDestroyFramebuffer(cur_context.lock()->device->device, swapchain_framebuffers[i], nullptr);
 		}
+
+		for (size_t i = 0; i < uniform_buffers.size(); i++) {
+			vkDestroyBuffer(cur_context.lock()->device->device, uniform_buffers[i], nullptr);
+			vkFreeMemory(cur_context.lock()->device->device, uniform_buffers_memory[i], nullptr);
+		}
+
+		vkDestroyDescriptorPool(cur_context.lock()->device->device, descriptor_pool, nullptr);
+
 	}
 
 	VkRenderPass& MainCamera_RenderPass::get_render_pass() 

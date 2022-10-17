@@ -31,8 +31,21 @@ namespace MXRender
         void setup_descriptorset_layout();
         void setup_pipelines();
         void setup_framebuffer();
+        void setup_uniformbuffer();
+        void setup_descriptorpool();
+        void setup_descriptorsets();
+
+        void update_uniformbuffer();
+
         std::vector<VkFramebuffer> swapchain_framebuffers;
-        std::shared_ptr< VK_DescriptorSetLayout> layout;
+
+		std::vector<VkBuffer> uniform_buffers;
+		std::vector<VkDeviceMemory> uniform_buffers_memory;
+
+        VkDescriptorPool descriptor_pool;
+        std::vector<VkDescriptorSet> descriptor_sets;
+
+        std::shared_ptr< VK_DescriptorSetLayout> descriptorset_layout;
     public:
         virtual void initialize(const PassInfo& init_info,std::shared_ptr<GraphicsContext> context);
         virtual void initialize(const PassInfo& init_info, std::shared_ptr<VK_GraphicsContext> context);
