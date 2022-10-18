@@ -17,6 +17,8 @@
 
 #include "../../RHI/Vulkan/VK_RenderPass.h"
 
+namespace MXRender { class VK_Texture; }
+
 namespace MXRender { class VK_DescriptorSetLayout; }
 
 
@@ -46,6 +48,7 @@ namespace MXRender
         std::vector<VkDescriptorSet> descriptor_sets;
 
         std::shared_ptr< VK_DescriptorSetLayout> descriptorset_layout;
+        std::shared_ptr< VK_Texture> cubemap_texture;
     public:
         virtual void initialize(const PassInfo& init_info,std::shared_ptr<GraphicsContext> context);
         virtual void initialize(const PassInfo& init_info, std::shared_ptr<VK_GraphicsContext> context);

@@ -17,6 +17,7 @@
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include "../../RHI/Vulkan/VK_Texture.h"
 namespace MXRender
 {
 
@@ -67,7 +68,7 @@ namespace MXRender
 	{
 		std::shared_ptr<VK_Device> device = cur_context.lock()->device;
 
-		descriptorset_layout=std::make_shared<VK_DescriptorSetLayout>(device,1);
+		descriptorset_layout=std::make_shared<VK_DescriptorSetLayout>(device,5);
 
 		VkDescriptorSetLayoutBinding uboLayoutBinding{};
 		uboLayoutBinding.binding = 0;
@@ -76,8 +77,16 @@ namespace MXRender
 		uboLayoutBinding.pImmutableSamplers = nullptr;
 		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
+		VkDescriptorSetLayoutBinding cubetextureLayoutBinding{};
+		cubetextureLayoutBinding.binding = 1;
+		cubetextureLayoutBinding.descriptorCount = 1;
+		cubetextureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		cubetextureLayoutBinding.pImmutableSamplers = nullptr;
+		cubetextureLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
 		descriptorset_layout->add_bindingdescriptor(0, uboLayoutBinding);
 
+		descriptorset_layout->add_bindingdescriptor(1, cubetextureLayoutBinding);
 		descriptorset_layout->compile();
 	}
 
@@ -123,7 +132,7 @@ namespace MXRender
 		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterizer.lineWidth = 1.0f;
 		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-		rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+		rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		rasterizer.depthBiasEnable = VK_FALSE;
 
 		VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -225,14 +234,16 @@ namespace MXRender
 
 	void MainCamera_RenderPass::setup_descriptorpool()
 	{
-		VkDescriptorPoolSize poolSize{};
-		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSize.descriptorCount = static_cast<uint32_t>(3);
+		std::vector<VkDescriptorPoolSize> poolSize(2);
+		poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSize[0].descriptorCount = static_cast<uint32_t>(cur_context.lock()->get_max_frame_num());
+		poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		poolSize[1].descriptorCount = static_cast<uint32_t>(cur_context.lock()->get_max_frame_num());
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = 1;
-		poolInfo.pPoolSizes = &poolSize;
+		poolInfo.poolSizeCount = poolSize.size();
+		poolInfo.pPoolSizes = poolSize.data();
 		poolInfo.maxSets = static_cast<uint32_t>(3);
 
 		if (vkCreateDescriptorPool(cur_context.lock()->device->device, &poolInfo, nullptr, &descriptor_pool) != VK_SUCCESS) {
@@ -243,6 +254,19 @@ namespace MXRender
 	void MainCamera_RenderPass::setup_descriptorsets()
 	{
 		
+		std::vector<std::string> cubemap_path{
+			
+			"Resource/Texture/Skybox/right.jpg",
+			"Resource/Texture/Skybox/left.jpg",
+			"Resource/Texture/Skybox/top.jpg",
+			"Resource/Texture/Skybox/bottom.jpg",
+			"Resource/Texture/Skybox/front.jpg",
+			"Resource/Texture/Skybox/back.jpg",
+
+		};
+
+		cubemap_texture=std::make_shared<VK_Texture>(cubemap_path);
+
 		VkDescriptorSetAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		allocInfo.descriptorPool = descriptor_pool;
@@ -259,16 +283,29 @@ namespace MXRender
 			bufferInfo.offset = 0;
 			bufferInfo.range = sizeof(MVP_Struct);
 
-			VkWriteDescriptorSet descriptorWrite{};
-			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite.dstSet = descriptor_sets[i];
-			descriptorWrite.dstBinding = 0;
-			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pBufferInfo = &bufferInfo;
+			VkDescriptorImageInfo imageInfo{};
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo.imageView = cubemap_texture->textureImageView;
+			imageInfo.sampler = cubemap_texture->textureSampler;
 
-			vkUpdateDescriptorSets(cur_context.lock()->device->device, 1, &descriptorWrite, 0, nullptr);
+			std::vector< VkWriteDescriptorSet> descriptorWrite(2);
+			descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite[0].dstSet = descriptor_sets[i];
+			descriptorWrite[0].dstBinding = 0;
+			descriptorWrite[0].dstArrayElement = 0;
+			descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrite[0].descriptorCount = 1;
+			descriptorWrite[0].pBufferInfo = &bufferInfo;
+
+			descriptorWrite[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite[1].dstSet = descriptor_sets[i];
+			descriptorWrite[1].dstBinding = 1;
+			descriptorWrite[1].dstArrayElement = 0;
+			descriptorWrite[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrite[1].descriptorCount = 1;
+			descriptorWrite[1].pImageInfo = &imageInfo;
+
+			vkUpdateDescriptorSets(cur_context.lock()->device->device, descriptorWrite.size(), descriptorWrite.data(), 0, nullptr);
 		}
 		
 	}
@@ -284,7 +321,7 @@ namespace MXRender
 		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 1.0f));
 		ubo.view = glm::mat4(glm::mat3(glm::lookAt(glm::vec3(0.0f, 0.0f, 30.0f), glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 1.0f, 0.0f))));
 		ubo.proj = glm::perspective(glm::radians(45.0f), (float)cur_context.lock()->get_swapchain_extent().width / (float)cur_context.lock()->get_swapchain_extent().height, 0.1f, 100.0f);
-		//ubo.proj[1][1] *= -1;
+		ubo.proj[1][1] *= -1;
 
 		void* data;
 		vkMapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0], 0, sizeof(ubo), 0, &data);

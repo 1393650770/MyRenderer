@@ -13,6 +13,8 @@
 #include <iostream>
 #include <memory>
 
+namespace MXRender { class VK_GraphicsContext; }
+
 namespace MXRender
 {
     class VK_Utils
@@ -48,6 +50,24 @@ namespace MXRender
         static VkImageLayout Translate_Texture_usage_type_To_Vulkan(const ENUM_TEXTURE_USAGE_TYPE& usage_type );
         static VkImageType Translate_Texture_type_To_Vulkan(const ENUM_TEXTURE_TYPE& type);
         static VkFormat Translate_API_DataTypeEnum_To_Vulkan(ENUM_RENDER_DATA_TYPE data_type);
+
+		static void Transition_ImageLayout(std::weak_ptr< VK_GraphicsContext> context,
+			VkImage            image,
+			VkImageLayout      old_layout,
+			VkImageLayout      new_layout,
+			uint32_t           layer_count,
+			uint32_t           miplevels,
+			VkImageAspectFlags aspect_mask_bits);
+
+		static void	Copy_Buffer_To_Image(std::weak_ptr< VK_GraphicsContext> context,
+			VkBuffer buffer,
+			VkImage  image,
+			uint32_t width,
+			uint32_t height,
+			uint32_t layer_coun);
+
+
+		static VkSampler Create_Linear_Sampler(VkPhysicalDevice physical_device, VkDevice device);
     };
     
 }

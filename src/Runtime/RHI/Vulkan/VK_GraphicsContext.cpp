@@ -624,6 +624,11 @@ uint8_t MXRender::VK_GraphicsContext::get_current_frame_index() const
 	return current_frame_index;
 }
 
+uint8_t MXRender::VK_GraphicsContext::get_max_frame_num() const
+{
+	return max_frames_in_flight;
+}
+
 uint32_t MXRender::VK_GraphicsContext::get_current_swapchain_image_index() const
 {
 	return current_swapchain_image_index;
@@ -642,6 +647,41 @@ VkExtent2D MXRender::VK_GraphicsContext::get_swapchain_extent() const
 void MXRender::VK_GraphicsContext::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size)
 {
 	throw std::runtime_error("failed to copy_buffer!");
+}
+
+VkCommandBuffer MXRender::VK_GraphicsContext::begin_single_time_commands()
+{
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandPool = command_pool;
+	allocInfo.commandBufferCount = 1;
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(device->device, &allocInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	return commandBuffer;
+}
+
+void MXRender::VK_GraphicsContext::end_single_time_commands(VkCommandBuffer command_buffer)
+{
+	vkEndCommandBuffer(command_buffer);
+
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &command_buffer;
+
+	vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(graphicsQueue);
+
+	vkFreeCommandBuffers(device->device, command_pool, 1, &command_buffer);
 }
 
 void MXRender::VK_GraphicsContext::pre_pass()

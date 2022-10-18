@@ -15,13 +15,21 @@ namespace MXRender
     class VK_Texture
     {
     private:
-        ENUM_TEXTURE_TYPE type;
+        ENUM_TEXTURE_TYPE type=ENUM_TEXTURE_TYPE::ENUM_TYPE_NOT_VALID;
 		unsigned id;
         VkAttachmentDescription attachment_description;
         VkAttachmentReference attachment_reference;
         unsigned width,height, texChannels;
         VkDeviceSize imageSize;
+
+
+
     public:
+		VkImage textureImage;
+		VkDeviceMemory textureImageMemory;
+		VkImageView textureImageView;
+		VkSampler textureSampler;
+
         virtual ~VK_Texture();
         VK_Texture();
         VK_Texture(unsigned _id , ENUM_TEXTURE_TYPE _type);

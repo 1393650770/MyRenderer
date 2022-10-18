@@ -165,10 +165,13 @@ namespace MXRender
         VkSurfaceKHR get_surface();
         VkCommandBuffer get_cur_command_buffer() ;
         uint8_t get_current_frame_index() const;
+        uint8_t get_max_frame_num() const;
         uint32_t get_current_swapchain_image_index() const;
         VkFormat get_swapchain_image_format() const;
         VkExtent2D get_swapchain_extent() const;
         void copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size);
+        VkCommandBuffer begin_single_time_commands();
+        void end_single_time_commands(VkCommandBuffer command_buffer);
 
         void pre_pass( );
         void submit( );

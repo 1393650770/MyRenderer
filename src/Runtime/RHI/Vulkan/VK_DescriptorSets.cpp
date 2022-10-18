@@ -142,12 +142,12 @@ namespace MXRender
 		{
 			return;
 		}
-		if (DescriptorSetIndex+1 > ubo_layout_binding_array.size())
+		if (DescriptorSetIndex+1 > layout_binding_array.size())
 		{			
-			while(DescriptorSetIndex+1 > ubo_layout_binding_array.size())
-				ubo_layout_binding_array.push_back(VkDescriptorSetLayoutBinding());
+			while(DescriptorSetIndex+1 > layout_binding_array.size())
+				layout_binding_array.push_back(VkDescriptorSetLayoutBinding());
 		}
-		VkDescriptorSetLayoutBinding& Binding= ubo_layout_binding_array[DescriptorSetIndex];
+		VkDescriptorSetLayoutBinding& Binding= layout_binding_array[DescriptorSetIndex];
 		Binding.binding= BindingDescriptor.binding;
 		Binding.descriptorCount = BindingDescriptor.descriptorCount;
 		Binding.descriptorType = BindingDescriptor.descriptorType;
@@ -163,8 +163,8 @@ namespace MXRender
 		}
 		VkDescriptorSetLayoutCreateInfo layoutInfo{};
 		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layoutInfo.bindingCount = ubo_layout_binding_array.size();
-		layoutInfo.pBindings = ubo_layout_binding_array.data();
+		layoutInfo.bindingCount = layout_binding_array.size();
+		layoutInfo.pBindings = layout_binding_array.data();
 
 		if (vkCreateDescriptorSetLayout(device.lock()->device, &layoutInfo, nullptr, &descriptorset_layout) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create descriptor set layout!");

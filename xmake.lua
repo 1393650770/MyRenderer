@@ -30,6 +30,7 @@ target("Runtime")
 
 
 target("Renderer")
+
     set_kind("binary")  
     set_languages("c++20")  
     add_deps("Runtime")
@@ -38,14 +39,22 @@ target("Renderer")
     add_packages("vulkansdk","glad", "glfw", "glm","assimp")
 
     before_build(function (target)
-            os.run("$(projectdir)/src/Runtime/Render/Shader/compile.bat")
-        end)
+        os.run("$(projectdir)/src/Runtime/Render/Shader/compile.bat")
+    end)
 
     after_build(function (target)
         os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)")
+        os.cp("$(projectdir)/src/Resource", "$(buildir)")
     end)
-    after_build(function (target)
-        os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)/windows/x64/debug")
-    end)
+
+    after_build(
+        function (target)
+            os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)/windows/x64/debug")
+            os.cp("$(projectdir)/src/Resource", "$(buildir)/windows/x64/debug")
+        end
+    )
+
+
+
 
     

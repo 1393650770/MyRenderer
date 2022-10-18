@@ -45,7 +45,7 @@ namespace MXRender
         const unsigned int max_bindings;
         std::weak_ptr<VK_Device> device;
         VkDescriptorSetLayout descriptorset_layout;
-        std::vector< VkDescriptorSetLayoutBinding > ubo_layout_binding_array;
+        std::vector< VkDescriptorSetLayoutBinding > layout_binding_array;
     public:
         VK_DescriptorSetLayout(std::shared_ptr<VK_Device> InDevice, unsigned int InMaxBindings=10);
 
