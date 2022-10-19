@@ -23,6 +23,8 @@
 #include<vector>
 #include<memory>
 #include <optional>
+#include <unordered_map>
+#include <functional>
 
 
 namespace MXRender { class VK_RenderPass; }
@@ -140,6 +142,9 @@ namespace MXRender
 		VkImageView    depth_image_view{ VK_NULL_HANDLE };
 
         bool framebufferResized = false;
+
+        std::vector<std::function<void()>>  on_swapchain_recreate;
+        std::vector<std::function<void()>>  on_swapchain_clean;
         //std::shared_ptr <VK_DescriptorPool> descriptor_pool;
     public:
         VK_GraphicsContext();
@@ -168,11 +173,15 @@ namespace MXRender
         uint8_t get_max_frame_num() const;
         uint32_t get_current_swapchain_image_index() const;
         VkFormat get_swapchain_image_format() const;
+        VkFormat get_depth_image_format() const;
         VkExtent2D get_swapchain_extent() const;
+        VkImageView get_depth_image_view() const;
         void copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size);
         VkCommandBuffer begin_single_time_commands();
         void end_single_time_commands(VkCommandBuffer command_buffer);
 
+        void add_on_swapchain_recreate_func(const std::function<void()>& func);
+        void add_on_swapchain_clean_func(const std::function<void()>& func);
         void pre_pass( );
         void submit( );
 

@@ -536,24 +536,28 @@ void MXRender::VK_GraphicsContext::recreate_swapchain()
 		vkWaitForFences(device->device, max_frames_in_flight, frame_in_flight_fence, VK_TRUE, UINT64_MAX);
 	assert(VK_SUCCESS == res_wait_for_fences);
 
-	vkDestroyImageView(device->device, depth_image_view, NULL);
-	vkDestroyImage(device->device, depth_image, NULL);
-	vkFreeMemory(device->device, depth_image_memory, NULL);
-
-	for (auto imageview : swapchain_imageviews)
-	{
-		vkDestroyImageView(device->device, imageview, NULL);
-	}
-	vkDestroySwapchainKHR(device->device, swapchain, NULL);
-
+	clean_swapchain();
 	create_swapchain();
 	create_swapchain_imageviews();
 	create_framebuffer_imageAndview();
+
+	for (auto& func : on_swapchain_recreate)
+	{
+		func();
+	}
 }
 
 void MXRender::VK_GraphicsContext::clean_swapchain()
 {
 
+	vkDestroyImageView(device->device, depth_image_view, nullptr);
+	vkDestroyImage(device->device, depth_image, nullptr);
+	vkFreeMemory(device->device, depth_image_memory, nullptr);
+
+	for (auto& func:on_swapchain_clean)
+	{
+		func();
+	}
 
 	for (auto imageView : swapchain_imageviews) {
 		vkDestroyImageView(device->device, imageView, nullptr);
@@ -639,9 +643,19 @@ VkFormat MXRender::VK_GraphicsContext::get_swapchain_image_format() const
 	return swapchain_image_format;
 }
 
+VkFormat MXRender::VK_GraphicsContext::get_depth_image_format() const
+{
+	return depth_image_format;
+}
+
 VkExtent2D MXRender::VK_GraphicsContext::get_swapchain_extent() const
 {
 	return swapchain_extent;
+}
+
+VkImageView MXRender::VK_GraphicsContext::get_depth_image_view() const
+{
+	return depth_image_view;
 }
 
 void MXRender::VK_GraphicsContext::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size)
@@ -682,6 +696,16 @@ void MXRender::VK_GraphicsContext::end_single_time_commands(VkCommandBuffer comm
 	vkQueueWaitIdle(graphicsQueue);
 
 	vkFreeCommandBuffers(device->device, command_pool, 1, &command_buffer);
+}
+
+void MXRender::VK_GraphicsContext::add_on_swapchain_recreate_func(const std::function<void()>& func)
+{
+	on_swapchain_recreate.emplace_back(func);
+}
+
+void MXRender::VK_GraphicsContext::add_on_swapchain_clean_func(const std::function<void()>& func)
+{
+	on_swapchain_clean.emplace_back(func);
 }
 
 void MXRender::VK_GraphicsContext::pre_pass()

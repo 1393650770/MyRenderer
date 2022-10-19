@@ -1,4 +1,4 @@
-add_requires("vulkansdk","glad", "glfw", "glm","assimp")
+add_requires("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader")
 add_rules("mode.debug", "mode.release")
 
 add_rules("plugin.vsxmake.autoupdate")
@@ -24,7 +24,7 @@ target("Runtime")
 
     add_headerfiles("src/ThirdParty/stb_image/*.h") 
 
-    add_packages("vulkansdk","glad", "glfw", "glm","assimp")
+    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader")
     
 
 
@@ -36,7 +36,7 @@ target("Renderer")
     add_deps("Runtime")
     add_files("src/*.cpp") 
 
-    add_packages("vulkansdk","glad", "glfw", "glm","assimp")
+    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader")
 
     before_build(function (target)
         os.run("$(projectdir)/src/Runtime/Render/Shader/compile.bat")

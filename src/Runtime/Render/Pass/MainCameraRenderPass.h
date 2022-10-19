@@ -39,6 +39,7 @@ namespace MXRender
 
         void update_uniformbuffer();
 
+        void destroy_framebuffer();
         std::vector<VkFramebuffer> swapchain_framebuffers;
 
 		std::vector<VkBuffer> uniform_buffers;
@@ -58,7 +59,7 @@ namespace MXRender
         virtual void prepare_pass_data(const GraphicsContext& context);
         virtual void initialize_ui_renderbackend();
         virtual void draw(GraphicsContext* context);
-        std::weak_ptr<GraphicsContext> get_context();
+
         MainCamera_RenderPass();
         MainCamera_RenderPass(const PassInfo& init_info);
         virtual ~MainCamera_RenderPass();

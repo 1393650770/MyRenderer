@@ -16,6 +16,8 @@ namespace MXRender
 
     VK_Texture::VK_Texture(unsigned _id, ENUM_TEXTURE_TYPE _type)
     {
+		if (is_valid())
+			return;
         id = _id;
         type = _type;
     }
