@@ -4,12 +4,8 @@
 namespace MXRender
 {
 
-	void VK_RenderPass::initialize(const PassInfo& init_info, std::shared_ptr<GraphicsContext> context)
-	{
-		
-	}
 
-	void VK_RenderPass::initialize(const PassInfo& init_info, std::shared_ptr<VK_GraphicsContext> context, std::weak_ptr<VK_Viewport> viewport)
+	void VK_RenderPass::initialize(const PassInfo& init_info, PassOtherInfo* other_info)
 	{
 
 	}

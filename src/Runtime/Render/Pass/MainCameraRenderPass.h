@@ -51,14 +51,14 @@ namespace MXRender
         std::shared_ptr< VK_DescriptorSetLayout> descriptorset_layout;
         std::shared_ptr< VK_Texture> cubemap_texture;
     public:
-        virtual void initialize(const PassInfo& init_info,std::shared_ptr<GraphicsContext> context);
-        virtual void initialize(const PassInfo& init_info, std::shared_ptr<VK_GraphicsContext> context);
-        virtual void initialize(const PassInfo& init_info, std::shared_ptr<VK_GraphicsContext> context, std::weak_ptr<VK_Viewport> viewport);
         virtual void post_initialize();
         virtual void set_commonInfo(const PassInfo& init_info);
         virtual void prepare_pass_data(const GraphicsContext& context);
         virtual void initialize_ui_renderbackend();
         virtual void draw(GraphicsContext* context);
+
+        void begin_pass(GraphicsContext* context);
+        void end_pass(GraphicsContext* context);
 
         MainCamera_RenderPass();
         MainCamera_RenderPass(const PassInfo& init_info);
@@ -66,6 +66,9 @@ namespace MXRender
 
         virtual VkRenderPass& get_render_pass() ;
         std::vector<VkFramebuffer>& get_swapchain_framebuffers();
+
+        virtual void initialize(const PassInfo& init_info, PassOtherInfo* other_info) override;
+
     };
 
 

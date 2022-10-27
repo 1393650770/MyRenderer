@@ -660,7 +660,15 @@ VkImageView MXRender::VK_GraphicsContext::get_depth_image_view() const
 
 void MXRender::VK_GraphicsContext::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size)
 {
-	throw std::runtime_error("failed to copy_buffer!");
+	VkCommandBuffer commandBuffer = begin_single_time_commands();
+
+	VkBufferCopy copyRegion{};
+	copyRegion.size = size;
+	vkCmdCopyBuffer(commandBuffer, src_buffer, dst_buffer, 1, &copyRegion);
+
+	end_single_time_commands(commandBuffer);
+
+
 }
 
 VkCommandBuffer MXRender::VK_GraphicsContext::begin_single_time_commands()

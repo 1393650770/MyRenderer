@@ -162,8 +162,8 @@ namespace MXRender
 
 		VkPipelineDepthStencilStateCreateInfo depthStencil{};
 		depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		depthStencil.depthTestEnable = VK_TRUE;
-		depthStencil.depthWriteEnable = VK_TRUE;
+		depthStencil.depthTestEnable = VK_FALSE;
+		depthStencil.depthWriteEnable = VK_FALSE;
 		depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 		depthStencil.depthBoundsTestEnable = VK_FALSE;
 		depthStencil.stencilTestEnable = VK_FALSE;
@@ -370,29 +370,13 @@ namespace MXRender
 		}
 	}
 
-	void MainCamera_RenderPass::initialize(const PassInfo& init_info, std::shared_ptr<GraphicsContext> context)
-	{
-	}
 
-	void MainCamera_RenderPass::initialize(const PassInfo& init_info, std::shared_ptr<VK_GraphicsContext> context, std::weak_ptr<VK_Viewport> viewport)
+
+	void MainCamera_RenderPass::initialize(const PassInfo& init_info, PassOtherInfo* other_info)
 	{
 		pass_info = init_info;
-		this->cur_context = context;
-		setup_renderpass();
-		setup_descriptorset_layout();
-		setup_pipelines();
-		setup_framebuffer();
-		setup_uniformbuffer();
-		setup_descriptorpool();
-		setup_descriptorsets();
-		cur_context.lock()->add_on_swapchain_recreate_func(std::bind(&MainCamera_RenderPass::setup_framebuffer, this));
-		cur_context.lock()->add_on_swapchain_clean_func(std::bind(&MainCamera_RenderPass::destroy_framebuffer, this));
-	}
-
-	void MainCamera_RenderPass::initialize(const PassInfo& init_info, std::shared_ptr<VK_GraphicsContext> context)
-	{
-		pass_info = init_info;
-		this->cur_context = context;
+		VKPassCommonInfo* vk_info= static_cast<VKPassCommonInfo*>(other_info);
+		cur_context=vk_info->context;
 		setup_renderpass();
 		setup_descriptorset_layout();
 		setup_pipelines();
@@ -431,22 +415,6 @@ namespace MXRender
 		{	
 			return;
 		}
-		uint32_t image_index=-1;
-		image_index=vk_context->get_current_swapchain_image_index();
-		VkRenderPassBeginInfo renderPassInfo{};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = render_pass;	
-		renderPassInfo.framebuffer = swapchain_framebuffers[image_index];
-		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = vk_context->get_swapchain_extent();
-
-		std::vector< VkClearValue> clearColor(2);
-		 clearColor[0].color=  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
-		 clearColor[1].depthStencil= { 1.0f, 0 };
-		renderPassInfo.clearValueCount = 2;
-		renderPassInfo.pClearValues = clearColor.data();
-
-		vkCmdBeginRenderPass(vk_context->get_cur_command_buffer(), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		vkCmdBindPipeline(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
@@ -471,12 +439,50 @@ namespace MXRender
 
 		vkCmdDraw(vk_context->get_cur_command_buffer(), 36, 1, 0, 0);
 
-		vkCmdEndRenderPass(vk_context->get_cur_command_buffer());
+
 	}
 
 
 
-    MainCamera_RenderPass::MainCamera_RenderPass()
+	void MainCamera_RenderPass::begin_pass(GraphicsContext* context)
+	{
+		VK_GraphicsContext* vk_context = nullptr;
+		vk_context = dynamic_cast<VK_GraphicsContext*>(context);
+		if (vk_context == nullptr)
+		{
+			return;
+		}
+		uint32_t image_index = -1;
+		image_index = vk_context->get_current_swapchain_image_index();
+		VkRenderPassBeginInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = render_pass;
+		renderPassInfo.framebuffer = swapchain_framebuffers[image_index];
+		renderPassInfo.renderArea.offset = { 0, 0 };
+		renderPassInfo.renderArea.extent = vk_context->get_swapchain_extent();
+
+		std::vector< VkClearValue> clearColor(2);
+		clearColor[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+		clearColor[1].depthStencil = { 1.0f, 0 };
+		renderPassInfo.clearValueCount = 2;
+		renderPassInfo.pClearValues = clearColor.data();
+
+		vkCmdBeginRenderPass(vk_context->get_cur_command_buffer(), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	}
+
+	void MainCamera_RenderPass::end_pass(GraphicsContext* context)
+	{
+		VK_GraphicsContext* vk_context = nullptr;
+		vk_context = dynamic_cast<VK_GraphicsContext*>(context);
+		if (vk_context == nullptr)
+		{
+			return;
+		}
+		vkCmdEndRenderPass(vk_context->get_cur_command_buffer());
+	}
+
+	MainCamera_RenderPass::MainCamera_RenderPass()
 	{
 
 	}

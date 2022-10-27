@@ -21,7 +21,12 @@ namespace MXRender { class VK_GraphicsContext; }
 
 namespace MXRender
 {
-
+    struct VKPassCommonInfo:PassOtherInfo
+    {
+    public:
+        std::weak_ptr<VK_GraphicsContext> context;
+        VkRenderPass render_pass;
+    };
     class VK_RenderPass:public RenderPass
     {
     protected:
@@ -31,8 +36,7 @@ namespace MXRender
         VkPipeline pipeline;
         VkPipelineLayout pipeline_layout;
     public:
-        virtual void initialize(const PassInfo& init_info, std::shared_ptr<GraphicsContext> context);
-        virtual void initialize(const PassInfo& init_info, std::shared_ptr<VK_GraphicsContext> context, std::weak_ptr<VK_Viewport> viewport);
+        virtual void initialize(const PassInfo& init_info, PassOtherInfo* other_info);
         virtual void post_initialize();
         virtual void set_commonInfo(const PassInfo& init_info);
         virtual void prepare_pass_data();

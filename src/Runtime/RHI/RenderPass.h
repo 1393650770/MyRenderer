@@ -31,6 +31,9 @@ namespace MXRender
         std::string pass_name = "";
     };
 
+    struct PassOtherInfo
+    {};
+
     struct RenderPipelineBase
     {
         VkPipelineLayout layout;
@@ -44,7 +47,7 @@ namespace MXRender
         PassInfo pass_info;
         std::weak_ptr<GraphicsContext> cur_context;
     public:
-        virtual void initialize(const PassInfo& init_info, std::shared_ptr<GraphicsContext> context) = 0;
+        virtual void initialize(const PassInfo& init_info, PassOtherInfo* other_info) = 0;
         virtual void post_initialize();
         virtual void set_commonInfo(const PassInfo& init_info);
         virtual void prepare_pass_data(const GraphicsContext& context);
