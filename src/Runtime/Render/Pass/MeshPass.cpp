@@ -209,18 +209,11 @@ namespace MXRender
 	void Mesh_RenderPass::setup_descriptorsets()
 	{
 		
-		std::vector<std::string> cubemap_path{
-			
-			"Resource/Texture/Skybox/right.jpg",
-			"Resource/Texture/Skybox/left.jpg",
-			"Resource/Texture/Skybox/top.jpg",
-			"Resource/Texture/Skybox/bottom.jpg",
-			"Resource/Texture/Skybox/front.jpg",
-			"Resource/Texture/Skybox/back.jpg",
+		std::string texture_path="Resource/Texture/viking_room.png";
 
-		};
 
-		cubemap_texture=std::make_shared<VK_Texture>(cubemap_path);
+
+		cubemap_texture=std::make_shared<VK_Texture>(texture_path);
 
 		VkDescriptorSetAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -325,7 +318,7 @@ namespace MXRender
 		ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		ubo.proj = glm::perspective(glm::radians(45.0f), (float)cur_context.lock()->get_swapchain_extent().width / (float)cur_context.lock()->get_swapchain_extent().height, 0.1f, 100.0f);
 		
-		//ubo.proj[1][1] *= -1;
+		ubo.proj[1][1] *= -1;
 
 		void* data;
 		vkMapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0], 0, sizeof(ubo), 0, &data);
@@ -403,6 +396,7 @@ namespace MXRender
 
 		VkBuffer vertexBuffers[] = { vertexBuffer };
 		VkDeviceSize offsets[] = { 0 };
+
 		vkCmdBindVertexBuffers(vk_context->get_cur_command_buffer(), 0, 1, vertexBuffers, offsets);
 
 		vkCmdBindIndexBuffer(vk_context->get_cur_command_buffer(), indexBuffer, 0, VK_INDEX_TYPE_UINT32);
@@ -424,7 +418,7 @@ namespace MXRender
 	{
 		vkDestroyPipeline(cur_context.lock()->device->device, pipeline, nullptr);
 		vkDestroyPipelineLayout(cur_context.lock()->device->device, pipeline_layout, nullptr);
-		vkDestroyRenderPass(cur_context.lock()->device->device, render_pass, nullptr);
+		//svkDestroyRenderPass(cur_context.lock()->device->device, render_pass, nullptr);
 
 
 

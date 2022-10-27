@@ -33,10 +33,10 @@ void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context)
 
 	main_camera_pass->begin_pass(context.lock().get());
 
-	main_camera_pass->draw(context.lock().get());
+
 
 	mesh_pass->draw(context.lock().get());
-
+	main_camera_pass->draw(context.lock().get());
 
 	main_camera_pass->end_pass(context.lock().get());
 
