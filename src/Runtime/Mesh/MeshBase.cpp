@@ -1,11 +1,11 @@
-#include "VK_Mesh.h"
+#include "MeshBase.h"
 #include "../RHI/Vulkan/VK_VertexArray.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
 #include<unordered_map>
-void MXRender::VK_Mesh::load_model(const std::string& filename)
+void MXRender::MeshBase::load_model(const std::string& filename)
 {
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;

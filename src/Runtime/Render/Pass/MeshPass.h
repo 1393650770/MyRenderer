@@ -16,10 +16,10 @@
 #include "vulkan/vulkan_core.h"
 
 #include "../../RHI/Vulkan/VK_RenderPass.h"
-#include "../../Mesh/VK_Mesh.h"
+#include "../../Mesh/MeshBase.h"
 
 namespace MXRender { class VK_Texture; }
-namespace MXRender { class VK_Mesh; }
+namespace MXRender { class MeshBase; }
 namespace MXRender { class VK_DescriptorSetLayout; }
 
 
@@ -59,7 +59,7 @@ namespace MXRender
 
         std::string mesh_file_path="Resource/Mesh/viking_room.obj";
 
-        std::shared_ptr<VK_Mesh> mesh_data;
+        std::shared_ptr<MeshBase> mesh_data;
 
         VkBuffer vertexBuffer;
         VkDeviceMemory vertexBufferMemory;

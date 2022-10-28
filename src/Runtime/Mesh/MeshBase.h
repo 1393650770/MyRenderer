@@ -8,7 +8,7 @@
 namespace MXRender
 {
     struct SimpleVertex;
-    class VK_Mesh
+    class MeshBase
     {
     private:
     protected:

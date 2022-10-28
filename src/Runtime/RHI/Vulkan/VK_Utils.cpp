@@ -58,6 +58,11 @@ namespace MXRender
 
 
 
+	void VK_Utils::Copy_VKBuffer(VK_GraphicsContext* context, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+	{
+		context->copy_buffer(srcBuffer, dstBuffer, size);
+	}
+
 	void VK_Utils::Create_Image(VkPhysicalDevice physical_device, VkDevice device, uint32_t image_width, uint32_t image_height, VkFormat format, VkImageTiling image_tiling, VkImageUsageFlags image_usage_flags, VkMemoryPropertyFlags memory_property_flags, VkImage& image, VkDeviceMemory& memory, VkImageCreateFlags image_create_flags, uint32_t array_layers, uint32_t miplevels)
 	{
 		VkImageCreateInfo image_create_info{};

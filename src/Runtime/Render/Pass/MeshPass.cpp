@@ -12,7 +12,7 @@
 #include "../../RHI/RenderEnum.h"
 #include "../../RHI/UniformBuffer.h"
 #include "../../RHI/Vulkan/VK_Utils.h"
-#include "../../Mesh/VK_Mesh.h"
+#include "../../Mesh/MeshBase.h"
 #include <chrono>
 
 #define GLM_FORCE_RADIANS
@@ -302,7 +302,7 @@ namespace MXRender
 
 	void Mesh_RenderPass::setup_mesh_data()
 	{
-		mesh_data=std::make_shared<VK_Mesh>();
+		mesh_data=std::make_shared<MeshBase>();
 		mesh_data->load_model(mesh_file_path);
 	}
 
