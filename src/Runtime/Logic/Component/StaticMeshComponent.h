@@ -26,8 +26,12 @@ namespace MXRender
 	struct VK_RenderMeshInfo:RenderMeshInfo
 	{
 	public:
-		VkBuffer vertex_buffer;
-		VkBuffer index_buffer;
+		VK_RenderMeshInfo(VkBuffer& new_vertex_buffer, VkBuffer& new_index_buffer) :
+			vertex_buffer(new_vertex_buffer), index_buffer(new_index_buffer)
+		{
+		};
+		VkBuffer& vertex_buffer;
+		VkBuffer& index_buffer;
 	};
 
 	struct BindMeshInfo
@@ -40,11 +44,15 @@ namespace MXRender
 	struct VK_BindMeshInfo :BindMeshInfo
 	{
 	public:
-
-		VkBuffer vertex_buffer;
-		VkBuffer index_buffer;
-		VkDeviceMemory vertex_buffer_memory;
-		VkDeviceMemory index_buffer_memory;
+		//VK_BindMeshInfo(){};
+		VK_BindMeshInfo(VkBuffer& new_vertex_buffer, VkBuffer& new_index_buffer, VkDeviceMemory& new_vertex_buffer_memory, VkDeviceMemory& new_index_buffer_memory):
+			vertex_buffer(new_vertex_buffer),index_buffer(new_index_buffer),vertex_buffer_memory(new_vertex_buffer_memory),index_buffer_memory(new_index_buffer_memory)
+			{
+			};
+		VkBuffer& vertex_buffer;
+		VkBuffer& index_buffer;
+		VkDeviceMemory& vertex_buffer_memory;
+		VkDeviceMemory& index_buffer_memory;
 	};
 
 
@@ -52,20 +60,22 @@ namespace MXRender
 	class StaticMeshComponent :public ComponentBase
 	{
 	private:
+		void spawn_mesh_data_shared_ptr();
 	protected:
 		std::shared_ptr< MeshBase> mesh_data;
-
-		void setup_vk_vertexbuffer(VK_GraphicsContext* cur_context, VkBuffer vertex_buffer,VkDeviceMemory vertex_buffer_memory);
-		void setup_vk_indexbuffer(VK_GraphicsContext* cur_context, VkBuffer index_buffer, VkDeviceMemory index_buffer_memory);
+		bool is_already_load_mesh=false;
 
 	public:
-		StaticMeshComponent()=delete;
+		StaticMeshComponent();
 		StaticMeshComponent(const std::string& mesh_path);
 		virtual ~StaticMeshComponent();
+
+		void load_mesh(const std::string& mesh_path);
 		std::weak_ptr<MeshBase> get_mesh_data();
+		bool get_already_load_mesh() const;
+		void set_already_load_mesh_to_true();
 
 		void render_mesh(RenderMeshInfo* render_mesh_info);
-
 		void bind_mesh(BindMeshInfo* bind_mesh_info);
 
 		virtual void on_start() override;

@@ -5,6 +5,7 @@
 #include "../../Render/DefaultSetting.h"
 #include "../../Utils/Singleton.h"
 #include "../../Render/Window.h"
+#include "../../Logic/GameObjectManager.h"
 
 void MXRender::VK_GraphicsContext::create_instance()
 {
@@ -797,6 +798,8 @@ void MXRender::VK_GraphicsContext::submit()
 void MXRender::VK_GraphicsContext::cleanup()
 {
 	clean_swapchain();
+	
+	
 
 	for (size_t i = 0; i < max_frames_in_flight; i++) {
 		vkDestroySemaphore(device->device, image_finished_for_presentation_semaphore[i], nullptr);

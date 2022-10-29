@@ -1,8 +1,8 @@
-#include "Mesh.h"
+#include "GL_Mesh.h"
 
 namespace MXRender
 {
-    Mesh::Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures)
+    GL_Mesh::GL_Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures)
     {
         this->vertices = vertices;
         this->indices = indices;
@@ -12,7 +12,7 @@ namespace MXRender
         setupMesh();
     }
 
-    void Mesh::Draw(GL_Shader& shader)
+    void GL_Mesh::Draw(GL_Shader& shader)
     {
         // bind appropriate textures
         unsigned int diffuseNr = 1;
@@ -49,7 +49,7 @@ namespace MXRender
         glActiveTexture(GL_TEXTURE0);
     }
 
-    void Mesh::DrawArray(GL_Shader* shader, int diffuse, int specular, int emission)
+    void GL_Mesh::DrawArray(GL_Shader* shader, int diffuse, int specular, int emission)
     {
 
         glActiveTexture(GL_TEXTURE0);
@@ -72,7 +72,7 @@ namespace MXRender
         glActiveTexture(GL_TEXTURE0);
     }
 
-    Mesh::Mesh(float _vertices[])
+    GL_Mesh::GL_Mesh(float _vertices[])
     {
         this->vertices.resize(36);
         memcpy(&(this->vertices[0]), _vertices, 36 * 8 * sizeof(float));
@@ -98,7 +98,7 @@ namespace MXRender
 
     }
 
-    void Mesh::setupMesh()
+    void GL_Mesh::setupMesh()
     {
         // create buffers/arrays
         glGenVertexArrays(1, &VAO);

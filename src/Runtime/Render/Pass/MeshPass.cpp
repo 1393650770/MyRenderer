@@ -21,6 +21,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "../../RHI/Vulkan/VK_Texture.h"
 #include <array>
+#include "../../Logic/Component/StaticMeshComponent.h"
+#include "../../Logic/GameObjectManager.h"
 namespace MXRender
 {
 
@@ -258,53 +260,7 @@ namespace MXRender
 		
 	}
 
-	void Mesh_RenderPass::setup_vertexbuffer()
-	{
-		VkDeviceSize bufferSize = sizeof(mesh_data->vertices[0]) * mesh_data->vertices.size();
-
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-		VK_Utils::Create_VKBuffer(cur_context.lock()->device,bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-		void* data;
-		vkMapMemory(cur_context.lock()->device->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-		memcpy(data, mesh_data->vertices.data(), (size_t)bufferSize);
-		vkUnmapMemory(cur_context.lock()->device->device, stagingBufferMemory);
-
-		VK_Utils::Create_VKBuffer(cur_context.lock()->device, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-
-		VK_Utils::Copy_VKBuffer (cur_context, stagingBuffer, vertexBuffer, bufferSize);
-
-		vkDestroyBuffer(cur_context.lock()->device->device, stagingBuffer, nullptr);
-		vkFreeMemory(cur_context.lock()->device->device, stagingBufferMemory, nullptr);
-	}
-
-	void Mesh_RenderPass::setup_indexbuffer()
-	{
-		VkDeviceSize bufferSize = sizeof(mesh_data->indices[0]) * mesh_data->indices.size();
-
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-		VK_Utils::Create_VKBuffer(cur_context.lock()->device, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-		void* data;
-		vkMapMemory(cur_context.lock()->device->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-		memcpy(data, mesh_data->indices.data(), (size_t)bufferSize);
-		vkUnmapMemory(cur_context.lock()->device->device, stagingBufferMemory);
-
-		VK_Utils::Create_VKBuffer(cur_context.lock()->device, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
-
-		VK_Utils::Copy_VKBuffer(cur_context, stagingBuffer, indexBuffer, bufferSize);
-
-		vkDestroyBuffer(cur_context.lock()->device->device, stagingBuffer, nullptr);
-		vkFreeMemory(cur_context.lock()->device->device, stagingBufferMemory, nullptr);
-	}
-
-	void Mesh_RenderPass::setup_mesh_data()
-	{
-		mesh_data=std::make_shared<MeshBase>();
-		mesh_data->load_model(mesh_file_path);
-	}
+	
 
 	void Mesh_RenderPass::update_uniformbuffer()
 	{
@@ -329,6 +285,33 @@ namespace MXRender
 
 
 
+	void Mesh_RenderPass::render_mesh(ComponentBase* mesh_component)
+	{
+		StaticMeshComponent* staticmesh=dynamic_cast<StaticMeshComponent*>(mesh_component);
+		if (staticmesh)
+		{
+			VK_BindMeshInfo bind_mesh_info(vertexBuffer, indexBuffer, vertexBufferMemory, indexBufferMemory);//=new VK_BindMeshInfo(vertexBuffer,indexBuffer,vertexBufferMemory,indexBufferMemory);
+			
+			bind_mesh_info.context=cur_context.lock().get();
+			//bind_mesh_info.index_buffer=indexBuffer;
+			//bind_mesh_info.index_buffer_memory=indexBufferMemory;
+			//bind_mesh_info.vertex_buffer=vertexBuffer;
+			//bind_mesh_info.vertex_buffer_memory=vertexBufferMemory;
+
+			staticmesh->bind_mesh(&bind_mesh_info);
+
+			VK_RenderMeshInfo render_mesh_info(vertexBuffer,indexBuffer);//=new VK_RenderMeshInfo();
+			render_mesh_info.context= cur_context.lock().get();
+
+			//render_mesh_info.index_buffer= indexBuffer;
+			//render_mesh_info.vertex_buffer= vertexBuffer;
+			staticmesh->render_mesh(&render_mesh_info);
+
+			//delete bind_mesh_info;
+			//delete render_mesh_info;
+		}
+	}
+
 	void Mesh_RenderPass::initialize(const PassInfo& init_info, PassOtherInfo* other_info)
 	{
 		VKPassCommonInfo* vk_info = static_cast<VKPassCommonInfo*>(other_info);
@@ -339,9 +322,6 @@ namespace MXRender
 		setup_descriptorset_layout();
 		setup_pipelines();
 
-		setup_mesh_data();
-		setup_indexbuffer();
-		setup_vertexbuffer();
 		setup_uniformbuffer();
 		setup_descriptorpool();
 		setup_descriptorsets();
@@ -394,17 +374,11 @@ namespace MXRender
 
 		vkCmdSetScissor(vk_context->get_cur_command_buffer(), 0, 1, &scissor);
 
-		VkBuffer vertexBuffers[] = { vertexBuffer };
-		VkDeviceSize offsets[] = { 0 };
-
-		vkCmdBindVertexBuffers(vk_context->get_cur_command_buffer(), 0, 1, vertexBuffers, offsets);
-
-		vkCmdBindIndexBuffer(vk_context->get_cur_command_buffer(), indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
 		vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &descriptor_sets[0], 0, nullptr);
 
-		vkCmdDrawIndexed(vk_context->get_cur_command_buffer(), static_cast<uint32_t>(mesh_data->indices.size()), 1, 0, 0, 0);
-
+		//vkCmdDrawIndexed(vk_context->get_cur_command_buffer(), static_cast<uint32_t>(mesh_data->indices.size()), 1, 0, 0, 0);
+		for(int i=0;i< Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list.size();i++)
+			render_mesh(Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_staticmesh());
 	}
 
 
@@ -429,11 +403,7 @@ namespace MXRender
 
 		vkDestroyDescriptorPool(cur_context.lock()->device->device, descriptor_pool, nullptr);
 
-		vkDestroyBuffer(cur_context.lock()->device->device, indexBuffer, nullptr);
-		vkFreeMemory(cur_context.lock()->device->device, indexBufferMemory, nullptr);
 
-		vkDestroyBuffer(cur_context.lock()->device->device, vertexBuffer, nullptr);
-		vkFreeMemory(cur_context.lock()->device->device, vertexBufferMemory, nullptr);
 	}
 
 	VkRenderPass& Mesh_RenderPass::get_render_pass() 

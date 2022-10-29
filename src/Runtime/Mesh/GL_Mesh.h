@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _MESH_
-#define _MESH_
+#ifndef _GL_MESH_
+#define _GL_MESH_
 #include <glad/glad.h> // 所有头文件
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -10,6 +10,7 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include "MeshBase.h"
 using namespace std;
 
 namespace MXRender
@@ -39,16 +40,17 @@ namespace MXRender
         string path;
     };
 
-    class Mesh {
+    class GL_Mesh:public MeshBase {
     public:
         vector<Vertex>       vertices;
         vector<unsigned int> indices;
         vector<Texture>      textures;
         unsigned int VAO;
 
-        Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures);
+        GL_Mesh()=default;
+        GL_Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures);
         void DrawArray(GL_Shader* shader, int diffuse, int specular, int emission);
-        Mesh(float vertices[]);
+        GL_Mesh(float vertices[]);
 
         void Draw(GL_Shader& shader);
 

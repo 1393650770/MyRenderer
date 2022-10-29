@@ -5,6 +5,17 @@
 #include <tiny_obj_loader.h>
 
 #include<unordered_map>
+
+MXRender::MeshBase::MeshBase()
+{
+
+}
+
+MXRender::MeshBase::~MeshBase()
+{
+
+}
+
 void MXRender::MeshBase::load_model(const std::string& filename)
 {
     tinyobj::attrib_t attrib;
@@ -42,4 +53,14 @@ void MXRender::MeshBase::load_model(const std::string& filename)
             indices.push_back(uniqueVertices[vertex]);
         }
     }
+}
+
+void MXRender::MeshBase::destroy_mesh_info(GraphicsContext* context)
+{
+
+}
+
+void MXRender::MeshBase::init_mesh_info(GraphicsContext* context)
+{
+
 }

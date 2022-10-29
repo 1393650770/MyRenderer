@@ -22,6 +22,7 @@ namespace MXRender
 
 		void update_relative_model_matrix();
 	public:
+
 		TransformComponent();
 		virtual ~TransformComponent();
 		void set_translation(glm::vec3 new_translation);

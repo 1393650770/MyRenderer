@@ -18,6 +18,8 @@
 #include "../../RHI/Vulkan/VK_RenderPass.h"
 #include "../../Mesh/MeshBase.h"
 
+namespace MXRender { class ComponentBase; }
+
 namespace MXRender { class VK_Texture; }
 namespace MXRender { class MeshBase; }
 namespace MXRender { class VK_DescriptorSetLayout; }
@@ -41,12 +43,9 @@ namespace MXRender
         void setup_uniformbuffer();
         void setup_descriptorpool();
         void setup_descriptorsets();
-        void setup_vertexbuffer();
-        void setup_indexbuffer();
-        void setup_mesh_data();
         void update_uniformbuffer();
-
-
+        
+        void render_mesh(ComponentBase* mesh_component);
 
 		std::vector<VkBuffer> uniform_buffers;
 		std::vector<VkDeviceMemory> uniform_buffers_memory;
@@ -56,10 +55,6 @@ namespace MXRender
 
         std::shared_ptr< VK_DescriptorSetLayout> descriptorset_layout;
         std::shared_ptr< VK_Texture> cubemap_texture;
-
-        std::string mesh_file_path="Resource/Mesh/viking_room.obj";
-
-        std::shared_ptr<MeshBase> mesh_data;
 
         VkBuffer vertexBuffer;
         VkDeviceMemory vertexBufferMemory;
