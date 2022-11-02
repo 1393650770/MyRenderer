@@ -40,7 +40,7 @@ namespace MXRender
         virtual void post_initialize();
         virtual void set_commonInfo(const PassInfo& init_info);
         virtual void prepare_pass_data();
-        virtual void initialize_ui_renderbackend();
+        virtual void initialize_ui_renderbackend(WindowUI* window_ui);
         VK_RenderPass();
         VK_RenderPass(const PassInfo& init_info);
         virtual ~VK_RenderPass() ;

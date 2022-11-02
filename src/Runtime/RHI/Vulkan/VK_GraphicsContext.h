@@ -38,11 +38,7 @@ namespace MXRender { class RenderPass; }
 namespace MXRender
 {
 
-#ifdef NDEBUG
-	const bool enableValidationLayers = false;
-#else
-	const bool enableValidationLayers = true;
-#endif
+
 
 	const std::vector<const char*> validationLayers = {
 		"VK_LAYER_KHRONOS_validation"
@@ -111,16 +107,13 @@ namespace MXRender
         VkSurfaceKHR surface;
 
 
-        VkQueue graphicsQueue;
-        VkQueue presentQueue;
     
-        VkDescriptorPool descriptor_pool;
 
         GLFWwindow* window{ nullptr };
 
         static uint8_t const max_frames_in_flight{ 3 };
         uint8_t   current_frame_index{ 0 };
-        VkCommandPool command_pool;//[max_frames_in_flight];
+        
         std::vector< VkCommandBuffer> command_buffer;//[max_frames_in_flight];
 		VkSemaphore          image_available_for_render_semaphore[max_frames_in_flight];
 		VkSemaphore          image_finished_for_presentation_semaphore[max_frames_in_flight];
@@ -147,6 +140,11 @@ namespace MXRender
         std::vector<std::function<void()>>  on_swapchain_clean;
         //std::shared_ptr <VK_DescriptorPool> descriptor_pool;
     public:
+		VkQueue graphicsQueue;
+		VkQueue presentQueue;
+        VkDescriptorPool descriptor_pool;
+        VkCommandPool command_pool;//[max_frames_in_flight];
+
         VK_GraphicsContext();
         virtual ~VK_GraphicsContext();
         virtual void init(Window* new_window) override;
@@ -176,6 +174,8 @@ namespace MXRender
         VkFormat get_depth_image_format() const;
         VkExtent2D get_swapchain_extent() const;
         VkImageView get_depth_image_view() const;
+        GLFWwindow* get_window() const;
+        QueueFamilyIndices get_queuefamily() ;
         void copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size);
         VkCommandBuffer begin_single_time_commands();
         void end_single_time_commands(VkCommandBuffer command_buffer);

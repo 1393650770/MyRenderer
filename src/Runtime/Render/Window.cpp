@@ -11,6 +11,7 @@
 #include <memory>
 #include "Pass/MainCameraRenderPass.h"
 #include "../RHI/Vulkan/VK_GraphicsContext.h"
+#include "../UI/Editor_UI.h"
 
 
 
@@ -70,7 +71,9 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
 
 	Singleton<DefaultSetting>::get_instance().context->init(this);
 
-	render->init(Singleton<DefaultSetting>::get_instance().context,window);
+	EditorUI edit_ui;
+
+	render->init(Singleton<DefaultSetting>::get_instance().context,window, &edit_ui);
 
 	while (!glfwWindowShouldClose(window))
     {

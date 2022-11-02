@@ -1,5 +1,6 @@
 #include "VK_RenderPass.h"
 #include "VK_Viewport.h"
+#include "../../UI/Window_UI.h"
 
 namespace MXRender
 {
@@ -25,7 +26,7 @@ namespace MXRender
 
 	}
 
-	void VK_RenderPass::initialize_ui_renderbackend()
+	void VK_RenderPass::initialize_ui_renderbackend(WindowUI* window_ui)
 	{
 
 	}

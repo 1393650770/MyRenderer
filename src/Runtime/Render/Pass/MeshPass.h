@@ -64,7 +64,6 @@ namespace MXRender
         virtual void post_initialize();
         virtual void set_commonInfo(const PassInfo& init_info);
         virtual void prepare_pass_data(const GraphicsContext& context);
-        virtual void initialize_ui_renderbackend();
         virtual void draw(GraphicsContext* context);
 
         Mesh_RenderPass();
@@ -72,7 +71,7 @@ namespace MXRender
         virtual ~Mesh_RenderPass();
 
         virtual VkRenderPass& get_render_pass() ;
-        std::vector<VkFramebuffer>& get_swapchain_framebuffers();
+
 
         virtual void initialize(const PassInfo& init_info, PassOtherInfo* other_info) override;
 

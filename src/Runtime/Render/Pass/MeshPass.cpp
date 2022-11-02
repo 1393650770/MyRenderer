@@ -339,9 +339,7 @@ namespace MXRender
     {
     }
 
-    void Mesh_RenderPass::initialize_ui_renderbackend()
-    {
-    }
+
 
 
 	void Mesh_RenderPass::draw(GraphicsContext* context)

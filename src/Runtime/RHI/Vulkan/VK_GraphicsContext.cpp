@@ -659,6 +659,16 @@ VkImageView MXRender::VK_GraphicsContext::get_depth_image_view() const
 	return depth_image_view;
 }
 
+GLFWwindow* MXRender::VK_GraphicsContext::get_window() const
+{
+	return window;
+}
+
+MXRender::QueueFamilyIndices MXRender::VK_GraphicsContext::get_queuefamily() 
+{
+	return find_queue_families(device->gpu);
+}
+
 void MXRender::VK_GraphicsContext::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size)
 {
 	VkCommandBuffer commandBuffer = begin_single_time_commands();

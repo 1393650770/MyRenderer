@@ -18,6 +18,13 @@ namespace MXRender
     private:
     protected:
     public:
+
+#ifdef NDEBUG
+		const bool enableValidationLayers = false;
+#else
+		const bool enableValidationLayers = true;
+#endif
+
         GraphicsContext();
         virtual ~GraphicsContext() = default;
         virtual void init(Window* new_window)=0;

@@ -400,9 +400,7 @@ namespace MXRender
     {
     }
 
-    void MainCamera_RenderPass::initialize_ui_renderbackend()
-    {
-    }
+
 
 
 	void MainCamera_RenderPass::draw(GraphicsContext* context)

@@ -2,6 +2,7 @@
 #include"RenderState.h"
 #include "GraphicsContext.h"
 #include "Vulkan/VK_Viewport.h"
+#include "../UI/Window_UI.h"
 namespace MXRender
 {
     void RenderPass::post_initialize()
@@ -16,12 +17,12 @@ namespace MXRender
     {
     }
 
-    void RenderPass::initialize_ui_renderbackend()
+    void RenderPass::initialize_ui_renderbackend(WindowUI* window_ui)
     {
     }
 
 
-	void RenderPass::draw(GraphicsContext* context, uint32_t& image_index, VK_Viewport* viewport)
+	void RenderPass::draw(GraphicsContext* context)
 	{
         
 	}
