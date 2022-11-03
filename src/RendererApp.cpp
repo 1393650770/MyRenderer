@@ -12,7 +12,7 @@ int main()
 
 	my_window.run(defer_render);
 
-	system("pause");
+	//system("pause");
 
 	return 0;
 }

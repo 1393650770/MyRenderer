@@ -15,15 +15,22 @@ namespace MXRender
 	class MyRender;
 	class Window
 	{
+	private:
+		GLFWwindow* window = nullptr;
+		float deltaTime = 0.0f;
+		float lastFrame = 0.0f;
+	protected:
+
+
+
 	public:
 		Window();
 		virtual ~Window();
 		void run(std::shared_ptr<MyRender> render);
 		GLFWwindow* GetWindow() const;
-	private:
-		GLFWwindow* window=nullptr;
-		float deltaTime = 0.0f;	
-		float lastFrame = 0.0f;
+
+
+
 	};
 }
 #endif //_WINDOW_

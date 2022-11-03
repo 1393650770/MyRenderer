@@ -1,4 +1,7 @@
 #include "UIPass.h"
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
 #include "vulkan/vulkan_core.h"
 #include "../../RHI/Vulkan/VK_GraphicsContext.h"
 #include "../../RHI/Vulkan/VK_Device.h"
@@ -15,9 +18,10 @@
 #include "../../RHI/Vulkan/VK_Utils.h"
 #include "../../UI/Window_UI.h"
 #include <chrono>
+#include "imgui.h"
 #include "imgui_impl_vulkan.h"
 #include "imgui_impl_glfw.h"
-
+#include "imgui_internal.h"
 
 
 
@@ -67,12 +71,20 @@ void MXRender::UI_RenderPass::upload_fonts()
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
 }
 
+MXRender::UI_RenderPass::~UI_RenderPass()
+{
+	vkDestroyDescriptorPool(cur_context.lock()->device->device, descriptor_pool, nullptr);
+
+}
+
 void MXRender::UI_RenderPass::initialize(const PassInfo& init_info, PassOtherInfo* other_info)
 {
 	VKPassCommonInfo* vk_info = static_cast<VKPassCommonInfo*>(other_info);
 	cur_context = vk_info->context;
 	pass_info = init_info;
 	render_pass = vk_info->render_pass;
+
+	setup_descriptorpool();
 }
 
 void MXRender::UI_RenderPass::initialize_ui_renderbackend(WindowUI* window_ui)
@@ -80,13 +92,15 @@ void MXRender::UI_RenderPass::initialize_ui_renderbackend(WindowUI* window_ui)
 	this->window_ui = window_ui;
 
 	ImGui_ImplGlfw_InitForVulkan(cur_context.lock()->get_window(), true);
+
+
 	ImGui_ImplVulkan_InitInfo init_info = {};
 	init_info.Instance = cur_context.lock()->get_instance();
 	init_info.PhysicalDevice = cur_context.lock()->device->gpu;
 	init_info.Device = cur_context.lock()->device->device;
 	init_info.QueueFamily = cur_context.lock()->get_queuefamily().graphicsFamily.value();
 	init_info.Queue = cur_context.lock()->graphicsQueue;
-	init_info.DescriptorPool = cur_context.lock()->descriptor_pool;
+	init_info.DescriptorPool = descriptor_pool;
 	//init_info.Subpass = _main_camera_subpass_ui;
 
 
@@ -96,6 +110,24 @@ void MXRender::UI_RenderPass::initialize_ui_renderbackend(WindowUI* window_ui)
 
 	upload_fonts();
 }
+
+void MXRender::UI_RenderPass::setup_descriptorpool()
+{
+	std::vector<VkDescriptorPoolSize> poolSize(1);
+	poolSize[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSize[0].descriptorCount = 256;
+
+	VkDescriptorPoolCreateInfo poolInfo{};
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.poolSizeCount = poolSize.size();
+	poolInfo.pPoolSizes = poolSize.data();
+	poolInfo.maxSets = 256;
+
+	if (vkCreateDescriptorPool(cur_context.lock()->device->device, &poolInfo, nullptr, &descriptor_pool) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create descriptor pool!");
+	}
+}
+
 
 void MXRender::UI_RenderPass::draw(GraphicsContext* context)
 {

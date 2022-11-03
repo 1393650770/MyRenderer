@@ -13,6 +13,11 @@
 #include "../RHI/Vulkan/VK_GraphicsContext.h"
 #include "../UI/Editor_UI.h"
 
+static void on_window_size_callback(GLFWwindow* window, int width, int height)
+{
+	Singleton<MXRender::DefaultSetting>::get_instance().height = height;
+	Singleton<MXRender::DefaultSetting>::get_instance().width = width;
+};
 
 
 MXRender::Window::Window()
@@ -30,6 +35,9 @@ MXRender::Window::Window()
 		return;
 	}
 	glfwSetWindowUserPointer(window, this);
+
+	glfwSetWindowSizeCallback(window, on_window_size_callback);
+
 	//glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	//glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -72,8 +80,12 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
 	Singleton<DefaultSetting>::get_instance().context->init(this);
 
 	EditorUI edit_ui;
+	EditorUIInitInfo editui_info;
+	
+	editui_info.context= Singleton<DefaultSetting>::get_instance().context.get();
+	edit_ui.initialize(&editui_info);
 
-	render->init(Singleton<DefaultSetting>::get_instance().context,window, &edit_ui);
+	render->init(Singleton<DefaultSetting>::get_instance().context,window,&edit_ui);
 
 	while (!glfwWindowShouldClose(window))
     {

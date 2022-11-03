@@ -33,14 +33,19 @@ namespace MXRender
     private:
     protected:
         WindowUI* window_ui;
+        
+        VkDescriptorPool descriptor_pool;
+
+        void setup_descriptorpool();
 
         void upload_fonts();
     public:
-
+        virtual ~UI_RenderPass();
         virtual void initialize(const PassInfo& init_info, PassOtherInfo* other_info) override;
 
 
         virtual void initialize_ui_renderbackend(WindowUI* window_ui) override;
+
 
 
         virtual void draw(GraphicsContext* context) override;

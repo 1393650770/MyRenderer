@@ -36,6 +36,11 @@ namespace MXRender
 		//因为目前还没有父子关系，所以拿到的只是相对的matrix
 		glm::mat4 get_model_matrix();
 		glm::mat4 get_relative_model_matrix();
+
+		glm::vec3 get_translation();
+		glm::vec3 get_scale();
+		glm::vec3 get_rotation();
+
 		virtual void on_start() override;
 
 

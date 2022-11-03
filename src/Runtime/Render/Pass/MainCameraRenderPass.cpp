@@ -416,16 +416,8 @@ namespace MXRender
 
 		vkCmdBindPipeline(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-		VkViewport vk_viewport{};
-		
-		vk_viewport.x = 0.0f;
-		vk_viewport.y = 0.0f;
-		vk_viewport.width = (float)vk_context->get_swapchain_extent().width;
-		vk_viewport.height = (float)vk_context->get_swapchain_extent().height;
-		vk_viewport.minDepth = 0.0f;
-		vk_viewport.maxDepth = 1.0f;
 
-		vkCmdSetViewport(vk_context->get_cur_command_buffer(), 0, 1, &vk_viewport);
+		vkCmdSetViewport(vk_context->get_cur_command_buffer(), 0, 1, &vk_context->viewport);
 
 		VkRect2D scissor{};
 		scissor.offset = { 0, 0 };

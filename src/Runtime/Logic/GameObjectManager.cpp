@@ -12,6 +12,7 @@ MXRender::GameObjectManager::GameObjectManager()
 
 	object_list.emplace_back("Resource/Mesh/rock.obj");
 
+	object_list.emplace_back("Resource/Mesh/sponza.obj");
 
 }
 

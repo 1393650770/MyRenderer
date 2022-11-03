@@ -18,6 +18,8 @@
 #include "../../RHI/Vulkan/VK_RenderPass.h"
 #include "../../Mesh/MeshBase.h"
 
+namespace MXRender { class GameObject; }
+
 namespace MXRender { class ComponentBase; }
 
 namespace MXRender { class VK_Texture; }
@@ -45,6 +47,7 @@ namespace MXRender
         void setup_descriptorsets();
         void update_uniformbuffer();
         
+        void update_object_uniform(GameObject* game_object);
         void render_mesh(ComponentBase* mesh_component);
 
 		std::vector<VkBuffer> uniform_buffers;
@@ -56,10 +59,7 @@ namespace MXRender
         std::shared_ptr< VK_DescriptorSetLayout> descriptorset_layout;
         std::shared_ptr< VK_Texture> cubemap_texture;
 
-        VkBuffer vertexBuffer;
-        VkDeviceMemory vertexBufferMemory;
-        VkBuffer indexBuffer;
-        VkDeviceMemory indexBufferMemory;
+
     public:
         virtual void post_initialize();
         virtual void set_commonInfo(const PassInfo& init_info);

@@ -127,7 +127,6 @@ namespace MXRender
 		VkExtent2D               swapchain_extent;
 		std::vector<VkImage>     swapchain_images;
 		
-		VkViewport       viewport;
 		VkRect2D         scissor;
 
 		VkImage        depth_image{ VK_NULL_HANDLE };
@@ -140,6 +139,7 @@ namespace MXRender
         std::vector<std::function<void()>>  on_swapchain_clean;
         //std::shared_ptr <VK_DescriptorPool> descriptor_pool;
     public:
+        VkViewport       viewport;
 		VkQueue graphicsQueue;
 		VkQueue presentQueue;
         VkDescriptorPool descriptor_pool;

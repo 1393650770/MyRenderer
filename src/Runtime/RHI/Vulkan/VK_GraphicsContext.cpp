@@ -136,6 +136,12 @@ void MXRender::VK_GraphicsContext::create_logical_device()
 	vkGetDeviceQueue(device->device, indices.graphicsFamily.value(), 0, &graphicsQueue);
 	vkGetDeviceQueue(device->device, indices.presentFamily.value(), 0, &presentQueue);
 
+
+
+
+
+
+
 	depth_image_format = find_supported_depth_format({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
@@ -437,6 +443,14 @@ void MXRender::VK_GraphicsContext::init(Window* new_window)
 	create_command_pool();
 	create_command_buffer();
 	create_sync_object();
+
+
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = get_swapchain_extent().width;
+	viewport.height = get_swapchain_extent().height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
 }
 
 void MXRender::VK_GraphicsContext::pre_init()

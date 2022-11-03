@@ -23,6 +23,7 @@
 #include <array>
 #include "../../Logic/Component/StaticMeshComponent.h"
 #include "../../Logic/GameObjectManager.h"
+#include "../../Logic/GameObject.h"
 namespace MXRender
 {
 
@@ -262,53 +263,46 @@ namespace MXRender
 
 	
 
-	void Mesh_RenderPass::update_uniformbuffer()
+
+
+
+
+
+	void Mesh_RenderPass::update_object_uniform(GameObject* game_object)
 	{
-		static auto startTime = std::chrono::high_resolution_clock::now();
-
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
 		MVP_Struct ubo{};
-		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 1.0f));
+		ubo.model = game_object->get_transform()->get_model_matrix();
 		ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		ubo.proj = glm::perspective(glm::radians(45.0f), (float)cur_context.lock()->get_swapchain_extent().width / (float)cur_context.lock()->get_swapchain_extent().height, 0.1f, 100.0f);
-		
-		ubo.proj[1][1] *= -1;
+		ubo.proj = glm::perspective(glm::radians(60.0f), (float)cur_context.lock()->get_swapchain_extent().width / (float)cur_context.lock()->get_swapchain_extent().height, 0.1f, 1000.0f);
 
+		ubo.proj[1][1] *= -1;
+		
 		void* data;
 		vkMapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0], 0, sizeof(ubo), 0, &data);
 		memcpy(data, &ubo, sizeof(ubo));
 		vkUnmapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0]);
-	}	
-
-
-
+	}
 
 	void Mesh_RenderPass::render_mesh(ComponentBase* mesh_component)
 	{
 		StaticMeshComponent* staticmesh=dynamic_cast<StaticMeshComponent*>(mesh_component);
 		if (staticmesh)
 		{
-			VK_BindMeshInfo bind_mesh_info(vertexBuffer, indexBuffer, vertexBufferMemory, indexBufferMemory);//=new VK_BindMeshInfo(vertexBuffer,indexBuffer,vertexBufferMemory,indexBufferMemory);
-			
+
+			BindMeshInfo bind_mesh_info;
+
 			bind_mesh_info.context=cur_context.lock().get();
-			//bind_mesh_info.index_buffer=indexBuffer;
-			//bind_mesh_info.index_buffer_memory=indexBufferMemory;
-			//bind_mesh_info.vertex_buffer=vertexBuffer;
-			//bind_mesh_info.vertex_buffer_memory=vertexBufferMemory;
+
 
 			staticmesh->bind_mesh(&bind_mesh_info);
 
-			VK_RenderMeshInfo render_mesh_info(vertexBuffer,indexBuffer);//=new VK_RenderMeshInfo();
+			RenderMeshInfo render_mesh_info;
 			render_mesh_info.context= cur_context.lock().get();
 
-			//render_mesh_info.index_buffer= indexBuffer;
-			//render_mesh_info.vertex_buffer= vertexBuffer;
+
 			staticmesh->render_mesh(&render_mesh_info);
 
-			//delete bind_mesh_info;
-			//delete render_mesh_info;
+
 		}
 	}
 
@@ -344,7 +338,7 @@ namespace MXRender
 
 	void Mesh_RenderPass::draw(GraphicsContext* context)
 	{
-		update_uniformbuffer();
+		//update_uniformbuffer();
 
 		VK_GraphicsContext* vk_context=nullptr;
 		vk_context= dynamic_cast<VK_GraphicsContext*>(context);
@@ -355,16 +349,8 @@ namespace MXRender
 
 		vkCmdBindPipeline(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-		VkViewport vk_viewport{};
-		
-		vk_viewport.x = 0.0f;
-		vk_viewport.y = 0.0f;
-		vk_viewport.width = (float)vk_context->get_swapchain_extent().width;
-		vk_viewport.height = (float)vk_context->get_swapchain_extent().height;
-		vk_viewport.minDepth = 0.0f;
-		vk_viewport.maxDepth = 1.0f;
 
-		vkCmdSetViewport(vk_context->get_cur_command_buffer(), 0, 1, &vk_viewport);
+		vkCmdSetViewport(vk_context->get_cur_command_buffer(), 0, 1, &vk_context-> viewport);
 
 		VkRect2D scissor{};
 		scissor.offset = { 0, 0 };
@@ -376,7 +362,10 @@ namespace MXRender
 
 		//vkCmdDrawIndexed(vk_context->get_cur_command_buffer(), static_cast<uint32_t>(mesh_data->indices.size()), 1, 0, 0, 0);
 		for(int i=0;i< Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list.size();i++)
+		{ 
+			update_object_uniform(&Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i]);
 			render_mesh(Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_staticmesh());
+		}
 	}
 
 
