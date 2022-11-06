@@ -45,7 +45,6 @@ namespace MXRender
         void setup_uniformbuffer();
         void setup_descriptorpool();
         void setup_descriptorsets();
-        void update_uniformbuffer();
         
         void update_object_uniform(GameObject* game_object);
         void render_mesh(ComponentBase* mesh_component);

@@ -6,6 +6,7 @@
 
 
 #include "GameObject.h"
+#include "Camera/Camera.h"
 
 namespace MXRender
 {
@@ -17,6 +18,7 @@ namespace MXRender
 
 	public:
 		std::vector<GameObject> object_list;
+		Camera main_camera;
 		GameObjectManager();
 		virtual ~GameObjectManager();
 		void destroy_object_list(GraphicsContext* context);

@@ -3,6 +3,9 @@
 #define _DEFAULTSETTING_
 #include <memory>
 
+namespace MXRender { class InputSystem; }
+
+
 namespace MXRender { class GameObjectManager; }
 
 namespace MXRender { class VK_GraphicsContext; }
@@ -13,6 +16,7 @@ namespace MXRender
 	public:
 		std::shared_ptr <VK_GraphicsContext> context;
 		std::shared_ptr <GameObjectManager> gameobject_manager;
+		std::shared_ptr <InputSystem> input_system;
 		DefaultSetting();
 		virtual ~DefaultSetting();
 		int width = 800;
