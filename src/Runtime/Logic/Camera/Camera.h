@@ -8,7 +8,14 @@
 
 #include "glm/fwd.hpp"
 #include "../Object.h"
-#include "../Component/TransformComponent.h"
+
+
+struct GLFWwindow;
+
+namespace MXRender { class TransformComponent; }
+
+
+namespace MXRender { class InputComponent; }
 
 
 namespace MXRender
@@ -25,10 +32,21 @@ namespace MXRender
 	class Camera :public Object
 	{
 	private:
+		float last_pos_x=0.0f,last_pos_y=0.0f;
+
 		void calc_proj_mat();
 		void calc_otho_mat();
+
+		void camera_rotation(float);
+		void camera_moveforward(float);
+		void camera_moveback(float);
+		void camera_moveright(float);
+		void camera_moveleft(float);
 	protected:
 		TransformComponent* transform;
+		InputComponent* input_component;
+		GLFWwindow* window;
+
 		float fov, far , near , movement_speed,width, height;
 		glm::vec3 direction,up,right, focal_point;
 		ENUM_CAMERA_TYPE camera_type;
@@ -48,8 +66,13 @@ namespace MXRender
 		glm::mat4 get_projection_mat() const ;
 		glm::mat4 get_view_mat() ;
 		void update_rotation(float x_offset,float y_offset);
+		void set_window(GLFWwindow* new_window);
+		virtual void input_bingding_func() ;
+
 		Camera();
+
 		virtual ~Camera();
+
 
 	};
 

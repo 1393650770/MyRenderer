@@ -8,6 +8,12 @@
 
 
 
+struct GLFWwindow;
+namespace MXRender { class Object; }
+namespace MXRender { class GameObject; }
+
+
+
 
 namespace MXRender
 {
@@ -20,19 +26,25 @@ namespace MXRender
 		COUNT
 
 	};
+
+	enum ENUM_BUTTON_STATE:int
+	{
+		PRESS=0,
+		REPEAT,
+		RELEASE,
+	};
 	class InputSystem
 	{
 	private:
 		
 	protected:
-		std::unordered_map<std::string,int> input_key_map;
-		std::unordered_map<int,std::function<void()>> input_func_map;
+
 	public:
-		void bind_func(std::string name,const std::function<void()>& func);
-		virtual void run(int key);
+		Object* cur_controller_object;
 		InputSystem();
 		virtual ~InputSystem();
 
+		virtual void process_input(GLFWwindow* window);
 	};
 
 }

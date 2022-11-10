@@ -1,18 +1,64 @@
 #include "Camera.h"
+#include "../Component/TransformComponent.h"
+#include "../Component/InputComponent.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
-
+#include <functional>
+#include <iostream>
+#include "GLFW/glfw3.h"
 
 void MXRender::Camera::calc_proj_mat()
 {
-	projection_mat = glm::perspective(fov, width/ height, near, far);
+	projection_mat = glm::perspective(glm::radians(fov), width/ height, near, far);
 }
 
 void MXRender::Camera::calc_otho_mat()
 {
 	projection_mat = glm::ortho(-width * 0.5f, width * 0.5f, -height * 0.5f, height * 0.5f);
+}
+
+void MXRender::Camera::camera_rotation(float delta_time)
+{
+	
+	double xpos,ypos;
+	glfwGetCursorPos(window, &xpos,&ypos);
+	float xoffset = last_pos_x - xpos;
+	float yoffset = last_pos_y - ypos; 
+	//std::cout<<"camera_rotation :"<< xoffset<<"  "<< yoffset << std::endl;
+	//update_rotation(xoffset*0.0000001f,yoffset * 0.0000001f);
+
+	last_pos_x=xpos;
+	last_pos_y=ypos;
+}
+
+void MXRender::Camera::camera_moveforward(float delta_time)
+{
+	glm::vec3 position = transform->get_translation();
+	position.z += movement_speed * delta_time;
+	transform->set_translation(position);
+}
+
+void MXRender::Camera::camera_moveback(float delta_time)
+{
+	glm::vec3 position = transform->get_translation();
+	position.z -= movement_speed * delta_time;
+	transform->set_translation(position);
+}
+
+void MXRender::Camera::camera_moveright(float delta_time)
+{
+	glm::vec3 position= transform->get_translation();
+	position.x-=movement_speed* delta_time;
+	transform->set_translation(position);
+}
+
+void MXRender::Camera::camera_moveleft(float delta_time)
+{
+	glm::vec3 position = transform->get_translation();
+	position.x += movement_speed * delta_time;
+	transform->set_translation(position);
 }
 
 void MXRender::Camera::calc_projection_mat()
@@ -27,7 +73,7 @@ void MXRender::Camera::calc_projection_mat()
 		calc_otho_mat();
 		break;
 	default:
-		calc_otho_mat();
+		calc_proj_mat();
 		break;
 	}
 }
@@ -133,13 +179,35 @@ void MXRender::Camera::update_rotation(float x_offset, float y_offset)
 
 }
 
+void MXRender::Camera::set_window(GLFWwindow* new_window)
+{
+	window=new_window;
+}
+
+void MXRender::Camera::input_bingding_func()
+{
+	input_component->bind_func("Turn_right",PRESS,std::bind( &MXRender::Camera::Camera::camera_moveright ,this, std::placeholders::_1));
+	input_component->bind_func("Turn_left", PRESS, std::bind(&MXRender::Camera::Camera::camera_moveleft, this, std::placeholders::_1));
+	input_component->bind_func("Turn_forward", PRESS, std::bind(&MXRender::Camera::Camera::camera_moveforward, this, std::placeholders::_1));
+	input_component->bind_func("Turn_back", PRESS, std::bind(&MXRender::Camera::Camera::camera_moveback, this, std::placeholders::_1));
+	input_component->bind_func("Rotate", PRESS, std::bind(&MXRender::Camera::Camera::camera_rotation, this, std::placeholders::_1));
+}
+
+
 MXRender::Camera::Camera():fov(60.0f), far(1000.0f), near(0.1f), movement_speed(1.0f), width(1920.0f), height(1080.0f), direction(glm::vec3(0.0f, 0.0f, -1.0f)), up(glm::vec3(0.0f, 1.0f, 0.0f)), right(glm::normalize(glm::cross(up, direction))), focal_point(glm::vec3(0.0f, 0.0f, -1.0f))
 {
 	transform = new TransformComponent();
+	input_component = new InputComponent();
+	transform->set_translation(glm::vec3(0.0f, 0.0f, 5.0f));
+	component_array.push_back(transform);
+	component_array.push_back(input_component);
 	calc_projection_mat();
+
+	input_bingding_func();
 }
 
 MXRender::Camera::~Camera()
 {
 	delete transform;
+	delete input_component;
 }

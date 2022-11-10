@@ -135,7 +135,7 @@ void MXRender::VK_GraphicsContext::create_logical_device()
 
 	vkGetDeviceQueue(device->device, indices.graphicsFamily.value(), 0, &graphicsQueue);
 	vkGetDeviceQueue(device->device, indices.presentFamily.value(), 0, &presentQueue);
-
+	vkGetDeviceQueue(device->device, indices.computeFamily.value(), 0, &computeQueue);
 
 
 
@@ -294,6 +294,9 @@ MXRender::QueueFamilyIndices MXRender::VK_GraphicsContext::find_queue_families(V
 	for (const auto& queueFamily : queueFamilies) {
 		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			indices.graphicsFamily = i;
+		}
+		if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
+			indices.computeFamily = i;
 		}
 
 		VkBool32 presentSupport = false;
@@ -767,6 +770,8 @@ void MXRender::VK_GraphicsContext::pre_pass()
 	}
 }
 
+
+
 void MXRender::VK_GraphicsContext::submit()
 {
 	if (vkEndCommandBuffer(command_buffer[current_frame_index]) != VK_SUCCESS) {
@@ -793,6 +798,7 @@ void MXRender::VK_GraphicsContext::submit()
 		throw std::runtime_error("failed to submit draw command buffer!");
 	}
 
+
 	VkPresentInfoKHR presentInfo{};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
@@ -807,6 +813,7 @@ void MXRender::VK_GraphicsContext::submit()
 
 	VkResult result = vkQueuePresentKHR(presentQueue, &presentInfo);
 
+
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
 		framebufferResized = false;
 		recreate_swapchain();
@@ -814,10 +821,12 @@ void MXRender::VK_GraphicsContext::submit()
 	else if (result != VK_SUCCESS) {
 		throw std::runtime_error("failed to present swap chain image!");
 	}
+	
 
 	current_frame_index = (current_frame_index + 1) % max_frames_in_flight;
 
 }
+
 
 void MXRender::VK_GraphicsContext::cleanup()
 {

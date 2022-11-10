@@ -274,6 +274,9 @@ namespace MXRender
 		ubo.model = game_object->get_transform()->get_model_matrix();
 		ubo.view = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
 		ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat(); 
+		
+		//ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		//ubo.proj = glm::perspective(glm::radians(60.0f), (float)cur_context.lock()->get_swapchain_extent().width / (float)cur_context.lock()->get_swapchain_extent().height, 0.1f, 1000.0f);
 
 		ubo.proj[1][1] *= -1;
 		

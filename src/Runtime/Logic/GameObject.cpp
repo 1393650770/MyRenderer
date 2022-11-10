@@ -6,6 +6,8 @@ MXRender::GameObject::GameObject()
 {
 	transform=new TransformComponent();
 	staticmesh=new StaticMeshComponent();
+	component_array.push_back(transform);
+	component_array.push_back(staticmesh);
 }
 
 MXRender::GameObject::GameObject(GameObject&& gameobject)
@@ -14,6 +16,7 @@ MXRender::GameObject::GameObject(GameObject&& gameobject)
 	this->transform=gameobject.transform;
 	gameobject.staticmesh=nullptr;
 	gameobject.transform=nullptr;
+	gameobject.component_array.clear();
 }
 
 MXRender::GameObject::GameObject(const std::string& mesh_path)
@@ -38,4 +41,6 @@ MXRender::TransformComponent* MXRender::GameObject::get_transform()
 {	
 	return transform;
 }
+
+
 

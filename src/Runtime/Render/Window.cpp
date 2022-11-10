@@ -12,6 +12,8 @@
 #include "Pass/MainCameraRenderPass.h"
 #include "../RHI/Vulkan/VK_GraphicsContext.h"
 #include "../UI/Editor_UI.h"
+#include "../Logic/Input/InputSystem.h"
+#include "../Logic/GameObjectManager.h"
 
 static void on_window_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -87,11 +89,17 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
 
 	render->init(Singleton<DefaultSetting>::get_instance().context,window,&edit_ui);
 
+	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_window(window);
+	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_height(Singleton<DefaultSetting>::get_instance().height);
+	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_width(Singleton<DefaultSetting>::get_instance().width);
+	
 	while (!glfwWindowShouldClose(window))
     {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+		Singleton<DefaultSetting>::get_instance().input_system->process_input(window);
 
         glfwPollEvents();
 
@@ -106,4 +114,29 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
 GLFWwindow* MXRender::Window::GetWindow() const
 {
     return window;
+}
+
+void MXRender::Window::Turnright()
+{
+	std::cout << "  999  " << std::endl;
+}
+
+void MXRender::Window::Turnforward()
+{
+	std::cout << "  888   " << std::endl;
+}
+
+void MXRender::Window::Turnback()
+{
+	std::cout << "  555   " << std::endl;
+}
+
+void MXRender::Window::Turnleft()
+{
+	std::cout << "  222   " << std::endl;
+}
+
+void MXRender::Window::Rotate()
+{
+	std::cout<<"  000   "<<std::endl;
 }

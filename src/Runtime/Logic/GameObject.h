@@ -20,13 +20,19 @@ namespace MXRender
 		StaticMeshComponent* staticmesh;
 	public:
 		
+
 		GameObject();
 		GameObject(GameObject&& gameobject);
 		GameObject(const std::string& mesh_path);
 		virtual ~GameObject();
 		StaticMeshComponent* get_staticmesh();
 		TransformComponent* get_transform();
+
+		
+
 	};
+
+
 
 }
 #endif 

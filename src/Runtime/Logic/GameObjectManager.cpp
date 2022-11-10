@@ -8,11 +8,13 @@
 
 MXRender::GameObjectManager::GameObjectManager()
 {
-	object_list.emplace_back("Resource/Mesh/viking_room.obj");
+	//object_list.emplace_back("Resource/Mesh/viking_room.obj");
 
-	object_list.emplace_back("Resource/Mesh/rock.obj");
+	//object_list.emplace_back("Resource/Mesh/rock.obj");
 
-	object_list.emplace_back("Resource/Mesh/sponza.obj");
+	object_list.emplace_back("Resource/Mesh/sphere.obj");
+
+	//object_list.emplace_back("Resource/Mesh/sponza.obj");
 
 }
 

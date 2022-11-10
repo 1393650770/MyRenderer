@@ -144,3 +144,8 @@ void MXRender::StaticMeshComponent::on_destroy()
 {
 	throw std::logic_error("The method or operation is not implemented.");
 }
+
+std::string MXRender::StaticMeshComponent::get_component_type_name()
+{
+	return "StaticMeshComponent";
+}

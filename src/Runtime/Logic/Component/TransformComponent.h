@@ -55,6 +55,9 @@ namespace MXRender
 
 		virtual void on_destroy() override;
 
+
+		virtual std::string get_component_type_name() override;
+
 	};
 
 }

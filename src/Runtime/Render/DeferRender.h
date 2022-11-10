@@ -3,6 +3,9 @@
 #define _DEFERRENDER_
 #include "MyRender.h"
 
+
+namespace MXRender { class PreComputeIBL_RenderPass; }
+
 namespace MXRender { class WindowUI; }
 
 
@@ -22,7 +25,7 @@ namespace MXRender
         std::shared_ptr < MainCamera_RenderPass> main_camera_pass ;
         std::shared_ptr < Mesh_RenderPass> mesh_pass; 
         std::shared_ptr < UI_RenderPass> ui_pass;
-
+        std::shared_ptr < PreComputeIBL_RenderPass> precomputeibl_pass;
         DeferRender();
         virtual ~DeferRender();
         void run(std::weak_ptr <VK_GraphicsContext> context) override;

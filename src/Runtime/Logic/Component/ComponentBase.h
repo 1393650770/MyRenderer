@@ -37,7 +37,7 @@ namespace MXRender
 		bool get_active();
 		void set_active(bool active);
 		ComponentType get_component_type();
-
+		virtual std::string get_component_type_name()=0;
         virtual void on_start();
 		virtual void on_update();
         virtual void update(float delta_time);

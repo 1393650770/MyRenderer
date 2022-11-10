@@ -52,7 +52,7 @@ namespace MXRender
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
         std::optional<uint32_t> presentFamily;
-
+        std::optional<uint32_t> computeFamily;
         bool isComplete() {
             return graphicsFamily.has_value() && presentFamily.has_value();
         }
@@ -142,6 +142,7 @@ namespace MXRender
         VkViewport       viewport;
 		VkQueue graphicsQueue;
 		VkQueue presentQueue;
+        VkQueue computeQueue;
         VkDescriptorPool descriptor_pool;
         VkCommandPool command_pool;//[max_frames_in_flight];
 
@@ -183,8 +184,8 @@ namespace MXRender
         void add_on_swapchain_recreate_func(const std::function<void()>& func);
         void add_on_swapchain_clean_func(const std::function<void()>& func);
         void pre_pass( );
-        void submit( );
 
+        void submit();
         void cleanup();
 
         

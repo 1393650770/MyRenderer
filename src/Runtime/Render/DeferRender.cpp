@@ -14,6 +14,7 @@
 #include "Pass/MainCameraRenderPass.h"
 #include "Pass/MeshPass.h"
 #include "Pass/UIPass.h"
+#include "Pass/PreComputeIblPass.h"
 #include "vulkan/vulkan_core.h"
 
 MXRender::DeferRender::DeferRender()
@@ -57,11 +58,18 @@ void MXRender::DeferRender::init(std::weak_ptr <VK_GraphicsContext> context,GLFW
 	main_camera_pass = std::make_shared<MainCamera_RenderPass>();
 	mesh_pass=std::make_shared<Mesh_RenderPass>();
 	ui_pass = std::make_shared<UI_RenderPass>();
+	precomputeibl_pass = std::make_shared<PreComputeIBL_RenderPass>();
+
 	main_camera_pass->initialize(pass_info, &other_info);
 
 	other_info.render_pass=main_camera_pass->get_render_pass();
 	mesh_pass->initialize(pass_info, &other_info);
 	ui_pass->initialize(pass_info,&other_info);
+	precomputeibl_pass->initialize(pass_info, &other_info);
 
 	ui_pass->initialize_ui_renderbackend(window_ui);
+
+
+	precomputeibl_pass->draw(context.lock().get());
+	precomputeibl_pass->print(context.lock().get());
 }
