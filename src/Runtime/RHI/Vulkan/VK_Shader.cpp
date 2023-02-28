@@ -5,7 +5,8 @@
 #include <iostream>
 #include <fstream>
 #include"VK_Utils.h"
-
+#include "../../../ThirdParty/spv_reflect/spirv_reflect.h"
+#include <algorithm>
 
 namespace MXRender
 {
@@ -60,30 +61,222 @@ namespace MXRender
 		{
 			if(vertexPath.size()>0&&vertexPath!="")
 			{
-				auto vertShaderCode = readFile(vertexPath);
-				shader_modules[ENUM_SHADER_STAGE::Shader_Vertex]= createShaderModule(vertShaderCode);
+				shader_codes[ENUM_SHADER_STAGE::Shader_Vertex] = readFile(vertexPath);
+				shader_modules[ENUM_SHADER_STAGE::Shader_Vertex]= createShaderModule(shader_codes[ENUM_SHADER_STAGE::Shader_Vertex]);
 			}
 			if (fragmentPath.size() > 0 && fragmentPath != "")
 			{
 				
-				auto pixelShaderCode = readFile(fragmentPath);
-				shader_modules[ENUM_SHADER_STAGE::Shader_Pixel] = createShaderModule(pixelShaderCode);
+				shader_codes[ENUM_SHADER_STAGE::Shader_Pixel] = readFile(fragmentPath);
+				shader_modules[ENUM_SHADER_STAGE::Shader_Pixel] = createShaderModule(shader_codes[ENUM_SHADER_STAGE::Shader_Pixel]);
 			}
 			if (geometryPath.size() > 0 && geometryPath != "")
 			{
 
-				auto geometryShaderCode = readFile(geometryPath);
-				shader_modules[ENUM_SHADER_STAGE::Shader_Geometry] = createShaderModule(geometryShaderCode);
+				shader_codes[ENUM_SHADER_STAGE::Shader_Geometry] = readFile(geometryPath);
+				shader_modules[ENUM_SHADER_STAGE::Shader_Geometry] = createShaderModule(shader_codes[ENUM_SHADER_STAGE::Shader_Geometry]);
 			}
 			if (computePath.size() > 0 && computePath != "")
 			{ 
-				auto computeShaderCode = readFile(computePath);
-				shader_modules[ENUM_SHADER_STAGE::Shader_Compute] = createShaderModule(computeShaderCode);
+				shader_codes[ENUM_SHADER_STAGE::Shader_Compute] = readFile(computePath);
+				shader_modules[ENUM_SHADER_STAGE::Shader_Compute] = createShaderModule(shader_codes[ENUM_SHADER_STAGE::Shader_Compute]);
 			}
 		}
 	}
 
-	VK_Shader::~VK_Shader()
+	VkPipelineLayout VK_Shader::get_built_layout()
+	{
+		return BuiltLayout;
+	}
+
+	void VK_Shader::fill_stages(std::vector<VkPipelineShaderStageCreateInfo>& pipelineStages)
+	{
+		for (int index = 0; index < ENUM_SHADER_STAGE::NumStages; index++)
+		{
+			if (shader_modules[index] != VK_NULL_HANDLE)
+			{
+				pipelineStages.push_back(VK_Utils::Pipeline_Shader_Stage_Create_Info(VK_Utils::Translate_API_ShaderTypeEnum_To_Vulkan((ENUM_SHADER_STAGE)index), shader_modules[index]));
+			}
+		}
+	}
+
+	void VK_Shader::reflect_layout(ReflectionOverrides* overrides, int overrideCount)
+	{
+		if (Device.expired())
+		{
+			return;
+		}
+		std::vector<DescriptorSetLayoutData> SetLayouts;
+		std::vector<VkPushConstantRange> ConstantRanges;
+		VkDevice device=Device.lock()->device;
+		for (int index = 0 ;index< ENUM_SHADER_STAGE::NumStages;index++)
+		{
+			if (shader_modules[index]!=VK_NULL_HANDLE)
+			{
+				SpvReflectShaderModule spvmodule;
+				SpvReflectResult result = spvReflectCreateShaderModule(shader_codes[index].size() * sizeof(uint32_t), shader_codes[index].data(), &spvmodule);
+
+				uint32_t count = 0;
+				result = spvReflectEnumerateDescriptorSets(&spvmodule, &count, NULL);
+				assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+				std::vector<SpvReflectDescriptorSet*> sets(count);
+				result = spvReflectEnumerateDescriptorSets(&spvmodule, &count, sets.data());
+				assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+				for (size_t i_set = 0; i_set < sets.size(); ++i_set) 
+				{
+
+					const SpvReflectDescriptorSet& refl_set = *(sets[i_set]);
+
+					DescriptorSetLayoutData layout = {};
+
+					layout.bindings.resize(refl_set.binding_count);
+					for (uint32_t i_binding = 0; i_binding < refl_set.binding_count; ++i_binding) {
+						const SpvReflectDescriptorBinding& refl_binding = *(refl_set.bindings[i_binding]);
+						VkDescriptorSetLayoutBinding& layout_binding = layout.bindings[i_binding];
+						layout_binding.binding = refl_binding.binding;
+						layout_binding.descriptorType = static_cast<VkDescriptorType>(refl_binding.descriptor_type);
+
+						for (int ov = 0; ov < overrideCount; ov++)
+						{
+							if (strcmp(refl_binding.name, overrides[ov].name) == 0) {
+								layout_binding.descriptorType = overrides[ov].overridenType;
+							}
+						}
+
+						layout_binding.descriptorCount = 1;
+						for (uint32_t i_dim = 0; i_dim < refl_binding.array.dims_count; ++i_dim) {
+							layout_binding.descriptorCount *= refl_binding.array.dims[i_dim];
+						}
+						layout_binding.stageFlags = static_cast<VkShaderStageFlagBits>(spvmodule.shader_stage);
+
+						ReflectedBinding reflected;
+						reflected.binding = layout_binding.binding;
+						reflected.set = refl_set.set;
+						reflected.type = layout_binding.descriptorType;
+
+						Bindings[refl_binding.name] = reflected;
+					}
+					layout.set_number = refl_set.set;
+					layout.create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+					layout.create_info.bindingCount = refl_set.binding_count;
+					layout.create_info.pBindings = layout.bindings.data();
+
+					SetLayouts.push_back(layout);
+				}
+
+				result = spvReflectEnumeratePushConstantBlocks(&spvmodule, &count, NULL);
+				assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+				std::vector<SpvReflectBlockVariable*> pconstants(count);
+				result = spvReflectEnumeratePushConstantBlocks(&spvmodule, &count, pconstants.data());
+				assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+				if (count > 0) {
+					VkPushConstantRange pcs{};
+					pcs.offset = pconstants[0]->offset;
+					pcs.size = pconstants[0]->size;
+					pcs.stageFlags = VK_Utils::Translate_API_ShaderTypeEnum_To_Vulkan((ENUM_SHADER_STAGE)index);
+
+					ConstantRanges.push_back(pcs);
+				}
+			}
+		
+		}
+
+
+		std::array<DescriptorSetLayoutData, 4> merged_layouts;
+
+		for (int i = 0; i < 4; i++) {
+
+			DescriptorSetLayoutData& ly = merged_layouts[i];
+
+			ly.set_number = i;
+
+			ly.create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+
+			std::unordered_map<int, VkDescriptorSetLayoutBinding> binds;
+			for (auto& s : SetLayouts) {
+				if (s.set_number == i) {
+					for (auto& b : s.bindings)
+					{
+						auto it = binds.find(b.binding);
+						if (it == binds.end())
+						{
+							binds[b.binding] = b;
+							//ly.bindings.push_back(b);
+						}
+						else {
+							//merge flags
+							binds[b.binding].stageFlags |= b.stageFlags;
+						}
+
+					}
+				}
+			}
+			for (auto [k, v] : binds)
+			{
+				ly.bindings.push_back(v);
+			}
+			//sort the bindings, for hash purposes
+			std::sort(ly.bindings.begin(), ly.bindings.end(), [](VkDescriptorSetLayoutBinding& a, VkDescriptorSetLayoutBinding& b) {
+				return a.binding < b.binding;
+				});
+
+
+			ly.create_info.bindingCount = (uint32_t)ly.bindings.size();
+			ly.create_info.pBindings = ly.bindings.data();
+			ly.create_info.flags = 0;
+			ly.create_info.pNext = 0;
+
+
+			if (ly.create_info.bindingCount > 0) {
+				setHashes[i] = VK_Utils::Hash_Descriptor_Layout_Info(&ly.create_info);
+				vkCreateDescriptorSetLayout(device, &ly.create_info, nullptr, &setLayouts[i]);
+			}
+			else {
+				setHashes[i] = 0;
+				setLayouts[i] = VK_NULL_HANDLE;
+			}
+		}
+
+		//we start from just the default empty pipeline layout info
+		VkPipelineLayoutCreateInfo mesh_pipeline_layout_info = VK_Utils::Pipeline_Layout_Create_Info();
+
+		mesh_pipeline_layout_info.pPushConstantRanges = ConstantRanges.data();
+		mesh_pipeline_layout_info.pushConstantRangeCount = (uint32_t)ConstantRanges.size();
+
+		std::array<VkDescriptorSetLayout, 4> compactedLayouts;
+		int s = 0;
+		for (int i = 0; i < 4; i++) {
+			if (setLayouts[i] != VK_NULL_HANDLE) {
+				compactedLayouts[s] = setLayouts[i];
+				s++;
+			}
+		}
+
+		mesh_pipeline_layout_info.setLayoutCount = s;
+		mesh_pipeline_layout_info.pSetLayouts = compactedLayouts.data();
+
+
+		vkCreatePipelineLayout(device, &mesh_pipeline_layout_info, nullptr, &BuiltLayout);
+
+	}
+
+	void VK_Shader::build_sets(VkDevice device, VkDescriptorPool descript_pool)
+	{	
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = descript_pool;
+		allocInfo.descriptorSetCount = setLayouts.size();
+		allocInfo.pSetLayouts = setLayouts.data();
+		if (vkAllocateDescriptorSets(device, &allocInfo, sets.data()) != VK_SUCCESS) {
+			throw std::runtime_error("failed to allocate descriptor sets!");
+		}
+	}
+
+	void VK_Shader::destroy()
 	{
 		if (Device.expired() == false)
 		{
@@ -94,7 +287,20 @@ namespace MXRender
 					vkDestroyShaderModule(Device.lock()->device, shader_modules[i], nullptr);
 				}
 			}
+
+			for (size_t i = 0; i < setLayouts.size(); i++)
+			{
+				vkDestroyDescriptorSetLayout(Device.lock()->device,setLayouts[i],nullptr);
+			}
+
+			vkDestroyPipelineLayout(Device.lock()->device,BuiltLayout,nullptr);
 		}
+
+	}
+
+	VK_Shader::~VK_Shader()
+	{
+		destroy();
 		
 	}
 

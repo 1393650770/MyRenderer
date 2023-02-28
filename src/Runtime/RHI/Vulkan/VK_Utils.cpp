@@ -18,8 +18,75 @@ namespace MXRender
 		}
 		throw std::runtime_error("findMemoryType");
     }
+	constexpr uint32_t fnv1a_32(char const* s, std::size_t count)
+	{
+		return ((count ? fnv1a_32(s, count - 1) : 2166136261u) ^ s[count]) * 16777619u;
+	}
 
-    void VK_Utils::Create_VKBuffer(std::weak_ptr<VK_Device> Device, VkDeviceSize Size, VkBufferUsageFlags Usage, VkMemoryPropertyFlags Properties, VkBuffer& Buffer, VkDeviceMemory& BufferMemory)
+	VkPipelineShaderStageCreateInfo VK_Utils::Pipeline_Shader_Stage_Create_Info(VkShaderStageFlagBits stage, VkShaderModule shaderModule)
+	{
+		VkPipelineShaderStageCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		info.pNext = nullptr;
+
+		//shader stage
+		info.stage = stage;
+		//module containing the code for this shader stage
+		info.module = shaderModule;
+		//the entry point of the shader
+		info.pName = "main";
+		return info;
+	}
+
+	VkPipelineVertexInputStateCreateInfo VK_Utils::Vertex_Input_State_Create_Info()
+	{
+		VkPipelineVertexInputStateCreateInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		info.pNext = nullptr;
+
+		//no vertex bindings or attributes
+		info.vertexBindingDescriptionCount = 0;
+		info.vertexAttributeDescriptionCount = 0;
+		return info;
+	}
+
+	VkPipelineLayoutCreateInfo VK_Utils::Pipeline_Layout_Create_Info()
+	{
+		VkPipelineLayoutCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		info.pNext = nullptr;
+
+		//empty defaults
+		info.flags = 0;
+		info.setLayoutCount = 0;
+		info.pSetLayouts = nullptr;
+		info.pushConstantRangeCount = 0;
+		info.pPushConstantRanges = nullptr;
+		return info;
+	}
+
+	uint32_t VK_Utils::Hash_Descriptor_Layout_Info(VkDescriptorSetLayoutCreateInfo* info)
+	{
+		std::stringstream ss;
+
+		ss << info->flags;
+		ss << info->bindingCount;
+
+		for (auto i = 0u; i < info->bindingCount; i++) {
+			const VkDescriptorSetLayoutBinding& binding = info->pBindings[i];
+
+			ss << binding.binding;
+			ss << binding.descriptorCount;
+			ss << binding.descriptorType;
+			ss << binding.stageFlags;
+		}
+
+		auto str = ss.str();
+
+		return fnv1a_32(str.c_str(), str.length());
+	}
+
+	void VK_Utils::Create_VKBuffer(std::weak_ptr<VK_Device> Device, VkDeviceSize Size, VkBufferUsageFlags Usage, VkMemoryPropertyFlags Properties, VkBuffer& Buffer, VkDeviceMemory& BufferMemory)
     {
         if (Device.expired())
         {
@@ -274,6 +341,43 @@ namespace MXRender
 			break;
 		}
 		return VK_FORMAT_UNDEFINED;
+	}
+
+	VkShaderStageFlagBits VK_Utils::Translate_API_ShaderTypeEnum_To_Vulkan(ENUM_SHADER_STAGE shader_type)
+	{
+		switch (shader_type)
+		{
+		case MXRender::Shader_Vertex:
+			return VK_SHADER_STAGE_VERTEX_BIT;
+			break;
+		case MXRender::Shader_Pixel:
+			return VK_SHADER_STAGE_FRAGMENT_BIT;
+			break;
+		case MXRender::Shader_Geometry:
+			return VK_SHADER_STAGE_GEOMETRY_BIT;
+			break;
+		case MXRender::Shader_Hull:
+			return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+			break;
+		case MXRender::Shader_Domain:
+			return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+			break;
+		case MXRender::NumStages:
+			return VK_SHADER_STAGE_ALL_GRAPHICS;
+			break;
+		case MXRender::MaxNumSets:
+			return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+			break;
+		case MXRender::Shader_Compute:
+			return VK_SHADER_STAGE_COMPUTE_BIT;
+			break;
+		case MXRender::Invalid:
+			return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+			break;
+		default:
+			return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+			break;
+		}
 	}
 
 	void VK_Utils::Transition_ImageLayout(std::weak_ptr< VK_GraphicsContext> context, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout, uint32_t layer_count, uint32_t miplevels, VkImageAspectFlags aspect_mask_bits)

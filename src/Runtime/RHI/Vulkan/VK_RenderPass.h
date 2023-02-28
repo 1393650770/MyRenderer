@@ -15,6 +15,8 @@
 #include<string>
 #include "../RenderPass.h"
 
+namespace MXRender { class VK_Shader; }
+
 namespace MXRender { class VK_Viewport; }
 
 namespace MXRender { class VK_GraphicsContext; }
@@ -27,6 +29,34 @@ namespace MXRender
         std::weak_ptr<VK_GraphicsContext> context;
         VkRenderPass render_pass;
     };
+
+	struct VertexInputDescription {
+		std::vector<VkVertexInputBindingDescription> bindings;
+		std::vector<VkVertexInputAttributeDescription> attributes;
+
+		VkPipelineVertexInputStateCreateFlags flags = 0;
+	};
+
+	class PipelineBuilder
+	{
+	public:
+		std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
+		VertexInputDescription vertexDescription;
+		VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
+		VkPipelineInputAssemblyStateCreateInfo _inputAssembly;
+		VkViewport _viewport;
+		VkRect2D _scissor;
+		VkPipelineRasterizationStateCreateInfo _rasterizer;
+		VkPipelineColorBlendAttachmentState _colorBlendAttachment;
+		VkPipelineMultisampleStateCreateInfo _multisampling;
+		VkPipelineLayout _pipelineLayout;
+		VkPipelineDepthStencilStateCreateInfo _depthStencil;
+		VkPipeline build_pipeline(VkDevice device, VkRenderPass pass);
+		void clear_vertex_input();
+
+		void set_shaders(VK_Shader* effect);
+	};
+
     class VK_RenderPass:public RenderPass
     {
     protected:

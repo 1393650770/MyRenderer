@@ -11,6 +11,8 @@
 #include"glm/glm.hpp"
 #include "../RenderEnum.h"
 #include "../Shader.h"
+#include "vulkan/vulkan_core.h"
+#include <array>
 
 namespace MXRender
 {
@@ -18,6 +20,21 @@ namespace MXRender
 
     class VK_Shader :public Shader
     {
+    public:
+		struct ReflectionOverrides {
+			const char* name;
+			VkDescriptorType overridenType;
+		};
+		struct DescriptorSetLayoutData {
+			uint32_t set_number;
+			VkDescriptorSetLayoutCreateInfo create_info;
+			std::vector<VkDescriptorSetLayoutBinding> bindings;
+		};
+		struct ReflectedBinding {
+			uint32_t set;
+			uint32_t binding;
+			VkDescriptorType type;
+		};
     private:
         
         std::vector<char> readFile(const std::string& filename);
@@ -31,11 +48,23 @@ namespace MXRender
 
         mutable std::unordered_map<std::string,std::tuple<VkDeviceSize,VkBuffer, VkDeviceMemory>> Uniformmap;
 
+		std::unordered_map<std::string, ReflectedBinding> Bindings;
+		std::array<VkDescriptorSetLayout, 4> setLayouts;
+		std::array<uint32_t, 4> setHashes;
+        std::array<VkDescriptorSet,4> sets;
+        VkPipelineLayout BuiltLayout = VK_NULL_HANDLE;
     public:
         VkShaderModule shader_modules[ENUM_SHADER_STAGE::NumStages]{VK_NULL_HANDLE};
-        
+        std::vector<char> shader_codes[ENUM_SHADER_STAGE::NumStages];
+
         VK_Shader(std::shared_ptr<VK_Device> InDevice, VkShaderStageFlagBits InStageFlag, const std::string& vertexPath = "", const std::string& fragmentPath = "", const std::string& geometryPath = "", const std::string& computePath = "");
         
+        VkPipelineLayout get_built_layout();
+
+        void fill_stages(std::vector<VkPipelineShaderStageCreateInfo>& pipelineStages);
+        void reflect_layout( ReflectionOverrides* overrides, int overrideCount);
+        void build_sets(VkDevice device , VkDescriptorPool descript_pool);
+        void destroy();
         virtual ~VK_Shader();
 
         virtual unsigned get_id() const ;

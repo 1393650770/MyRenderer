@@ -37,8 +37,10 @@ target("Runtime")
     add_headerfiles("src/Runtime/RHI/*.h") 
     add_headerfiles("src/Runtime/Utils/*.h") 
 
+    add_files("src/ThirdParty/spv_reflect/*.c") 
     add_headerfiles("src/ThirdParty/stb_image/*.h") 
-
+    add_headerfiles("src/ThirdParty/spv_reflect/*.h") 
+    add_headerfiles("src/ThirdParty/spv_reflect/include/spirv/unified1/*.h") 
     --add_headerfiles("src/ThirdParty/imgui/*.h") 
     --add_files("src/ThirdParty/imgui/*.cpp")
     --add_headerfiles("src/ThirdParty/imgui/backends/*.h")

@@ -37,11 +37,11 @@ namespace MXRender
 
 		Shader_Domain = 4,
 
+		Shader_Compute = 5,
+
 		NumStages,
 
 		MaxNumSets = 8,
-
-		Shader_Compute = 0,
 
 		Invalid = -1,
 	};

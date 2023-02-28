@@ -22,6 +22,10 @@ namespace MXRender
     private:
        
     public:
+		static VkPipelineShaderStageCreateInfo Pipeline_Shader_Stage_Create_Info(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
+		static VkPipelineVertexInputStateCreateInfo Vertex_Input_State_Create_Info();
+		static VkPipelineLayoutCreateInfo Pipeline_Layout_Create_Info();
+		static uint32_t Hash_Descriptor_Layout_Info(VkDescriptorSetLayoutCreateInfo* info);
         static void Create_VKBuffer(std::weak_ptr< VK_Device> Device, VkDeviceSize Size, VkBufferUsageFlags Usage, VkMemoryPropertyFlags Properties, VkBuffer& Buffer, VkDeviceMemory& BufferMemory);
         static void Copy_VKBuffer(std::weak_ptr< VK_GraphicsContext> context, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		static void Copy_VKBuffer(VK_GraphicsContext* context, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
@@ -51,7 +55,7 @@ namespace MXRender
         static VkImageLayout Translate_Texture_usage_type_To_Vulkan(const ENUM_TEXTURE_USAGE_TYPE& usage_type );
         static VkImageType Translate_Texture_type_To_Vulkan(const ENUM_TEXTURE_TYPE& type);
         static VkFormat Translate_API_DataTypeEnum_To_Vulkan(ENUM_RENDER_DATA_TYPE data_type);
-
+		static VkShaderStageFlagBits Translate_API_ShaderTypeEnum_To_Vulkan(ENUM_SHADER_STAGE shader_type);
 		static void Transition_ImageLayout(std::weak_ptr< VK_GraphicsContext> context,
 			VkImage            image,
 			VkImageLayout      old_layout,
