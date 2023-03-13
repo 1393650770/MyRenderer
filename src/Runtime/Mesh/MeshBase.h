@@ -30,6 +30,13 @@ namespace MXRender
 		VkBuffer index_buffer;
 		VkDeviceMemory index_buffer_memory;
     };
+
+	struct RenderBounds {
+		glm::vec3 origin;
+		float radius;
+		glm::vec3 extents;
+		bool valid;
+	};
     class MeshBase
     {
     private:

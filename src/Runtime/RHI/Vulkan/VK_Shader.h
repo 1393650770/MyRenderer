@@ -57,7 +57,7 @@ namespace MXRender
         VkShaderModule shader_modules[ENUM_SHADER_STAGE::NumStages]{VK_NULL_HANDLE};
         std::vector<char> shader_codes[ENUM_SHADER_STAGE::NumStages];
 
-        VK_Shader(std::shared_ptr<VK_Device> InDevice, VkShaderStageFlagBits InStageFlag, const std::string& vertexPath = "", const std::string& fragmentPath = "", const std::string& geometryPath = "", const std::string& computePath = "");
+        VK_Shader(std::shared_ptr<VK_Device> InDevice, const std::string& vertexPath = "", const std::string& fragmentPath = "", const std::string& geometryPath = "", const std::string& computePath = "");
         
         VkPipelineLayout get_built_layout();
 

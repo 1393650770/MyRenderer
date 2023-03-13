@@ -143,6 +143,8 @@ namespace MXRender
 		VkQueue graphicsQueue;
 		VkQueue presentQueue;
         VkQueue computeQueue;
+
+        VkRenderPass mesh_pass;
         VkDescriptorPool descriptor_pool;
         VkCommandPool command_pool;//[max_frames_in_flight];
 

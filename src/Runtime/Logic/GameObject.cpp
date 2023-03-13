@@ -42,5 +42,13 @@ MXRender::TransformComponent* MXRender::GameObject::get_transform()
 	return transform;
 }
 
+MXRender::Material* MXRender::GameObject::get_material()
+{
+	return material;
+}
 
+void MXRender::GameObject::set_material(Material* in_material)
+{
+	material= in_material;
+}
 

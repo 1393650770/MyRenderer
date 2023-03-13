@@ -56,7 +56,7 @@ namespace MXRender
 	{
 		std::shared_ptr<VK_Device> device= cur_context.lock()->device;
 
-		VK_Shader cur_shader(device, VK_SHADER_STAGE_VERTEX_BIT,"","","","Shader/pre_compute_ibl_comp.spv");
+		VK_Shader cur_shader(device, "","","","Shader/pre_compute_ibl_comp.spv");
 
 		VkPipelineShaderStageCreateInfo computeShaderStageInfo{};
 		computeShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;

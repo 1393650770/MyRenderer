@@ -59,7 +59,7 @@ namespace MXRender
 	{
 		std::shared_ptr<VK_Device> device= cur_context.lock()->device;
 
-		VK_Shader cur_shader(device, VK_SHADER_STAGE_VERTEX_BIT,"Shader/mesh_rock_vert.spv","Shader/mesh_rock_frag.spv");
+		VK_Shader cur_shader(device, "Shader/mesh_rock_vert.spv","Shader/mesh_rock_frag.spv");
 
 		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;

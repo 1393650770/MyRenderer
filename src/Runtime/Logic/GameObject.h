@@ -8,6 +8,7 @@
 #include "Object.h"
 #include "Component/TransformComponent.h"
 #include "Component/StaticMeshComponent.h"
+#include "../Render/Pass/PipelineShaderObject.h"
 
 namespace MXRender
 {
@@ -18,6 +19,7 @@ namespace MXRender
 	protected:
 		TransformComponent* transform;
 		StaticMeshComponent* staticmesh;
+		Material* material;
 	public:
 		
 
@@ -27,8 +29,8 @@ namespace MXRender
 		virtual ~GameObject();
 		StaticMeshComponent* get_staticmesh();
 		TransformComponent* get_transform();
-
-		
+		Material* get_material();
+		void set_material(Material* in_material) ;
 
 	};
 

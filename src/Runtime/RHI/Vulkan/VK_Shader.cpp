@@ -54,7 +54,7 @@ namespace MXRender
 	}
 
 
-	VK_Shader::VK_Shader(std::shared_ptr<VK_Device> InDevice, VkShaderStageFlagBits InStageFlag, const std::string& vertexPath, const std::string& fragmentPath, const std::string& geometryPath, const std::string& computePath)
+	VK_Shader::VK_Shader(std::shared_ptr<VK_Device> InDevice, const std::string& vertexPath, const std::string& fragmentPath, const std::string& geometryPath, const std::string& computePath)
 	{
 		Device=InDevice;
 		if (Device.expired() == false)
