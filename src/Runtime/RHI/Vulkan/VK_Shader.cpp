@@ -10,7 +10,7 @@
 
 namespace MXRender
 {
-	std::vector<char> VK_Shader::readFile(const std::string& filename)
+	std::vector<uint32_t> VK_Shader::readFile(const std::string& filename)
 	{
 		std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
@@ -20,23 +20,23 @@ namespace MXRender
 		}
 
 		size_t fileSize = (size_t)file.tellg();
-		std::vector<char> buffer(fileSize);
+		std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
 
 		file.seekg(0);
-		file.read(buffer.data(), fileSize);
+		file.read((char*)buffer.data(), fileSize);
 
 		file.close();
 
 		return buffer;
 	}
 
-	VkShaderModule VK_Shader::createShaderModule(const std::vector<char>& code)
+	VkShaderModule VK_Shader::createShaderModule(const std::vector<uint32_t>& code)
 	{
 		VkShaderModuleCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 
-		createInfo.codeSize = code.size();
-		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+		createInfo.codeSize = code.size() * sizeof(uint32_t);
+		createInfo.pCode = (code.data());
 		VkShaderModule shaderModule;
 
 
@@ -290,7 +290,10 @@ namespace MXRender
 
 			for (size_t i = 0; i < setLayouts.size(); i++)
 			{
-				vkDestroyDescriptorSetLayout(Device.lock()->device,setLayouts[i],nullptr);
+				if (setLayouts[i]!=VK_NULL_HANDLE)
+				{
+					vkDestroyDescriptorSetLayout(Device.lock()->device, setLayouts[i], nullptr);
+				}
 			}
 
 			vkDestroyPipelineLayout(Device.lock()->device,BuiltLayout,nullptr);

@@ -6,7 +6,7 @@
 MXRender::DefaultSetting::DefaultSetting()
 {
 	context = std::make_shared<VK_GraphicsContext>();
-	gameobject_manager=std::make_shared<GameObjectManager>();
+	gameobject_manager=std::make_shared<GameObjectManager>(context.get());
 	input_system=std::make_shared<InputSystem>();
 	input_system->cur_controller_object=&gameobject_manager->main_camera;
 }

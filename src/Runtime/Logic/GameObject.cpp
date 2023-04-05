@@ -1,6 +1,6 @@
 #include "GameObject.h"
-
-
+#include "../Render/Pass/PipelineShaderObject.h"
+#include "../Render/RenderScene.h"
 
 MXRender::GameObject::GameObject()
 {
@@ -14,16 +14,25 @@ MXRender::GameObject::GameObject(GameObject&& gameobject)
 {
 	this->staticmesh=gameobject.staticmesh;
 	this->transform=gameobject.transform;
+	this->name= gameobject.name;
 	gameobject.staticmesh=nullptr;
 	gameobject.transform=nullptr;
 	gameobject.component_array.clear();
 }
 
-MXRender::GameObject::GameObject(const std::string& mesh_path)
+MXRender::GameObject::GameObject(const std::string& name, const std::string& mesh_path, bool is_prefabs)
 {
 	transform = new TransformComponent();
 	staticmesh = new StaticMeshComponent();
-	staticmesh->load_mesh(mesh_path);
+	this->name = name;
+	if (is_prefabs)
+	{
+		staticmesh->load_mesh(mesh_path);
+	}
+	else
+	{ 
+		staticmesh->load_mesh(mesh_path);
+	}
 }
 
 MXRender::GameObject::~GameObject()
@@ -40,6 +49,11 @@ MXRender::StaticMeshComponent* MXRender::GameObject::get_staticmesh()
 MXRender::TransformComponent* MXRender::GameObject::get_transform()
 {	
 	return transform;
+}
+
+std::string MXRender::GameObject::get_name()
+{
+	return name;
 }
 
 MXRender::Material* MXRender::GameObject::get_material()

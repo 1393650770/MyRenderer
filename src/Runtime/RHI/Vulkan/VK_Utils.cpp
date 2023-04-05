@@ -2,6 +2,13 @@
 
 #include "VK_Utils.h"
 #include "VK_GraphicsContext.h"
+#include "../../Logic/GameObjectManager.h"
+#include "../../AssetLoader/asset_loader.h"
+#include "../../AssetLoader/texture_asset.h"
+#include "../MyTexture.h"
+#define VMA_IMPLEMENTATION
+#include "../../../ThirdParty/vma/vk_mem_alloc.h"
+
 namespace MXRender
 {
     uint32_t findMemoryType(VkPhysicalDevice physical_device, uint32_t type_filter, VkMemoryPropertyFlags properties_flag)
@@ -21,6 +28,287 @@ namespace MXRender
 	constexpr uint32_t fnv1a_32(char const* s, std::size_t count)
 	{
 		return ((count ? fnv1a_32(s, count - 1) : 2166136261u) ^ s[count]) * 16777619u;
+	}
+
+	VkImageViewCreateInfo VK_Utils::Imageview_Create_Info(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags)
+	{
+		VkImageViewCreateInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		info.pNext = nullptr;
+
+		info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		info.image = image;
+		info.format = format;
+		info.subresourceRange.baseMipLevel = 0;
+		info.subresourceRange.levelCount = 1;
+		info.subresourceRange.baseArrayLayer = 0;
+		info.subresourceRange.layerCount = 1;
+		info.subresourceRange.aspectMask = aspectFlags;
+
+		return info;
+	}
+
+	VkImageCreateInfo VK_Utils::Image_Create_Info(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent)
+	{
+		VkImageCreateInfo info = { };
+		info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		info.pNext = nullptr;
+
+		info.imageType = VK_IMAGE_TYPE_2D;
+
+		info.format = format;
+		info.extent = extent;
+
+		info.mipLevels = 1;
+		info.arrayLayers = 1;
+		info.samples = VK_SAMPLE_COUNT_1_BIT;
+		info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		info.usage = usageFlags;
+
+		return info;
+	}
+
+	void VK_Utils::Immediate_Submit(VK_GraphicsContext* context, std::function<void(VkCommandBuffer cmd)>&& function)
+	{
+		VkCommandBuffer commandBuffer = context->begin_single_time_commands();
+		function(commandBuffer);
+		context->end_single_time_commands(commandBuffer);
+	}
+
+	MXRender::AllocatedImage VK_Utils::Upload_Image_Mipmapped(VK_GraphicsContext* context, int texWidth, int texHeight, VkFormat image_format, AllocatedBufferUntyped& stagingBuffer, std::vector<MipmapInfo> mips)
+	{
+		VkExtent3D imageExtent;
+		imageExtent.width = static_cast<uint32_t>(texWidth);
+		imageExtent.height = static_cast<uint32_t>(texHeight);
+		imageExtent.depth = 1;
+
+		VkImageCreateInfo dimg_info =Image_Create_Info(image_format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, imageExtent);
+
+		dimg_info.mipLevels = (uint32_t)mips.size();
+
+		AllocatedImage newImage;
+
+		VmaAllocationCreateInfo dimg_allocinfo = {};
+		dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+		//allocate and create the image
+		vmaCreateImage(context->_allocator, &dimg_info, &dimg_allocinfo, &newImage._image, &newImage._allocation, nullptr);
+
+		//transition image to transfer-receiver	
+		Immediate_Submit(context,[&](VkCommandBuffer cmd) {
+			VkImageSubresourceRange range;
+			range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			range.baseMipLevel = 0;
+			range.levelCount = (uint32_t)mips.size();
+			range.baseArrayLayer = 0;
+			range.layerCount = 1;
+
+			VkImageMemoryBarrier imageBarrier_toTransfer = {};
+			imageBarrier_toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+
+			imageBarrier_toTransfer.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			imageBarrier_toTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			imageBarrier_toTransfer.image = newImage._image;
+			imageBarrier_toTransfer.subresourceRange = range;
+
+			imageBarrier_toTransfer.srcAccessMask = 0;
+			imageBarrier_toTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+			//barrier the image into the transfer-receive layout
+			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier_toTransfer);
+
+			for (int i = 0; i < mips.size(); i++) {
+
+
+
+				VkBufferImageCopy copyRegion = {};
+				copyRegion.bufferOffset = mips[i].dataOffset;
+				copyRegion.bufferRowLength = 0;
+				copyRegion.bufferImageHeight = 0;
+
+				copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				copyRegion.imageSubresource.mipLevel = i;
+				copyRegion.imageSubresource.baseArrayLayer = 0;
+				copyRegion.imageSubresource.layerCount = 1;
+				copyRegion.imageExtent = imageExtent;
+
+				//copy the buffer into the image
+				vkCmdCopyBufferToImage(cmd, stagingBuffer._buffer, newImage._image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+
+				imageExtent.width /= 2;
+				imageExtent.height /= 2;
+			}
+			VkImageMemoryBarrier imageBarrier_toReadable = imageBarrier_toTransfer;
+
+			imageBarrier_toReadable.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			imageBarrier_toReadable.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+			imageBarrier_toReadable.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			imageBarrier_toReadable.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+			//barrier the image into the shader readable layout
+			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier_toReadable);
+			});
+
+
+
+		newImage.mipLevels = (uint32_t)mips.size();
+
+
+		//build a default imageview
+		VkImageViewCreateInfo view_info = Imageview_Create_Info(image_format, newImage._image, VK_IMAGE_ASPECT_COLOR_BIT);
+		view_info.subresourceRange.levelCount = newImage.mipLevels;
+		vkCreateImageView(context->device->device, &view_info, nullptr, &newImage._defaultView);
+
+		context->add_on_shutdown_clean_func([=, &context]() {
+			vmaDestroyImage(context->_allocator, newImage._image, newImage._allocation);
+			});
+
+		return newImage;
+	}
+
+	bool VK_Utils::Load_Image_From_Asset(VK_GraphicsContext* context, const char* filename, AllocatedImage& outImage)
+	{
+		assets::AssetFile file;
+		bool loaded = assets::load_binaryfile(filename, file);
+
+		if (!loaded) {
+			std::cout << "Error when loading texture " << filename << std::endl;
+			return false;
+		}
+
+		assets::TextureInfo textureInfo = assets::read_texture_info(&file);
+
+
+		VkDeviceSize imageSize = textureInfo.textureSize;
+		VkFormat image_format;
+		switch (textureInfo.textureFormat) {
+		case assets::TextureFormat::RGBA8:
+			image_format = VK_FORMAT_R8G8B8A8_UNORM;
+			break;
+		default:
+			return false;
+		}
+
+		AllocatedBufferUntyped stagingBuffer = Create_buffer(context,imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_UNKNOWN, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+
+		std::vector<MipmapInfo> mips;
+
+		void* data;
+		vmaMapMemory(context->_allocator, stagingBuffer._allocation, &data);
+		size_t offset = 0;
+		{
+
+			for (int i = 0; i < textureInfo.pages.size(); i++) {
+				MipmapInfo mip;
+				mip.dataOffset = offset;
+				mip.dataSize = textureInfo.pages[i].originalSize;
+				mips.push_back(mip);
+				assets::unpack_texture_page(&textureInfo, i, file.binaryBlob.data(), (char*)data + offset);
+
+				offset += mip.dataSize;
+			}
+		}
+		vmaUnmapMemory(context->_allocator, stagingBuffer._allocation);
+
+		outImage = Upload_Image_Mipmapped(context,textureInfo.pages[0].width, textureInfo.pages[0].height, image_format, stagingBuffer, mips);
+
+		vmaDestroyBuffer(context->_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
+
+		return true;
+	}
+
+	VkSamplerCreateInfo VK_Utils::Sampler_Create_Info(VkFilter filters, VkSamplerAddressMode samplerAdressMode)
+	{
+		VkSamplerCreateInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		info.pNext = nullptr;
+
+		info.magFilter = filters;
+		info.minFilter = filters;
+		info.addressModeU = samplerAdressMode;
+		info.addressModeV = samplerAdressMode;
+		info.addressModeW = samplerAdressMode;
+
+		return info;
+	}
+
+	VkPipelineDepthStencilStateCreateInfo VK_Utils::Depth_Stencil_Create_Info(bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp)
+	{
+		VkPipelineDepthStencilStateCreateInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+		info.pNext = nullptr;
+
+		info.depthTestEnable = bDepthTest ? VK_TRUE : VK_FALSE;
+		info.depthWriteEnable = bDepthWrite ? VK_TRUE : VK_FALSE;
+		info.depthCompareOp = bDepthTest ? compareOp : VK_COMPARE_OP_ALWAYS;
+		info.depthBoundsTestEnable = VK_FALSE;
+		info.minDepthBounds = 0.0f; // Optional
+		info.maxDepthBounds = 1.0f; // Optional
+		info.stencilTestEnable = VK_FALSE;
+
+		return info;
+	}
+
+	VkPipelineColorBlendAttachmentState VK_Utils::Color_Blend_Attachment_State()
+	{
+		VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
+		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+			VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachment.blendEnable = VK_FALSE;
+		return colorBlendAttachment;
+	}
+
+	VkPipelineMultisampleStateCreateInfo VK_Utils::Multisampling_State_Create_Info()
+	{
+		VkPipelineMultisampleStateCreateInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		info.pNext = nullptr;
+
+		info.sampleShadingEnable = VK_FALSE;
+		//multisampling defaulted to no multisampling (1 sample per pixel)
+		info.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		info.minSampleShading = 1.0f;
+		info.pSampleMask = nullptr;
+		info.alphaToCoverageEnable = VK_FALSE;
+		info.alphaToOneEnable = VK_FALSE;
+		return info;
+	}
+
+	VkPipelineInputAssemblyStateCreateInfo VK_Utils::Input_Assembly_Create_Info(VkPrimitiveTopology topology)
+	{
+		VkPipelineInputAssemblyStateCreateInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		info.pNext = nullptr;
+
+		info.topology = topology;
+		//we are not going to use primitive restart on the entire tutorial so leave it on false
+		info.primitiveRestartEnable = VK_FALSE;
+		return info;
+	}
+
+	VkPipelineRasterizationStateCreateInfo VK_Utils::Rasterization_State_Create_Info(VkPolygonMode polygonMode)
+	{
+		VkPipelineRasterizationStateCreateInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		info.pNext = nullptr;
+
+		info.depthClampEnable = VK_FALSE;
+		//rasterizer discard allows objects with holes, default to no
+		info.rasterizerDiscardEnable = VK_FALSE;
+
+		info.polygonMode = polygonMode;
+		info.lineWidth = 1.0f;
+		//no backface cull
+		info.cullMode = VK_CULL_MODE_BACK_BIT;
+		info.frontFace = VK_FRONT_FACE_CLOCKWISE;
+		//no depth bias
+		info.depthBiasEnable = VK_FALSE;
+		info.depthBiasConstantFactor = 0.0f;
+		info.depthBiasClamp = 0.0f;
+		info.depthBiasSlopeFactor = 0.0f;
+
+		return info;
 	}
 
 	VkPipelineShaderStageCreateInfo VK_Utils::Pipeline_Shader_Stage_Create_Info(VkShaderStageFlagBits stage, VkShaderModule shaderModule)
@@ -117,6 +405,31 @@ namespace MXRender
 
         vkBindBufferMemory(DeviceSharedPtr->device, Buffer, BufferMemory, 0);
     }
+
+	MXRender::AllocatedBufferUntyped VK_Utils::Create_buffer(VK_GraphicsContext* context,size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkMemoryPropertyFlags required_flags)
+	{
+		//allocate vertex buffer
+		VkBufferCreateInfo bufferInfo = {};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.pNext = nullptr;
+		bufferInfo.size = allocSize;
+
+		bufferInfo.usage = usage;
+
+
+		//let the VMA library know that this data should be writeable by CPU, but also readable by GPU
+		VmaAllocationCreateInfo vmaallocInfo = {};
+		vmaallocInfo.usage = memoryUsage;
+		vmaallocInfo.requiredFlags = required_flags;
+		AllocatedBufferUntyped newBuffer;
+
+		vmaCreateBuffer(context->_allocator, &bufferInfo, &vmaallocInfo,
+			&newBuffer._buffer,
+			&newBuffer._allocation,
+			nullptr);
+		newBuffer._size = allocSize;
+		return newBuffer;
+	}
 
 	void VK_Utils::Copy_VKBuffer(std::weak_ptr< VK_GraphicsContext> context, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 	{

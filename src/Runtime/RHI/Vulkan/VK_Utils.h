@@ -12,22 +12,74 @@
 #include <sstream>
 #include <iostream>
 #include <memory>
+#include <functional>
+#include "VK_GraphicsContext.h"
+
+
+
+namespace MXRender { struct AllocatedImage; }
+
+namespace MXRender { struct MipmapInfo; }
+
+namespace MXRender { struct AllocatedBufferUntyped; }
 
 namespace MXRender { class VK_GraphicsContext; }
-
 namespace MXRender
 {
+
+
+	struct AllocatedImage {
+		VkImage _image;
+		VmaAllocation _allocation;
+		VkImageView _defaultView;
+		int mipLevels;
+	};
+
+	struct AllocatedBufferUntyped {
+		VkBuffer _buffer{};
+		VmaAllocation _allocation{};
+		VkDeviceSize _size{ 0 };
+		VkDescriptorBufferInfo get_info(VkDeviceSize offset = 0);
+	};
+
+	template<typename T>
+	struct AllocatedBuffer : public AllocatedBufferUntyped {
+		void operator=(const AllocatedBufferUntyped& other) {
+			_buffer = other._buffer;
+			_allocation = other._allocation;
+			_size = other._size;
+		}
+		AllocatedBuffer(AllocatedBufferUntyped& other) {
+			_buffer = other._buffer;
+			_allocation = other._allocation;
+			_size = other._size;
+		}
+		AllocatedBuffer() = default;
+	};
+
     class VK_Utils
     {
     private:
        
     public:
+		static VkImageViewCreateInfo Imageview_Create_Info(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags);
+		static VkImageCreateInfo Image_Create_Info(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);
+		static void Immediate_Submit(VK_GraphicsContext* context, std::function<void(VkCommandBuffer cmd)>&& function);
+		static AllocatedImage Upload_Image_Mipmapped(VK_GraphicsContext* context,int texWidth, int texHeight, VkFormat image_format, AllocatedBufferUntyped& stagingBuffer, std::vector<MipmapInfo> mips);
+		static bool Load_Image_From_Asset(VK_GraphicsContext* context, const char* filename, AllocatedImage& outImage);
+		static VkSamplerCreateInfo Sampler_Create_Info(VkFilter filters, VkSamplerAddressMode samplerAdressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+		static VkPipelineDepthStencilStateCreateInfo Depth_Stencil_Create_Info(bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp);
+		static VkPipelineColorBlendAttachmentState Color_Blend_Attachment_State();
+		static VkPipelineMultisampleStateCreateInfo Multisampling_State_Create_Info();
+		static VkPipelineInputAssemblyStateCreateInfo Input_Assembly_Create_Info(VkPrimitiveTopology topology);
+		static VkPipelineRasterizationStateCreateInfo Rasterization_State_Create_Info(VkPolygonMode polygonMode);
 		static VkPipelineShaderStageCreateInfo Pipeline_Shader_Stage_Create_Info(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
 		static VkPipelineVertexInputStateCreateInfo Vertex_Input_State_Create_Info();
 		static VkPipelineLayoutCreateInfo Pipeline_Layout_Create_Info();
 		static uint32_t Hash_Descriptor_Layout_Info(VkDescriptorSetLayoutCreateInfo* info);
         static void Create_VKBuffer(std::weak_ptr< VK_Device> Device, VkDeviceSize Size, VkBufferUsageFlags Usage, VkMemoryPropertyFlags Properties, VkBuffer& Buffer, VkDeviceMemory& BufferMemory);
-        static void Copy_VKBuffer(std::weak_ptr< VK_GraphicsContext> context, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+        static AllocatedBufferUntyped Create_buffer(VK_GraphicsContext* context, size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkMemoryPropertyFlags required_flags);
+		static void Copy_VKBuffer(std::weak_ptr< VK_GraphicsContext> context, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		static void Copy_VKBuffer(VK_GraphicsContext* context, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		static void           Create_Image(VkPhysicalDevice      physical_device,
 			VkDevice              device,

@@ -271,7 +271,7 @@ namespace MXRender
 		std::vector<VkDescriptorPoolSize> poolSize(2);
 		poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		poolSize[0].descriptorCount = static_cast<uint32_t>(cur_context.lock()->get_max_frame_num());
-		poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		poolSize[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		poolSize[1].descriptorCount = static_cast<uint32_t>(cur_context.lock()->get_max_frame_num());
 
 		VkDescriptorPoolCreateInfo poolInfo{};

@@ -4,6 +4,7 @@
 #define _RENDERSCENE_
 #include <memory>
 #include <unordered_map>
+#include "../Mesh/MeshBase.h"
 
 
 struct GLFWwindow;
@@ -51,6 +52,19 @@ namespace MXRender
 
 	private:
 		T data[MeshpassType::Count];
+	};
+
+	struct MeshObject {
+		MeshBase* mesh{ nullptr };
+
+		Material* material;
+		uint32_t customSortKey;
+		glm::mat4 transformMatrix;
+
+		RenderBounds bounds;
+
+		uint32_t bDrawForwardPass : 1;
+		uint32_t bDrawShadowPass : 1;
 	};
 
 	struct DrawMesh {

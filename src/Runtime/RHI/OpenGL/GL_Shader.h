@@ -1,5 +1,4 @@
 #pragma once
-
 #ifndef _GL_SHADER_
 #define _GL_SHADER_
 

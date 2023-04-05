@@ -62,6 +62,7 @@ namespace MXRender
 
 		VkDescriptorPoolCreateInfo PoolInfo;
 		PoolInfo.sType= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		PoolInfo.flags= 0;
 		PoolInfo.poolSizeCount = Types.size();
 		PoolInfo.pPoolSizes = Types.data();
 		PoolInfo.maxSets = max_descriptorsets;
@@ -87,10 +88,11 @@ namespace MXRender
 			return false;
 		}
 		VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo;
+		DescriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		DescriptorSetAllocateInfo.descriptorPool = descriptor_pool;
 		DescriptorSetAllocateInfo.descriptorSetCount = 1;
 		DescriptorSetAllocateInfo.pSetLayouts = &Layout;
-
+		DescriptorSetAllocateInfo.pNext=VK_NULL_HANDLE;
 		return vkAllocateDescriptorSets(device.lock()->device, &DescriptorSetAllocateInfo, &OutSet)== VK_SUCCESS;
 
 	}
@@ -336,7 +338,10 @@ namespace MXRender
 
 		//allocate descriptor
 		bool success = alloc->allocate_descriptorset( layout, set);
-		if (!success) { return false; };
+		if (!success) 
+		{ 
+			return false; 
+		};
 
 		//write descriptor
 

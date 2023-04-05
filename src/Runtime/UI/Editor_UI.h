@@ -24,7 +24,8 @@ namespace MXRender
 	private:
 	protected:
 		GraphicsContext* context;
-		void show_editor_top_ui();
+		void show_camera_detail();
+
 	public:
 		EditorUI();
 		virtual ~EditorUI();
@@ -32,6 +33,7 @@ namespace MXRender
 		virtual void pre_render() ;
 		void show_editor_left_ui();
 		void show_editor_right_ui();
+		void show_editor_top_ui();
 		void show_editor_down_ui();
 		void show_center_main_window();
 	};

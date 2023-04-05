@@ -18,6 +18,9 @@
 #include "../../RHI/Vulkan/VK_RenderPass.h"
 #include "../../Mesh/MeshBase.h"
 
+namespace MXRender { struct MeshObject; }
+
+
 namespace MXRender { class GameObject; }
 
 namespace MXRender { class ComponentBase; }
@@ -35,6 +38,29 @@ namespace MXRender
         VkRenderPass renderpass;
     };
 
+    struct DynamicCPUUniformBuffer
+    {
+        void init(VK_GraphicsContext* context, VkDeviceMemory gpu_memory);
+        void shutdown(VK_GraphicsContext* context, VkDeviceMemory gpu_memory);
+		template<typename T>
+		uint32_t push(T& data);
+
+		uint32_t push(void* data, size_t size);
+
+        uint32_t update(void* data, size_t size,uint32_t offset);
+        void reset();
+        uint32_t pad_uniform_buffer_size(uint32_t originalSize);
+		uint32_t align;
+		uint32_t currentOffset;
+		void* mapped;
+    };
+
+	template<typename T>
+	uint32_t DynamicCPUUniformBuffer::push(T& data)
+	{
+		return push(&data, sizeof(T));
+	};
+
     class Mesh_RenderPass :public VK_RenderPass
     {
     private:
@@ -48,7 +74,7 @@ namespace MXRender
         
         void update_object_uniform(GameObject* game_object);
         void render_mesh(ComponentBase* mesh_component);
-
+        void render_mesh(MeshObject* mesh_component, VkDescriptorSet GlobalSet);
 		std::vector<VkBuffer> uniform_buffers;
 		std::vector<VkDeviceMemory> uniform_buffers_memory;
 
@@ -56,9 +82,11 @@ namespace MXRender
         std::vector<VkDescriptorSet> descriptor_sets;
 
         std::shared_ptr< VK_DescriptorSetLayout> descriptorset_layout;
+        std::shared_ptr< VK_DescriptorSetLayout> descriptorset_layout2;
         std::shared_ptr< VK_Texture> cubemap_texture;
 
-
+        VkDescriptorSet GlobalSet;
+        DynamicCPUUniformBuffer cpu_ubo_buffer;
     public:
         virtual void post_initialize();
         virtual void set_commonInfo(const PassInfo& init_info);

@@ -37,7 +37,8 @@ namespace MXRender
 		void calc_proj_mat();
 		void calc_otho_mat();
 
-		void camera_rotation(float);
+		void camera_rotation(Camera* camera, float);
+		void camera_rotation_relese(Camera* camera, float);
 		void camera_moveforward(float);
 		void camera_moveback(float);
 		void camera_moveright(float);
@@ -51,6 +52,7 @@ namespace MXRender
 		glm::vec3 direction,up,right, focal_point;
 		ENUM_CAMERA_TYPE camera_type;
 		glm::mat4 projection_mat,view_mat;
+		bool is_first_mouse_press=true;
 		void calc_projection_mat();
 	public:
 		void set_position(glm::vec3 new_position);
@@ -62,9 +64,15 @@ namespace MXRender
 		void set_width(float new_width);
 		void set_height(float new_height);
 		glm::vec3 get_position() const;
+		glm::vec3 get_right() const;
+		glm::vec3 get_up() const;
 		glm::vec3 get_direction() const;
 		glm::mat4 get_projection_mat() const ;
 		glm::mat4 get_view_mat() ;
+		float& get_can_change_move_speed();
+		float& get_can_change_fov();
+		float& get_can_change_near_plane();
+		float& get_can_change_far_plane();
 		void update_rotation(float x_offset,float y_offset);
 		void set_window(GLFWwindow* new_window);
 		virtual void input_bingding_func() ;

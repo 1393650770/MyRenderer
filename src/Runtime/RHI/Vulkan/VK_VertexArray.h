@@ -19,6 +19,8 @@
 #include <stddef.h>
 #include "vulkan/vulkan_core.h"
 
+namespace MXRender { struct VertexInputDescription; }
+
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_ENABLE_EXPERIMENTAL
@@ -69,7 +71,18 @@ namespace MXRender
 		}
 
 	};
+	struct AssetVertex {
 
+		glm::vec3 position;
+		//glm::vec3 normal;
+		glm::vec<2, uint8_t> oct_normal;//color;
+		glm::vec<3, uint8_t> color;
+		glm::vec2 uv;
+		static VertexInputDescription get_vertex_description();
+
+		void pack_normal(glm::vec3 n);
+		void pack_color(glm::vec3 c);
+	};
 
 
     class VK_VertexArray:public VertexArray

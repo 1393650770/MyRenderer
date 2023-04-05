@@ -63,6 +63,7 @@ void MXRender::StaticMeshComponent::load_mesh(const std::string& mesh_path)
 		return ;
 	}
 	mesh_data->load_model(mesh_path);
+	//mesh_data->load_asset(mesh_path.c_str());
 	set_already_load_mesh_to_true();
 }
 

@@ -92,7 +92,7 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
 	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_window(window);
 	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_height(Singleton<DefaultSetting>::get_instance().height);
 	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_width(Singleton<DefaultSetting>::get_instance().width);
-	
+	Singleton<DefaultSetting>::get_instance().gameobject_manager->start_load_prefabs((GraphicsContext*)(Singleton<DefaultSetting>::get_instance().context.get()));
 	while (!glfwWindowShouldClose(window))
     {
         float currentFrame = static_cast<float>(glfwGetTime());

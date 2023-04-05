@@ -19,10 +19,10 @@ namespace MXRender
 		RenderObject newObj;
 		//newObj.bounds = object->bounds;
 		newObj.transformMatrix = game_object->get_transform()->get_translation_matrix();
-		newObj.material = get_material_id(game_object->material);
+		newObj.material = get_material_id(game_object->get_material());
 		newObj.meshID = get_mesh_id(game_object->get_staticmesh()->get_mesh_data().lock().get());
 		newObj.updateIndex = (uint32_t)-1;
-		newObj.customSortKey = object->customSortKey;
+		//newObj.customSortKey = object->customSortKey;
 		newObj.passIndices.clear(-1);
 		Handle<RenderObject> handle;
 		handle.handle = static_cast<uint32_t>(renderables.size());
@@ -49,7 +49,7 @@ namespace MXRender
 		//}
 
 		//update_object(handle);
-		return handle;
+		//return handle;
 	}
 
 	Handle<DrawMesh> RenderScene::get_mesh_id(MeshBase* mesh)

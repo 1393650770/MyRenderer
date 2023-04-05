@@ -1,9 +1,14 @@
 set_arch("x64")
 
-add_requires("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","rttr")
+add_requires("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","rttr","lz4","nlohmann_json")
 add_requires("imgui v1.88-docking", {configs = {glfw_vulkan = true}})
 add_rules("mode.debug", "mode.release")
 add_rules("plugin.vsxmake.autoupdate")
+
+target("AssetLoader")
+    set_kind("static")
+    set_languages("c++20")  
+    add_packages("json","lz4")
 
 
 target("Runtime")
@@ -23,6 +28,8 @@ target("Runtime")
     add_files("src/Runtime/UI/*.cpp") 
     add_files("src/Runtime/Logic/Camera/*.cpp") 
     add_files("src/Runtime/Logic/Input/*.cpp") 
+    add_files("src/Runtime/AssetLoader/*.cpp") 
+    add_headerfiles("src/Runtime/AssetLoader/*.h") 
     add_headerfiles("src/Runtime/Logic/Input/*.h") 
     add_headerfiles("src/Runtime/Logic/Camera/*.h") 
     add_headerfiles("src/Runtime/UI/*.h") 
@@ -36,19 +43,17 @@ target("Runtime")
     add_headerfiles("src/Runtime/RHI/Vulkan/*.h") 
     add_headerfiles("src/Runtime/RHI/*.h") 
     add_headerfiles("src/Runtime/Utils/*.h") 
-
     add_files("src/ThirdParty/spv_reflect/*.c") 
     add_headerfiles("src/ThirdParty/stb_image/*.h") 
     add_headerfiles("src/ThirdParty/spv_reflect/*.h") 
     add_headerfiles("src/ThirdParty/spv_reflect/include/spirv/unified1/*.h") 
+    add_headerfiles("src/ThirdParty/vma/*.h") 
     --add_headerfiles("src/ThirdParty/imgui/*.h") 
     --add_files("src/ThirdParty/imgui/*.cpp")
     --add_headerfiles("src/ThirdParty/imgui/backends/*.h")
     --add_files("src/ThirdParty/imgui/backends/*.cpp")
 
-
-    
-    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr")
+    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr","lz4","nlohmann_json")
     
 
 

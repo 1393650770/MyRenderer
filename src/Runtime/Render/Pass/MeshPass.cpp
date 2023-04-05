@@ -24,6 +24,9 @@
 #include "../../Logic/Component/StaticMeshComponent.h"
 #include "../../Logic/GameObjectManager.h"
 #include "../../Logic/GameObject.h"
+#include "../RenderScene.h"
+#include "../../Mesh/VK_Mesh.h"
+#include "PipelineShaderObject.h"
 namespace MXRender
 {
 
@@ -32,18 +35,18 @@ namespace MXRender
 	void Mesh_RenderPass::setup_descriptorset_layout()
 	{
 		std::shared_ptr<VK_Device> device = cur_context.lock()->device;
-
+		descriptorset_layout2 = std::make_shared<VK_DescriptorSetLayout>(device, 5);
 		descriptorset_layout=std::make_shared<VK_DescriptorSetLayout>(device,5);
 	
 		VkDescriptorSetLayoutBinding uboLayoutBinding{};
 		uboLayoutBinding.binding = 0;
 		uboLayoutBinding.descriptorCount = 1;
-		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 		uboLayoutBinding.pImmutableSamplers = nullptr;
 		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
 		VkDescriptorSetLayoutBinding cubetextureLayoutBinding{};
-		cubetextureLayoutBinding.binding = 1;
+		cubetextureLayoutBinding.binding = 0;
 		cubetextureLayoutBinding.descriptorCount = 1;
 		cubetextureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		cubetextureLayoutBinding.pImmutableSamplers = nullptr;
@@ -51,8 +54,9 @@ namespace MXRender
 
 		descriptorset_layout->add_bindingdescriptor(0, uboLayoutBinding);
 
-		descriptorset_layout->add_bindingdescriptor(1, cubetextureLayoutBinding);
+		descriptorset_layout2->add_bindingdescriptor(0, cubetextureLayoutBinding);
 		descriptorset_layout->compile();
+		descriptorset_layout2->compile();
 	}
 
 	void Mesh_RenderPass::setup_pipelines()
@@ -143,12 +147,14 @@ namespace MXRender
 		dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 		dynamicState.pDynamicStates = dynamicStates.data();
-
+		std::vector< VkDescriptorSetLayout> descriptors{
+			descriptorset_layout->get_descriptorset_layout(), descriptorset_layout2->get_descriptorset_layout()
+		};
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 1;
+		pipelineLayoutInfo.setLayoutCount = descriptors.size();
 		//pipelineLayoutInfo.pushConstantRangeCount = 0;
-		pipelineLayoutInfo.pSetLayouts = &descriptorset_layout->get_descriptorset_layout();
+		pipelineLayoutInfo.pSetLayouts = descriptors.data();
 
 		if (vkCreatePipelineLayout(cur_context.lock()->device->device, &pipelineLayoutInfo, nullptr, &pipeline_layout) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create pipeline layout!");
@@ -180,7 +186,7 @@ namespace MXRender
 
 	void Mesh_RenderPass::setup_uniformbuffer()
 	{
-		VkDeviceSize bufferSize = sizeof(MVP_Struct);
+		VkDeviceSize bufferSize = sizeof(MVP_Struct)* 1000000;
 
 		uniform_buffers.resize(1);
 		uniform_buffers_memory.resize(1);
@@ -193,7 +199,7 @@ namespace MXRender
 	void Mesh_RenderPass::setup_descriptorpool()
 	{
 		std::vector<VkDescriptorPoolSize> poolSize(2);
-		poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 		poolSize[0].descriptorCount = static_cast<uint32_t>(cur_context.lock()->get_max_frame_num());
 		poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		poolSize[1].descriptorCount = static_cast<uint32_t>(cur_context.lock()->get_max_frame_num());
@@ -217,47 +223,55 @@ namespace MXRender
 
 
 		cubemap_texture=std::make_shared<VK_Texture>(texture_path);
-
+		std::vector< VkDescriptorSetLayout> descriptors{
+	descriptorset_layout->get_descriptorset_layout(), descriptorset_layout2->get_descriptorset_layout()
+		};
 		VkDescriptorSetAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		allocInfo.descriptorPool = descriptor_pool;
-		allocInfo.descriptorSetCount = 1;
-		allocInfo.pSetLayouts = &descriptorset_layout->get_descriptorset_layout();
-		descriptor_sets.resize(1);
+		allocInfo.descriptorSetCount = descriptors.size();
+		allocInfo.pSetLayouts = descriptors.data();
+		descriptor_sets.resize(descriptors.size());
 		if (vkAllocateDescriptorSets(cur_context.lock()->device->device, &allocInfo, descriptor_sets.data()) != VK_SUCCESS) {
 			throw std::runtime_error("failed to allocate descriptor sets!");
 		}
 
-		for (size_t i = 0; i < 1; i++) {
-			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = uniform_buffers[i];
-			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(MVP_Struct);
 
-			VkDescriptorImageInfo imageInfo{};
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = cubemap_texture->textureImageView;
-			imageInfo.sampler = cubemap_texture->textureSampler;
+		VkDescriptorBufferInfo bufferInfo{};
+		bufferInfo.buffer = uniform_buffers[0];
+		bufferInfo.offset = 0;
+		bufferInfo.range = sizeof(MVP_Struct);
 
-			std::vector< VkWriteDescriptorSet> descriptorWrite(2);
-			descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite[0].dstSet = descriptor_sets[i];
-			descriptorWrite[0].dstBinding = 0;
-			descriptorWrite[0].dstArrayElement = 0;
-			descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrite[0].descriptorCount = 1;
-			descriptorWrite[0].pBufferInfo = &bufferInfo;
+		VkDescriptorImageInfo imageInfo{};
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = cubemap_texture->textureImageView;
+		imageInfo.sampler = cubemap_texture->textureSampler;
 
-			descriptorWrite[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite[1].dstSet = descriptor_sets[i];
-			descriptorWrite[1].dstBinding = 1;
-			descriptorWrite[1].dstArrayElement = 0;
-			descriptorWrite[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrite[1].descriptorCount = 1;
-			descriptorWrite[1].pImageInfo = &imageInfo;
+		std::vector< VkWriteDescriptorSet> descriptorWrite(2);
+		descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[0].dstSet = descriptor_sets[0];
+		descriptorWrite[0].dstBinding = 0;
+		descriptorWrite[0].dstArrayElement = 0;
+		descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+		descriptorWrite[0].descriptorCount = 1;
+		descriptorWrite[0].pBufferInfo = &bufferInfo;
 
-			vkUpdateDescriptorSets(cur_context.lock()->device->device, descriptorWrite.size(), descriptorWrite.data(), 0, nullptr);
-		}
+		descriptorWrite[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[1].dstSet = descriptor_sets[1];
+		descriptorWrite[1].dstBinding = 0;
+		descriptorWrite[1].dstArrayElement = 0;
+		descriptorWrite[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrite[1].descriptorCount = 1;
+		descriptorWrite[1].pImageInfo = &imageInfo;
+
+		vkUpdateDescriptorSets(cur_context.lock()->device->device, descriptorWrite.size(), descriptorWrite.data(), 0, nullptr);
+		
+
+
+		//DescriptorBuilder::begin(cur_context.lock()->material_system.get_descript_pool())
+		//.bind_buffer(0, &bufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+		//	.build(GlobalSet);
+
 		
 	}
 
@@ -280,10 +294,14 @@ namespace MXRender
 
 		ubo.proj[1][1] *= -1;
 		
-		void* data;
-		vkMapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0], 0, sizeof(ubo), 0, &data);
-		memcpy(data, &ubo, sizeof(ubo));
-		vkUnmapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0]);
+		//void* data;
+		//vkMapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0], 0, sizeof(ubo), 0, &data);
+		//memcpy(data, &ubo, sizeof(ubo));
+		//vkUnmapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0]);
+
+		uint32_t offset = cpu_ubo_buffer.push(ubo);
+
+		vkCmdBindDescriptorSets(cur_context.lock()->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &descriptor_sets[0], 1, &offset);
 	}
 
 	void Mesh_RenderPass::render_mesh(ComponentBase* mesh_component)
@@ -309,6 +327,47 @@ namespace MXRender
 		}
 	}
 
+	void Mesh_RenderPass::render_mesh(MeshObject* mesh_component, VkDescriptorSet GlobalSet)
+	{
+
+		vkCmdBindPipeline(cur_context.lock()->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_component->material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
+
+
+		vkCmdSetViewport(cur_context.lock()->get_cur_command_buffer(), 0, 1, &cur_context.lock()->viewport);
+
+		MVP_Struct ubo{};
+		ubo.model = mesh_component->transformMatrix;
+		ubo.view = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
+		ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
+		//ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		//ubo.proj = glm::perspective(glm::radians(60.0f), (float)cur_context.lock()->get_swapchain_extent().width / (float)cur_context.lock()->get_swapchain_extent().height, 0.1f, 1000.0f);
+		ubo.proj[1][1] *= -1;
+		//void* data;
+		//vkMapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0], 0, sizeof(ubo), 0, &data);
+		//memcpy(data, &ubo, sizeof(ubo));
+		//vkUnmapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0]);
+
+		uint32_t offset= cpu_ubo_buffer.push(ubo);
+
+		mesh_component->mesh->init_mesh_info((GraphicsContext*)cur_context.lock().get());
+
+
+		vkCmdBindDescriptorSets(cur_context.lock()->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_component->material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &GlobalSet, 1, &offset);
+		vkCmdBindDescriptorSets(cur_context.lock()->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_component->material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 1, 1, &mesh_component->material->pass_sets[MeshpassType::Forward], 0, nullptr);
+
+		VK_Mesh* vk_mesh = dynamic_cast<VK_Mesh*>(mesh_component->mesh);
+		if (!vk_mesh) return;
+		VkBuffer vertexBuffers[] = { vk_mesh->get_mesh_info().vertex_buffer };
+		VkDeviceSize offsets[] = { 0 };
+
+		vkCmdBindVertexBuffers(cur_context.lock()->get_cur_command_buffer(), 0, 1, vertexBuffers, offsets);
+
+		vkCmdBindIndexBuffer(cur_context.lock()->get_cur_command_buffer(), vk_mesh->get_mesh_info().index_buffer, 0, VK_INDEX_TYPE_UINT32);
+
+		vkCmdDrawIndexed(cur_context.lock()->get_cur_command_buffer(), static_cast<uint32_t>(vk_mesh->indices.size()), 1, 0, 0, 0);
+
+	}
+
 	void Mesh_RenderPass::initialize(const PassInfo& init_info, PassOtherInfo* other_info)
 	{
 		VKPassCommonInfo* vk_info = static_cast<VKPassCommonInfo*>(other_info);
@@ -322,6 +381,8 @@ namespace MXRender
 		setup_uniformbuffer();
 		setup_descriptorpool();
 		setup_descriptorsets();
+
+		cpu_ubo_buffer.init(cur_context.lock().get(), uniform_buffers_memory[0]);
 	}
 
 	void Mesh_RenderPass::post_initialize()
@@ -343,6 +404,8 @@ namespace MXRender
 	{
 		//update_uniformbuffer();
 
+		cpu_ubo_buffer.reset();
+
 		VK_GraphicsContext* vk_context=nullptr;
 		vk_context= dynamic_cast<VK_GraphicsContext*>(context);
 		if (vk_context==nullptr)
@@ -361,13 +424,25 @@ namespace MXRender
 
 		vkCmdSetScissor(vk_context->get_cur_command_buffer(), 0, 1, &scissor);
 
-		vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &descriptor_sets[0], 0, nullptr);
+		vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, &descriptor_sets[1], 0, nullptr);
+
+		//ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		//ubo.proj = glm::perspective(glm::radians(60.0f), (float)cur_context.lock()->get_swapchain_extent().width / (float)cur_context.lock()->get_swapchain_extent().height, 0.1f, 1000.0f);
+
+
+
 
 		//vkCmdDrawIndexed(vk_context->get_cur_command_buffer(), static_cast<uint32_t>(mesh_data->indices.size()), 1, 0, 0, 0);
 		for(int i=0;i< Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list.size();i++)
 		{ 
 			update_object_uniform(&Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i]);
 			render_mesh(Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_staticmesh());
+		}
+
+		for (int i = 0; i < Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables.size(); i++)
+		{
+		
+			render_mesh(&(Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables[i]), descriptor_sets[0]);
 		}
 	}
 
@@ -380,6 +455,7 @@ namespace MXRender
 
 	Mesh_RenderPass::~Mesh_RenderPass()
 	{
+		cpu_ubo_buffer.shutdown(cur_context.lock().get(),uniform_buffers_memory[0]);
 		vkDestroyPipeline(cur_context.lock()->device->device, pipeline, nullptr);
 		vkDestroyPipelineLayout(cur_context.lock()->device->device, pipeline_layout, nullptr);
 		//svkDestroyRenderPass(cur_context.lock()->device->device, render_pass, nullptr);
@@ -406,4 +482,53 @@ namespace MXRender
     {
         pass_info = init_info;
     }
+
+	void DynamicCPUUniformBuffer::init(VK_GraphicsContext* context, VkDeviceMemory gpu_memory)
+	{
+		align = context->device->gpu_props.limits.minUniformBufferOffsetAlignment;
+		currentOffset = 0;
+
+		vkMapMemory(context->device->device, gpu_memory, 0, VK_WHOLE_SIZE, 0, &mapped);
+	}
+
+	void DynamicCPUUniformBuffer::shutdown(VK_GraphicsContext* context, VkDeviceMemory gpu_memory)
+	{
+		vkUnmapMemory(context->device->device, gpu_memory);
+	}
+
+	uint32_t DynamicCPUUniformBuffer::push(void* data, size_t size)
+	{
+		uint32_t offset = currentOffset;
+		char* target = (char*)mapped;
+		target += currentOffset;
+		memcpy(target, data, size);
+		currentOffset += static_cast<uint32_t>(size);
+		currentOffset = pad_uniform_buffer_size(currentOffset);
+
+		return offset;
+	}
+
+	uint32_t DynamicCPUUniformBuffer::update(void* data, size_t size, uint32_t offset)
+	{
+		char* target = (char*)mapped;
+		target += offset;
+		memcpy(target, data, size);
+		return offset;
+	}
+
+	void DynamicCPUUniformBuffer::reset()
+	{
+		currentOffset = 0;
+	}
+
+	uint32_t DynamicCPUUniformBuffer::pad_uniform_buffer_size(uint32_t originalSize)
+	{
+		size_t minUboAlignment = align;
+		size_t alignedSize = originalSize;
+		if (minUboAlignment > 0) {
+			alignedSize = (alignedSize + minUboAlignment - 1) & ~(minUboAlignment - 1);
+		}
+		return static_cast<uint32_t>(alignedSize);
+	}
+
 }

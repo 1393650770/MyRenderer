@@ -10,7 +10,10 @@
 
 namespace MXRender
 {
-
+	struct MipmapInfo {
+		size_t dataSize;
+		size_t dataOffset;
+	};
     
 } // namespace name
 

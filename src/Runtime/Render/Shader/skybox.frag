@@ -10,3 +10,4 @@ layout(set = 0, binding = 1) uniform samplerCube cubemap_sampler;
 void main() {
     outColor = texture(cubemap_sampler, TexCoords);
 }
+

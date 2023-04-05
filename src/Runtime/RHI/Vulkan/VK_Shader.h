@@ -37,8 +37,8 @@ namespace MXRender
 		};
     private:
         
-        std::vector<char> readFile(const std::string& filename);
-        VkShaderModule createShaderModule(const std::vector<char>& code);
+        std::vector<uint32_t> readFile(const std::string& filename);
+        VkShaderModule createShaderModule(const std::vector<uint32_t>& code);
         std::tuple<VkDeviceSize, VkBuffer, VkDeviceMemory>& getUniformTuple(const std::string& name);
     protected:
         // ≥Ã–ÚID
@@ -49,13 +49,13 @@ namespace MXRender
         mutable std::unordered_map<std::string,std::tuple<VkDeviceSize,VkBuffer, VkDeviceMemory>> Uniformmap;
 
 		std::unordered_map<std::string, ReflectedBinding> Bindings;
-		std::array<VkDescriptorSetLayout, 4> setLayouts;
+		std::array<VkDescriptorSetLayout, 4> setLayouts{ VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE };
 		std::array<uint32_t, 4> setHashes;
         std::array<VkDescriptorSet,4> sets;
         VkPipelineLayout BuiltLayout = VK_NULL_HANDLE;
     public:
         VkShaderModule shader_modules[ENUM_SHADER_STAGE::NumStages]{VK_NULL_HANDLE};
-        std::vector<char> shader_codes[ENUM_SHADER_STAGE::NumStages];
+        std::vector<uint32_t> shader_codes[ENUM_SHADER_STAGE::NumStages];
 
         VK_Shader(std::shared_ptr<VK_Device> InDevice, const std::string& vertexPath = "", const std::string& fragmentPath = "", const std::string& geometryPath = "", const std::string& computePath = "");
         

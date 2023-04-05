@@ -6,6 +6,10 @@
 #include "../../Utils/Singleton.h"
 #include "../../Render/Window.h"
 #include "../../Logic/GameObjectManager.h"
+#include "../../Mesh/MeshBase.h"
+#include "../../Render/Pass/PipelineShaderObject.h"
+
+
 
 void MXRender::VK_GraphicsContext::create_instance()
 {
@@ -89,6 +93,9 @@ void MXRender::VK_GraphicsContext::initialize_physical_device()
 	if (device->gpu == VK_NULL_HANDLE) {
 		throw std::runtime_error("failed to find a suitable GPU!");
 	}
+	
+	vkGetPhysicalDeviceProperties(device->gpu, &(device->gpu_props));
+
 }
 
 void MXRender::VK_GraphicsContext::create_logical_device()
@@ -147,6 +154,15 @@ void MXRender::VK_GraphicsContext::create_logical_device()
 		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
+void MXRender::VK_GraphicsContext::init_vma_allocator()
+{
+	VmaAllocatorCreateInfo allocatorInfo = {};
+	allocatorInfo.physicalDevice = device->gpu;
+	allocatorInfo.device = device->device;
+	allocatorInfo.instance = instance		;
+	vmaCreateAllocator(&allocatorInfo, &_allocator);
+}
+
 void MXRender::VK_GraphicsContext::create_command_pool()
 {
 	QueueFamilyIndices queueFamilyIndices = find_queue_families(device->gpu);
@@ -194,6 +210,73 @@ void MXRender::VK_GraphicsContext::create_sync_object()
 			throw std::runtime_error("failed to create synchronization objects for a frame!");
 		}
 	}
+}
+
+void MXRender::VK_GraphicsContext::init_pass_test()
+{
+	VkAttachmentDescription color_attachment = {};
+	color_attachment.format = swapchain_image_format;//_swachainImageFormat;
+	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	color_attachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;//PRESENT_SRC_KHR;
+
+	VkAttachmentReference color_attachment_ref = {};
+	color_attachment_ref.attachment = 0;
+	color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentDescription depth_attachment = {};
+	// Depth attachment
+	depth_attachment.flags = 0;
+	depth_attachment.format = depth_image_format;
+	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depth_attachment_ref = {};
+	depth_attachment_ref.attachment = 1;
+	depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	//we are going to create 1 subpass, which is the minimum you can do
+	VkSubpassDescription subpass = {};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &color_attachment_ref;
+	//hook the depth attachment into the subpass
+	subpass.pDepthStencilAttachment = &depth_attachment_ref;
+
+	//1 dependency, which is from "outside" into the subpass. And we can read or write color
+	VkSubpassDependency dependency = {};
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask = 0;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+
+	//array of 2 attachments, one for the color, and other for depth
+	VkAttachmentDescription attachments[2] = { color_attachment,depth_attachment };
+
+	VkRenderPassCreateInfo render_pass_info = {};
+	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	//2 attachments from said array
+	render_pass_info.attachmentCount = 2;
+	render_pass_info.pAttachments = &attachments[0];
+	render_pass_info.subpassCount = 1;
+	render_pass_info.pSubpasses = &subpass;
+	//render_pass_info.dependencyCount = 1;
+	//render_pass_info.pDependencies = &dependency;
+
+	vkCreateRenderPass(device->device, &render_pass_info, nullptr, &mesh_pass);
+
 }
 
 VkResult MXRender::VK_GraphicsContext::create_debug_utils_messengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
@@ -440,13 +523,14 @@ void MXRender::VK_GraphicsContext::init(Window* new_window)
 	create_surface();
 	initialize_physical_device();
 	create_logical_device();
+	init_vma_allocator();
 	create_swapchain();
 	create_swapchain_imageviews();
 	create_framebuffer_imageAndview();
 	create_command_pool();
 	create_command_buffer();
 	create_sync_object();
-
+	init_pass_test();
 
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
@@ -454,6 +538,8 @@ void MXRender::VK_GraphicsContext::init(Window* new_window)
 	viewport.height = get_swapchain_extent().height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
+
+
 }
 
 void MXRender::VK_GraphicsContext::pre_init()
@@ -744,6 +830,11 @@ void MXRender::VK_GraphicsContext::add_on_swapchain_clean_func(const std::functi
 	on_swapchain_clean.emplace_back(func);
 }
 
+void MXRender::VK_GraphicsContext::add_on_shutdown_clean_func(const std::function<void()>& func)
+{
+	on_shutdown_clean.emplace_back(func);
+}
+
 void MXRender::VK_GraphicsContext::pre_pass()
 {
 	vkWaitForFences(device->device, 1, &frame_in_flight_fence[current_frame_index], VK_TRUE, UINT64_MAX);
@@ -832,7 +923,7 @@ void MXRender::VK_GraphicsContext::cleanup()
 {
 	clean_swapchain();
 	
-	
+
 
 	for (size_t i = 0; i < max_frames_in_flight; i++) {
 		vkDestroySemaphore(device->device, image_finished_for_presentation_semaphore[i], nullptr);
@@ -841,7 +932,12 @@ void MXRender::VK_GraphicsContext::cleanup()
 	}
 
 	vkDestroyCommandPool(device->device, command_pool, nullptr);
+	//for (auto& it : on_shutdown_clean)
+	//{
+	//	it();
+	//}
 
+	vmaDestroyAllocator(_allocator);
 	vkDestroyDevice(device->device, nullptr);
 
 	if (enableValidationLayers) {

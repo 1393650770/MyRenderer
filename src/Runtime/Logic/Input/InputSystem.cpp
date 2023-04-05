@@ -39,6 +39,8 @@ void MXRender::InputSystem::process_input(GLFWwindow* window)
 		input_component->run(GLFW_KEY_D, PRESS);
 	if (glfwGetKey(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
 		input_component->run(GLFW_MOUSE_BUTTON_LEFT, PRESS);
-	if (glfwGetMouseButton(window, 0) == GLFW_PRESS)
-		input_component->run(GLFW_MOUSE_BUTTON_LEFT, PRESS);
+	if (glfwGetMouseButton(window, 1) == GLFW_PRESS)
+		input_component->run(GLFW_MOUSE_BUTTON_RIGHT, PRESS);
+	if (glfwGetMouseButton(window, 1) == GLFW_RELEASE)
+		input_component->run(GLFW_MOUSE_BUTTON_RIGHT, RELEASE);
 }

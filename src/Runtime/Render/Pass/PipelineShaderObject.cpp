@@ -22,6 +22,7 @@
 #include "../../RHI/Vulkan/VK_Shader.h"
 #include <array>
 #include "../../RHI/Vulkan/VK_RenderPass.h"
+#include "../../Mesh/GL_Mesh.h"
 namespace MXRender
 {
 
@@ -76,8 +77,7 @@ namespace MXRender
 
 			//need to build the material
 			Material* newMat = new Material();
-			newMat->pass_pso=info.psos;
-			//newMat->original = &templateCache[info.baseTemplate];
+			newMat->pass_pso = &templateCache[info.baseTemplate];
 			//newMat->parameters = info.parameters;
 			////not handled yet
 			newMat->pass_sets[MeshpassType::DirectionalShadow] = VK_NULL_HANDLE;
@@ -87,21 +87,19 @@ namespace MXRender
 			for (int i = 0; i < info.textures.size(); i++)
 			{
 				VkDescriptorImageInfo imageBufferInfo;
-				imageBufferInfo.sampler = info.textures[i].textureSampler;
-				imageBufferInfo.imageView = info.textures[i].textureImageView;
+				imageBufferInfo.sampler = info.textures[i].sampler;
+				imageBufferInfo.imageView = info.textures[i].view;
 				imageBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 				
 				db.bind_image(i, &imageBufferInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
 			}
 
-			descriptor_pool->allocate_descriptorsets();
 				
 			db.build(newMat->pass_sets[MeshpassType::Forward]);
 			db.build(newMat->pass_sets[MeshpassType::Transparency]);
-			//LOG_INFO("Built New Material {}", materialName);
 			//add material to cache
 			materialCache[info] = (newMat);
-			//mat = newMat;
+			mat = newMat;
 			materials[materialName] = mat;
 		}
 
@@ -110,7 +108,45 @@ namespace MXRender
 
 	void MaterialSystem::build_pipeline_builder()
 	{
-		
+
+		{
+			mesh_pass_builder.vertexDescription= AssetVertex::get_vertex_description();
+			
+			mesh_pass_builder._inputAssembly = VK_Utils::Input_Assembly_Create_Info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+
+
+			mesh_pass_builder._rasterizer = VK_Utils::Rasterization_State_Create_Info(VK_POLYGON_MODE_FILL);
+			mesh_pass_builder._rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;//BACK_BIT;
+			mesh_pass_builder._rasterizer.frontFace= VK_FRONT_FACE_COUNTER_CLOCKWISE;
+			mesh_pass_builder._multisampling = VK_Utils::Multisampling_State_Create_Info();
+
+			mesh_pass_builder._colorBlendAttachment = VK_Utils::Color_Blend_Attachment_State();
+
+			//default depthtesting
+			mesh_pass_builder._depthStencil = VK_Utils::Depth_Stencil_Create_Info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
+		}
+	}
+
+	void MaterialSystem::build_default_pso()
+	{
+
+	}
+
+	MXRender::Material* MaterialSystem::get_material(const std::string& materialName)
+	{
+		auto it = materials.find(materialName);
+		if (it != materials.end())
+		{
+			return(*it).second;
+		}
+		else {
+			return nullptr;
+		}
+	}
+
+	MXRender::VK_DescriptorPool* MaterialSystem::get_descript_pool() const
+	{
+		return descriptor_pool;
 	}
 
 	MaterialSystem::MaterialSystem()
@@ -120,23 +156,53 @@ namespace MXRender
 
 	MaterialSystem::~MaterialSystem()
 	{
-
+		delete descriptor_pool;
+		for (auto& it : shaders)
+		{
+			delete it.second;
+		}
 	}
 
 	void MaterialSystem::init(VK_GraphicsContext* context)
 	{
 		this->context=context;
+		build_pipeline_builder();
+		descriptor_pool=new VK_DescriptorPool(context->device,50000);
+		//VK_Shader* default_color = new  VK_Shader(context->device, "Shader/mesh_rock_vert.spv", "Shader/mesh_rock_frag.spv");
+		VK_Shader* default_color = new  VK_Shader(context->device, "Shader/default_prefabs_mesh_vert.spv", "Shader/default_prefabs_mesh_frag.spv");
+		//test->reflect_layout(nullptr,0);
 
-		VK_Shader* test = new  VK_Shader(context->device, "Shader/mesh_rock_vert.spv", "Shader/mesh_rock_frag.spv");
-		test->reflect_layout(nullptr,0);
-		shaders["default_mesh"] = test;
+		VK_Shader::ReflectionOverrides overrides[] = {
+			{"mvp", VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC}	
+		};
+		default_color->reflect_layout(overrides, 1);
+		shaders["default_mesh"] = default_color;
 
-		PipelineShaderObject* mesh_pso =  build_pso(context->mesh_pass, mesh_pass_builder,test);
+		PipelineShaderObject* mesh_pso =  build_pso(context->mesh_pass, mesh_pass_builder, default_color);
 		psos["mesh_pass"] = mesh_pso;
-		MaterialData data;
-		Material* mat= build_material("mesh_base",data);
 
-		descriptor_pool=new VK_DescriptorPool(context->device,50);
+
+		templateCache["mesh_base"].pass_pso[MeshpassType::Forward]= mesh_pso;
+		templateCache["mesh_base"].pass_pso[MeshpassType::Transparency] = nullptr;
+		templateCache["mesh_base"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
+
+		MaterialData data;
+
+		
+		Material* mat = build_material("mesh_base", data);
+	}
+
+	bool MaterialData::operator==(const MaterialData& other) const
+	{
+		if (other.baseTemplate.compare(baseTemplate) != 0 || other.parameters != parameters || other.textures.size() != textures.size())
+		{
+			return false;
+		}
+		else {
+			//binary compare textures
+			bool comp = memcmp(other.textures.data(), textures.data(), textures.size() * sizeof(textures[0])) == 0;
+			return comp;
+		}
 	}
 
 	size_t MaterialData::hash() const
@@ -149,7 +215,7 @@ namespace MXRender
 		for (const auto& b : textures)
 		{
 			//pack the binding data into a single int64. Not fully correct but its ok
-			size_t texture_hash = (std::hash<size_t>()((size_t)b.textureSampler) << 3) && (std::hash<size_t>()((size_t)b.textureImageView) >> 7);
+			size_t texture_hash = (std::hash<size_t>()((size_t)b.sampler) << 3) && (std::hash<size_t>()((size_t)b.view) >> 7);
 
 			//shuffle the packed binding data and xor it with the main hash
 			result ^= std::hash<size_t>()(texture_hash);

@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _MAINCAMERA_RENDERPASS_
-#define _MAINCAMERA_RENDERPASS_
+#ifndef _PIPELINESHADEROBJECT_
+#define _PIPELINESHADEROBJECT_
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -46,10 +46,10 @@ namespace MXRender
     private:
     protected:
         VK_Shader * shader{nullptr};
-        VkPipeline pipeline{VK_NULL_HANDLE};
-        VkPipelineLayout pipeline_layout{VK_NULL_HANDLE};
+
     public:
-       
+		VkPipeline pipeline{ VK_NULL_HANDLE };
+		VkPipelineLayout pipeline_layout{ VK_NULL_HANDLE };
 
         PipelineShaderObject();
         virtual ~PipelineShaderObject();
@@ -63,13 +63,20 @@ namespace MXRender
 
 	};
 
+	struct SampledTexture {
+		VkSampler sampler;
+		VkImageView view;
+	};
+	struct EffectTemplate {
+		PerPassData<PipelineShaderObject*> pass_pso;
+	};
 	class Material
 	{
 	private:
 	protected:
 		
 	public:
-		PerPassData<PipelineShaderObject*> pass_pso;
+		EffectTemplate* pass_pso;
 		PerPassData<VkDescriptorSet> pass_sets;
 
         Material();
@@ -78,10 +85,10 @@ namespace MXRender
 
 	};
 	struct MaterialData {
-		std::vector<VK_Texture> textures;
+		std::vector<SampledTexture> textures;
 		ShaderParameters* parameters;
-		PerPassData<PipelineShaderObject*> psos;
-
+		EffectTemplate* psos;
+		std::string baseTemplate;
 		bool operator==(const MaterialData& other) const;
 
 		size_t hash() const;
@@ -103,14 +110,19 @@ namespace MXRender
 		VK_GraphicsContext* context;
 		VK_DescriptorPool* descriptor_pool;
 		PipelineBuilder mesh_pass_builder;
+
 	public:
 		std::unordered_map<std::string, VK_Shader*> shaders;
 		std::unordered_map<std::string, PipelineShaderObject*> psos;
+		std::unordered_map<std::string, EffectTemplate> templateCache;
 		std::unordered_map<std::string, Material*> materials;
 		std::unordered_map<MaterialData, Material*, MaterialInfoHash> materialCache;
 		PipelineShaderObject* build_pso(VkRenderPass renderPass, PipelineBuilder& builder, VK_Shader* effect);
 		Material* build_material(const std::string& materialName, const MaterialData& info);
 		void build_pipeline_builder();
+		void build_default_pso();
+		Material* get_material(const std::string& materialName);
+		VK_DescriptorPool* get_descript_pool() const;
 		MaterialSystem();
 		virtual ~MaterialSystem();
 		void init (VK_GraphicsContext* context);

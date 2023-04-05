@@ -110,6 +110,41 @@ void MXRender::EditorUI::show_editor_top_ui()
 	ImGui::End();
 }
 
+void MXRender::EditorUI::show_camera_detail()
+{
+	std::string name = "Camera";
+	ImGui::BeginChild(name.c_str(), ImVec2(0, 30), true, ImGuiWindowFlags_ChildWindow);
+
+	if (ImGui::BeginMenu(name.c_str()))
+	{
+		
+		ImGui::Text("%s", "Camera Position");
+		//ImGui::SameLine();
+		ImGui::Text("Camera Position x : %f - Camera Position y : %f - Camera Position z : %f", 
+		(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_position().r),
+			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_position().g,
+			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_position().b);
+		ImGui::Text("Camera Direction x : %f - Camera Direction y : %f - Camera Direction z : %f",
+			(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_direction().r),
+			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_direction().g,
+			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_direction().b);
+		ImGui::Text("Camera Right x : %f - Camera Right y : %f - Camera Right z : %f",
+			(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_right().r),
+			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_right().g,
+			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_right().b);
+		ImGui::Text("Camera Up x : %f - Camera Up y : %f - Camera Up z : %f",
+			(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_up().r),
+			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_up().g,
+			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_up().b);
+		ImGui::DragFloat("Camera Move Speed", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_move_speed());
+		ImGui::DragFloat("Camera Near Plane", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_near_plane());
+		ImGui::DragFloat("Camera Far Plane", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_far_plane());
+		ImGui::DragFloat("Camera Fov", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_fov());
+		ImGui::EndMenu();
+	}
+	ImGui::EndChild();
+}
+
 MXRender::EditorUI::EditorUI()
 {
 
@@ -197,33 +232,42 @@ void MXRender::EditorUI::show_editor_right_ui()
 		return;
 	}
 
+
+	show_camera_detail();
+
 	for (int i = 0; i < Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list.size(); i++)
 	{
 		TransformComponent* transform= Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_transform();
-		
+		std::string name = Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_name();
 		glm::vec3 translation = transform->get_translation();
 		glm::vec3 scale = transform->get_scale();
 		glm::vec3 rotation = transform->get_rotation();
+		ImGui::BeginChild(name.c_str(), ImVec2(0, 30), true, ImGuiWindowFlags_ChildWindow);
 
-		ImGui::Text("%s", "transform translation");
-		//ImGui::SameLine();
-		ImGui::DragFloat("translation x", &translation.r);
-		ImGui::DragFloat("translation y", &translation.g);
-		ImGui::DragFloat("translation z", &translation.b);
-		ImGui::Text("%s", "transform scale");
-		//ImGui::SameLine();
-		ImGui::DragFloat("scale x", &scale.r);
-		ImGui::DragFloat("scale y", &scale.g);
-		ImGui::DragFloat("scale z", &scale.b);
-		ImGui::Text("%s", "transform rotation");
-		//ImGui::SameLine();
-		ImGui::DragFloat("rotation x", &rotation.r);
-		ImGui::DragFloat("rotation y", &rotation.g);
-		ImGui::DragFloat("rotation z", &rotation.b);
+		if (ImGui::BeginMenu(name.c_str()))
+		{ 
 
-		transform->set_translation(translation);
-		transform->set_scale(scale);
-		transform->set_rotation(rotation);
+			ImGui::Text("%s", "transform translation");
+			//ImGui::SameLine();
+			ImGui::DragFloat("translation x", &translation.r);
+			ImGui::DragFloat("translation y", &translation.g);
+			ImGui::DragFloat("translation z", &translation.b);
+			ImGui::Text("%s", "transform scale");
+			//ImGui::SameLine();
+			ImGui::DragFloat("scale x", &scale.r);
+			ImGui::DragFloat("scale y", &scale.g);
+			ImGui::DragFloat("scale z", &scale.b);
+			ImGui::Text("%s", "transform rotation");
+			//ImGui::SameLine();
+			ImGui::DragFloat("rotation x", &rotation.r);
+			ImGui::DragFloat("rotation y", &rotation.g);
+			ImGui::DragFloat("rotation z", &rotation.b);
+			transform->set_translation(translation);
+			transform->set_scale(scale);
+			transform->set_rotation(rotation);
+			ImGui::EndMenu();
+		}
+		ImGui::EndChild();
 	}
 
 

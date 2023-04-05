@@ -19,45 +19,63 @@ void MXRender::Camera::calc_otho_mat()
 	projection_mat = glm::ortho(-width * 0.5f, width * 0.5f, -height * 0.5f, height * 0.5f);
 }
 
-void MXRender::Camera::camera_rotation(float delta_time)
+void MXRender::Camera::camera_rotation(Camera* camera,float delta_time)
 {
-	
-	double xpos,ypos;
-	glfwGetCursorPos(window, &xpos,&ypos);
-	float xoffset = last_pos_x - xpos;
-	float yoffset = last_pos_y - ypos; 
-	//std::cout<<"camera_rotation :"<< xoffset<<"  "<< yoffset << std::endl;
-	//update_rotation(xoffset*0.0000001f,yoffset * 0.0000001f);
+	if (camera)
+	{
 
-	last_pos_x=xpos;
-	last_pos_y=ypos;
+		double xpos,ypos;
+		glfwGetCursorPos(window, &xpos,&ypos);
+		std::cout << "camera_position :" << xpos << "  " << ypos <<" last_pos_x : "<< camera->last_pos_x<<"  "<< camera->last_pos_y << std::endl;
+		if (camera->is_first_mouse_press)
+		{
+			camera->last_pos_x = xpos;
+			camera->last_pos_y = ypos;
+			camera->is_first_mouse_press = false;
+		}
+		float x_offset = camera->last_pos_x - xpos;
+		float y_offset = camera->last_pos_y - ypos;
+		std::cout<<"camera_rotation :"<< x_offset<<"  "<< y_offset << std::endl;
+		update_rotation(x_offset,y_offset);
+
+		camera->last_pos_x=xpos;
+		camera->last_pos_y=ypos;
+	}
+}
+
+void MXRender::Camera::camera_rotation_relese(Camera* camera, float)
+{
+	if (camera)
+	{
+		camera->is_first_mouse_press = true;
+	}
 }
 
 void MXRender::Camera::camera_moveforward(float delta_time)
 {
 	glm::vec3 position = transform->get_translation();
-	position.z += movement_speed * delta_time;
+	position +=direction* movement_speed * delta_time;
 	transform->set_translation(position);
 }
 
 void MXRender::Camera::camera_moveback(float delta_time)
 {
 	glm::vec3 position = transform->get_translation();
-	position.z -= movement_speed * delta_time;
+	position -=direction* movement_speed * delta_time;
 	transform->set_translation(position);
 }
 
 void MXRender::Camera::camera_moveright(float delta_time)
 {
 	glm::vec3 position= transform->get_translation();
-	position.x-=movement_speed* delta_time;
+	position +=  right *movement_speed* delta_time;
 	transform->set_translation(position);
 }
 
 void MXRender::Camera::camera_moveleft(float delta_time)
 {
 	glm::vec3 position = transform->get_translation();
-	position.x += movement_speed * delta_time;
+	position -= right* movement_speed * delta_time;
 	transform->set_translation(position);
 }
 
@@ -128,6 +146,16 @@ glm::vec3 MXRender::Camera::get_position() const
 	return transform->get_translation();
 }
 
+glm::vec3 MXRender::Camera::get_right() const
+{
+	return right;
+}
+
+glm::vec3 MXRender::Camera::get_up() const
+{
+	return up;
+}
+
 glm::vec3 MXRender::Camera::get_direction() const
 {
 	return direction;
@@ -144,37 +172,81 @@ glm::mat4 MXRender::Camera::get_view_mat()
 	return view_mat;
 }
 
+float& MXRender::Camera::get_can_change_move_speed()
+{
+	return movement_speed;
+}
+
+float& MXRender::Camera::get_can_change_fov()
+{
+	return fov;
+}
+
+float& MXRender::Camera::get_can_change_near_plane()
+{
+	return near;
+}
+
+float& MXRender::Camera::get_can_change_far_plane()
+{
+	return far;
+}
+
+glm::quat RotationBetweenVectors(glm::vec3 start, glm::vec3 dest)
+{
+	start = normalize(start);
+	dest = normalize(dest);
+
+	float cosTheta = dot(start, dest);
+	glm::vec3 rotationAxis;
+
+	if (cosTheta < -1 + 0.001f) {
+		// special case when vectors in opposite directions:
+		// there is no "ideal" rotation axis
+		// So guess one; any will do as long as it's perpendicular to start
+		rotationAxis = glm::cross(glm::vec3(0.0f, 0.0f, 1.0f), start);
+		if (glm::length2(rotationAxis) < 0.01) // bad luck, they were parallel, try again!
+			rotationAxis = glm::cross(glm::vec3(1.0f, 0.0f, 0.0f), start);
+
+		rotationAxis = normalize(rotationAxis);
+		return glm::angleAxis(180.0f, rotationAxis);
+	}
+
+	rotationAxis = cross(start, dest);
+
+	float s = sqrt((1 + cosTheta) * 2);
+	float invs = 1 / s;
+
+	return glm::quat(
+		s * 0.5f,
+		rotationAxis.x * invs,
+		rotationAxis.y * invs,
+		rotationAxis.z * invs
+	);
+
+}
+
 void MXRender::Camera::update_rotation(float x_offset, float y_offset)
 {
 
 	 glm::vec3 rotation= transform->get_rotation();
-	 rotation.y = glm::clamp<float>(0.5f, rotation.y,x_offset);
-	 rotation.x = glm::clamp<float>(0.5f, rotation.x, y_offset);
+	 x_offset = x_offset< -0.001f?-1.0f: x_offset > 0.001f? 1.0f:0.0f ;
+	 y_offset = y_offset < -0.001f ? -1.0f : y_offset > 0.001f ? 1.0f : 0.0f;
 
-	if (rotation.x > 90.0f)
-		rotation.x -= 90.0f;
-	if (rotation.x < -90.0f)
-		rotation.x += 90.0f;
+	 if (rotation.x > 89.0f)
+		 rotation.x = 89.0f;
+	 if (rotation.x < -89.0f)
+		 rotation.x = -89.0f;
+	 glm::vec3  ViewDest = direction + right * x_offset * 0.008f * movement_speed + up * y_offset * 0.008f * movement_speed;
 
-	if (rotation.y > 90.0f)
-		rotation.y -= 90.0f;
-	if (rotation.y < -90.0f)
-		rotation.y += 90.0f;
+	 glm::quat rot1 = RotationBetweenVectors(direction, ViewDest);
 
-	glm::vec3 axis = glm::cross(direction, up); 
-	glm::quat pitch_quat = glm::angleAxis(rotation.x, axis);
+	 direction = glm::normalize(glm::rotate(rot1, direction));
 
-	axis = glm::cross(direction, axis);
-	glm::quat yaw_quat = glm::angleAxis(rotation.y, up);
+	 right = glm::normalize(glm::cross(direction, up));
 
-	glm::quat combined_rotation = pitch_quat * yaw_quat;
-
-	direction = glm::rotate(combined_rotation, direction);
-
-	direction = glm::normalize(direction);
-	direction = glm::normalize(glm::cross(direction, glm::vec3(0.0f, 1.0f, 0.0f))); 
-	up = glm::normalize(glm::cross(right, direction));
-
+	 up = glm::normalize(glm::cross(right, direction));
+	 
 	transform->set_rotation(rotation);
 
 }
@@ -190,11 +262,12 @@ void MXRender::Camera::input_bingding_func()
 	input_component->bind_func("Turn_left", PRESS, std::bind(&MXRender::Camera::Camera::camera_moveleft, this, std::placeholders::_1));
 	input_component->bind_func("Turn_forward", PRESS, std::bind(&MXRender::Camera::Camera::camera_moveforward, this, std::placeholders::_1));
 	input_component->bind_func("Turn_back", PRESS, std::bind(&MXRender::Camera::Camera::camera_moveback, this, std::placeholders::_1));
-	input_component->bind_func("Rotate", PRESS, std::bind(&MXRender::Camera::Camera::camera_rotation, this, std::placeholders::_1));
+	input_component->bind_func("Rotate_press", PRESS, std::bind(&MXRender::Camera::Camera::camera_rotation, this,this, std::placeholders::_1));
+	input_component->bind_func("Rotate_relese",RELEASE, std::bind(&MXRender::Camera::Camera::camera_rotation_relese, this, this, std::placeholders::_1));
 }
 
 
-MXRender::Camera::Camera():fov(60.0f), far(1000.0f), near(0.1f), movement_speed(1.0f), width(1920.0f), height(1080.0f), direction(glm::vec3(0.0f, 0.0f, -1.0f)), up(glm::vec3(0.0f, 1.0f, 0.0f)), right(glm::normalize(glm::cross(up, direction))), focal_point(glm::vec3(0.0f, 0.0f, -1.0f))
+MXRender::Camera::Camera():fov(60.0f), far(100.0f), near(1.f), movement_speed(1.0f), width(1920.0f), height(1080.0f), direction(glm::vec3(0.0f, 0.0f, -1.0f)), up(glm::vec3(0.0f, 5.0f, 0.0f)), right(glm::normalize(glm::cross(up, direction))), focal_point(glm::vec3(0.0f, 0.0f, -1.0f))
 {
 	transform = new TransformComponent();
 	input_component = new InputComponent();

@@ -35,7 +35,8 @@ MXRender::InputComponent::InputComponent()
 	input_key_map["Turn_left"] = GLFW_KEY_A;
 	input_key_map["Turn_forward"] = GLFW_KEY_W;
 	input_key_map["Turn_back"] = GLFW_KEY_S;
-	input_key_map["Rotate"] = GLFW_MOUSE_BUTTON_LEFT;
+	input_key_map["Rotate_relese"] = GLFW_MOUSE_BUTTON_RIGHT;
+	input_key_map["Rotate_press"] = GLFW_MOUSE_BUTTON_RIGHT;
 	std::ifstream  in_fstream("Setting/input_setting.ini");
 	in_fstream.open("Setting/input_setting.ini", std::ios_base::in);
 	if (in_fstream.is_open())

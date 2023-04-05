@@ -26,6 +26,11 @@
 #include <unordered_map>
 #include <functional>
 
+#include "../../Render/Pass/PipelineShaderObject.h"
+#include "../../../ThirdParty/vma/vk_mem_alloc.h"
+
+namespace MXRender { class MeshBase; }
+
 
 namespace MXRender { class VK_RenderPass; }
 
@@ -33,12 +38,10 @@ namespace MXRender { class VK_DescriptorPool; }
 
 namespace MXRender { class RenderPass; }
 
-
+namespace MXRender {class MaterialSystem;} 
 
 namespace MXRender
 {
-
-
 
 	const std::vector<const char*> validationLayers = {
 		"VK_LAYER_KHRONOS_validation"
@@ -65,8 +68,11 @@ namespace MXRender
     };
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-		std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
+		std::cerr << "validation layer: " << messageSeverity<<" "<< messageType<<" " << pCallbackData->pMessage << std::endl;
+        if (VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT==messageSeverity&& messageType== VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
+        {
+            std::abort();
+        }
 		return VK_FALSE;
 	}
 
@@ -78,10 +84,11 @@ namespace MXRender
         void create_surface();
         void initialize_physical_device();
         void create_logical_device();
+        void init_vma_allocator();
         void create_command_pool();
         void create_command_buffer();
         void create_sync_object();
-
+        void init_pass_test();
         VkResult create_debug_utils_messengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
         void destroy_debug_utils_messengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
         std::vector<const char*> get_required_extensions();
@@ -137,17 +144,20 @@ namespace MXRender
 
         std::vector<std::function<void()>>  on_swapchain_recreate;
         std::vector<std::function<void()>>  on_swapchain_clean;
+        std::vector<std::function<void()>>  on_shutdown_clean;
         //std::shared_ptr <VK_DescriptorPool> descriptor_pool;
     public:
         VkViewport       viewport;
 		VkQueue graphicsQueue;
 		VkQueue presentQueue;
         VkQueue computeQueue;
-
         VkRenderPass mesh_pass;
         VkDescriptorPool descriptor_pool;
         VkCommandPool command_pool;//[max_frames_in_flight];
 
+        MaterialSystem material_system;
+        
+        VmaAllocator _allocator;
         VK_GraphicsContext();
         virtual ~VK_GraphicsContext();
         virtual void init(Window* new_window) override;
@@ -185,12 +195,13 @@ namespace MXRender
 
         void add_on_swapchain_recreate_func(const std::function<void()>& func);
         void add_on_swapchain_clean_func(const std::function<void()>& func);
+        void add_on_shutdown_clean_func(const std::function<void()>& func);
         void pre_pass( );
 
         void submit();
         void cleanup();
 
-        
+
     };
 }
 #endif
