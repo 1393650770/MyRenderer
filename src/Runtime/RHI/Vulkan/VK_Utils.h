@@ -108,7 +108,19 @@ namespace MXRender
         static VkImageType Translate_Texture_type_To_Vulkan(const ENUM_TEXTURE_TYPE& type);
         static VkFormat Translate_API_DataTypeEnum_To_Vulkan(ENUM_RENDER_DATA_TYPE data_type);
 		static VkShaderStageFlagBits Translate_API_ShaderTypeEnum_To_Vulkan(ENUM_SHADER_STAGE shader_type);
+		static void ClearImageColor(std::weak_ptr< VK_GraphicsContext> context, 
+		VkImageLayout      image_layout, 
+		VkImage            image,
+			VkImageAspectFlags imageAspectflags);
 		static void Transition_ImageLayout(std::weak_ptr< VK_GraphicsContext> context,
+			VkImage            image,
+			VkImageLayout      old_layout,
+			VkImageLayout      new_layout,
+			uint32_t           layer_count,
+			uint32_t           miplevels,
+			VkImageAspectFlags aspect_mask_bits);
+		static void Transition_ImageLayout(std::weak_ptr< VK_GraphicsContext> context,
+		VkCommandBuffer commandbuffer,
 			VkImage            image,
 			VkImageLayout      old_layout,
 			VkImageLayout      new_layout,

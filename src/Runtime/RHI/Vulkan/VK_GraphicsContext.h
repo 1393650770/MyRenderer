@@ -28,6 +28,8 @@
 
 #include "../../Render/Pass/PipelineShaderObject.h"
 #include "../../../ThirdParty/vma/vk_mem_alloc.h"
+#include <queue>
+#include <future>
 
 namespace MXRender { class MeshBase; }
 
@@ -88,7 +90,7 @@ namespace MXRender
         void create_command_pool();
         void create_command_buffer();
         void create_sync_object();
-        void init_pass_test();
+
         VkResult create_debug_utils_messengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
         void destroy_debug_utils_messengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
         std::vector<const char*> get_required_extensions();
@@ -122,6 +124,8 @@ namespace MXRender
         uint8_t   current_frame_index{ 0 };
         
         std::vector< VkCommandBuffer> command_buffer;//[max_frames_in_flight];
+        std::vector< VkCommandBuffer> thread_command_buffer;
+
 		VkSemaphore          image_available_for_render_semaphore[max_frames_in_flight];
 		VkSemaphore          image_finished_for_presentation_semaphore[max_frames_in_flight];
 		VkFence              frame_in_flight_fence[max_frames_in_flight];
@@ -130,10 +134,10 @@ namespace MXRender
 
 		VkSwapchainKHR           swapchain{ VK_NULL_HANDLE };
 		VkFormat                 swapchain_image_format{ VK_FORMAT_UNDEFINED };
+
         VkFormat                 depth_image_format{ VK_FORMAT_UNDEFINED };
 		VkExtent2D               swapchain_extent;
 		std::vector<VkImage>     swapchain_images;
-		
 		VkRect2D         scissor;
 
 		VkImage        depth_image{ VK_NULL_HANDLE };
@@ -152,17 +156,21 @@ namespace MXRender
 		VkQueue presentQueue;
         VkQueue computeQueue;
         VkRenderPass mesh_pass;
+        VkRenderPass clear_pass;
         VkDescriptorPool descriptor_pool;
         VkCommandPool command_pool;//[max_frames_in_flight];
-
+        std::vector< VkCommandPool> thread_command_pool;
+        std::unordered_map<VkRenderPass, VkCommandBufferInheritanceInfo> inheritance_info_map;
+        std::unordered_map<VkRenderPass, VkRenderPassBeginInfo> renderpass_begin_info_map;
+        std::unordered_map<VkCommandBuffer, unsigned int> thread_command_buffer_use_map;
         MaterialSystem material_system;
-        
+        std::queue<std::future<void>> fut_que;
         VmaAllocator _allocator;
         VK_GraphicsContext();
         virtual ~VK_GraphicsContext();
         virtual void init(Window* new_window) override;
         virtual void pre_init() override;
-
+        std::vector<VkFramebuffer*> swapchain_framebuffers;
         std::vector<VkImageView> swapchain_imageviews;
 
         std::shared_ptr<VK_Device> device;
@@ -180,6 +188,13 @@ namespace MXRender
 
         VkSurfaceKHR get_surface();
         VkCommandBuffer get_cur_command_buffer() ;
+        VkCommandBuffer get_cur_threadid_command_buffer(unsigned int thread_id);
+        void reset_all_threadid_command_buffer();
+        void begin_all_threadid_command_buffer();
+        void end_all_threadid_command_buffer();
+        void execute_all_threadid_command_buffer();
+        void submit_all_threadid_command_buffer();
+        void wait_all_task();
         uint8_t get_current_frame_index() const;
         uint8_t get_max_frame_num() const;
         uint32_t get_current_swapchain_image_index() const;
@@ -187,6 +202,8 @@ namespace MXRender
         VkFormat get_depth_image_format() const;
         VkExtent2D get_swapchain_extent() const;
         VkImageView get_depth_image_view() const;
+        VkImage get_depth_image() const;
+        VkImage get_cur_swapchain_image();
         GLFWwindow* get_window() const;
         QueueFamilyIndices get_queuefamily() ;
         void copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size);
@@ -197,7 +214,7 @@ namespace MXRender
         void add_on_swapchain_clean_func(const std::function<void()>& func);
         void add_on_shutdown_clean_func(const std::function<void()>& func);
         void pre_pass( );
-
+        void init_pass();
         void submit();
         void cleanup();
 

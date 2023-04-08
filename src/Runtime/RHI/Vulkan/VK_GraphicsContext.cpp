@@ -8,6 +8,8 @@
 #include "../../Logic/GameObjectManager.h"
 #include "../../Mesh/MeshBase.h"
 #include "../../Render/Pass/PipelineShaderObject.h"
+#include <thread>
+#include "../../Logic/TaskScheduler.h"
 
 
 
@@ -175,6 +177,15 @@ void MXRender::VK_GraphicsContext::create_command_pool()
 	if (vkCreateCommandPool(device->device, &poolInfo, nullptr, &command_pool) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create command pool!");
 	}
+
+	thread_command_pool.resize(std::thread::hardware_concurrency());
+
+	for (unsigned int i=0 ;i< thread_command_pool.size();i++)
+	{
+		if (vkCreateCommandPool(device->device, &poolInfo, nullptr, &thread_command_pool[i]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create command pool!");
+		}
+	}
 }
 
 void MXRender::VK_GraphicsContext::create_command_buffer()
@@ -189,6 +200,19 @@ void MXRender::VK_GraphicsContext::create_command_buffer()
 
 	if (vkAllocateCommandBuffers(device->device, &allocInfo, command_buffer.data()) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate command buffers!");
+	}
+	thread_command_buffer.resize(std::thread::hardware_concurrency());
+	
+	VkCommandBufferAllocateInfo secondary_allocInfo{};
+	secondary_allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	secondary_allocInfo.commandBufferCount =1;
+	secondary_allocInfo.level= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	for (unsigned int i = 0; i < thread_command_pool.size(); i++)
+	{
+		secondary_allocInfo.commandPool=thread_command_pool[i];
+		if (vkAllocateCommandBuffers(device->device, &secondary_allocInfo, &thread_command_buffer[i]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to allocate command buffers!");
+		}
 	}
 }
 
@@ -212,72 +236,7 @@ void MXRender::VK_GraphicsContext::create_sync_object()
 	}
 }
 
-void MXRender::VK_GraphicsContext::init_pass_test()
-{
-	VkAttachmentDescription color_attachment = {};
-	color_attachment.format = swapchain_image_format;//_swachainImageFormat;
-	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	color_attachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;//PRESENT_SRC_KHR;
 
-	VkAttachmentReference color_attachment_ref = {};
-	color_attachment_ref.attachment = 0;
-	color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentDescription depth_attachment = {};
-	// Depth attachment
-	depth_attachment.flags = 0;
-	depth_attachment.format = depth_image_format;
-	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference depth_attachment_ref = {};
-	depth_attachment_ref.attachment = 1;
-	depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	//we are going to create 1 subpass, which is the minimum you can do
-	VkSubpassDescription subpass = {};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &color_attachment_ref;
-	//hook the depth attachment into the subpass
-	subpass.pDepthStencilAttachment = &depth_attachment_ref;
-
-	//1 dependency, which is from "outside" into the subpass. And we can read or write color
-	VkSubpassDependency dependency = {};
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass = 0;
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.srcAccessMask = 0;
-	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-
-	//array of 2 attachments, one for the color, and other for depth
-	VkAttachmentDescription attachments[2] = { color_attachment,depth_attachment };
-
-	VkRenderPassCreateInfo render_pass_info = {};
-	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	//2 attachments from said array
-	render_pass_info.attachmentCount = 2;
-	render_pass_info.pAttachments = &attachments[0];
-	render_pass_info.subpassCount = 1;
-	render_pass_info.pSubpasses = &subpass;
-	//render_pass_info.dependencyCount = 1;
-	//render_pass_info.pDependencies = &dependency;
-
-	vkCreateRenderPass(device->device, &render_pass_info, nullptr, &mesh_pass);
-
-}
 
 VkResult MXRender::VK_GraphicsContext::create_debug_utils_messengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
 {
@@ -530,7 +489,7 @@ void MXRender::VK_GraphicsContext::init(Window* new_window)
 	create_command_pool();
 	create_command_buffer();
 	create_sync_object();
-	init_pass_test();
+	init_pass();
 
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
@@ -570,6 +529,15 @@ void MXRender::VK_GraphicsContext::reset_commandpool()
 	{
 		throw std::runtime_error("failed to synchronize");
 	}
+
+	for (unsigned int i = 0; i < thread_command_pool.size(); i++)
+	{
+		res_reset_command_pool = vkResetCommandPool(device->device, thread_command_pool[i], 0);
+		if (VK_SUCCESS != res_reset_command_pool)
+		{
+			throw std::runtime_error("failed to synchronize");
+		}
+	}
 }
 
 void MXRender::VK_GraphicsContext::create_swapchain()
@@ -594,7 +562,7 @@ void MXRender::VK_GraphicsContext::create_swapchain()
 	createInfo.imageColorSpace = surfaceFormat.colorSpace;
 	createInfo.imageExtent = extent;
 	createInfo.imageArrayLayers = 1;
-	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT| VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT| VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 
 	QueueFamilyIndices indices = find_queue_families(device->gpu);
 	uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
@@ -727,6 +695,82 @@ VkCommandBuffer MXRender::VK_GraphicsContext::get_cur_command_buffer()
 	return command_buffer[current_frame_index];
 }
 
+VkCommandBuffer MXRender::VK_GraphicsContext::get_cur_threadid_command_buffer(unsigned int thread_id)
+{
+	return thread_command_buffer[thread_id];
+}
+
+void MXRender::VK_GraphicsContext::reset_all_threadid_command_buffer()
+{
+	for (unsigned int i=0;i<thread_command_buffer.size();i++)
+	{
+		vkResetCommandBuffer(thread_command_buffer[i], /*VkCommandBufferResetFlagBits*/ 0);
+	}
+}
+
+void MXRender::VK_GraphicsContext::begin_all_threadid_command_buffer()
+{
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+	for (unsigned int i = 0; i < thread_command_buffer.size(); i++)
+	{
+		if (vkBeginCommandBuffer(thread_command_buffer[i], &beginInfo) != VK_SUCCESS) {
+			throw std::runtime_error("failed to begin recording command buffer!");
+		}
+	}
+}
+
+void MXRender::VK_GraphicsContext::end_all_threadid_command_buffer()
+{
+	for (unsigned int i = 0; i < thread_command_buffer.size(); i++)
+	{
+		//if(thread_command_buffer_use_map[thread_command_buffer[i]])
+		//{ 
+			if (vkEndCommandBuffer(thread_command_buffer[i]) != VK_SUCCESS) {
+				throw std::runtime_error("failed to begin recording command buffer!");
+			}
+		/*}*/
+	}
+}	
+
+void MXRender::VK_GraphicsContext::execute_all_threadid_command_buffer()
+{
+	for (unsigned int i = 0; i < thread_command_buffer.size(); i++)
+	{
+		vkCmdExecuteCommands(get_cur_command_buffer(), 1, &thread_command_buffer[i]);
+	}
+}
+
+void MXRender::VK_GraphicsContext::submit_all_threadid_command_buffer()
+{
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	//for (unsigned int i = 0; i < thread_command_buffer.size(); i++)
+	//{
+	//	if (thread_command_buffer_use_map[thread_command_buffer[i]])
+	//	{
+			submitInfo.commandBufferCount = thread_command_buffer.size();
+			submitInfo.pCommandBuffers = thread_command_buffer.data();
+			vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+			//thread_command_buffer_use_map[thread_command_buffer[i]] = 0;
+	//	}
+	//}
+
+
+	vkQueueWaitIdle(graphicsQueue);
+}
+
+void MXRender::VK_GraphicsContext::wait_all_task()
+{
+	while (fut_que.empty() == false)
+	{
+		fut_que.front().wait();
+		fut_que.pop();
+	}
+}
+
 uint8_t MXRender::VK_GraphicsContext::get_current_frame_index() const
 {
 	return current_frame_index;
@@ -760,6 +804,16 @@ VkExtent2D MXRender::VK_GraphicsContext::get_swapchain_extent() const
 VkImageView MXRender::VK_GraphicsContext::get_depth_image_view() const
 {
 	return depth_image_view;
+}
+
+VkImage MXRender::VK_GraphicsContext::get_depth_image() const
+{
+	return depth_image;
+}
+
+VkImage MXRender::VK_GraphicsContext::get_cur_swapchain_image()
+{
+	return swapchain_images[get_current_swapchain_image_index()];
 }
 
 GLFWwindow* MXRender::VK_GraphicsContext::get_window() const
@@ -808,7 +862,6 @@ VkCommandBuffer MXRender::VK_GraphicsContext::begin_single_time_commands()
 void MXRender::VK_GraphicsContext::end_single_time_commands(VkCommandBuffer command_buffer)
 {
 	vkEndCommandBuffer(command_buffer);
-
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
@@ -852,22 +905,155 @@ void MXRender::VK_GraphicsContext::pre_pass()
 
 	vkResetFences(device->device, 1, &frame_in_flight_fence[current_frame_index]);
 
+	reset_all_threadid_command_buffer();
 	vkResetCommandBuffer(command_buffer[current_frame_index], /*VkCommandBufferResetFlagBits*/ 0);
+
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
+	begin_all_threadid_command_buffer();
 	if (vkBeginCommandBuffer(command_buffer[current_frame_index], &beginInfo) != VK_SUCCESS) {
 		throw std::runtime_error("failed to begin recording command buffer!");
 	}
+
 }
 
 
+
+void MXRender::VK_GraphicsContext::init_pass()
+{
+	{
+
+		VkAttachmentDescription colorAttachment{};
+		colorAttachment.format = get_swapchain_image_format();
+		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkAttachmentReference colorAttachmentRef{};
+		colorAttachmentRef.attachment = 0;
+		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+
+		VkAttachmentDescription depthAttachment{};
+		depthAttachment.format = get_depth_image_format();
+		depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+
+		VkAttachmentReference depthAttachmentRef{};
+		depthAttachmentRef.attachment = 1;
+		depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+		VkSubpassDescription subpass{};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount = 1;
+		subpass.pColorAttachments = &colorAttachmentRef;
+		subpass.pDepthStencilAttachment = &depthAttachmentRef;
+
+		VkSubpassDependency dependency{};
+		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+		dependency.dstSubpass = 0;
+		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		dependency.srcAccessMask = 0;
+		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+		std::vector<VkAttachmentDescription> attachments = { colorAttachment, depthAttachment };
+		VkRenderPassCreateInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderPassInfo.attachmentCount = attachments.size();
+		renderPassInfo.pAttachments = attachments.data();
+		renderPassInfo.subpassCount = 1;
+		renderPassInfo.pSubpasses = &subpass;
+		renderPassInfo.dependencyCount = 1;
+		renderPassInfo.pDependencies = &dependency;
+
+		if (vkCreateRenderPass(device->device, &renderPassInfo, nullptr, &mesh_pass) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create render pass!");
+		}
+	}
+
+	{
+		VkAttachmentDescription colorAttachment{};
+		colorAttachment.format = get_swapchain_image_format();
+		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkAttachmentReference colorAttachmentRef{};
+		colorAttachmentRef.attachment = 0;
+		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+
+		VkAttachmentDescription depthAttachment{};
+		depthAttachment.format = get_depth_image_format();
+		depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+
+		VkAttachmentReference depthAttachmentRef{};
+		depthAttachmentRef.attachment = 1;
+		depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+		VkSubpassDescription subpass{};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount = 1;
+		subpass.pColorAttachments = &colorAttachmentRef;
+		subpass.pDepthStencilAttachment = &depthAttachmentRef;
+
+		VkSubpassDependency dependency{};
+		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+		dependency.dstSubpass = 0;
+		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		dependency.srcAccessMask = 0;
+		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+		std::vector<VkAttachmentDescription> attachments = { colorAttachment, depthAttachment };
+		VkRenderPassCreateInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderPassInfo.attachmentCount = attachments.size();
+		renderPassInfo.pAttachments = attachments.data();
+		renderPassInfo.subpassCount = 1;
+		renderPassInfo.pSubpasses = &subpass;
+		renderPassInfo.dependencyCount = 1;
+		renderPassInfo.pDependencies = &dependency;
+
+		if (vkCreateRenderPass(device->device, &renderPassInfo, nullptr, &clear_pass) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create render pass!");
+		}
+	}
+
+
+}
 
 void MXRender::VK_GraphicsContext::submit()
 {
 	if (vkEndCommandBuffer(command_buffer[current_frame_index]) != VK_SUCCESS) {
 		throw std::runtime_error("failed to record command buffer!");
 	}
+	wait_all_task();
+
+	end_all_threadid_command_buffer();
+	submit_all_threadid_command_buffer();
 
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -884,6 +1070,8 @@ void MXRender::VK_GraphicsContext::submit()
 	VkSemaphore signalSemaphores[] = { image_finished_for_presentation_semaphore[current_frame_index] };
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
+
+
 
 	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, frame_in_flight_fence[current_frame_index]) != VK_SUCCESS) {
 		throw std::runtime_error("failed to submit draw command buffer!");
@@ -936,6 +1124,10 @@ void MXRender::VK_GraphicsContext::cleanup()
 	//{
 	//	it();
 	//}
+	for (unsigned int i = 0; i < thread_command_pool.size(); i++)
+	{
+		vkDestroyCommandPool(device->device, thread_command_pool[i], nullptr);
+	}
 
 	vmaDestroyAllocator(_allocator);
 	vkDestroyDevice(device->device, nullptr);

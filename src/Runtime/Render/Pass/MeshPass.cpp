@@ -27,6 +27,7 @@
 #include "../RenderScene.h"
 #include "../../Mesh/VK_Mesh.h"
 #include "PipelineShaderObject.h"
+#include "../../Logic/TaskScheduler.h"
 namespace MXRender
 {
 
@@ -289,15 +290,8 @@ namespace MXRender
 		ubo.view = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
 		ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat(); 
 		
-		//ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		//ubo.proj = glm::perspective(glm::radians(60.0f), (float)cur_context.lock()->get_swapchain_extent().width / (float)cur_context.lock()->get_swapchain_extent().height, 0.1f, 1000.0f);
-
 		ubo.proj[1][1] *= -1;
 		
-		//void* data;
-		//vkMapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0], 0, sizeof(ubo), 0, &data);
-		//memcpy(data, &ubo, sizeof(ubo));
-		//vkUnmapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0]);
 
 		uint32_t offset = cpu_ubo_buffer.push(ubo);
 
@@ -327,13 +321,13 @@ namespace MXRender
 		}
 	}
 
-	void Mesh_RenderPass::render_mesh(MeshObject* mesh_component, VkDescriptorSet GlobalSet)
+	void Mesh_RenderPass::render_mesh(MeshObject* mesh_component, VkDescriptorSet GlobalSet, VkCommandBuffer command_buffer)
 	{
+		
+		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_component->material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
 
-		vkCmdBindPipeline(cur_context.lock()->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_component->material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
 
-
-		vkCmdSetViewport(cur_context.lock()->get_cur_command_buffer(), 0, 1, &cur_context.lock()->viewport);
+		vkCmdSetViewport(command_buffer, 0, 1, &cur_context.lock()->viewport);
 
 		MVP_Struct ubo{};
 		ubo.model = mesh_component->transformMatrix;
@@ -349,23 +343,54 @@ namespace MXRender
 
 		uint32_t offset= cpu_ubo_buffer.push(ubo);
 
-		mesh_component->mesh->init_mesh_info((GraphicsContext*)cur_context.lock().get());
 
-
-		vkCmdBindDescriptorSets(cur_context.lock()->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_component->material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &GlobalSet, 1, &offset);
-		vkCmdBindDescriptorSets(cur_context.lock()->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_component->material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 1, 1, &mesh_component->material->pass_sets[MeshpassType::Forward], 0, nullptr);
+		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_component->material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &GlobalSet, 1, &offset);
+		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_component->material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 1, 1, &mesh_component->material->pass_sets[MeshpassType::Forward], 0, nullptr);
 
 		VK_Mesh* vk_mesh = dynamic_cast<VK_Mesh*>(mesh_component->mesh);
 		if (!vk_mesh) return;
 		VkBuffer vertexBuffers[] = { vk_mesh->get_mesh_info().vertex_buffer };
 		VkDeviceSize offsets[] = { 0 };
 
-		vkCmdBindVertexBuffers(cur_context.lock()->get_cur_command_buffer(), 0, 1, vertexBuffers, offsets);
+		vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
 
-		vkCmdBindIndexBuffer(cur_context.lock()->get_cur_command_buffer(), vk_mesh->get_mesh_info().index_buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindIndexBuffer(command_buffer, vk_mesh->get_mesh_info().index_buffer, 0, VK_INDEX_TYPE_UINT32);
 
-		vkCmdDrawIndexed(cur_context.lock()->get_cur_command_buffer(), static_cast<uint32_t>(vk_mesh->indices.size()), 1, 0, 0, 0);
+		vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(vk_mesh->indices.size()), 1, 0, 0, 0);
 
+	}
+
+	void Mesh_RenderPass::dispatch_render_mesh(unsigned int start_index, unsigned int end_index, VkDescriptorSet GlobalSet)
+	{
+		VkCommandBuffer command_buffer= cur_context.lock()->get_cur_threadid_command_buffer(Singleton<DefaultSetting>::get_instance().thread_system->get_current_thread_id());
+		cur_context.lock()->thread_command_buffer_use_map[command_buffer]=1;
+
+		std::vector< VkClearValue> clearColor(2);
+		clearColor[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+		clearColor[1].depthStencil = { 1.0f, 0 };
+		cur_context.lock()->renderpass_begin_info_map[render_pass].renderPass=cur_context.lock()->mesh_pass;
+		cur_context.lock()->renderpass_begin_info_map[render_pass].clearValueCount =0;
+		cur_context.lock()->renderpass_begin_info_map[render_pass].pClearValues = nullptr;
+
+		vkCmdBeginRenderPass(command_buffer, &(cur_context.lock()->renderpass_begin_info_map[render_pass]), VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdSetViewport(command_buffer, 0, 1, &cur_context.lock()->viewport);
+
+		VkRect2D scissor{};
+		scissor.offset = { 0, 0 };
+		scissor.extent = cur_context.lock()->get_swapchain_extent();
+
+		vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+		
+		for (int i = start_index; i< end_index &&i < Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables.size(); i++)
+		{
+
+			render_mesh(&(Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables[i]), GlobalSet, command_buffer);
+		}
+
+		vkCmdEndRenderPass(command_buffer);
+
+		//VK_Utils::Transition_ImageLayout(cur_context, command_buffer, cur_context.lock()->get_cur_swapchain_image(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 
 	void Mesh_RenderPass::initialize(const PassInfo& init_info, PassOtherInfo* other_info)
@@ -439,10 +464,26 @@ namespace MXRender
 			render_mesh(Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_staticmesh());
 		}
 
-		for (int i = 0; i < Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables.size(); i++)
+		if (Singleton<DefaultSetting>::get_instance().is_enable_dispatch)
 		{
-		
-			render_mesh(&(Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables[i]), descriptor_sets[0]);
+			unsigned int thread_num = Singleton<DefaultSetting>::get_instance().thread_system->get_max_thread_num();
+			unsigned int clip_size= Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables.size()/thread_num;
+
+			for(unsigned int i=0;i< thread_num;i++)
+			{ 
+				
+				auto fut= Singleton<DefaultSetting>::get_instance().thread_system->submit_message(&Mesh_RenderPass::dispatch_render_mesh,this, clip_size*i, clip_size*(i+1), descriptor_sets[0]);
+				vk_context->fut_que.push(std::move(fut));
+			}
+			//vk_context->execute_all_threadid_command_buffer();
+		}
+		else
+		{
+			for (int i = 0; i < Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables.size(); i++)
+			{
+
+				render_mesh(&(Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables[i]), descriptor_sets[0], cur_context.lock()->get_cur_command_buffer());
+			}
 		}
 	}
 

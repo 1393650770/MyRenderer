@@ -237,6 +237,7 @@ bool MXRender::GameObjectManager::load_prefab(const char* path, glm::mat4 root,G
 			MeshBase* mesh=new VK_Mesh();
 			mesh->load_asset(asset_path(v.mesh_path).c_str());
 			_meshes[v.mesh_path.c_str()] = mesh;
+			mesh->init_mesh_info(context);
 		}
 
 

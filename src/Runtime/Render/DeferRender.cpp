@@ -61,7 +61,7 @@ void MXRender::DeferRender::init(std::weak_ptr <VK_GraphicsContext> context,GLFW
 	precomputeibl_pass = std::make_shared<PreComputeIBL_RenderPass>();
 
 	main_camera_pass->initialize(pass_info, &other_info);
-	context.lock()->mesh_pass=main_camera_pass->get_render_pass();
+	//context.lock()->mesh_pass=main_camera_pass->get_render_pass();
 	context.lock()->material_system.init(context.lock().get());
 	other_info.render_pass=main_camera_pass->get_render_pass();
 	mesh_pass->initialize(pass_info, &other_info);

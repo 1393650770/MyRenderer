@@ -89,11 +89,25 @@ void MXRender::EditorUI::show_editor_top_ui()
 			{
 				
 			}
+			if (ImGui::BeginMenu("OtherSetting"))
+			{
+
+			    bool is_open_window=false;
+				if (ImGui::Begin("OtherSetting", &is_open_window))
+				{
+					ImGui::Checkbox("Dispatch", &Singleton<DefaultSetting>::get_instance().is_enable_dispatch);
+
+					ImGui::End();
+				}
+				ImGui::EndMenu();
+			}
 			if (ImGui::MenuItem("Exit"))
 			{
 				
 				exit(0);
 			}
+
+
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("Window"))

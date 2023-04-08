@@ -25,14 +25,16 @@ namespace MXRender
 
 	void MainCamera_RenderPass::setup_renderpass()
 	{
+
+
 		VkAttachmentDescription colorAttachment{};
 		colorAttachment.format = cur_context.lock()->get_swapchain_image_format();
 		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 		VkAttachmentReference colorAttachmentRef{};
@@ -43,11 +45,11 @@ namespace MXRender
 		VkAttachmentDescription depthAttachment{};
 		depthAttachment.format = cur_context.lock()->get_depth_image_format();
 		depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_NONE;
 		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 
@@ -229,7 +231,7 @@ namespace MXRender
 	{
 		unsigned int swap_chain_images_num  = cur_context.lock()->swapchain_imageviews.size();
 		swapchain_framebuffers.resize(swap_chain_images_num);
-
+		cur_context.lock()->swapchain_framebuffers.resize(swap_chain_images_num);
 		for (int i = 0; i < swap_chain_images_num; i++)
 		{
 			std::array<VkImageView, 2> attachments = {
@@ -251,6 +253,7 @@ namespace MXRender
 			{
 				throw std::runtime_error("create main camera framebuffer");
 			}
+			cur_context.lock()->swapchain_framebuffers[i]=&swapchain_framebuffers[i];
 		}
 	}
 
@@ -367,6 +370,7 @@ namespace MXRender
 	{
 		for (size_t i = 0; i < swapchain_framebuffers.size(); i++) {
 			vkDestroyFramebuffer(cur_context.lock()->device->device, swapchain_framebuffers[i], nullptr);
+			cur_context.lock()->swapchain_framebuffers[i] = nullptr;
 		}
 	}
 
@@ -405,6 +409,7 @@ namespace MXRender
 
 	void MainCamera_RenderPass::draw(GraphicsContext* context)
 	{
+		
 		update_uniformbuffer();
 
 		VK_GraphicsContext* vk_context=nullptr;
@@ -454,11 +459,43 @@ namespace MXRender
 		std::vector< VkClearValue> clearColor(2);
 		clearColor[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
 		clearColor[1].depthStencil = { 1.0f, 0 };
-		renderPassInfo.clearValueCount = 2;
-		renderPassInfo.pClearValues = clearColor.data();
+		renderPassInfo.clearValueCount = 0;
+		renderPassInfo.pClearValues = nullptr;//clearColor.data();
+
+		//VK_Utils::Transition_ImageLayout(cur_context,cur_context.lock()->get_cur_swapchain_image(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT);
+		//VK_Utils::Transition_ImageLayout(cur_context, cur_context.lock()->get_depth_image(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1, 1, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+		//VK_Utils::ClearImageColor(cur_context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, cur_context.lock()->get_cur_swapchain_image(), VK_IMAGE_ASPECT_COLOR_BIT);
+
+		//VK_Utils::Transition_ImageLayout(cur_context, cur_context.lock()->get_cur_swapchain_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT);
+		VK_Utils::Immediate_Submit(vk_context,[&](VkCommandBuffer cmd)
+		{
+				uint32_t image_index = -1;
+				image_index = vk_context->get_current_swapchain_image_index();
+				VkRenderPassBeginInfo renderPassInfo{};
+				renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+				renderPassInfo.renderPass = vk_context->clear_pass;
+				renderPassInfo.framebuffer = swapchain_framebuffers[image_index];
+				renderPassInfo.renderArea.offset = { 0, 0 };
+				renderPassInfo.renderArea.extent = vk_context->get_swapchain_extent();
+
+				std::vector< VkClearValue> clearColor(2);
+				clearColor[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+				clearColor[1].depthStencil = { 1.0f, 0 };
+				renderPassInfo.clearValueCount = 2;
+				renderPassInfo.pClearValues = clearColor.data();
+
+				vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+				vkCmdEndRenderPass(cmd);
+		});
 
 		vkCmdBeginRenderPass(vk_context->get_cur_command_buffer(), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+		vk_context->inheritance_info_map[render_pass].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+		vk_context->inheritance_info_map[render_pass].framebuffer = swapchain_framebuffers[image_index];
+		vk_context->inheritance_info_map[render_pass].renderPass = render_pass;
+		
+		vk_context->renderpass_begin_info_map[render_pass]= renderPassInfo;
 	}
 
 	void MainCamera_RenderPass::end_pass(GraphicsContext* context)
@@ -470,6 +507,8 @@ namespace MXRender
 			return;
 		}
 		vkCmdEndRenderPass(vk_context->get_cur_command_buffer());
+
+		/*VK_Utils::Transition_ImageLayout(cur_context, vk_context->get_cur_command_buffer(), cur_context.lock()->get_cur_swapchain_image(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT);*/
 	}
 
 	MainCamera_RenderPass::MainCamera_RenderPass()

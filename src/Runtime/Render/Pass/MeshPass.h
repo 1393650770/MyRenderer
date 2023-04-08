@@ -17,6 +17,7 @@
 
 #include "../../RHI/Vulkan/VK_RenderPass.h"
 #include "../../Mesh/MeshBase.h"
+#include <mutex>
 
 namespace MXRender { struct MeshObject; }
 
@@ -52,12 +53,14 @@ namespace MXRender
         uint32_t pad_uniform_buffer_size(uint32_t originalSize);
 		uint32_t align;
 		uint32_t currentOffset;
+        std::mutex mtx;
 		void* mapped;
     };
 
 	template<typename T>
 	uint32_t DynamicCPUUniformBuffer::push(T& data)
 	{
+        std::lock_guard<std::mutex> lock(mtx);
 		return push(&data, sizeof(T));
 	};
 
@@ -74,7 +77,8 @@ namespace MXRender
         
         void update_object_uniform(GameObject* game_object);
         void render_mesh(ComponentBase* mesh_component);
-        void render_mesh(MeshObject* mesh_component, VkDescriptorSet GlobalSet);
+        void render_mesh(MeshObject* mesh_component, VkDescriptorSet GlobalSet,VkCommandBuffer command_buffer);
+        void dispatch_render_mesh(unsigned int start_index , unsigned int end_index, VkDescriptorSet GlobalSet);
 		std::vector<VkBuffer> uniform_buffers;
 		std::vector<VkDeviceMemory> uniform_buffers_memory;
 
