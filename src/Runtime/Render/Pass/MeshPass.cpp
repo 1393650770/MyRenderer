@@ -28,6 +28,7 @@
 #include "../../Mesh/VK_Mesh.h"
 #include "PipelineShaderObject.h"
 #include "../../Logic/TaskScheduler.h"
+#include "../TextureManager.h"
 namespace MXRender
 {
 
@@ -45,6 +46,12 @@ namespace MXRender
 		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 		uboLayoutBinding.pImmutableSamplers = nullptr;
 		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		VkDescriptorSetLayoutBinding cameradata_LayoutBinding{};
+		cameradata_LayoutBinding.binding = 1;
+		cameradata_LayoutBinding.descriptorCount = 1;
+		cameradata_LayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		cameradata_LayoutBinding.pImmutableSamplers = nullptr;
+		cameradata_LayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 		VkDescriptorSetLayoutBinding cubetextureLayoutBinding{};
 		cubetextureLayoutBinding.binding = 0;
@@ -54,7 +61,7 @@ namespace MXRender
 		cubetextureLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 		descriptorset_layout->add_bindingdescriptor(0, uboLayoutBinding);
-
+		descriptorset_layout->add_bindingdescriptor(1, cameradata_LayoutBinding);
 		descriptorset_layout2->add_bindingdescriptor(0, cubetextureLayoutBinding);
 		descriptorset_layout->compile();
 		descriptorset_layout2->compile();
@@ -80,15 +87,13 @@ namespace MXRender
 
 		VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
-		auto bindingDescription = SimpleVertex::getBindingDescription();
-		auto attributeDescriptions = SimpleVertex::getAttributeDescriptions();
-
+		VertexInputDescription input_description = SimpleVertex::get_vertex_description();
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertexInputInfo.vertexBindingDescriptionCount = 1;
-		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-		vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+		vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(input_description.bindings.size());
+		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(input_description.attributes.size());
+		vertexInputInfo.pVertexBindingDescriptions = input_description.bindings.data();
+		vertexInputInfo.pVertexAttributeDescriptions = input_description.attributes.data();
 
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -189,10 +194,10 @@ namespace MXRender
 	{
 		VkDeviceSize bufferSize = sizeof(MVP_Struct)* 1000000;
 
-		uniform_buffers.resize(1);
-		uniform_buffers_memory.resize(1);
+		uniform_buffers.resize(2);
+		uniform_buffers_memory.resize(2);
 
-		for (size_t i = 0; i < 1; i++) {
+		for (size_t i = 0; i < uniform_buffers.size(); i++) {
 			VK_Utils::Create_VKBuffer( cur_context.lock()->device,bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniform_buffers[i], uniform_buffers_memory[i]);
 		}
 	}
@@ -221,9 +226,13 @@ namespace MXRender
 		
 		std::string texture_path="Resource/Texture/viking_room.png";
 
+		VK_Texture* texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("viking_room", ENUM_TEXTURE_TYPE::ENUM_TYPE_2D, texture_path);
 
+		if (texture==nullptr)
+		{
+			return;
+		}
 
-		cubemap_texture=std::make_shared<VK_Texture>(texture_path);
 		std::vector< VkDescriptorSetLayout> descriptors{
 	descriptorset_layout->get_descriptorset_layout(), descriptorset_layout2->get_descriptorset_layout()
 		};
@@ -238,24 +247,29 @@ namespace MXRender
 		}
 
 
-		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = uniform_buffers[0];
-		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(MVP_Struct);
+		VkDescriptorBufferInfo mvp_bufferInfo{};
+		mvp_bufferInfo.buffer = uniform_buffers[0];
+		mvp_bufferInfo.offset = 0;
+		mvp_bufferInfo.range = sizeof(MVP_Struct);
+
+		VkDescriptorBufferInfo camera_data_bufferInfo{};
+		camera_data_bufferInfo.buffer = uniform_buffers[1];
+		camera_data_bufferInfo.offset = 0;
+		camera_data_bufferInfo.range = sizeof(CameraData);
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = cubemap_texture->textureImageView;
-		imageInfo.sampler = cubemap_texture->textureSampler;
+		imageInfo.imageView = texture->textureImageView;
+		imageInfo.sampler = texture->textureSampler;
 
-		std::vector< VkWriteDescriptorSet> descriptorWrite(2);
+		std::vector< VkWriteDescriptorSet> descriptorWrite(3);
 		descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrite[0].dstSet = descriptor_sets[0];
 		descriptorWrite[0].dstBinding = 0;
 		descriptorWrite[0].dstArrayElement = 0;
 		descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 		descriptorWrite[0].descriptorCount = 1;
-		descriptorWrite[0].pBufferInfo = &bufferInfo;
+		descriptorWrite[0].pBufferInfo = &mvp_bufferInfo;
 
 		descriptorWrite[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrite[1].dstSet = descriptor_sets[1];
@@ -264,6 +278,14 @@ namespace MXRender
 		descriptorWrite[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		descriptorWrite[1].descriptorCount = 1;
 		descriptorWrite[1].pImageInfo = &imageInfo;
+
+		descriptorWrite[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[2].dstSet = descriptor_sets[0];
+		descriptorWrite[2].dstBinding = 1;
+		descriptorWrite[2].dstArrayElement = 0;
+		descriptorWrite[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite[2].descriptorCount = 1;
+		descriptorWrite[2].pBufferInfo = &camera_data_bufferInfo;
 
 		vkUpdateDescriptorSets(cur_context.lock()->device->device, descriptorWrite.size(), descriptorWrite.data(), 0, nullptr);
 		
@@ -283,7 +305,7 @@ namespace MXRender
 
 
 
-	void Mesh_RenderPass::update_object_uniform(GameObject* game_object)
+	void Mesh_RenderPass::update_object_uniform(GameObject* game_object, VkPipelineLayout pipeline_layout)
 	{
 		MVP_Struct ubo{};
 		ubo.model = game_object->get_transform()->get_model_matrix();
@@ -296,6 +318,18 @@ namespace MXRender
 		uint32_t offset = cpu_ubo_buffer.push(ubo);
 
 		vkCmdBindDescriptorSets(cur_context.lock()->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &descriptor_sets[0], 1, &offset);
+	}
+
+	void Mesh_RenderPass::update_camera_uniform()
+	{
+		CameraData camera_data;
+		camera_data.viewPos= Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_position();
+		camera_data.viewDir= Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_direction();
+
+		void* data;
+		vkMapMemory(cur_context.lock()->device->device, uniform_buffers_memory[1], 0, sizeof(camera_data), 0, &data);
+		memcpy(data, &camera_data, sizeof(camera_data));
+		vkUnmapMemory(cur_context.lock()->device->device, uniform_buffers_memory[1]);
 	}
 
 	void Mesh_RenderPass::render_mesh(ComponentBase* mesh_component)
@@ -333,18 +367,13 @@ namespace MXRender
 		ubo.model = mesh_component->transformMatrix;
 		ubo.view = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
 		ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
-		//ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		//ubo.proj = glm::perspective(glm::radians(60.0f), (float)cur_context.lock()->get_swapchain_extent().width / (float)cur_context.lock()->get_swapchain_extent().height, 0.1f, 1000.0f);
 		ubo.proj[1][1] *= -1;
-		//void* data;
-		//vkMapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0], 0, sizeof(ubo), 0, &data);
-		//memcpy(data, &ubo, sizeof(ubo));
-		//vkUnmapMemory(cur_context.lock()->device->device, uniform_buffers_memory[0]);
 
 		uint32_t offset= cpu_ubo_buffer.push(ubo);
 
-
 		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_component->material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &GlobalSet, 1, &offset);
+
+
 		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_component->material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 1, 1, &mesh_component->material->pass_sets[MeshpassType::Forward], 0, nullptr);
 
 		VK_Mesh* vk_mesh = dynamic_cast<VK_Mesh*>(mesh_component->mesh);
@@ -456,11 +485,33 @@ namespace MXRender
 
 
 
+		update_camera_uniform();
 
-		//vkCmdDrawIndexed(vk_context->get_cur_command_buffer(), static_cast<uint32_t>(mesh_data->indices.size()), 1, 0, 0, 0);
 		for(int i=0;i< Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list.size();i++)
 		{ 
-			update_object_uniform(&Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i]);
+			
+			if (Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_material()!=nullptr)
+			{
+				Material* material = Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_material();
+				vkCmdBindPipeline(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
+
+
+				vkCmdSetViewport(vk_context->get_cur_command_buffer(), 0, 1, &cur_context.lock()->viewport);
+
+
+				VkRect2D scissor{};
+				scissor.offset = { 0, 0 };
+				scissor.extent = vk_context->get_swapchain_extent();
+
+				vkCmdSetScissor(vk_context->get_cur_command_buffer(), 0, 1, &scissor);
+
+				vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 1, 1, &(material->pass_sets[MeshpassType::Forward]), 0, nullptr);
+				update_object_uniform(&Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i], (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout));
+			}
+			else
+			{ 
+				update_object_uniform(&Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i],pipeline_layout);
+			}
 			render_mesh(Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_staticmesh());
 		}
 

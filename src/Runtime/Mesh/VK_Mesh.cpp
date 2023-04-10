@@ -48,7 +48,7 @@ MXRender::VK_MeshInfo MXRender::VK_Mesh::get_mesh_info() const
 void MXRender::VK_Mesh::setup_vk_vertexbuffer(VK_GraphicsContext* cur_context, VkBuffer& vertex_buffer, VkDeviceMemory& vertex_buffer_memory)
 {
 
-	VkDeviceSize bufferSize = is_prefabs?sizeof(assetvertex_vertices[0])*assetvertex_vertices.size() : sizeof(vertices[0]) * vertices.size();
+	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
@@ -58,7 +58,7 @@ void MXRender::VK_Mesh::setup_vk_vertexbuffer(VK_GraphicsContext* cur_context, V
 	vkMapMemory(cur_context->device->device, stagingBufferMemory, 0, bufferSize, 0, &data);
 	if (is_prefabs)
 	{
-		memcpy(data, assetvertex_vertices.data(), (size_t)bufferSize);
+		memcpy(data, vertices.data(), (size_t)bufferSize);
 	}
 	else
 	{ 

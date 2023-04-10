@@ -10,4 +10,10 @@ struct MVP_Struct
 	alignas(16) glm::mat4 proj;
 };
 
+struct CameraData
+{
+	alignas(16) glm::vec3 viewPos;
+	alignas(16) glm::vec3 viewDir;
+};
+
 #endif

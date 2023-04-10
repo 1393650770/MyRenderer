@@ -7,4 +7,6 @@ C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V -o mesh_rock_vert.spv -DSET_N
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V  pre_compute_ibl.comp -o pre_compute_ibl_comp.spv
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V default_prefabs_mesh.frag -o default_prefabs_mesh_frag.spv
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V default_prefabs_mesh.vert -o default_prefabs_mesh_vert.spv
+C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V pbr_mesh.frag -o pbr_mesh_frag.spv
+C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V pbr_mesh.vert -o pbr_mesh_vert.spv
 pause

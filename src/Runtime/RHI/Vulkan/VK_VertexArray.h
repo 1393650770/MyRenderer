@@ -30,48 +30,6 @@ namespace MXRender { struct VertexInputDescription; }
 namespace MXRender
 {
 	struct SimpleVertex {
-		glm::vec3  pos;
-		//glm::vec3 color;
-		glm::vec2 texCoord;
-
-		static VkVertexInputBindingDescription getBindingDescription() 
-		{
-			VkVertexInputBindingDescription bindingDescription{};
-			bindingDescription.binding = 0;
-			bindingDescription.stride = sizeof(SimpleVertex);
-			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-			return bindingDescription;
-		}
-
-		static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() 
-		{
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
-
-			attributeDescriptions[0].binding = 0;
-			attributeDescriptions[0].location = 0;
-			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[0].offset = 0;
-
-			//attributeDescriptions[1].binding = 0;
-			//attributeDescriptions[1].location = 1;
-			//attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-			//attributeDescriptions[1].offset = sizeof(glm::vec2);
-
-			attributeDescriptions[1].binding = 0;
-			attributeDescriptions[1].location = 1;
-			attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
-			attributeDescriptions[1].offset = sizeof(glm::vec3);
-
-			return attributeDescriptions;
-		}
-
-		bool operator==(const SimpleVertex& other) const {
-			return pos== other.pos &&  texCoord == other.texCoord;
-		}
-
-	};
-	struct AssetVertex {
 
 		glm::vec3 position;
 		//glm::vec3 normal;
@@ -82,6 +40,10 @@ namespace MXRender
 
 		void pack_normal(glm::vec3 n);
 		void pack_color(glm::vec3 c);
+
+		bool operator==(const SimpleVertex& other) const {
+			return position == other.position && oct_normal == other.oct_normal&& color == other.color && uv == other.uv;
+		}
 	};
 
 
@@ -110,7 +72,7 @@ template<> struct std::hash<MXRender::SimpleVertex>
 {
 	size_t operator()(MXRender::SimpleVertex const& vertex) const 
 	{
-		return std::hash<glm::vec3>()(vertex.pos)  ^ (std::hash<glm::vec2>()(vertex.texCoord) << 1);
+		return std::hash<glm::vec3>()(vertex.position)  ^ (std::hash<glm::vec2>()(vertex.uv) << 1);
 	};
 };
 

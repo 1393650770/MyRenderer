@@ -1,6 +1,6 @@
 set_arch("x64")
 
-add_requires("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","rttr","lz4","nlohmann_json")
+add_requires("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","rttr","lz4","nlohmann_json","gli")
 add_requires("imgui v1.88-docking", {configs = {glfw_vulkan = true}})
 add_rules("mode.debug", "mode.release")
 add_rules("plugin.vsxmake.autoupdate")
@@ -14,7 +14,13 @@ target("AssetLoader")
 target("Runtime")
     set_kind("static")
     set_languages("c++20")  
-
+    
+    --add_headerfiles("src/ThirdParty/spv_reflect/*.h") 
+    --add_headerfiles("src/ThirdParty/spv_reflect/include/spirv/unified1/*.h") 
+    add_headerfiles("src/**.h")
+    add_files("src/**.cpp")
+    add_files("src/**.c")
+    --[[
     add_files("src/Runtime/Mesh/*.cpp") 
     add_files("src/Runtime/RHI/OpenGL/*.cpp") 
     add_files("src/Runtime/RHI/Vulkan/*.cpp") 
@@ -52,8 +58,8 @@ target("Runtime")
     --add_files("src/ThirdParty/imgui/*.cpp")
     --add_headerfiles("src/ThirdParty/imgui/backends/*.h")
     --add_files("src/ThirdParty/imgui/backends/*.cpp")
-
-    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr","lz4","nlohmann_json")
+    --]]
+    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr","lz4","nlohmann_json","gli")
     
 
 

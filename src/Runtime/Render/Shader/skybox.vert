@@ -1,4 +1,4 @@
-#version 450
+#version 460
 
 layout(set=0,binding = 0) uniform MVP {
     mat4 model;
@@ -56,7 +56,7 @@ vec3 positions[36] = vec3[](
 
 void main() {
     vec4 pos = mvp.proj * mvp.view * vec4(positions[gl_VertexIndex], 1.0f);
-    pos.z=pos.w;
+    pos.z=pos.w*0.99f;
     gl_Position = pos;
-    TexCoords=positions[gl_VertexIndex];
+    TexCoords= positions[gl_VertexIndex] ;
 }

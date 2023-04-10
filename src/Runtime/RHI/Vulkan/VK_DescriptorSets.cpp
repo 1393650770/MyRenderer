@@ -309,13 +309,19 @@ namespace MXRender
 
 		bindings.push_back(newBinding);
 
+		image_infos.push_back(VkDescriptorImageInfo());
+		image_infos[binding].sampler = imageInfo->sampler;
+		image_infos[binding].imageLayout = imageInfo->imageLayout;
+		image_infos[binding].imageView = imageInfo->imageView;
+
+
 		VkWriteDescriptorSet newWrite{};
 		newWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		newWrite.pNext = nullptr;
 
 		newWrite.descriptorCount = 1;
 		newWrite.descriptorType = type;
-		newWrite.pImageInfo = imageInfo;
+		newWrite.pImageInfo = &image_infos[binding];
 		newWrite.dstBinding = binding;
 
 		writes.push_back(newWrite);
@@ -360,6 +366,8 @@ namespace MXRender
 		vkDestroyDescriptorSetLayout(alloc->get_device().lock()->device, layout, nullptr);
 		return result;
 	}
+
+
 
 }
 

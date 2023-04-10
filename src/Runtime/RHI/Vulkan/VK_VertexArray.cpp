@@ -49,13 +49,13 @@ namespace MXRender
 
 
 
-	MXRender::VertexInputDescription AssetVertex::get_vertex_description()
+	MXRender::VertexInputDescription SimpleVertex::get_vertex_description()
 	{
 		VertexInputDescription description;
 
 		VkVertexInputBindingDescription mainBinding = {};
 		mainBinding.binding = 0;
-		mainBinding.stride = sizeof(AssetVertex);
+		mainBinding.stride = sizeof(SimpleVertex);
 		mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 		description.bindings.push_back(mainBinding);
@@ -64,28 +64,28 @@ namespace MXRender
 		positionAttribute.binding = 0;
 		positionAttribute.location = 0;
 		positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-		positionAttribute.offset = offsetof(AssetVertex, position);
+		positionAttribute.offset = offsetof(SimpleVertex, position);
 
 		//Normal will be stored at Location 1
 		VkVertexInputAttributeDescription normalAttribute = {};
 		normalAttribute.binding = 0;
 		normalAttribute.location = 1;
 		normalAttribute.format = VK_FORMAT_R8G8_UNORM;
-		normalAttribute.offset = offsetof(AssetVertex, oct_normal);
+		normalAttribute.offset = offsetof(SimpleVertex, oct_normal);
 
 		//Position will be stored at Location 2
 		VkVertexInputAttributeDescription colorAttribute = {};
 		colorAttribute.binding = 0;
 		colorAttribute.location = 2;
 		colorAttribute.format = VK_FORMAT_R8G8B8_UNORM;
-		colorAttribute.offset = offsetof(AssetVertex, color);
+		colorAttribute.offset = offsetof(SimpleVertex, color);
 
 		//UV will be stored at Location 3
 		VkVertexInputAttributeDescription uvAttribute = {};
 		uvAttribute.binding = 0;
 		uvAttribute.location = 3;
 		uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
-		uvAttribute.offset = offsetof(AssetVertex, uv);
+		uvAttribute.offset = offsetof(SimpleVertex, uv);
 
 
 		description.attributes.push_back(positionAttribute);
@@ -119,7 +119,7 @@ namespace MXRender
 		return result;
 	}
 
-	void AssetVertex::pack_normal(glm::vec3 n)
+	void SimpleVertex::pack_normal(glm::vec3 n)
 	{
 		vec2 oct = OctNormalEncode(n);
 
@@ -127,7 +127,7 @@ namespace MXRender
 		oct_normal.y = uint8_t(oct.y * 255);
 	}
 
-	void AssetVertex::pack_color(glm::vec3 c)
+	void SimpleVertex::pack_color(glm::vec3 c)
 	{
 		color.r = static_cast<uint8_t>(c.x * 255);
 		color.g = static_cast<uint8_t>(c.y * 255);

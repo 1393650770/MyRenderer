@@ -19,6 +19,7 @@ namespace MXRender
 		GLFWwindow* window = nullptr;
 		float deltaTime = 0.0f;
 		float lastFrame = 0.0f;
+
 	protected:
 
 
@@ -29,11 +30,6 @@ namespace MXRender
 		void run(std::shared_ptr<MyRender> render);
 		GLFWwindow* GetWindow() const;
 
-		void Turnright();
-		void Turnforward();
-		void Turnback();
-		void Turnleft();
-		void Rotate();
 
 	};
 }

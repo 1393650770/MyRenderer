@@ -102,8 +102,10 @@ namespace MXRender
 
 		bool build(VkDescriptorSet& set, VkDescriptorSetLayout& layout);
 		bool build(VkDescriptorSet& set);
-	private:
 
+        std::vector<VkDescriptorImageInfo> image_infos;
+	private:
+        
 		std::vector<VkWriteDescriptorSet> writes;
 		std::vector<VkDescriptorSetLayoutBinding> bindings;
 

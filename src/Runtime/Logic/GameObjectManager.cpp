@@ -12,6 +12,9 @@
 #include "../Mesh/VK_Mesh.h"
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
+#include "../Render/DefaultSetting.h"
+#include "../Render/TextureManager.h"
+#include "../Utils/Singleton.h"
 std::string asset_path(std::string_view path)
 {
 	return "../../../../assets_export/" + std::string(path);
@@ -75,6 +78,10 @@ MXRender::GameObjectManager::GameObjectManager(GraphicsContext* context)
 
 	object_list.emplace_back("viking_room1","Resource/Mesh/viking_room.obj");
 	object_list.emplace_back("viking_room2", "Resource/Mesh/viking_room.obj");
+	object_list.emplace_back("pbr_stone", "Resource/Mesh/pbr_stone.obj");
+	object_list[2].get_transform()->set_scale(glm::vec3(0.005f));
+	object_list[2].get_transform()->set_translation(glm::vec3(-8.005f,0.0f,0.0f));
+
 	//object_list.emplace_back("Resource/Mesh/sponza.obj");
 
 }
@@ -116,7 +123,7 @@ void MXRender::GameObjectManager::start_load_prefabs(GraphicsContext* context)
 	for (int x = -dimHelmets; x <= dimHelmets; x++) {
 		for (int y = -dimHelmets; y <= dimHelmets; y++) {
 
-			glm::mat4 translation = glm::translate(glm::mat4{ 1.0 }, glm::vec3(x * 5, 0, y * 5));
+			glm::mat4 translation = glm::translate(glm::mat4{ 1.0 }, glm::vec3(x * 2, 0, y * 2));
 			glm::mat4 scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3(10));
 
 			load_prefab(asset_path("FlightHelmet/FlightHelmet.pfb").c_str(), (translation * scale), context);
@@ -128,6 +135,69 @@ void MXRender::GameObjectManager::start_load_prefabs(GraphicsContext* context)
 	glm::mat4 unrealFixRotation = glm::rotate(glm::radians(-90.f), glm::vec3{ 1,0,0 });
 
 	load_prefab(asset_path("Sponza/Sponza.pfb").c_str(), sponzaMatrix, context);
+}
+
+void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context)
+{
+	VK_GraphicsContext* vk_context = nullptr;
+	switch (RenderState::render_api_type)
+	{
+	case ENUM_RENDER_API_TYPE::Vulkan:
+	{
+		vk_context = dynamic_cast<VK_GraphicsContext*>(context);
+	}
+	break;
+	default:
+		return ;
+	}
+
+
+	Material* stoneMaterial = vk_context->material_system.get_material("pbr_mesh");
+	if (!stoneMaterial)
+	{
+		VK_Texture* aorm_texture =  Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("pbr_stone_aorm",ENUM_TEXTURE_TYPE::ENUM_TYPE_2D,"Resource/Texture/pbr_stone/pbr_stone_aorm.dds");
+		VK_Texture* base_color_texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("pbr_stone_base_color", ENUM_TEXTURE_TYPE::ENUM_TYPE_2D, "Resource/Texture/pbr_stone/pbr_stone_base_color.dds");
+		VK_Texture* normal_texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("pbr_stone_normal", ENUM_TEXTURE_TYPE::ENUM_TYPE_2D, "Resource/Texture/pbr_stone/pbr_stone_normal.dds");
+		VK_Texture* cubemap_texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("skybox", ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP, "Resource/Texture/Skybox/kyoto_lod.dds");
+		VK_Texture* cubemap_irr_texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("skybox_irr", ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP, "Resource/Texture/Skybox/kyoto_irr.dds");
+		VK_Texture* lut_texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("ibl_lut", ENUM_TEXTURE_TYPE::ENUM_TYPE_2D, "Resource/Texture/ibl_lut.png");
+
+		MaterialData info;
+		info.parameters = nullptr;
+		info.textures.clear();
+		SampledTexture tex;
+		tex.view = base_color_texture->textureImageView;
+		tex.sampler = base_color_texture->textureSampler;
+		info.textures.push_back(tex);
+		tex.view = normal_texture->textureImageView;
+		tex.sampler = normal_texture->textureSampler;
+		info.textures.push_back(tex);
+		tex.view = aorm_texture->textureImageView;
+		tex.sampler = aorm_texture->textureSampler;
+		info.textures.push_back(tex);
+		tex.view = cubemap_texture->textureImageView;
+		tex.sampler = cubemap_texture->textureSampler;
+		info.textures.push_back(tex);
+		tex.view = cubemap_irr_texture->textureImageView;
+		tex.sampler = cubemap_irr_texture->textureSampler;
+		info.textures.push_back(tex);
+		tex.view = lut_texture->textureImageView;
+		tex.sampler = lut_texture->textureSampler;
+		info.textures.push_back(tex);
+
+		info.baseTemplate = "mesh_pbr";
+
+		stoneMaterial = vk_context->material_system.build_material("pbr_stone", info);
+
+		if (!stoneMaterial)
+		{
+			std::cout << "Error When building material" ;
+		}
+		else
+		{
+			object_list[2].set_material(stoneMaterial);
+		}
+	}
 }
 
 bool MXRender::GameObjectManager::load_prefab(const char* path, glm::mat4 root,GraphicsContext* context)

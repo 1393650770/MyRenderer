@@ -943,4 +943,25 @@ namespace MXRender
 
 
 
+	void VK_Utils::Copy_Buffer_To_Image(std::weak_ptr< VK_GraphicsContext> context, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layer_count, uint32_t level, uint32_t baseArrayLayer, uint32_t bufferOffset)
+	{
+		if (context.expired())
+		{
+			return;
+		}
+
+		VkCommandBuffer commandBuffer = context.lock()->begin_single_time_commands();
+		VkBufferImageCopy region{};
+		region.bufferOffset = bufferOffset;
+		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.imageSubresource.mipLevel = level;
+		region.imageSubresource.baseArrayLayer = baseArrayLayer;
+		region.imageSubresource.layerCount = layer_count;
+		region.imageExtent = { width, height, 1 };
+
+		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+		context.lock()->end_single_time_commands(commandBuffer);
+	}
+
 }

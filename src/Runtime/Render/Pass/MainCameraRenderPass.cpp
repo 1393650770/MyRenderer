@@ -20,6 +20,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "../../RHI/Vulkan/VK_Texture.h"
 #include <array>
+#include "../../Logic/GameObjectManager.h"
+#include "../TextureManager.h"
 namespace MXRender
 {
 
@@ -292,7 +294,7 @@ namespace MXRender
 	{
 		
 		std::vector<std::string> cubemap_path{
-			
+
 			"Resource/Texture/Skybox/right.jpg",
 			"Resource/Texture/Skybox/left.jpg",
 			"Resource/Texture/Skybox/top.jpg",
@@ -301,8 +303,15 @@ namespace MXRender
 			"Resource/Texture/Skybox/back.jpg",
 
 		};
+		std::string cubemap_path2 = "Resource/Texture/Skybox/kyoto_lod.dds";
+		std::string cubemap_path3 = "Resource/Texture/Skybox/bolonga_lod.dds";
 
-		cubemap_texture=std::make_shared<VK_Texture>(cubemap_path);
+
+		VK_Texture* cubemap_texture= Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("skybox",ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP, cubemap_path2);
+		if (cubemap_texture==nullptr)
+		{
+			return;
+		}
 
 		VkDescriptorSetAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -349,15 +358,13 @@ namespace MXRender
 
 	void MainCamera_RenderPass::update_uniformbuffer()
 	{
-		static auto startTime = std::chrono::high_resolution_clock::now();
 
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
 		MVP_Struct ubo{};
-		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 1.0f));
-		ubo.view = glm::mat4(glm::mat3(glm::lookAt(glm::vec3(0.0f, 0.0f, 30.0f), glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 1.0f, 0.0f))));
-		ubo.proj = glm::perspective(glm::radians(45.0f), (float)cur_context.lock()->get_swapchain_extent().width / (float)cur_context.lock()->get_swapchain_extent().height, 0.1f, 100.0f);
+		ubo.model = glm::mat4(1.0f);
+	/*	ubo.view = glm::mat4(glm::mat3(glm::lookAt(glm::vec3(0.0f, 0.0f, 30.0f), glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 1.0f, 0.0f))));*/
+		ubo.view = glm::mat4(glm::mat3(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat()));
+		ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
 		ubo.proj[1][1] *= -1;
 
 		void* data;

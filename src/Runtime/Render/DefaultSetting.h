@@ -3,6 +3,8 @@
 #define _DEFAULTSETTING_
 #include <memory>
 
+namespace MXRender { class TextureManager; }
+
 namespace MXRender { class ThreadPool; }
 
 namespace MXRender { class InputSystem; }
@@ -20,6 +22,7 @@ namespace MXRender
 		std::shared_ptr <GameObjectManager> gameobject_manager;
 		std::shared_ptr <InputSystem> input_system;
 		std::shared_ptr <ThreadPool> thread_system;
+		std::shared_ptr <TextureManager> texture_manager;
 		DefaultSetting();
 		virtual ~DefaultSetting();
 		int width = 800;

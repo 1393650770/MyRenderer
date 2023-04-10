@@ -1,4 +1,4 @@
-#version 450
+#version 460
 
 layout(binding = 0) uniform MVP {
     mat4 model;

@@ -49,7 +49,6 @@ namespace MXRender
         MeshBase();
         virtual ~MeshBase();
         std::vector<SimpleVertex> vertices;
-        std::vector<AssetVertex> assetvertex_vertices;
         std::vector<uint32_t> indices;
         void load_model(const std::string& filename);
         bool load_asset(const  char* filename);

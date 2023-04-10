@@ -21,9 +21,9 @@ namespace MXRender
 	{
 	private:
 	protected:
-		TransformComponent* transform;
-		StaticMeshComponent* staticmesh;
-		Material* material;
+		TransformComponent* transform=nullptr;
+		StaticMeshComponent* staticmesh=nullptr;
+		Material* material=nullptr;
 		std::string name;
 		std::vector<MeshObject*> sub_mesh;
 	public:

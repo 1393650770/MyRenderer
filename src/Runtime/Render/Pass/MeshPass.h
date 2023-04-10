@@ -75,7 +75,8 @@ namespace MXRender
         void setup_descriptorpool();
         void setup_descriptorsets();
         
-        void update_object_uniform(GameObject* game_object);
+        void update_object_uniform(GameObject* game_object,VkPipelineLayout pipeline_layout);
+        void update_camera_uniform();
         void render_mesh(ComponentBase* mesh_component);
         void render_mesh(MeshObject* mesh_component, VkDescriptorSet GlobalSet,VkCommandBuffer command_buffer);
         void dispatch_render_mesh(unsigned int start_index , unsigned int end_index, VkDescriptorSet GlobalSet);

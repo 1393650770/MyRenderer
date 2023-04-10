@@ -133,8 +133,16 @@ namespace MXRender
 			VkImage  image,
 			uint32_t width,
 			uint32_t height,
-			uint32_t layer_coun);
-
+			uint32_t layer_count);
+		static void	Copy_Buffer_To_Image(std::weak_ptr< VK_GraphicsContext> context,
+			VkBuffer buffer,
+			VkImage  image,
+			uint32_t width,
+			uint32_t height,
+			uint32_t layer_count,
+			uint32_t level,
+			uint32_t baseArrayLayer,
+			uint32_t bufferOffset);
 
 		static VkSampler Create_Linear_Sampler(VkPhysicalDevice physical_device, VkDevice device);
     };

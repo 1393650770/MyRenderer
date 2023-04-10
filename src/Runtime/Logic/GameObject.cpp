@@ -25,20 +25,16 @@ MXRender::GameObject::GameObject(const std::string& name, const std::string& mes
 	transform = new TransformComponent();
 	staticmesh = new StaticMeshComponent();
 	this->name = name;
-	if (is_prefabs)
-	{
-		staticmesh->load_mesh(mesh_path);
-	}
-	else
-	{ 
-		staticmesh->load_mesh(mesh_path);
-	}
+
+	staticmesh->load_mesh(mesh_path);
+	
 }
 
 MXRender::GameObject::~GameObject()
 {
 	delete transform;
 	delete staticmesh;
+	delete material;
 }
 
 MXRender::StaticMeshComponent* MXRender::GameObject::get_staticmesh()

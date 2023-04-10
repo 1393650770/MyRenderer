@@ -49,7 +49,6 @@ namespace MXRender
         std::vector<VkDescriptorSet> descriptor_sets;
 
         std::shared_ptr< VK_DescriptorSetLayout> descriptorset_layout;
-        std::shared_ptr< VK_Texture> cubemap_texture;
     public:
         virtual void post_initialize();
         virtual void set_commonInfo(const PassInfo& init_info);

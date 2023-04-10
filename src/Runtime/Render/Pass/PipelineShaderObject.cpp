@@ -83,15 +83,14 @@ namespace MXRender
 			newMat->pass_sets[MeshpassType::DirectionalShadow] = VK_NULL_HANDLE;
 
 			DescriptorBuilder db = DescriptorBuilder::begin(descriptor_pool);
-
+			db.image_infos.resize(info.textures.size());
 			for (int i = 0; i < info.textures.size(); i++)
 			{
-				VkDescriptorImageInfo imageBufferInfo;
-				imageBufferInfo.sampler = info.textures[i].sampler;
-				imageBufferInfo.imageView = info.textures[i].view;
-				imageBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				db.image_infos[i].sampler = info.textures[i].sampler;
+				db.image_infos[i].imageView = info.textures[i].view;
+				db.image_infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 				
-				db.bind_image(i, &imageBufferInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+				db.bind_image(i, &db.image_infos[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
 			}
 
 				
@@ -110,7 +109,7 @@ namespace MXRender
 	{
 
 		{
-			mesh_pass_builder.vertexDescription= AssetVertex::get_vertex_description();
+			mesh_pass_builder.vertexDescription= SimpleVertex::get_vertex_description();
 			
 			mesh_pass_builder._inputAssembly = VK_Utils::Input_Assembly_Create_Info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
@@ -161,6 +160,18 @@ namespace MXRender
 		{
 			delete it.second;
 		}
+
+		for (auto& it : psos)
+		{
+			delete it.second;
+		}
+
+		for (auto& it : materials)
+		{
+			delete it.second;
+		}
+
+
 	}
 
 	void MaterialSystem::init(VK_GraphicsContext* context)
@@ -168,28 +179,32 @@ namespace MXRender
 		this->context=context;
 		build_pipeline_builder();
 		descriptor_pool=new VK_DescriptorPool(context->device,50000);
-		//VK_Shader* default_color = new  VK_Shader(context->device, "Shader/mesh_rock_vert.spv", "Shader/mesh_rock_frag.spv");
+
 		VK_Shader* default_color = new  VK_Shader(context->device, "Shader/default_prefabs_mesh_vert.spv", "Shader/default_prefabs_mesh_frag.spv");
-		//test->reflect_layout(nullptr,0);
+		VK_Shader* pbr_material = new  VK_Shader(context->device, "Shader/pbr_mesh_vert.spv", "Shader/pbr_mesh_frag.spv");
 
 		VK_Shader::ReflectionOverrides overrides[] = {
 			{"mvp", VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC}	
 		};
 		default_color->reflect_layout(overrides, 1);
+		pbr_material->reflect_layout(overrides, 1);
+
 		shaders["default_mesh"] = default_color;
+		shaders["pbr_mesh"]=pbr_material;
 
 		PipelineShaderObject* mesh_pso =  build_pso(context->mesh_pass, mesh_pass_builder, default_color);
+		PipelineShaderObject* pbr_mesh_pso = build_pso(context->mesh_pass, mesh_pass_builder, pbr_material);
 		psos["mesh_pass"] = mesh_pso;
-
+		psos["pbr_pass"] = pbr_mesh_pso;
 
 		templateCache["mesh_base"].pass_pso[MeshpassType::Forward]= mesh_pso;
 		templateCache["mesh_base"].pass_pso[MeshpassType::Transparency] = nullptr;
 		templateCache["mesh_base"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
 
-		MaterialData data;
+		templateCache["mesh_pbr"].pass_pso[MeshpassType::Forward] = pbr_mesh_pso;
+		templateCache["mesh_pbr"].pass_pso[MeshpassType::Transparency] = nullptr;
+		templateCache["mesh_pbr"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
 
-		
-		Material* mat = build_material("mesh_base", data);
 	}
 
 	bool MaterialData::operator==(const MaterialData& other) const

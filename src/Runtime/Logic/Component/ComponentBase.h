@@ -7,7 +7,6 @@
 
 namespace MXRender
 {
-    struct SimpleVertex;
 
 	enum class ComponentType
 	{

@@ -45,6 +45,7 @@ namespace MXRender
 		virtual ~GameObjectManager();
 		void destroy_object_list(GraphicsContext* context);
 		void start_load_prefabs(GraphicsContext* context);
+		void set_overload_material(GraphicsContext* context);
 	};
 
 }

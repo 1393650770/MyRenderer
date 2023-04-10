@@ -30,22 +30,39 @@ void MXRender::MeshBase::load_model(const std::string& filename)
     }
 
     std::unordered_map<SimpleVertex, uint32_t> uniqueVertices{};
-
+	int i=0,f=0;
     for (const auto& shape : shapes) {
+		
         for (const auto& index : shape.mesh.indices) {
             SimpleVertex vertex{};
 
-            vertex.pos = {
+            vertex.position = 
+			{
                 attrib.vertices[3 * index.vertex_index + 0],
                 attrib.vertices[3 * index.vertex_index + 1],
                 attrib.vertices[3 * index.vertex_index + 2]
             };
+			vertex.uv=
+			{
+				attrib.texcoords[2 * index.texcoord_index + 0],
+				attrib.texcoords[2 * index.texcoord_index + 1]
+			};
 
-            vertex.texCoord = {
-                attrib.texcoords[2 * index.texcoord_index + 0],
-                1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-            };
-
+			if (attrib.normals.size()>0)
+			{
+				glm::vec3 normal = glm::vec3(
+					attrib.normals[3 * index.normal_index + 0],
+					attrib.normals[3 * index.normal_index + 1],
+					attrib.normals[3 * index.normal_index + 2]);
+				vertex.pack_normal(normal);
+			}
+			if (attrib.normals.size() > 0)
+			{
+				vertex.pack_color(glm::vec3{
+					attrib.colors[3 * index.vertex_index + 0],
+					attrib.colors[3 * index.vertex_index + 1],
+					attrib.colors[3 * index.vertex_index + 2] });
+			}
 
             if (uniqueVertices.count(vertex) == 0) {
                 uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
@@ -53,7 +70,9 @@ void MXRender::MeshBase::load_model(const std::string& filename)
             }
 
             indices.push_back(uniqueVertices[vertex]);
+			f++;
         }
+		i++;
     }
 }
 
@@ -84,7 +103,7 @@ bool MXRender::MeshBase::load_asset(const  char* filename)
 
 	
 
-	assetvertex_vertices.clear();
+	vertices.clear();
 	indices.clear();
 
 	indices.resize(indexBuffer.size() / sizeof(uint32_t));
@@ -98,50 +117,50 @@ bool MXRender::MeshBase::load_asset(const  char* filename)
 	{
 		assets::Vertex_f32_PNCV* unpackedVertices = (assets::Vertex_f32_PNCV*)vertexBuffer.data();
 
-		assetvertex_vertices.resize(vertexBuffer.size() / sizeof(assets::Vertex_f32_PNCV));
+		vertices.resize(vertexBuffer.size() / sizeof(assets::Vertex_f32_PNCV));
 
-		for (int i = 0; i < assetvertex_vertices.size(); i++) {
+		for (int i = 0; i < vertices.size(); i++) {
 
-			assetvertex_vertices[i].position.x = unpackedVertices[i].position[0];
-			assetvertex_vertices[i].position.y = unpackedVertices[i].position[1];
-			assetvertex_vertices[i].position.z = unpackedVertices[i].position[2];
+			vertices[i].position.x = unpackedVertices[i].position[0];
+			vertices[i].position.y = unpackedVertices[i].position[1];
+			vertices[i].position.z = unpackedVertices[i].position[2];
 
 			vec3 normal = vec3(
 				unpackedVertices[i].normal[0],
 				unpackedVertices[i].normal[1],
 				unpackedVertices[i].normal[2]);
-			assetvertex_vertices[i].pack_normal(normal);
+			vertices[i].pack_normal(normal);
 
-			assetvertex_vertices[i].pack_color(vec3{ unpackedVertices[i].color[0] ,unpackedVertices[i].color[1] ,unpackedVertices[i].color[2] });
+			vertices[i].pack_color(vec3{ unpackedVertices[i].color[0] ,unpackedVertices[i].color[1] ,unpackedVertices[i].color[2] });
 
 
-			assetvertex_vertices[i].uv.x = unpackedVertices[i].uv[0];
-			assetvertex_vertices[i].uv.y = unpackedVertices[i].uv[1];
+			vertices[i].uv.x = unpackedVertices[i].uv[0];
+			vertices[i].uv.y = unpackedVertices[i].uv[1];
 		}
 	}
 	else if (meshinfo.vertexFormat == assets::VertexFormat::P32N8C8V16)
 	{
 		assets::Vertex_P32N8C8V16* unpackedVertices = (assets::Vertex_P32N8C8V16*)vertexBuffer.data();
 
-		assetvertex_vertices.resize(vertexBuffer.size() / sizeof(assets::Vertex_P32N8C8V16));
+		vertices.resize(vertexBuffer.size() / sizeof(assets::Vertex_P32N8C8V16));
 
-		for (int i = 0; i < assetvertex_vertices.size(); i++) {
+		for (int i = 0; i < vertices.size(); i++) {
 
-			assetvertex_vertices[i].position.x = unpackedVertices[i].position[0];
-			assetvertex_vertices[i].position.y = unpackedVertices[i].position[1];
-			assetvertex_vertices[i].position.z = unpackedVertices[i].position[2];
+			vertices[i].position.x = unpackedVertices[i].position[0];
+			vertices[i].position.y = unpackedVertices[i].position[1];
+			vertices[i].position.z = unpackedVertices[i].position[2];
 
-			assetvertex_vertices[i].pack_normal(vec3{
+			vertices[i].pack_normal(vec3{
 				 unpackedVertices[i].normal[0]
 				,unpackedVertices[i].normal[1]
 				,unpackedVertices[i].normal[2] });
 
-			assetvertex_vertices[i].color.x = unpackedVertices[i].color[0];// / 255.f;
-			assetvertex_vertices[i].color.y = unpackedVertices[i].color[1];// / 255.f;
-			assetvertex_vertices[i].color.z = unpackedVertices[i].color[2];// / 255.f;
+			vertices[i].color.x = unpackedVertices[i].color[0];// / 255.f;
+			vertices[i].color.y = unpackedVertices[i].color[1];// / 255.f;
+			vertices[i].color.z = unpackedVertices[i].color[2];// / 255.f;
 
-			assetvertex_vertices[i].uv.x = unpackedVertices[i].uv[0];
-			assetvertex_vertices[i].uv.y = unpackedVertices[i].uv[1];
+			vertices[i].uv.x = unpackedVertices[i].uv[0];
+			vertices[i].uv.y = unpackedVertices[i].uv[1];
 		}
 	}
 

@@ -26,7 +26,7 @@ void MXRender::Camera::camera_rotation(Camera* camera,float delta_time)
 
 		double xpos,ypos;
 		glfwGetCursorPos(window, &xpos,&ypos);
-		std::cout << "camera_position :" << xpos << "  " << ypos <<" last_pos_x : "<< camera->last_pos_x<<"  "<< camera->last_pos_y << std::endl;
+		//std::cout << "camera_position :" << xpos << "  " << ypos <<" last_pos_x : "<< camera->last_pos_x<<"  "<< camera->last_pos_y << std::endl;
 		if (camera->is_first_mouse_press)
 		{
 			camera->last_pos_x = xpos;
@@ -35,7 +35,7 @@ void MXRender::Camera::camera_rotation(Camera* camera,float delta_time)
 		}
 		float x_offset = camera->last_pos_x - xpos;
 		float y_offset = camera->last_pos_y - ypos;
-		std::cout<<"camera_rotation :"<< x_offset<<"  "<< y_offset << std::endl;
+		//std::cout<<"camera_rotation :"<< x_offset<<"  "<< y_offset << std::endl;
 		update_rotation(x_offset,y_offset);
 
 		camera->last_pos_x=xpos;
