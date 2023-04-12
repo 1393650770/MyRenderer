@@ -7,10 +7,13 @@
 #include <future>
 #include <utility>
 #include <queue>
+#include <unordered_set>
 namespace MXRender
 {
 	template<typename T>
 	class MessageQueue;
+
+	class ThreadPool;
 
 	template<typename T>
 	class MessageQueue
@@ -60,6 +63,58 @@ namespace MXRender
 		}
 	};
 
+	struct TaskNode {
+		int id; // 任务ID
+		std::string name=""; // 任务名称
+		bool is_executed; // 任务是否已执行
+		std::function<void()> func; // 任务执行函数
+		std::unordered_set<int> next_tasks; // 后继任务列表
+		std::unordered_set<int> pre_tasks;//前置任务列表
+	};	
+
+	class TaskGraph
+	{
+	private:
+		std::unordered_map<int, TaskNode> task_graph;
+	public:
+		std::unordered_set<int> indegree_zero;
+		std::unordered_set<int> outdegree_zero;
+		template <typename F, typename... Args>
+		std::function<void()> get_task(F&& f, Args &&...args)
+		{
+			std::function<decltype(f(args...))()> func = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
+
+			auto task_ptr = std::make_shared<std::packaged_task<decltype(f(args...))()>>(func);
+
+			std::function<void()> wrapper_func = [task_ptr]()
+			{
+				(*task_ptr)();
+			};
+
+			return wrapper_func;
+		
+		}
+
+		template <typename C, typename F, typename... Args>
+		std::function<void()> get_task(F&& f, C* obj, Args&&... args)
+		{
+			std::function<decltype((obj->*f)(args...))()> func = std::bind(std::forward<F>(f), obj, std::forward<Args>(args)...);
+
+			auto task_ptr = std::make_shared<std::packaged_task<decltype((obj->*f)(args...))()>>(func);
+
+			std::function<void()> wrapper_func = [task_ptr]() {
+				(*task_ptr)();
+			};
+
+			return wrapper_func;
+		}
+
+		bool add_task_node(int id, const std::string& name, const std::function<void()>& func, const std::unordered_set<int>& next_tasks);
+		void execute_task(int task_id);
+		TaskGraph()=default;
+		virtual ~TaskGraph() = default;
+	};
+
 
 	class ThreadPool
 	{
@@ -86,6 +141,7 @@ namespace MXRender
 
 		//任务队列
 		MessageQueue<std::function<void()>> message_queue;
+		MessageQueue<TaskGraph> task_graph_queue;
 		std::vector<std::thread> thread_list;
 		std::vector<std::thread::id> thread_id_list;
 		bool bis_running;
@@ -127,13 +183,13 @@ namespace MXRender
 			auto task_ptr = std::make_shared<std::packaged_task<decltype(f(args...))()>>(func);
 
 			//使用lambda进行再次封装
-			std::function<void()> warpper_func = [task_ptr]()
+			std::function<void()> wrapper_func = [task_ptr]()
 			{
 				(*task_ptr)();
 			};
 
 			//将封装之后的函数压入队列
-			message_queue.push(warpper_func);
+			message_queue.push(wrapper_func);
 			add_message();
 
 			if (thread_list.size() < cpu_logicoperator_num && message_queue.size() > thread_list.size())
@@ -156,12 +212,12 @@ namespace MXRender
 			auto task_ptr = std::make_shared<std::packaged_task<decltype((obj->*f)(args...))()>>(func);
 
 			//使用lambda进行再次封装
-			std::function<void()> warpper_func = [task_ptr]() {
+			std::function<void()> wrapper_func = [task_ptr]() {
 				(*task_ptr)();
 			};
 
 			//将封装之后的函数压入队列
-			message_queue.push(warpper_func);
+			message_queue.push(wrapper_func);
 			add_message();
 
 			if (thread_list.size() < cpu_logicoperator_num && message_queue.size() > thread_list.size()) {
@@ -172,6 +228,10 @@ namespace MXRender
 
 			return task_ptr->get_future();
 		}
+
+		void excute_task_graph(const TaskGraph& task_graph);
+		void add_task_graph_to_todolist(const TaskGraph& task_graph);
+		void excute_todolist_taskgraph();
 	};
 }
 #endif //_THREADPOOL_

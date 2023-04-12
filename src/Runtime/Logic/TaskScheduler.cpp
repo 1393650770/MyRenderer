@@ -130,4 +130,118 @@ namespace MXRender
 		return 0;
 	}
 
+	void ThreadPool::excute_task_graph(const TaskGraph& task_graph)
+	{
+		while(task_graph.outdegree_zero.empty()==false)
+		{ 
+			std::unordered_set<int> excute_list = task_graph.indegree_zero;
+			for (auto it : excute_list)
+			{
+				TaskGraph* task_graph_ptr = const_cast<TaskGraph*>(&task_graph);
+				submit_message(&TaskGraph::execute_task, task_graph_ptr, it);
+			}
+		}
+	}
+
+	void ThreadPool::add_task_graph_to_todolist(const TaskGraph& task_graph)
+	{
+		task_graph_queue.push(task_graph);
+	}
+
+	void ThreadPool::excute_todolist_taskgraph()
+	{
+		while (task_graph_queue.size() != 0)
+		{
+			bool pop_result=true;
+			TaskGraph task_graph= task_graph_queue.pop(pop_result);
+			if (pop_result)
+			{
+				excute_task_graph(task_graph);
+			}
+		}
+	}
+
+	bool TaskGraph::add_task_node(int id, const std::string& name, const std::function<void()>& func, const std::unordered_set<int>& next_tasks)
+	{
+		if (task_graph.find(id) != task_graph.end()) {
+			// 任务节点已存在，更新任务节点的状态和执行函数
+			std::cout<<"任务节点已存在:id="<<id<<std::endl;
+			TaskNode& node = task_graph[id];
+			node.name = name;
+			node.is_executed = false;
+			node.func = func;
+			node.next_tasks = next_tasks;
+			for (int next_id : next_tasks) 
+			{
+				task_graph[next_id].pre_tasks.insert(id);
+			}
+			if (next_tasks.empty())
+			{
+				outdegree_zero.insert(id);
+			}
+			else
+			{
+				auto it = outdegree_zero.find(id);
+				if (it !=outdegree_zero.end())
+				{
+					outdegree_zero.erase(it);
+				}
+			}
+			return false;
+		}
+		else {
+			// 添加新的任务节点
+			TaskNode node;
+			node.id = id;
+			node.name = name;
+			node.is_executed = false;
+			node.func = func;
+			node.next_tasks = next_tasks;
+			task_graph[id] = node;
+
+			// 将当前任务的后继任务添加到前继任务列表中
+			for (int next_id : next_tasks) 
+			{
+				task_graph[next_id].pre_tasks.insert(id);
+			}
+			if (next_tasks.empty())
+			{
+				outdegree_zero.insert(id);
+			}
+			return true;
+		}
+	}
+
+	void TaskGraph::execute_task(int task_id)
+	{
+		auto iter = task_graph.find(task_id);
+		if (iter != task_graph.end()) {
+			TaskNode& node = iter->second;
+			node.func();
+			node.is_executed=true;
+
+			
+			if (auto it = outdegree_zero.find(task_id)!=outdegree_zero.end())
+			{
+				outdegree_zero.erase(it);
+			}
+			for (int next_id : node.next_tasks)
+			{
+				auto it = task_graph[next_id].pre_tasks.find(node.id);
+				if (it!= task_graph[next_id].pre_tasks.end())
+				{
+					task_graph[next_id].pre_tasks.erase(it);
+					if (task_graph[next_id].pre_tasks.empty())
+					{
+						indegree_zero.insert(next_id);
+					}
+				}
+			}
+		}
+		else {
+			std::cerr << "Task " << task_id << " does not exist" << std::endl;
+		}
+	}
+
+
 }
