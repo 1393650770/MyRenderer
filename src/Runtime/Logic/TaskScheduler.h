@@ -38,7 +38,7 @@ namespace MXRender
 			if (que.empty())
 			{
 				result_bool = false;
-				return nullptr;
+				return T();
 			}
 
 			std::unique_lock<std::mutex> lock(mut);
@@ -79,6 +79,8 @@ namespace MXRender
 	public:
 		std::unordered_set<int> indegree_zero;
 		std::unordered_set<int> outdegree_zero;
+		std::queue<int> topology_diagram;
+		std::queue<int> parallel_task_nums;
 		template <typename F, typename... Args>
 		std::function<void()> get_task(F&& f, Args &&...args)
 		{
@@ -111,6 +113,7 @@ namespace MXRender
 
 		bool add_task_node(int id, const std::string& name, const std::function<void()>& func, const std::unordered_set<int>& next_tasks);
 		void execute_task(int task_id);
+		void compile();
 		TaskGraph()=default;
 		virtual ~TaskGraph() = default;
 	};
@@ -229,7 +232,7 @@ namespace MXRender
 			return task_ptr->get_future();
 		}
 
-		void excute_task_graph(const TaskGraph& task_graph);
+		std::future<void> excute_task_graph(TaskGraph* task_graph);
 		void add_task_graph_to_todolist(const TaskGraph& task_graph);
 		void excute_todolist_taskgraph();
 	};

@@ -16,6 +16,7 @@
 #include "Pass/UIPass.h"
 #include "Pass/PreComputeIblPass.h"
 #include "vulkan/vulkan_core.h"
+#include "../Logic/TaskScheduler.h"
 
 MXRender::DeferRender::DeferRender()
 {
@@ -46,7 +47,6 @@ void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context)
 
 
 	context.lock()->submit();
-
 }
 
 void MXRender::DeferRender::init(std::weak_ptr <VK_GraphicsContext> context,GLFWwindow* window, WindowUI* window_ui)
