@@ -62,6 +62,17 @@ namespace MXRender
 		return new_pso;
 	}
 
+	MXRender::PipelineShaderObject* MaterialSystem::build_comp_pso( VK_Shader* effect)
+	{
+		PipelineShaderObject* new_pso = new PipelineShaderObject();
+		ComputePipelineBuilder builder;
+		builder._pipelineLayout = effect->get_built_layout();
+		builder._shaderStage = VK_Utils::Pipeline_Shader_Stage_Create_Info(VK_SHADER_STAGE_COMPUTE_BIT, effect->shader_modules[ENUM_SHADER_STAGE::Shader_Compute]);
+		new_pso->pipeline_layout = effect->get_built_layout();
+		new_pso->pipeline=builder.build_pipeline(context->device->device);
+		return new_pso;
+	}
+
 	Material* MaterialSystem::build_material(const std::string& materialName, const MaterialData& info)
 	{
 		Material* mat;
@@ -78,7 +89,8 @@ namespace MXRender
 			//need to build the material
 			Material* newMat = new Material();
 			newMat->pass_pso = &templateCache[info.baseTemplate];
-			//newMat->parameters = info.parameters;
+			newMat->parameters = info.parameters;
+			newMat->textures=info.textures;
 			////not handled yet
 			newMat->pass_sets[MeshpassType::DirectionalShadow] = VK_NULL_HANDLE;
 
@@ -182,20 +194,25 @@ namespace MXRender
 
 		VK_Shader* default_color = new  VK_Shader(context->device, "Shader/default_prefabs_mesh_vert.spv", "Shader/default_prefabs_mesh_frag.spv");
 		VK_Shader* pbr_material = new  VK_Shader(context->device, "Shader/pbr_mesh_vert.spv", "Shader/pbr_mesh_frag.spv");
-
+		VK_Shader* upload_comp= new VK_Shader(context->device, "", "","","Shader/upload_comp.spv");
 		VK_Shader::ReflectionOverrides overrides[] = {
 			{"mvp", VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC}	
 		};
 		default_color->reflect_layout(overrides, 1);
 		pbr_material->reflect_layout(overrides, 1);
+		upload_comp->reflect_layout(nullptr,0);
 
+		shaders["upload_comp"]=upload_comp;
 		shaders["default_mesh"] = default_color;
 		shaders["pbr_mesh"]=pbr_material;
 
 		PipelineShaderObject* mesh_pso =  build_pso(context->mesh_pass, mesh_pass_builder, default_color);
 		PipelineShaderObject* pbr_mesh_pso = build_pso(context->mesh_pass, mesh_pass_builder, pbr_material);
+		PipelineShaderObject* upload_comp_pso= build_comp_pso(upload_comp);
+
 		psos["mesh_pass"] = mesh_pso;
 		psos["pbr_pass"] = pbr_mesh_pso;
+		psos["upload_comp"] = upload_comp_pso;
 
 		templateCache["mesh_base"].pass_pso[MeshpassType::Forward]= mesh_pso;
 		templateCache["mesh_base"].pass_pso[MeshpassType::Transparency] = nullptr;

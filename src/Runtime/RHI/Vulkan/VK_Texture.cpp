@@ -147,6 +147,8 @@ namespace MXRender
 			6,
 			miplevels);
 
+		textureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
 		textureSampler=VK_Utils::Create_Linear_Sampler(device.lock()->gpu,device.lock()->device);
     }
 
@@ -374,6 +376,7 @@ namespace MXRender
 			VK_IMAGE_VIEW_TYPE_CUBE,
 			6,
 			cubemap.levels());
+		textureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 		textureSampler = VK_Utils::Create_Linear_Sampler(device.lock()->gpu, device.lock()->device);
 	}
@@ -487,6 +490,7 @@ namespace MXRender
 			VK_IMAGE_VIEW_TYPE_2D,
 			layer_cout,
 			miplevels);
+		textureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 		textureSampler = VK_Utils::Create_Linear_Sampler(device.lock()->gpu, device.lock()->device);
 	}
@@ -613,6 +617,8 @@ namespace MXRender
 			miplevels);
 
 		textureSampler = VK_Utils::Create_Linear_Sampler(device.lock()->gpu, device.lock()->device);
+		textureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
 	}
 
 	VkFormat VK_Texture::trans_gli_format_to_vulkan(gli::format format)

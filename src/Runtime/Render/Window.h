@@ -5,6 +5,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include "DeferRender.h"
+
 #include <array>
 #include <functional>
 #include <vector>

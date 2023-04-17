@@ -269,6 +269,7 @@ namespace MXRender
 		{
 			que.push(it);
 		}
+		indegree_zero.clear();
 
 		int all_count = 0,n=task_graph.size(),que_cout=que.size();
 		parallel_task_nums.push(que_cout);
@@ -304,7 +305,7 @@ namespace MXRender
 				parallel_task_nums.push(que_cout);
 			}
 		}
-		if (all_count != n) 
+		if (all_count!=0&&all_count != n) 
 		{
 			std::cout<<"Error:ÍØÆËÍ¼ÓÐ»·"<<std::endl;
 			std::abort();

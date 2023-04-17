@@ -9,7 +9,10 @@
 #include "../Utils/Singleton.h"
 #include "../Logic/GameObjectManager.h"
 #include "../Logic/Component/TransformComponent.h"
-
+#include "../Logic/GameObject.h"
+#include "../Logic/Object.h"
+#include "../Logic/Component/InputComponent.h"
+#include "../RHI/Vulkan/VK_Texture.h"
 
 inline void on_window_content_scale_update(float scale)
 {
@@ -124,44 +127,140 @@ void MXRender::EditorUI::show_editor_top_ui()
 	ImGui::End();
 }
 
-void MXRender::EditorUI::show_camera_detail()
+void MXRender::EditorUI::show_camera_left_detail()
 {
 	std::string name = "Camera";
 	ImGui::BeginChild(name.c_str(), ImVec2(0, 30), true, ImGuiWindowFlags_ChildWindow);
 
 	if (ImGui::BeginMenu(name.c_str()))
 	{
-		
-		ImGui::Text("%s", "Camera Position");
-		//ImGui::SameLine();
-		ImGui::Text("Camera Position x : %f - Camera Position y : %f - Camera Position z : %f", 
-		(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_position().r),
-			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_position().g,
-			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_position().b);
-		ImGui::Text("Camera Direction x : %f - Camera Direction y : %f - Camera Direction z : %f",
-			(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_direction().r),
-			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_direction().g,
-			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_direction().b);
-		ImGui::Text("Camera Right x : %f - Camera Right y : %f - Camera Right z : %f",
-			(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_right().r),
-			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_right().g,
-			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_right().b);
-		ImGui::Text("Camera Up x : %f - Camera Up y : %f - Camera Up z : %f",
-			(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_up().r),
-			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_up().g,
-			Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_up().b);
-		ImGui::DragFloat("Camera Move Speed", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_move_speed());
-		ImGui::DragFloat("Camera Near Plane", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_near_plane());
-		ImGui::DragFloat("Camera Far Plane", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_far_plane());
-		ImGui::DragFloat("Camera Fov", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_fov());
+		object_detail=&(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera);
 		ImGui::EndMenu();
 	}
 	ImGui::EndChild();
 }
 
-MXRender::EditorUI::EditorUI()
+void MXRender::EditorUI::show_camera_right_detail()
+{
+	ImGui::Text("%s", "Camera Position");
+	//ImGui::SameLine();
+	ImGui::Text("Camera Position x : %f - Camera Position y : %f - Camera Position z : %f",
+		(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_position().r),
+		Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_position().g,
+		Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_position().b);
+	ImGui::Text("Camera Direction x : %f - Camera Direction y : %f - Camera Direction z : %f",
+		(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_direction().r),
+		Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_direction().g,
+		Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_direction().b);
+	ImGui::Text("Camera Right x : %f - Camera Right y : %f - Camera Right z : %f",
+		(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_right().r),
+		Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_right().g,
+		Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_right().b);
+	ImGui::Text("Camera Up x : %f - Camera Up y : %f - Camera Up z : %f",
+		(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_up().r),
+		Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_up().g,
+		Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_up().b);
+	ImGui::DragFloat("Camera Move Speed", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_move_speed());
+	ImGui::DragFloat("Camera Near Plane", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_near_plane());
+	ImGui::DragFloat("Camera Far Plane", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_far_plane());
+	ImGui::DragFloat("Camera Fov", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_fov());
+}
+
+void MXRender::EditorUI::show_one_gameobject(GameObject* gameobject)
+{
+	std::string name = gameobject->get_name();
+	ImGuiTreeNodeFlags_ flag= gameobject->sub_objects.size()<=0? ImGuiTreeNodeFlags_Leaf: ImGuiTreeNodeFlags_None;
+	//if (ImGui::BeginMenu(name.c_str()))
+	//{
+	//	ImGui::EndMenu();
+	//}
+	if(ImGui::CollapsingHeader(name.c_str(), flag))
+	{ 
+		if (ImGui::IsItemFocused())
+		{
+			object_detail = gameobject;
+		}
+		ImGui::Indent();
+		for (auto& it : gameobject->sub_objects)
+		{
+			show_one_gameobject(it);
+		}
+		ImGui::Unindent();
+	}
+}
+
+void MXRender::EditorUI::show_one_directory(const std::string& selected_asset_folder)
+{
+	ImGui::SameLine();
+
+	ImGui::BeginChild((selected_asset_folder +" Asset Details").c_str());
+	unsigned int allready_show_num_in_one_line=0;
+	ImGui::Separator();
+	if (selected_asset_folder=="Material")
+	{
+		MaterialSystem* material_system= (Singleton<DefaultSetting>::get_instance().material_system.get());
+		for (auto& it: material_system->materials)
+		{
+			show_one_file(it.first,selected_asset_folder,allready_show_num_in_one_line);
+		}
+	}
+	else if (selected_asset_folder == "Mesh")
+	{
+		auto& mesh_dir= (Singleton<DefaultSetting>::get_instance().gameobject_manager->get_mesh_cache());
+		for (auto& it : mesh_dir)
+		{
+			show_one_file(it.first, selected_asset_folder, allready_show_num_in_one_line);
+		}
+	}
+	else if (selected_asset_folder == "Texture")
+	{
+		auto& texture_dir = (Singleton<DefaultSetting>::get_instance().gameobject_manager->get_texture_cache());
+		for (auto& it : texture_dir)
+		{
+			show_one_file(it.first, selected_asset_folder, allready_show_num_in_one_line);
+		}
+	}
+	else if (selected_asset_folder == "Prefabs")
+	{
+		auto& prefabs_dir = (Singleton<DefaultSetting>::get_instance().gameobject_manager->get_prefab_cache());
+		for (auto& it : prefabs_dir)
+		{
+			show_one_file(it.first, selected_asset_folder, allready_show_num_in_one_line);
+		}
+	}
+
+
+
+	ImGui::EndChild();
+}
+
+void MXRender::EditorUI::show_one_file(const std::string& name, const std::string& type,unsigned int& allready_show_num_in_one_line)
 {
 
+
+	ImGui::SameLine();
+	// Show asset information
+
+	ImGui::BeginChild((name+"Asset Details").c_str(), ImVec2(file_content_icon_size.first, file_content_icon_size.second),true);
+	ImGui::BeginGroup();
+	ImGui::Image(content_icon_ds, ImVec2(75, 75));
+	ImGui::Separator();
+	ImGui::TextWrapped(("Type: "+type).c_str());
+	ImGui::TextWrapped(("Name: "+name).c_str());
+	ImGui::EndGroup();
+	ImGui::EndChild();
+	float res_size= ImGui::GetWindowWidth();
+	if (res_size-file_content_icon_size.first<allready_show_num_in_one_line* file_content_icon_size.first)
+	{
+		ImGui::NewLine();
+		allready_show_num_in_one_line=0;
+	}
+	allready_show_num_in_one_line++;
+}
+
+MXRender::EditorUI::EditorUI()
+{
+	
 }
 
 MXRender::EditorUI::~EditorUI()
@@ -196,6 +295,15 @@ void MXRender::EditorUI::initialize(WindowUIInitInfo* init_info)
 
 	glfwSetWindowContentScaleCallback(vk_context->get_window(), on_window_content_scale_callback);
 
+
+}
+
+void MXRender::EditorUI::initialize_resource()
+{
+	content_icon_texture = std::make_shared<VK_Texture>(ENUM_TEXTURE_TYPE::ENUM_TYPE_2D, "Resource/Editor/Icon/FileIcon.png");
+	directory_icon_texture = std::make_shared<VK_Texture>(ENUM_TEXTURE_TYPE::ENUM_TYPE_2D, "Resource/Editor/Icon/DirectoryIcon.png");
+	content_icon_ds = ImGui_ImplVulkan_AddTexture(content_icon_texture->textureSampler, content_icon_texture->textureImageView, content_icon_texture->textureImageLayout);
+	directory_icon_ds = ImGui_ImplVulkan_AddTexture(directory_icon_texture->textureSampler, directory_icon_texture->textureImageView, directory_icon_texture->textureImageLayout);
 }
 
 void MXRender::EditorUI::pre_render()
@@ -221,12 +329,14 @@ void MXRender::EditorUI::show_editor_left_ui()
 		return;
 	}
 
+	show_camera_left_detail();
 
-	//if (ImGui::Selectable(nullptr,nullptr,0,ImVec2(2,2)))
-	//{
+	for (int i = 0; i < Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list.size(); i++)
+	{
+		show_one_gameobject(&(Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i]));
+	}
 
 
-	//}
 		
 	
 	ImGui::End();
@@ -245,46 +355,51 @@ void MXRender::EditorUI::show_editor_right_ui()
 		ImGui::End();
 		return;
 	}
-
-
-	show_camera_detail();
-
-	for (int i = 0; i < Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list.size(); i++)
+	if (object_detail)
 	{
-		TransformComponent* transform= Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_transform();
-		std::string name = Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_name();
+
+		InputComponent* input = object_detail->get_component(InputComponent);
+		if (input)
+		{
+			show_camera_right_detail();
+			ImGui::End();
+			return;
+		}
+		TransformComponent* transform = object_detail->get_component(TransformComponent);
+		std::string name = object_detail->get_name();
 		glm::vec3 translation = transform->get_translation();
 		glm::vec3 scale = transform->get_scale();
 		glm::vec3 rotation = transform->get_rotation();
-		ImGui::BeginChild(name.c_str(), ImVec2(0, 30), true, ImGuiWindowFlags_ChildWindow);
 
-		if (ImGui::BeginMenu(name.c_str()))
-		{ 
+		ImGui::CollapsingHeader((name + "-Detail").c_str(), ImGuiTreeNodeFlags_Leaf);
 
+		ImGui::Separator();
+
+		if (ImGui::CollapsingHeader("TransformComponent", ImGuiTreeNodeFlags_DefaultOpen))
+		{
 			ImGui::Text("%s", "transform translation");
-			//ImGui::SameLine();
 			ImGui::DragFloat("translation x", &translation.r);
 			ImGui::DragFloat("translation y", &translation.g);
 			ImGui::DragFloat("translation z", &translation.b);
+
+			ImGui::Separator();
 			ImGui::Text("%s", "transform scale");
 			//ImGui::SameLine();
 			ImGui::DragFloat("scale x", &scale.r);
 			ImGui::DragFloat("scale y", &scale.g);
 			ImGui::DragFloat("scale z", &scale.b);
+			ImGui::Separator();
 			ImGui::Text("%s", "transform rotation");
 			//ImGui::SameLine();
 			ImGui::DragFloat("rotation x", &rotation.r);
 			ImGui::DragFloat("rotation y", &rotation.g);
 			ImGui::DragFloat("rotation z", &rotation.b);
-			transform->set_translation(translation);
-			transform->set_scale(scale);
-			transform->set_rotation(rotation);
-			ImGui::EndMenu();
 		}
-		ImGui::EndChild();
+
+		transform->set_translation(translation);
+		transform->set_scale(scale);
+		transform->set_rotation(rotation);
 	}
-
-
 	ImGui::End();
 }
 
@@ -342,12 +457,52 @@ void MXRender::EditorUI::show_editor_down_ui()
 		return;
 	}
 
+	//ImVec2 window_size = ImGui::GetWindowSize();
+	ImVec2 image_size = ImVec2(11, 11);
+	//ImVec2 uv0 = ImVec2(0, 0);
+	//ImVec2 uv1 = ImVec2(1, 1);
 
-	//if (ImGui::Selectable(nullptr,nullptr,0,ImVec2(2,2)))
-	//{
 
 
-	//}
+	//// Show a list of assets
+	ImGui::BeginChild("Asset List", ImVec2(300, 0), true);
+	ImGui::Text("Assets:");
+	ImGui::Separator();
+
+
+
+	ImGui::Image((ImTextureID)directory_icon_ds, image_size);
+	ImGui::SameLine();
+	if (ImGui::Selectable("Material"))
+	{ 
+		selected_asset_folder = "Material";
+	
+	}
+	ImGui::Image((ImTextureID)directory_icon_ds, image_size);
+	ImGui::SameLine();
+	if (ImGui::Selectable("Mesh"))
+	{
+		selected_asset_folder = "Mesh";
+
+	}
+	ImGui::Image((ImTextureID)directory_icon_ds, image_size);
+	ImGui::SameLine();
+	if (ImGui::Selectable("Texture"))
+	{
+		selected_asset_folder = "Texture";
+	}
+	ImGui::Image((ImTextureID)directory_icon_ds, image_size);
+	ImGui::SameLine();
+	if (ImGui::Selectable("Prefabs"))
+	{
+		selected_asset_folder = "Prefabs";
+	}
+
+	ImGui::EndChild();
+
+	show_one_directory(selected_asset_folder);
+
+
 
 
 	ImGui::End();

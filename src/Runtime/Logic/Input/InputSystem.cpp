@@ -24,7 +24,7 @@ MXRender::InputSystem::~InputSystem()
 void MXRender::InputSystem::process_input(GLFWwindow* window)
 {
 
-	InputComponent* input_component = cur_controller_object->get_component<InputComponent>("InputComponent");
+	InputComponent* input_component = cur_controller_object->get_component(InputComponent);
 	if (input_component==nullptr)
 	{
 		return;

@@ -1,7 +1,7 @@
 #include "GameObjectManager.h"
 #include "../RHI/RenderState.h"
 #include "../RHI/RenderEnum.h"
-#include "../RHI/Vulkan/VK_GraphicsContext.h"
+#include "../RHI/Vulkan/VK_Utils.h"
 #include "../Mesh/MeshBase.h"
 #include "../AssetLoader/prefab_asset.h"
 #include "../RHI/Vulkan/VK_Utils.h"
@@ -99,16 +99,17 @@ void MXRender::GameObjectManager::destroy_object_list(GraphicsContext* context)
 	{
 		VK_GraphicsContext* vk_context = dynamic_cast<VK_GraphicsContext*>(context);
 		if (!vk_context ) return;
-		
+
+		for (auto& it : _meshes)
+		{
+			it.second->destroy_mesh_info(context);
+		}
 		for (int i=0;i<object_list.size();i++)
 		{
 			object_list[i].get_staticmesh()->get_mesh_data().lock()->destroy_mesh_info(context);
 		}
 
-		for (auto& it :_meshes)
-		{
-			it.second->destroy_mesh_info(context);
-		}
+
 		break;
 	}
 
@@ -120,13 +121,14 @@ void MXRender::GameObjectManager::destroy_object_list(GraphicsContext* context)
 void MXRender::GameObjectManager::start_load_prefabs(GraphicsContext* context)
 {
 	int dimHelmets = 1;
+	int i=0;
 	for (int x = -dimHelmets; x <= dimHelmets; x++) {
 		for (int y = -dimHelmets; y <= dimHelmets; y++) {
 
 			glm::mat4 translation = glm::translate(glm::mat4{ 1.0 }, glm::vec3(x * 2, 0, y * 2));
 			glm::mat4 scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3(10));
-
-			load_prefab(asset_path("FlightHelmet/FlightHelmet.pfb").c_str(), (translation * scale), context);
+			i++;
+			load_prefab("FlightHelmet"+ std::to_string(i), asset_path("FlightHelmet/FlightHelmet.pfb").c_str(), (translation * scale), context);
 		}
 	}
 
@@ -134,7 +136,7 @@ void MXRender::GameObjectManager::start_load_prefabs(GraphicsContext* context)
 
 	glm::mat4 unrealFixRotation = glm::rotate(glm::radians(-90.f), glm::vec3{ 1,0,0 });
 
-	load_prefab(asset_path("Sponza/Sponza.pfb").c_str(), sponzaMatrix, context);
+	load_prefab("Sponza", asset_path("Sponza/Sponza.pfb").c_str(), sponzaMatrix, context);
 }
 
 void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context)
@@ -152,7 +154,7 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 	}
 
 
-	Material* stoneMaterial = vk_context->material_system.get_material("pbr_mesh");
+	Material* stoneMaterial = Singleton<DefaultSetting>::get_instance().material_system->get_material("pbr_mesh");
 	if (!stoneMaterial)
 	{
 		VK_Texture* aorm_texture =  Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("pbr_stone_aorm",ENUM_TEXTURE_TYPE::ENUM_TYPE_2D,"Resource/Texture/pbr_stone/pbr_stone_aorm.dds");
@@ -187,7 +189,7 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 
 		info.baseTemplate = "mesh_pbr";
 
-		stoneMaterial = vk_context->material_system.build_material("pbr_stone", info);
+		stoneMaterial = Singleton<DefaultSetting>::get_instance().material_system->build_material("pbr_stone", info);
 
 		if (!stoneMaterial)
 		{
@@ -200,7 +202,24 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 	}
 }
 
-bool MXRender::GameObjectManager::load_prefab(const char* path, glm::mat4 root,GraphicsContext* context)
+const std::unordered_map<std::string, MXRender::MeshBase*>& MXRender::GameObjectManager::get_mesh_cache() const
+{
+	return _meshes;
+}
+
+const std::unordered_map<std::string, MXRender::CacheTexture >& MXRender::GameObjectManager::get_texture_cache() const
+{
+	return _loadedTextures;
+}
+
+
+
+const std::unordered_map<std::string, assets::PrefabInfo*>& MXRender::GameObjectManager::get_prefab_cache() const
+{
+	return _prefabCache;
+}
+
+bool MXRender::GameObjectManager::load_prefab(const std::string& name,const char* path, glm::mat4 root,GraphicsContext* context)
 {
 	int rng = rand();
 	VK_GraphicsContext* vk_context=nullptr;
@@ -245,6 +264,18 @@ bool MXRender::GameObjectManager::load_prefab(const char* path, glm::mat4 root,G
 	std::unordered_map<uint64_t, glm::mat4> node_worldmats;
 
 	std::vector<std::pair<uint64_t, glm::mat4>> pending_nodes;
+
+	object_list.emplace_back(name);
+	auto& object = object_list.back();
+	object.get_transform()->set_model_matrix(root);
+	PrefabObjectInfo prefab_objinfo;
+	for (auto& [k, v] : prefab->node_names)
+	{
+		GameObject* obj=new GameObject(v);
+		prefab_objinfo.node_objs[k]=obj;
+		prefab_objinfo.node_objs_use[k] = false;
+	}
+
 	for (auto& [k, v] : prefab->node_matrices)
 	{
 
@@ -258,6 +289,10 @@ bool MXRender::GameObjectManager::load_prefab(const char* path, glm::mat4 root,G
 		if (matrixIT == prefab->node_parents.end()) {
 			//add to worldmats 
 			node_worldmats[k] = root * nodematrix;
+			object.sub_objects.push_back(prefab_objinfo.node_objs[k]);
+			prefab_objinfo.node_objs[k]->parent_object=&object;
+			prefab_objinfo.node_objs[k]->parent_object->get_transform()->set_model_matrix(node_worldmats[k]);
+
 		}
 		else {
 			//enqueue
@@ -266,13 +301,15 @@ bool MXRender::GameObjectManager::load_prefab(const char* path, glm::mat4 root,G
 	}
 
 	//process pending nodes list until it empties
+
 	while (pending_nodes.size() > 0)
 	{
 		for (int i = 0; i < pending_nodes.size(); i++)
 		{
 			uint64_t node = pending_nodes[i].first;
 			uint64_t parent = prefab->node_parents[node];
-
+			GameObject* parent_obj= prefab_objinfo.node_objs[parent];
+			GameObject* child_obj = prefab_objinfo.node_objs[node];
 			//try to find parent in cache
 			auto matrixIT = node_worldmats.find(parent);
 			if (matrixIT != node_worldmats.end()) {
@@ -282,6 +319,10 @@ bool MXRender::GameObjectManager::load_prefab(const char* path, glm::mat4 root,G
 
 				node_worldmats[node] = nodematrix;
 
+				parent_obj->sub_objects.push_back(child_obj);
+				child_obj->parent_object = parent_obj;
+				child_obj->get_transform()->set_model_matrix(node_worldmats[node]);
+
 				//remove from queue, pop last
 				pending_nodes[i] = pending_nodes.back();
 				pending_nodes.pop_back();
@@ -290,8 +331,6 @@ bool MXRender::GameObjectManager::load_prefab(const char* path, glm::mat4 root,G
 		}
 
 	}
-
-
 
 	for (auto& [k, v] : prefab->node_meshes)
 	{
@@ -314,7 +353,7 @@ bool MXRender::GameObjectManager::load_prefab(const char* path, glm::mat4 root,G
 		auto materialName = v.material_path.c_str();
 		//load material
 		
-		Material* objectMaterial = vk_context->material_system.get_material(materialName);
+		Material* objectMaterial = Singleton<DefaultSetting>::get_instance().material_system->get_material(materialName);
 		if (!objectMaterial)
 		{
 			assets::AssetFile materialFile;
@@ -352,7 +391,7 @@ bool MXRender::GameObjectManager::load_prefab(const char* path, glm::mat4 root,G
 
 					info.textures.push_back(tex);
 
-					objectMaterial = vk_context->material_system.build_material(materialName, info);
+					objectMaterial = Singleton<DefaultSetting>::get_instance().material_system->build_material(materialName, info);
 
 					if (!objectMaterial)
 					{
@@ -399,8 +438,19 @@ bool MXRender::GameObjectManager::load_prefab(const char* path, glm::mat4 root,G
 
 		loadmesh.customSortKey = 0;// rng;// key;
 
-
+		prefab_objinfo.node_objs[k]->get_staticmesh()->reset_mesh(get_mesh(v.mesh_path.c_str()));
+		prefab_objinfo.node_objs[k]->set_material(objectMaterial);
+		prefab_objinfo.node_objs_use[k] = true;
 		prefab_renderables.push_back(loadmesh);
 	}
+
+	for (auto& [k, v] : prefab_objinfo.node_objs_use)
+	{
+		if (v==false)
+		{
+			delete prefab_objinfo.node_objs[k];
+		}
+	}
+
 	return true;
 }

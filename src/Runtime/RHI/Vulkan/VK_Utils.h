@@ -13,29 +13,26 @@
 #include <iostream>
 #include <memory>
 #include <functional>
-#include "VK_GraphicsContext.h"
 
-
-
-namespace MXRender { struct AllocatedImage; }
-
-namespace MXRender { struct MipmapInfo; }
-
-namespace MXRender { struct AllocatedBufferUntyped; }
+#include "../../../ThirdParty/vma/vk_mem_alloc.h"
 
 namespace MXRender { class VK_GraphicsContext; }
+
+
+namespace MXRender { struct MipmapInfo; }
 namespace MXRender
 {
 
-
-	struct AllocatedImage {
+	class AllocatedImage {
+	public:
 		VkImage _image;
 		VmaAllocation _allocation;
 		VkImageView _defaultView;
 		int mipLevels;
 	};
 
-	struct AllocatedBufferUntyped {
+	class AllocatedBufferUntyped {
+	public:
 		VkBuffer _buffer{};
 		VmaAllocation _allocation{};
 		VkDeviceSize _size{ 0 };
@@ -43,7 +40,8 @@ namespace MXRender
 	};
 
 	template<typename T>
-	struct AllocatedBuffer : public AllocatedBufferUntyped {
+	class AllocatedBuffer : public AllocatedBufferUntyped {
+	public:
 		void operator=(const AllocatedBufferUntyped& other) {
 			_buffer = other._buffer;
 			_allocation = other._allocation;
@@ -56,12 +54,16 @@ namespace MXRender
 		}
 		AllocatedBuffer() = default;
 	};
+	
 
     class VK_Utils
     {
     private:
        
     public:
+		static void Destroy_Buffer(VK_GraphicsContext* context,AllocatedBufferUntyped& buffer);
+		static void* Map_Buffer(VK_GraphicsContext* context, AllocatedBufferUntyped& buffer);
+		static void Unmap_Buffer(VK_GraphicsContext* context, AllocatedBufferUntyped& buffer);
 		static VkImageViewCreateInfo Imageview_Create_Info(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags);
 		static VkImageCreateInfo Image_Create_Info(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);
 		static void Immediate_Submit(VK_GraphicsContext* context, std::function<void(VkCommandBuffer cmd)>&& function);

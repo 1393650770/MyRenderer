@@ -537,7 +537,7 @@ namespace MXRender
 			vkDestroyBuffer(cur_context.lock()->device->device, uniform_buffers[i], nullptr);
 			vkFreeMemory(cur_context.lock()->device->device, uniform_buffers_memory[i], nullptr);
 		}
-
+		//vkFreeDescriptorSets(cur_context.lock()->device->device, descriptor_pool, descriptor_sets.size(), descriptor_sets.data());
 		vkDestroyDescriptorPool(cur_context.lock()->device->device, descriptor_pool, nullptr);
 
 	}

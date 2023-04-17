@@ -1,6 +1,8 @@
 #version 460
 
-layout(location = 0) in vec2 TexCoords;
+layout (location = 0) in vec3 inColor;
+layout (location = 1) in vec2 texCoord;
+layout (location = 2) in vec3 inNormal;
 
 layout(location = 0) out vec4 outColor;
 
@@ -12,5 +14,5 @@ layout(set = 0, binding = 1) uniform  CameraData{
 } cameraData;
 
 void main() {
-    outColor = texture(basecolor_sampler, TexCoords);
+    outColor = texture(basecolor_sampler, texCoord);
 }

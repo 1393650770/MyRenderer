@@ -5,10 +5,6 @@ add_requires("imgui v1.88-docking", {configs = {glfw_vulkan = true}})
 add_rules("mode.debug", "mode.release")
 add_rules("plugin.vsxmake.autoupdate")
 
-target("AssetLoader")
-    set_kind("static")
-    set_languages("c++20")  
-    add_packages("json","lz4")
 
 
 target("Runtime")
@@ -75,7 +71,7 @@ target("Renderer")
     add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr")
 
     before_build(function (target)
-        os.run("$(projectdir)/src/Runtime/Render/Shader/compile.bat")
+        os.run("$(projectdir)/src/Runtime/Render/Shader/compile - glslangValidator.bat")
     end)
 
     after_build(function (target)

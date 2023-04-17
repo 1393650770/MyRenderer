@@ -6,4 +6,5 @@ MXRender::MyRender::MyRender()
 
 MXRender::MyRender::~MyRender()
 {
+    
 }

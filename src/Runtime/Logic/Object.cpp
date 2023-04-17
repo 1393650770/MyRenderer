@@ -2,6 +2,11 @@
 
 
 
+std::string MXRender::Object::get_name()
+{
+	return "null_implementation: get_name()";
+}
+
 MXRender::Object::Object()
 {
 

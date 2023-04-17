@@ -30,6 +30,7 @@ namespace MXRender
 		void set_euler_rotation(glm::vec3 new_rotation);
 		void set_scale(glm::vec3 new_scale);
 		void set_translation_rotation_scale(glm::vec3 new_translation, glm::vec3 new_rotation, glm::vec3 new_scale);
+		void set_model_matrix(glm::mat4 matrix);
 		glm::mat4 get_rotation_matrix();
 		glm::mat4 get_translation_matrix();
 		glm::mat4 get_scale_matrix();

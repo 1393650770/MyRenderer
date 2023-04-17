@@ -1,8 +1,7 @@
 #include "VK_Mesh.h"
-#include "../RHI/Vulkan/VK_VertexArray.h"
 #include "../RHI/Vulkan/VK_GraphicsContext.h"
-#include "../RHI/Vulkan/VK_Device.h"
-#include "../RHI/Vulkan/VK_Utils.h"
+
+
 
 
 MXRender::VK_Mesh::VK_Mesh()
@@ -18,12 +17,22 @@ MXRender::VK_Mesh::~VK_Mesh()
 void MXRender::VK_Mesh::destroy_mesh_info(GraphicsContext* context)
 {
 	VK_GraphicsContext* vk_context=dynamic_cast<VK_GraphicsContext*>(context);
-	if(!vk_context) return ; 
+	if(!vk_context||is_bedestroyed||!is_already_init) 
+		return ; 
+
+
 	vkDestroyBuffer(vk_context->device->device, vk_meshinfo.index_buffer, nullptr);
 	vkFreeMemory(vk_context->device->device, vk_meshinfo.index_buffer_memory, nullptr);
 
 	vkDestroyBuffer(vk_context->device->device, vk_meshinfo.vertex_buffer, nullptr);
 	vkFreeMemory(vk_context->device->device, vk_meshinfo.vertex_buffer_memory, nullptr);
+
+	vk_meshinfo.index_buffer=VK_NULL_HANDLE;
+	vk_meshinfo.index_buffer_memory = VK_NULL_HANDLE;
+	vk_meshinfo.vertex_buffer = VK_NULL_HANDLE;
+	vk_meshinfo.vertex_buffer_memory = VK_NULL_HANDLE;
+	is_bedestroyed=true;
+	//这段代码有问题怎么修改
 }
 
 void MXRender::VK_Mesh::init_mesh_info(GraphicsContext* context)
@@ -56,14 +65,8 @@ void MXRender::VK_Mesh::setup_vk_vertexbuffer(VK_GraphicsContext* cur_context, V
 
 	void* data;
 	vkMapMemory(cur_context->device->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-	if (is_prefabs)
-	{
-		memcpy(data, vertices.data(), (size_t)bufferSize);
-	}
-	else
-	{ 
-		memcpy(data, vertices.data(), (size_t)bufferSize);
-	}
+	memcpy(data, vertices.data(), (size_t)bufferSize);
+	
 	vkUnmapMemory(cur_context->device->device, stagingBufferMemory);
 
 

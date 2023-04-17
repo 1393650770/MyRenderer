@@ -1,16 +1,17 @@
 #include "Window.h"
-
-
+#include "../RHI/Vulkan/VK_Utils.h"
+#include "../RHI/Vulkan/VK_GraphicsContext.h"
+#include "../RHI/Vulkan/VK_Device.h"
 #include<iostream>
 #include"../Utils/Singleton.h"
 #include"DefaultSetting.h"
 
 #include"MyRender.h"
 
-#include "../RHI/Vulkan/VK_Device.h"
+
 #include <memory>
 #include "Pass/MainCameraRenderPass.h"
-#include "../RHI/Vulkan/VK_GraphicsContext.h"
+
 #include "../UI/Editor_UI.h"
 #include "../Logic/Input/InputSystem.h"
 #include "../Logic/GameObjectManager.h"
@@ -86,14 +87,15 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
 	
 	editui_info.context= Singleton<DefaultSetting>::get_instance().context.get();
 	edit_ui.initialize(&editui_info);
-
 	render->init(Singleton<DefaultSetting>::get_instance().context,window,&edit_ui);
 
+	Singleton<DefaultSetting>::get_instance().material_system->init(Singleton<DefaultSetting>::get_instance().context.get());
 	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_window(window);
 	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_height(Singleton<DefaultSetting>::get_instance().height);
 	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_width(Singleton<DefaultSetting>::get_instance().width);
 	Singleton<DefaultSetting>::get_instance().gameobject_manager->start_load_prefabs((GraphicsContext*)(Singleton<DefaultSetting>::get_instance().context.get()));
 	Singleton<DefaultSetting>::get_instance().gameobject_manager->set_overload_material(Singleton<DefaultSetting>::get_instance().context.get());
+
 	while (!glfwWindowShouldClose(window))
     {
         float currentFrame = static_cast<float>(glfwGetTime());

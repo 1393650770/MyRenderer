@@ -27,12 +27,19 @@
 #include <functional>
 
 #include "../../Render/Pass/PipelineShaderObject.h"
-#include "../../../ThirdParty/vma/vk_mem_alloc.h"
+
 #include <queue>
 #include <future>
 
-namespace MXRender { class MeshBase; }
+#include "../../../ThirdParty/vma/vk_mem_alloc.h"
 
+namespace MXRender { struct MipmapInfo; }
+
+namespace MXRender { class AllocatedImage; }
+
+namespace MXRender { class AllocatedBufferUntyped; }
+
+namespace MXRender { class MeshBase; }
 
 namespace MXRender { class VK_RenderPass; }
 
@@ -163,7 +170,7 @@ namespace MXRender
         std::unordered_map<VkRenderPass, VkCommandBufferInheritanceInfo> inheritance_info_map;
         std::unordered_map<VkRenderPass, VkRenderPassBeginInfo> renderpass_begin_info_map;
         std::unordered_map<VkCommandBuffer, unsigned int> thread_command_buffer_use_map;
-        MaterialSystem material_system;
+
         std::queue<std::future<void>> fut_que;
         VmaAllocator _allocator;
         VK_GraphicsContext();
@@ -217,9 +224,11 @@ namespace MXRender
         void init_pass();
         void submit();
         void cleanup();
-
-
+		AllocatedBufferUntyped create_allocate_buffer( size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkMemoryPropertyFlags required_flags);
+		AllocatedImage upload_allocate_image(VK_GraphicsContext* context, int texWidth, int texHeight, VkFormat image_format, AllocatedBufferUntyped& stagingBuffer, std::vector<MipmapInfo> mips);
+        void* map_allocate_buffer(AllocatedBufferUntyped& buffer);
+        void unmap_allocate_buffer(AllocatedBufferUntyped& buffer);
+        void destroy_allocate_buffer(AllocatedBufferUntyped& buffer);
     };
 }
 #endif
-

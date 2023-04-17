@@ -1,13 +1,11 @@
 #include "StaticMeshComponent.h"
 #include <stdexcept>
 #include "glm/ext/matrix_transform.hpp"
-#include "../../RHI/RenderState.h"
-#include "../../RHI/Vulkan/VK_GraphicsContext.h"
-#include "../../Mesh/MeshBase.h"
-#include "../../RHI/Vulkan/VK_Utils.h"
-#include "../../RHI/Vulkan/VK_VertexArray.h"
+
 #include "../../Mesh/VK_Mesh.h"
 #include "../../Mesh/GL_Mesh.h"
+#include "../../RHI/RenderState.h"
+#include "../../RHI/Vulkan/VK_GraphicsContext.h"
 
 
 
@@ -65,6 +63,11 @@ void MXRender::StaticMeshComponent::load_mesh(const std::string& mesh_path)
 	mesh_data->load_model(mesh_path);
 	//mesh_data->load_asset(mesh_path.c_str());
 	set_already_load_mesh_to_true();
+}
+
+void MXRender::StaticMeshComponent::reset_mesh(MeshBase* mesh)
+{
+	mesh_data.reset(mesh);
 }
 
 std::weak_ptr<MXRender::MeshBase> MXRender::StaticMeshComponent::get_mesh_data()

@@ -1,6 +1,9 @@
 #version 460
+#extension GL_GOOGLE_include_directive : require
+
+#include "common.glsl"
 layout (location = 0) in vec3 vPosition;
-layout (location = 1) in vec3 vNormal;
+layout (location = 1) in vec2 vNormal;
 layout (location = 2) in vec3 vColor;
 layout (location = 3) in vec2 vTexCoord;
 
@@ -21,5 +24,5 @@ void main() {
     gl_Position = pos;
     outColor = vColor;
 	texCoord = vTexCoord;
-    outNormal=vNormal;
+    outNormal=OctNormalDecode(vNormal);
 }

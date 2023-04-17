@@ -34,7 +34,7 @@ namespace MXRender
 		VkDeviceMemory textureImageMemory;
 		VkImageView textureImageView;
 		VkSampler textureSampler;
-
+        VkImageLayout textureImageLayout;
         virtual ~VK_Texture();
         VK_Texture();
         VK_Texture(unsigned _id , ENUM_TEXTURE_TYPE _type);

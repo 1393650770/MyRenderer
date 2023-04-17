@@ -152,4 +152,25 @@ namespace MXRender
 		_pipelineLayout = effect->get_built_layout();
 	}
 
+	VkPipeline ComputePipelineBuilder::build_pipeline(VkDevice device)
+	{
+		VkComputePipelineCreateInfo pipelineInfo{};
+		pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+		pipelineInfo.pNext = nullptr;
+
+		pipelineInfo.stage = _shaderStage;
+		pipelineInfo.layout = _pipelineLayout;
+
+
+		VkPipeline newPipeline;
+		if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline) != VK_SUCCESS) 
+		{
+			return VK_NULL_HANDLE;
+		}
+		else
+		{
+			return newPipeline;
+		}
+	}
+
 }

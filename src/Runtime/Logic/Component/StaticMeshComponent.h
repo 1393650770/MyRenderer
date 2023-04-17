@@ -71,6 +71,7 @@ namespace MXRender
 		virtual ~StaticMeshComponent();
 
 		void load_mesh(const std::string& mesh_path);
+		void reset_mesh(MeshBase* mesh);
 		std::weak_ptr<MeshBase> get_mesh_data();
 		bool get_already_load_mesh() const;
 		void set_already_load_mesh_to_true();

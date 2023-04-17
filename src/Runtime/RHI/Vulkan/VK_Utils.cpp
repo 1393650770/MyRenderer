@@ -1,13 +1,14 @@
 
 
 #include "VK_Utils.h"
-#include "VK_GraphicsContext.h"
-#include "../../Logic/GameObjectManager.h"
-#include "../../AssetLoader/asset_loader.h"
-#include "../../AssetLoader/texture_asset.h"
+
 #include "../MyTexture.h"
-#define VMA_IMPLEMENTATION
-#include "../../../ThirdParty/vma/vk_mem_alloc.h"
+#include "../../AssetLoader/texture_asset.h"
+#include "VK_GraphicsContext.h"
+
+
+
+
 
 namespace MXRender
 {
@@ -28,6 +29,22 @@ namespace MXRender
 	constexpr uint32_t fnv1a_32(char const* s, std::size_t count)
 	{
 		return ((count ? fnv1a_32(s, count - 1) : 2166136261u) ^ s[count]) * 16777619u;
+	}
+
+
+	void VK_Utils::Destroy_Buffer(VK_GraphicsContext* context, AllocatedBufferUntyped& buffer)
+	{
+		context->destroy_allocate_buffer(buffer);
+	}
+
+	void* VK_Utils::Map_Buffer(VK_GraphicsContext* context, AllocatedBufferUntyped& buffer)
+	{
+		return context->map_allocate_buffer(buffer);
+	}
+
+	void VK_Utils::Unmap_Buffer(VK_GraphicsContext* context, AllocatedBufferUntyped& buffer)
+	{
+		return context->unmap_allocate_buffer(buffer);
 	}
 
 	VkImageViewCreateInfo VK_Utils::Imageview_Create_Info(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags)
@@ -77,94 +94,7 @@ namespace MXRender
 
 	MXRender::AllocatedImage VK_Utils::Upload_Image_Mipmapped(VK_GraphicsContext* context, int texWidth, int texHeight, VkFormat image_format, AllocatedBufferUntyped& stagingBuffer, std::vector<MipmapInfo> mips)
 	{
-		VkExtent3D imageExtent;
-		imageExtent.width = static_cast<uint32_t>(texWidth);
-		imageExtent.height = static_cast<uint32_t>(texHeight);
-		imageExtent.depth = 1;
-
-		VkImageCreateInfo dimg_info =Image_Create_Info(image_format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, imageExtent);
-
-		dimg_info.mipLevels = (uint32_t)mips.size();
-
-		AllocatedImage newImage;
-
-		VmaAllocationCreateInfo dimg_allocinfo = {};
-		dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-
-		//allocate and create the image
-		vmaCreateImage(context->_allocator, &dimg_info, &dimg_allocinfo, &newImage._image, &newImage._allocation, nullptr);
-
-		//transition image to transfer-receiver	
-		Immediate_Submit(context,[&](VkCommandBuffer cmd) {
-			VkImageSubresourceRange range;
-			range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			range.baseMipLevel = 0;
-			range.levelCount = (uint32_t)mips.size();
-			range.baseArrayLayer = 0;
-			range.layerCount = 1;
-
-			VkImageMemoryBarrier imageBarrier_toTransfer = {};
-			imageBarrier_toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-
-			imageBarrier_toTransfer.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			imageBarrier_toTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			imageBarrier_toTransfer.image = newImage._image;
-			imageBarrier_toTransfer.subresourceRange = range;
-
-			imageBarrier_toTransfer.srcAccessMask = 0;
-			imageBarrier_toTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-			//barrier the image into the transfer-receive layout
-			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier_toTransfer);
-
-			for (int i = 0; i < mips.size(); i++) {
-
-
-
-				VkBufferImageCopy copyRegion = {};
-				copyRegion.bufferOffset = mips[i].dataOffset;
-				copyRegion.bufferRowLength = 0;
-				copyRegion.bufferImageHeight = 0;
-
-				copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				copyRegion.imageSubresource.mipLevel = i;
-				copyRegion.imageSubresource.baseArrayLayer = 0;
-				copyRegion.imageSubresource.layerCount = 1;
-				copyRegion.imageExtent = imageExtent;
-
-				//copy the buffer into the image
-				vkCmdCopyBufferToImage(cmd, stagingBuffer._buffer, newImage._image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
-
-				imageExtent.width /= 2;
-				imageExtent.height /= 2;
-			}
-			VkImageMemoryBarrier imageBarrier_toReadable = imageBarrier_toTransfer;
-
-			imageBarrier_toReadable.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			imageBarrier_toReadable.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-			imageBarrier_toReadable.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			imageBarrier_toReadable.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-			//barrier the image into the shader readable layout
-			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier_toReadable);
-			});
-
-
-
-		newImage.mipLevels = (uint32_t)mips.size();
-
-
-		//build a default imageview
-		VkImageViewCreateInfo view_info = Imageview_Create_Info(image_format, newImage._image, VK_IMAGE_ASPECT_COLOR_BIT);
-		view_info.subresourceRange.levelCount = newImage.mipLevels;
-		vkCreateImageView(context->device->device, &view_info, nullptr, &newImage._defaultView);
-
-		context->add_on_shutdown_clean_func([=, &context]() {
-			vmaDestroyImage(context->_allocator, newImage._image, newImage._allocation);
-			});
-
-		return newImage;
+		return context->upload_allocate_image(context,texWidth,texHeight,image_format,stagingBuffer,mips);
 	}
 
 	bool VK_Utils::Load_Image_From_Asset(VK_GraphicsContext* context, const char* filename, AllocatedImage& outImage)
@@ -194,8 +124,7 @@ namespace MXRender
 
 		std::vector<MipmapInfo> mips;
 
-		void* data;
-		vmaMapMemory(context->_allocator, stagingBuffer._allocation, &data);
+		void* data=Map_Buffer(context,stagingBuffer);
 		size_t offset = 0;
 		{
 
@@ -209,11 +138,11 @@ namespace MXRender
 				offset += mip.dataSize;
 			}
 		}
-		vmaUnmapMemory(context->_allocator, stagingBuffer._allocation);
+		Unmap_Buffer(context,stagingBuffer);
 
 		outImage = Upload_Image_Mipmapped(context,textureInfo.pages[0].width, textureInfo.pages[0].height, image_format, stagingBuffer, mips);
 
-		vmaDestroyBuffer(context->_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
+		Destroy_Buffer(context,stagingBuffer);
 
 		return true;
 	}
@@ -408,27 +337,7 @@ namespace MXRender
 
 	MXRender::AllocatedBufferUntyped VK_Utils::Create_buffer(VK_GraphicsContext* context,size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkMemoryPropertyFlags required_flags)
 	{
-		//allocate vertex buffer
-		VkBufferCreateInfo bufferInfo = {};
-		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.pNext = nullptr;
-		bufferInfo.size = allocSize;
-
-		bufferInfo.usage = usage;
-
-
-		//let the VMA library know that this data should be writeable by CPU, but also readable by GPU
-		VmaAllocationCreateInfo vmaallocInfo = {};
-		vmaallocInfo.usage = memoryUsage;
-		vmaallocInfo.requiredFlags = required_flags;
-		AllocatedBufferUntyped newBuffer;
-
-		vmaCreateBuffer(context->_allocator, &bufferInfo, &vmaallocInfo,
-			&newBuffer._buffer,
-			&newBuffer._allocation,
-			nullptr);
-		newBuffer._size = allocSize;
-		return newBuffer;
+		return context->create_allocate_buffer(allocSize,usage,memoryUsage,required_flags);
 	}
 
 	void VK_Utils::Copy_VKBuffer(std::weak_ptr< VK_GraphicsContext> context, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
@@ -964,4 +873,14 @@ namespace MXRender
 		context.lock()->end_single_time_commands(commandBuffer);
 	}
 
+	VkDescriptorBufferInfo AllocatedBufferUntyped::get_info(VkDeviceSize offset /*= 0*/)
+	{
+		VkDescriptorBufferInfo info;
+		info.buffer = _buffer;
+		info.offset = offset;
+		info.range = _size;
+		return info;
+	}
+
 }
+

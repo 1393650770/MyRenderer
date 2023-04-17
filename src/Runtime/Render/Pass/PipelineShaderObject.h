@@ -17,8 +17,9 @@
 
 #include "../../RHI/Vulkan/VK_RenderPass.h"
 #include <unordered_map>
-#include "../RenderScene.h"
 #include "../../RHI/Vulkan/VK_DescriptorSets.h"
+#include "../../Logic/GameObjectManager.h"
+#include "../../AssetLoader/material_asset.h"
 
 namespace MXRender { class VK_DescriptorPool; }
 
@@ -40,6 +41,40 @@ namespace MXRender { class VK_DescriptorSetLayout; }
 
 namespace MXRender
 {
+
+	enum MeshpassType : int
+	{
+		Forward = 0,
+		Transparency,
+		DirectionalShadow,
+		Count
+	};
+
+
+
+	template<typename T>
+	struct PerPassData {
+
+	public:
+		T& operator[](MeshpassType pass)
+		{
+
+			return data[pass];
+			//assert(false);
+			//return data[0];
+		};
+
+		void clear(T&& val)
+		{
+			for (int i = 0; i < MeshpassType::Count; i++)
+			{
+				data[i] = val;
+			}
+		}
+
+	private:
+		T data[MeshpassType::Count];
+	};
 
     class PipelineShaderObject 
     {
@@ -69,6 +104,8 @@ namespace MXRender
 	};
 	struct EffectTemplate {
 		PerPassData<PipelineShaderObject*> pass_pso;
+		ShaderParameters* default_parameters;
+		assets::TransparencyMode transparency;
 	};
 	class Material
 	{
@@ -78,7 +115,8 @@ namespace MXRender
 	public:
 		EffectTemplate* pass_pso;
 		PerPassData<VkDescriptorSet> pass_sets;
-
+		std::vector<SampledTexture> textures;
+		ShaderParameters* parameters;
         Material();
 		virtual ~Material();
         Material& operator=(const Material& other) = default;
@@ -110,7 +148,6 @@ namespace MXRender
 		VK_GraphicsContext* context;
 		VK_DescriptorPool* descriptor_pool;
 		PipelineBuilder mesh_pass_builder;
-
 	public:
 		std::unordered_map<std::string, VK_Shader*> shaders;
 		std::unordered_map<std::string, PipelineShaderObject*> psos;
@@ -118,6 +155,7 @@ namespace MXRender
 		std::unordered_map<std::string, Material*> materials;
 		std::unordered_map<MaterialData, Material*, MaterialInfoHash> materialCache;
 		PipelineShaderObject* build_pso(VkRenderPass renderPass, PipelineBuilder& builder, VK_Shader* effect);
+		PipelineShaderObject* build_comp_pso(VK_Shader* effect);
 		Material* build_material(const std::string& materialName, const MaterialData& info);
 		void build_pipeline_builder();
 		void build_default_pso();

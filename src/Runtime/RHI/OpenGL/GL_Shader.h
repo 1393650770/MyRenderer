@@ -16,13 +16,13 @@ namespace MXRender
     class GL_Shader:public Shader
     {
     public:
-        // æ„é€ å™¨è¯»å–å¹¶æ„å»ºç€è‰²å™¨ 
+        // ¹¹ÔìÆ÷¶ÁÈ¡²¢¹¹½¨×ÅÉ«Æ÷ 
         GL_Shader(const GLchar* vertexPath=nullptr, const GLchar* fragmentPath=nullptr, const GLchar* geometryPath=nullptr,const GLchar* computePath=nullptr);
         ~GL_Shader();
         unsigned get_id() const override;
-        // ä½¿ç”¨/æ¿€æ´»ç¨‹åº
-        void bind() const override; // uniformå·¥å…·å‡½æ•°
-        void unbind() const override; // uniformå·¥å…·å‡½æ•°
+        // Ê¹ÓÃ/¼¤»î³ÌĞò
+        void bind() const override; // uniform¹¤¾ßº¯Êı
+        void unbind() const override; // uniform¹¤¾ßº¯Êı
         void setBool(const std::string& name, bool value)const override;
         void setInt(const std::string& name, int value)const override;
         void setFloat(const std::string& name, float value)const override;

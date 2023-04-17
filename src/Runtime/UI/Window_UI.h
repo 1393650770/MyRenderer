@@ -21,6 +21,7 @@ namespace MXRender
 		WindowUI();
 		virtual ~WindowUI();
 		virtual void initialize(WindowUIInitInfo* init_info) = 0;
+		virtual void initialize_resource()=0;
 		virtual void pre_render() = 0;
 	};
 

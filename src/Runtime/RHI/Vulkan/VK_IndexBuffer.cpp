@@ -1,8 +1,7 @@
 #include"VK_IndexBuffer.h"
-#include"VK_Utils.h"
-#include "../GraphicsContext.h"
-#include "VK_Device.h"
 #include "VK_GraphicsContext.h"
+
+
 namespace MXRender
 {
     VK_IndexBuffer::VK_IndexBuffer( const void* _index_array, unsigned size, ENUM_RENDER_DATA_USAGE_TYPE data_usage)

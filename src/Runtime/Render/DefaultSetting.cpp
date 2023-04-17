@@ -3,6 +3,7 @@
 #include "../Logic/GameObjectManager.h"
 #include "../Logic/Input/InputSystem.h"
 #include "../Logic/TaskScheduler.h"
+#include "Pass/PipelineShaderObject.h"
 #include "TextureManager.h"
 MXRender::DefaultSetting::DefaultSetting()
 {
@@ -11,8 +12,11 @@ MXRender::DefaultSetting::DefaultSetting()
 	input_system=std::make_shared<InputSystem>();
 	thread_system=std::make_shared<ThreadPool>();
 	texture_manager=std::make_shared<TextureManager>();
+	task_graph = std::make_shared<TaskGraph>();
 	thread_system->init(std::thread::hardware_concurrency(), std::thread::hardware_concurrency());
 	input_system->cur_controller_object=&gameobject_manager->main_camera;
+	material_system= std::make_shared<MaterialSystem>();
+
 }
 
 MXRender::DefaultSetting::~DefaultSetting()

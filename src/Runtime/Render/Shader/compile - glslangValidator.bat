@@ -9,4 +9,7 @@ C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V default_prefabs_mesh.frag -o 
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V default_prefabs_mesh.vert -o default_prefabs_mesh_vert.spv
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V pbr_mesh.frag -o pbr_mesh_frag.spv
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V pbr_mesh.vert -o pbr_mesh_vert.spv
+C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V gpu_driven_tri.vert -o gpu_driven_tri_vert.spv
+C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V upload.comp -o upload_comp.spv
+
 pause

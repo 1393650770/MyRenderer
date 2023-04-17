@@ -57,6 +57,14 @@ namespace MXRender
 		void set_shaders(VK_Shader* effect);
 	};
 
+	class ComputePipelineBuilder {
+	public:
+
+		VkPipelineShaderStageCreateInfo  _shaderStage;
+		VkPipelineLayout _pipelineLayout;
+		VkPipeline build_pipeline(VkDevice device);
+	};
+
     class VK_RenderPass:public RenderPass
     {
     protected:

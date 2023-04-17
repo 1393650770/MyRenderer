@@ -1,3 +1,4 @@
+
 //
 // Copyright (c) 2017-2020 Advanced Micro Devices, Inc. All rights reserved.
 //
@@ -2000,7 +2001,7 @@ extern "C" {
 // #define VMA_CALL_PRE  __declspec(dllexport)
 // #define VMA_CALL_POST __cdecl
 #ifndef VMA_CALL_PRE
-#define VMA_CALL_PRE
+#define VMA_CALL_PRE inline
 #endif
 #ifndef VMA_CALL_POST
 #define VMA_CALL_POST
@@ -8116,7 +8117,7 @@ public:
     void WriteNull();
 
 private:
-    static const char* const INDENT;
+    inline static const char* const INDENT = "  ";
 
     enum COLLECTION_TYPE
     {
@@ -8137,8 +8138,6 @@ private:
     void BeginValue(bool isString);
     void WriteIndent(bool oneLess = false);
 };
-
-const char* const VmaJsonWriter::INDENT = "  ";
 
 VmaJsonWriter::VmaJsonWriter(const VkAllocationCallbacks* pAllocationCallbacks, VmaStringBuilder& sb) :
     m_SB(sb),
@@ -8393,7 +8392,7 @@ void VmaAllocation_T::SetUserData(VmaAllocator hAllocator, void* pUserData)
     }
 }
 
-void VmaAllocation_T::ChangeBlockAllocation(
+inline void VmaAllocation_T::ChangeBlockAllocation(
     VmaAllocator hAllocator,
     VmaDeviceMemoryBlock* block,
     VkDeviceSize offset)
@@ -8415,13 +8414,13 @@ void VmaAllocation_T::ChangeBlockAllocation(
     m_BlockAllocation.m_Offset = offset;
 }
 
-void VmaAllocation_T::ChangeOffset(VkDeviceSize newOffset)
+inline void VmaAllocation_T::ChangeOffset(VkDeviceSize newOffset)
 {
     VMA_ASSERT(m_Type == ALLOCATION_TYPE_BLOCK);
     m_BlockAllocation.m_Offset = newOffset;
 }
 
-VkDeviceSize VmaAllocation_T::GetOffset() const
+inline VkDeviceSize VmaAllocation_T::GetOffset() const
 {
     switch (m_Type)
     {
@@ -8435,7 +8434,7 @@ VkDeviceSize VmaAllocation_T::GetOffset() const
     }
 }
 
-VkDeviceMemory VmaAllocation_T::GetMemory() const
+inline VkDeviceMemory VmaAllocation_T::GetMemory() const
 {
     switch (m_Type)
     {
@@ -8449,7 +8448,7 @@ VkDeviceMemory VmaAllocation_T::GetMemory() const
     }
 }
 
-void* VmaAllocation_T::GetMappedData() const
+inline void* VmaAllocation_T::GetMappedData() const
 {
     switch (m_Type)
     {
@@ -8474,7 +8473,7 @@ void* VmaAllocation_T::GetMappedData() const
     }
 }
 
-bool VmaAllocation_T::CanBecomeLost() const
+inline bool VmaAllocation_T::CanBecomeLost() const
 {
     switch (m_Type)
     {
@@ -8488,7 +8487,7 @@ bool VmaAllocation_T::CanBecomeLost() const
     }
 }
 
-bool VmaAllocation_T::MakeLost(uint32_t currentFrameIndex, uint32_t frameInUseCount)
+inline bool VmaAllocation_T::MakeLost(uint32_t currentFrameIndex, uint32_t frameInUseCount)
 {
     VMA_ASSERT(CanBecomeLost());
 
@@ -8532,7 +8531,7 @@ static const char* VMA_SUBALLOCATION_TYPE_NAMES[] = {
     "IMAGE_OPTIMAL",
 };
 
-void VmaAllocation_T::PrintParameters(class VmaJsonWriter& json) const
+inline void VmaAllocation_T::PrintParameters(class VmaJsonWriter& json) const
 {
     json.WriteString("Type");
     json.WriteString(VMA_SUBALLOCATION_TYPE_NAMES[m_SuballocationType]);
@@ -8570,7 +8569,7 @@ void VmaAllocation_T::PrintParameters(class VmaJsonWriter& json) const
 
 #endif
 
-void VmaAllocation_T::FreeUserDataString(VmaAllocator hAllocator)
+inline void VmaAllocation_T::FreeUserDataString(VmaAllocator hAllocator)
 {
     VMA_ASSERT(IsUserDataString());
     VmaFreeString(hAllocator->GetAllocationCallbacks(), (char*)m_pUserData);
@@ -8591,7 +8590,7 @@ void VmaAllocation_T::BlockAllocMap()
     }
 }
 
-void VmaAllocation_T::BlockAllocUnmap()
+inline void VmaAllocation_T::BlockAllocUnmap()
 {
     VMA_ASSERT(GetType() == ALLOCATION_TYPE_BLOCK);
 
@@ -8605,7 +8604,7 @@ void VmaAllocation_T::BlockAllocUnmap()
     }
 }
 
-VkResult VmaAllocation_T::DedicatedAllocMap(VmaAllocator hAllocator, void** ppData)
+inline VkResult VmaAllocation_T::DedicatedAllocMap(VmaAllocator hAllocator, void** ppData)
 {
     VMA_ASSERT(GetType() == ALLOCATION_TYPE_DEDICATED);
 
@@ -8642,7 +8641,7 @@ VkResult VmaAllocation_T::DedicatedAllocMap(VmaAllocator hAllocator, void** ppDa
     }
 }
 
-void VmaAllocation_T::DedicatedAllocUnmap(VmaAllocator hAllocator)
+inline void VmaAllocation_T::DedicatedAllocUnmap(VmaAllocator hAllocator)
 {
     VMA_ASSERT(GetType() == ALLOCATION_TYPE_DEDICATED);
 

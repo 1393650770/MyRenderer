@@ -335,7 +335,7 @@ namespace MXRender
 	void Mesh_RenderPass::render_mesh(ComponentBase* mesh_component)
 	{
 		StaticMeshComponent* staticmesh=dynamic_cast<StaticMeshComponent*>(mesh_component);
-		if (staticmesh)
+		if (staticmesh&&staticmesh->get_already_load_mesh())
 		{
 
 			BindMeshInfo bind_mesh_info;
@@ -558,6 +558,8 @@ namespace MXRender
 			vkDestroyBuffer(cur_context.lock()->device->device, uniform_buffers[i], nullptr);
 			vkFreeMemory(cur_context.lock()->device->device, uniform_buffers_memory[i], nullptr);
 		}
+
+		//vkFreeDescriptorSets(cur_context.lock()->device->device,descriptor_pool,descriptor_sets.size(),descriptor_sets.data());
 
 		vkDestroyDescriptorPool(cur_context.lock()->device->device, descriptor_pool, nullptr);
 

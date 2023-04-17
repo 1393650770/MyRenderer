@@ -17,6 +17,7 @@ namespace MXRender
     class VK_Mesh:public MeshBase
     {
     private:
+        bool is_bedestroyed=false;
     protected:
         VK_MeshInfo vk_meshinfo;
 		void setup_vk_vertexbuffer(VK_GraphicsContext* cur_context, VkBuffer& vertex_buffer, VkDeviceMemory& vertex_buffer_memory);
