@@ -25,7 +25,7 @@ namespace MXRender
 
 		TransformComponent* transform=nullptr;
 		StaticMeshComponent* staticmesh=nullptr;
-		Material* material=nullptr;
+
 		std::string name;
 
 	public:
@@ -41,7 +41,7 @@ namespace MXRender
 		StaticMeshComponent* get_staticmesh();
 		TransformComponent* get_transform();
 		std::string get_name() override;
-		Material* get_material();
+		Material* get_material() const;
 		void set_material(Material* in_material) ;
 
 	};

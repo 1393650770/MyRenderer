@@ -8,6 +8,8 @@
 #include <memory>
 #include "vulkan/vulkan_core.h"
 
+namespace MXRender { class Material; }
+
 namespace MXRender { class VK_GraphicsContext; }
 
 namespace MXRender { class GraphicsContext; }
@@ -63,6 +65,7 @@ namespace MXRender
 		void spawn_mesh_data_shared_ptr();
 	protected:
 		std::shared_ptr< MeshBase> mesh_data;
+		Material* material=nullptr;
 		bool is_already_load_mesh=false;
 
 	public:
@@ -72,6 +75,8 @@ namespace MXRender
 
 		void load_mesh(const std::string& mesh_path);
 		void reset_mesh(MeshBase* mesh);
+		void set_overmaterial(Material* material);
+		Material* get_material() const;
 		std::weak_ptr<MeshBase> get_mesh_data();
 		bool get_already_load_mesh() const;
 		void set_already_load_mesh_to_true();

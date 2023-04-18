@@ -120,7 +120,7 @@ void MXRender::GameObjectManager::destroy_object_list(GraphicsContext* context)
 
 void MXRender::GameObjectManager::start_load_prefabs(GraphicsContext* context)
 {
-	int dimHelmets = 1;
+	int dimHelmets = 20;
 	int i=0;
 	for (int x = -dimHelmets; x <= dimHelmets; x++) {
 		for (int y = -dimHelmets; y <= dimHelmets; y++) {

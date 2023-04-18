@@ -1,6 +1,7 @@
 #include "TaskScheduler.h"
 #include<iostream>
 #include <assert.h>
+#include <optick.h>
 
 namespace MXRender
 {
@@ -15,7 +16,7 @@ namespace MXRender
 	{
 		std::function<void()> func;
 		bool bis_deque = false;
-
+		OPTICK_THREAD("Thread-Worker");
 		while (owner_pool->bis_running)
 		{
 			{

@@ -29,6 +29,7 @@
 #include "PipelineShaderObject.h"
 #include "../../Logic/TaskScheduler.h"
 #include "../TextureManager.h"
+#include "optick.h"
 namespace MXRender
 {
 
@@ -357,7 +358,7 @@ namespace MXRender
 
 	void Mesh_RenderPass::render_mesh(MeshObject* mesh_component, VkDescriptorSet GlobalSet, VkCommandBuffer command_buffer)
 	{
-		
+		OPTICK_PUSH("Bind")
 		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_component->material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
 
 
@@ -384,13 +385,16 @@ namespace MXRender
 		vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
 
 		vkCmdBindIndexBuffer(command_buffer, vk_mesh->get_mesh_info().index_buffer, 0, VK_INDEX_TYPE_UINT32);
+		OPTICK_POP()
 
+		OPTICK_PUSH("Draw")
 		vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(vk_mesh->indices.size()), 1, 0, 0, 0);
-
+		OPTICK_POP()
 	}
 
 	void Mesh_RenderPass::dispatch_render_mesh(unsigned int start_index, unsigned int end_index, VkDescriptorSet GlobalSet)
 	{
+		OPTICK_EVENT();
 		VkCommandBuffer command_buffer= cur_context.lock()->get_cur_threadid_command_buffer(Singleton<DefaultSetting>::get_instance().thread_system->get_current_thread_id());
 		cur_context.lock()->thread_command_buffer_use_map[command_buffer]=1;
 
@@ -400,9 +404,9 @@ namespace MXRender
 		cur_context.lock()->renderpass_begin_info_map[render_pass].renderPass=cur_context.lock()->mesh_pass;
 		cur_context.lock()->renderpass_begin_info_map[render_pass].clearValueCount =0;
 		cur_context.lock()->renderpass_begin_info_map[render_pass].pClearValues = nullptr;
-
+		OPTICK_PUSH("BindPass")
 		vkCmdBeginRenderPass(command_buffer, &(cur_context.lock()->renderpass_begin_info_map[render_pass]), VK_SUBPASS_CONTENTS_INLINE);
-
+		OPTICK_POP()
 		vkCmdSetViewport(command_buffer, 0, 1, &cur_context.lock()->viewport);
 
 		VkRect2D scissor{};
@@ -492,7 +496,7 @@ namespace MXRender
 			
 			if (Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_material()!=nullptr)
 			{
-				Material* material = Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_material();
+				 Material* material = Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_material();
 				vkCmdBindPipeline(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
 
 

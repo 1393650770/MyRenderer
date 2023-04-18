@@ -87,13 +87,13 @@ std::string MXRender::GameObject::get_name()
 	return name;
 }
 
-MXRender::Material* MXRender::GameObject::get_material()
+ MXRender::Material* MXRender::GameObject::get_material() const
 {
-	return material;
+	return staticmesh->get_material();
 }
 
 void MXRender::GameObject::set_material(Material* in_material)
 {
-	material= in_material;
+	staticmesh->set_overmaterial( in_material);
 }
 

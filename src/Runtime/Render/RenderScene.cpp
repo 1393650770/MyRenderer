@@ -52,9 +52,8 @@ namespace MXRender
 		//		_shadowPass.unbatchedObjects.push_back(handle);
 		//	}
 		//}
-
 		//update_object(handle);
-		//return handle;
+		
 	}
 
 	//void RenderScene::merge_object(VK_GraphicsContext* context)

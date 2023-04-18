@@ -6,6 +6,8 @@
 #include "../../Mesh/GL_Mesh.h"
 #include "../../RHI/RenderState.h"
 #include "../../RHI/Vulkan/VK_GraphicsContext.h"
+#include "../../Render/Pass/PipelineShaderObject.h"
+
 
 
 
@@ -68,6 +70,16 @@ void MXRender::StaticMeshComponent::load_mesh(const std::string& mesh_path)
 void MXRender::StaticMeshComponent::reset_mesh(MeshBase* mesh)
 {
 	mesh_data.reset(mesh);
+}
+
+void MXRender::StaticMeshComponent::set_overmaterial(MXRender::Material* material)
+{
+	this->material=material;
+}
+
+ MXRender::Material* MXRender::StaticMeshComponent::get_material() const
+{
+	return material;
 }
 
 std::weak_ptr<MXRender::MeshBase> MXRender::StaticMeshComponent::get_mesh_data()

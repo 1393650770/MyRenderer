@@ -1,5 +1,9 @@
 #include"GPUDriven.h"
 #include <vector>
+#include "vulkan/vulkan_core.h"
+#include "../RHI/Vulkan/VK_GraphicsContext.h"
+#include "DefaultSetting.h"
+#include "../Utils/Singleton.h"
 
 
 
@@ -18,74 +22,74 @@ namespace MXRender
 
 	void GPUDrivenSystem::excute_upload_computepass()
 	{
-		//std::vector<VkBufferCopy> copies;
-		//int object_size= 1;
-		//copies.reserve(object_size);
+		std::vector<VkBufferCopy> copies;
+		int object_size= 1;
+		copies.reserve(object_size);
 
-		//VK_GraphicsContext* context= Singleton<DefaultSetting>::get_instance().context.get();
-		//PipelineShaderObject* upload_comp= context->material_system.psos["upload_comp"];
-		//uint64_t buffersize = sizeof(GPUObjectData) * object_size;
-		//uint64_t vec4size = sizeof(glm::vec4);
-		//uint64_t intsize = sizeof(uint32_t);
-		//uint64_t wordsize = sizeof(GPUObjectData) / sizeof(uint32_t);
-		//uint64_t uploadSize = object_size * wordsize * intsize;
-		//AllocatedBufferUntyped gpudata_newBuffer = VK_Utils::Create_buffer(context, buffersize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		//AllocatedBufferUntyped id_targetBuffer = VK_Utils::Create_buffer(context,uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-
-		//uint32_t* targetData ;
-		//vmaMapMemory(context->_allocator, id_targetBuffer._allocation, (void**)&targetData);
-		//GPUObjectData* objectSSBO ;
-		//vmaMapMemory(context->_allocator, gpudata_newBuffer._allocation, (void**)&objectSSBO);
-		//uint32_t launchcount = static_cast<uint32_t>(object_size * wordsize);
-		//{
-
-		//	uint32_t sidx = 0;
-		//	for (int i = 0; i < object_size; i++)
-		//	{
-		//		//_renderScene.write_object(objectSSBO + i, object_size[i]);
+		VK_GraphicsContext* context = Singleton<DefaultSetting>::get_instance().context.get();
+		PipelineShaderObject* upload_comp = Singleton<DefaultSetting>::get_instance().material_system->psos["upload_comp"];
+		uint64_t buffersize = sizeof(GPUObjectData) * object_size;
+		uint64_t vec4size = sizeof(glm::vec4);
+		uint64_t intsize = sizeof(uint32_t);
+		uint64_t wordsize = sizeof(GPUObjectData) / sizeof(uint32_t);
+		uint64_t uploadSize = object_size * wordsize * intsize;
+		AllocatedBufferUntyped gpudata_newBuffer = VK_Utils::Create_buffer(context, buffersize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		AllocatedBufferUntyped id_targetBuffer = VK_Utils::Create_buffer(context, uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 
-		//		uint32_t dstOffset = static_cast<uint32_t>(wordsize * object_size[i].handle);
+		uint32_t* targetData ;
+		vmaMapMemory(context->_allocator, id_targetBuffer._allocation, (void**)&targetData);
+		GPUObjectData* objectSSBO ;
+		vmaMapMemory(context->_allocator, gpudata_newBuffer._allocation, (void**)&objectSSBO);
+		uint32_t launchcount = static_cast<uint32_t>(object_size * wordsize);
+		{
 
-		//		for (int b = 0; b < wordsize; b++)
-		//		{
-		//			uint32_t tidx = dstOffset + b;
-		//			targetData[sidx] = tidx;
-		//			sidx++;
-		//		}
-		//	}
-		//	launchcount = sidx;
-		//}
-		//vmaUnmapMemory(context->_allocator,gpudata_newBuffer._allocation);
-		//vmaUnmapMemory(context->_allocator, id_targetBuffer._allocation);
-
-		//VkDescriptorBufferInfo indexData = id_targetBuffer.get_info();
-
-		//VkDescriptorBufferInfo sourceData = gpudata_newBuffer.get_info();
-
-		//VkDescriptorBufferInfo targetInfo ;//= _renderScene.objectDataBuffer.get_info();
-
-		//VkDescriptorSet COMPObjectDataSet;
-		//DescriptorBuilder::begin(context->material_system.get_descript_pool());
-		//	.bind_buffer(0, &indexData, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-		//	.bind_buffer(1, &sourceData, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-		//	.bind_buffer(2, &targetInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-		//	.build(COMPObjectDataSet);
-
-		//VK_Utils::Immediate_Submit(context, 
-		//	[&](VkCommandBuffer cmd)
-		//	{
-		//		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, upload_comp->pipeline);
+			uint32_t sidx = 0;
+			for (int i = 0; i < object_size; i++)
+			{
+				//_renderScene.write_object(objectSSBO + i, object_size[i]);
 
 
-		//		vkCmdPushConstants(cmd, upload_comp->pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &launchcount);
+				uint32_t dstOffset = static_cast<uint32_t>(wordsize); //* object_size[i].handle);
 
-		//		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, upload_comp->pipeline_layout, 0, 1, &COMPObjectDataSet, 0, nullptr);
+				for (int b = 0; b < wordsize; b++)
+				{
+					uint32_t tidx = dstOffset + b;
+					targetData[sidx] = tidx;
+					sidx++;
+				}
+			}
+			launchcount = sidx;
+		}
+		vmaUnmapMemory(context->_allocator,gpudata_newBuffer._allocation);
+		vmaUnmapMemory(context->_allocator, id_targetBuffer._allocation);
 
-		//		vkCmdDispatch(cmd, ((launchcount) / 256) + 1, 1, 1);
-		//	}
-		//);
+		VkDescriptorBufferInfo indexData = id_targetBuffer.get_info();
+
+		VkDescriptorBufferInfo sourceData = gpudata_newBuffer.get_info();
+
+		VkDescriptorBufferInfo targetInfo ;//= _renderScene.objectDataBuffer.get_info();
+
+		VkDescriptorSet COMPObjectDataSet;
+		DescriptorBuilder::begin(Singleton<DefaultSetting>::get_instance().material_system->get_descript_pool())
+			.bind_buffer(0, &indexData, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.bind_buffer(1, &sourceData, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.bind_buffer(2, &targetInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.build(COMPObjectDataSet);
+
+		VK_Utils::Immediate_Submit(context, 
+			[&](VkCommandBuffer cmd)
+			{
+				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, upload_comp->pipeline);
+
+
+				vkCmdPushConstants(cmd, upload_comp->pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &launchcount);
+
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, upload_comp->pipeline_layout, 0, 1, &COMPObjectDataSet, 0, nullptr);
+
+				vkCmdDispatch(cmd, ((launchcount) / 256) + 1, 1, 1);
+			}
+		);
 	}
 
 

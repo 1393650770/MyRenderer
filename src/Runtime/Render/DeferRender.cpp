@@ -18,6 +18,7 @@
 #include "../Logic/TaskScheduler.h"
 #include<Windows.h>
 #include "../UI/Window_UI.h"
+#include "optick.h"
 
 
 MXRender::DeferRender::DeferRender()
@@ -51,18 +52,18 @@ void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context)
 	context.lock()->submit();
 
 	//TaskGraph* task_graph = new TaskGraph();
-	//task_graph->add_task_node(0, "", task_graph->get_task([]() {std::cout << "0" << std::endl; }), {});
-	//task_graph->add_task_node(1, "", task_graph->get_task([]() {std::cout << "1" << std::endl; }), { 0,2 });
-	//task_graph->add_task_node(2, "", task_graph->get_task([]() {std::cout << "2" << std::endl; }), { 0 });
-	//task_graph->add_task_node(3, "", task_graph->get_task([]() {std::cout << "3" << std::endl; }), { 0,1 });
-	//task_graph->add_task_node(4, "", task_graph->get_task([]() {std::cout << "4" << std::endl; }), { 0 });
-	//task_graph->add_task_node(5, "", task_graph->get_task([]() {std::cout << "5" << std::endl; }), { 0 });
-	//task_graph->add_task_node(6, "", task_graph->get_task([]() {std::cout << "6" << std::endl; }), { 0 });
+	//task_graph->add_task_node(0, "", task_graph->get_task([]() {		OPTICK_EVENT(); std::cout << "0" << std::endl; }), {});
+	//task_graph->add_task_node(1, "", task_graph->get_task([]() {OPTICK_EVENT(); std::cout << "1" << std::endl; }), { 0,2 });
+	//task_graph->add_task_node(2, "", task_graph->get_task([]() {OPTICK_EVENT(); std::cout << "2" << std::endl; }), { 0 });
+	//task_graph->add_task_node(3, "", task_graph->get_task([]() {OPTICK_EVENT(); std::cout << "3" << std::endl; }), { 0,1 });
+	//task_graph->add_task_node(4, "", task_graph->get_task([]() {OPTICK_EVENT(); std::cout << "4" << std::endl; }), { 0 });
+	//task_graph->add_task_node(5, "", task_graph->get_task([]() {OPTICK_EVENT(); std::cout << "5" << std::endl; }), { 0 });
+	//task_graph->add_task_node(6, "", task_graph->get_task([]() {OPTICK_EVENT(); std::cout << "6" << std::endl; }), { 0 });
 	//{
 	//	auto it = Singleton<DefaultSetting>::get_instance().thread_system->excute_task_graph(task_graph);
 	//	it.wait();
 	//}
-	//std::cout<<"-----"<<std::endl;
+	//std::cout << "-----" << std::endl;
 	//{
 	//	auto it = Singleton<DefaultSetting>::get_instance().thread_system->excute_task_graph(task_graph);
 	//	it.wait();

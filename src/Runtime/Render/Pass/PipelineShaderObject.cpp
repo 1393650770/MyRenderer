@@ -167,22 +167,7 @@ namespace MXRender
 
 	MaterialSystem::~MaterialSystem()
 	{
-		delete descriptor_pool;
-		for (auto& it : shaders)
-		{
-			delete it.second;
-		}
-
-		for (auto& it : psos)
-		{
-			delete it.second;
-		}
-
-		for (auto& it : materials)
-		{
-			delete it.second;
-		}
-
+		destroy();
 
 	}
 
@@ -221,6 +206,33 @@ namespace MXRender
 		templateCache["mesh_pbr"].pass_pso[MeshpassType::Forward] = pbr_mesh_pso;
 		templateCache["mesh_pbr"].pass_pso[MeshpassType::Transparency] = nullptr;
 		templateCache["mesh_pbr"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
+
+	}
+
+	void MaterialSystem::destroy()
+	{
+		delete descriptor_pool;
+		descriptor_pool=nullptr;
+		for (auto& it : materials)
+		{
+			delete it.second;
+		}
+		materials.clear();
+
+		for (auto& it : psos)
+		{
+			delete it.second;
+		}
+		psos.clear();
+
+		for (auto& it : shaders)
+		{
+			delete it.second;
+		}
+		shaders.clear();
+
+
+
 
 	}
 

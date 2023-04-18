@@ -164,7 +164,7 @@ namespace MXRender
 		MaterialSystem();
 		virtual ~MaterialSystem();
 		void init (VK_GraphicsContext* context);
-
+		void destroy();
 	};
 }
 #endif

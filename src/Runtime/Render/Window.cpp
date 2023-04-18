@@ -1,4 +1,5 @@
 #include "Window.h"
+#include <optick.h>
 #include "../RHI/Vulkan/VK_Utils.h"
 #include "../RHI/Vulkan/VK_GraphicsContext.h"
 #include "../RHI/Vulkan/VK_Device.h"
@@ -79,7 +80,7 @@ MXRender::Window::~Window()
 
 void MXRender::Window::run(std::shared_ptr<MyRender> render)
 {
-
+	
 	Singleton<DefaultSetting>::get_instance().context->init(this);
 
 	EditorUI edit_ui;
@@ -101,6 +102,7 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+		OPTICK_FRAME("MainThread");
 
 		Singleton<DefaultSetting>::get_instance().input_system->process_input(window);
 

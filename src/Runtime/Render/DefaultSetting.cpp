@@ -21,5 +21,6 @@ MXRender::DefaultSetting::DefaultSetting()
 
 MXRender::DefaultSetting::~DefaultSetting()
 {
+	material_system->destroy();
 	gameobject_manager->destroy_object_list(context.get());
 }
