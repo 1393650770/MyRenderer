@@ -122,6 +122,7 @@ void MXRender::VK_GraphicsContext::create_logical_device()
 	}
 
 	VkPhysicalDeviceFeatures deviceFeatures{};
+	deviceFeatures.multiDrawIndirect= VK_TRUE;
 
 	VkDeviceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

@@ -16,6 +16,8 @@
 #include "../UI/Editor_UI.h"
 #include "../Logic/Input/InputSystem.h"
 #include "../Logic/GameObjectManager.h"
+#include "../Logic/TaskScheduler.h"
+#include "RenderScene.h"
 
 static void on_window_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -42,33 +44,6 @@ MXRender::Window::Window()
 
 	glfwSetWindowSizeCallback(window, on_window_size_callback);
 
-	//glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	//glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-
-	//if (window == NULL)
-	//{
-	//	std::cout << " Failed to create GLFW window" << std::endl;
-	//	glfwTerminate();
-	//}
-	//else
-	//{
-	//	glfwMakeContextCurrent(window);
-	//	
-
-	//	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-	//	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-	//	{
-	//		std::cout << "Failed to initialize GLAD" << std::endl;
-
-	//	}
-	//	else
-	//	{
-	//		glViewport(0, 0, Singleton<DefaultSetting>::get_instance().width, Singleton<DefaultSetting>::get_instance().height);
-	//	}
-	//}
 
  }
 
@@ -78,11 +53,32 @@ MXRender::Window::~Window()
     glfwTerminate();
 }
 
+namespace MXRender
+{ 
+	void swap_data(RenderScene* render_scene, GameObjectManager* gameobject_manager)
+	{
+		OPTICK_EVENT()
+		for (auto& it: gameobject_manager->object_list)
+		{
+			render_scene->register_render_object(&it);
+		}
+	}
+
+	void update_data(RenderScene* render_scene, GameObjectManager* gameobject_manager)
+	{
+		OPTICK_EVENT()
+		for (auto& it : gameobject_manager->object_list)
+		{
+			render_scene->update_object_transform(&it);
+		}
+	}
+}
 void MXRender::Window::run(std::shared_ptr<MyRender> render)
 {
 	
 	Singleton<DefaultSetting>::get_instance().context->init(this);
 
+	RenderScene render_scene;
 	EditorUI edit_ui;
 	EditorUIInitInfo editui_info;
 	
@@ -94,8 +90,24 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
 	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_window(window);
 	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_height(Singleton<DefaultSetting>::get_instance().height);
 	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_width(Singleton<DefaultSetting>::get_instance().width);
-	Singleton<DefaultSetting>::get_instance().gameobject_manager->start_load_prefabs((GraphicsContext*)(Singleton<DefaultSetting>::get_instance().context.get()));
-	Singleton<DefaultSetting>::get_instance().gameobject_manager->set_overload_material(Singleton<DefaultSetting>::get_instance().context.get());
+	Singleton<DefaultSetting>::get_instance().gameobject_manager->start_load_asset((GraphicsContext*)(Singleton<DefaultSetting>::get_instance().context.get()));
+
+	TaskGraph& task_graph = Singleton<DefaultSetting>::get_instance().task_system->task_graph;
+
+	task_graph.add_task_node(2, "set_overload_material", task_graph.get_task(
+	&(GameObjectManager::set_overload_material),
+	(Singleton<DefaultSetting>::get_instance().gameobject_manager.get()),
+	(Singleton<DefaultSetting>::get_instance().context.get())), 
+	{1});
+
+	task_graph.add_task_node(3, "swap_data", task_graph.get_task(
+		(swap_data),
+		&(render_scene),
+		(Singleton<DefaultSetting>::get_instance().gameobject_manager.get())),
+		{ 2 });
+
+	Singleton<DefaultSetting>::get_instance().task_system->thread_pool.excute_task_graph(&task_graph).wait();
+
 
 	while (!glfwWindowShouldClose(window))
     {
@@ -108,12 +120,31 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
 
         glfwPollEvents();
 
-        render->run(Singleton<DefaultSetting>::get_instance().context);
+
+		task_graph.add_task_node(4, "update_object_to_render_scene", task_graph.get_task(
+			&(update_data),
+			&(render_scene),
+			(Singleton<DefaultSetting>::get_instance().gameobject_manager.get())),
+			{});
+		//task_graph.add_task_node(5, "render", task_graph.get_task(
+		//	&(MyRender::run),
+		//	render.get(),
+		//	Singleton<DefaultSetting>::get_instance().context,
+		//	&render_scene),
+		//	{});
+
+		auto wait_handle= Singleton<DefaultSetting>::get_instance().task_system->thread_pool.excute_task_graph(&task_graph);
+
+        render->run(Singleton<DefaultSetting>::get_instance().context,&render_scene);
+
+		wait_handle.wait();
 
         //glfwSwapBuffers(window);
     }
-	
+
 	vkDeviceWaitIdle(Singleton<DefaultSetting>::get_instance().context->device->device);
+	Singleton<DefaultSetting>::get_instance().destroy();
+
 }
 
 GLFWwindow* MXRender::Window::GetWindow() const

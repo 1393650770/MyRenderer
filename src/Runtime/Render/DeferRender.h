@@ -3,6 +3,8 @@
 #define _DEFERRENDER_
 #include "MyRender.h"
 
+namespace MXRender { class RenderScene; }
+
 
 namespace MXRender { class PreComputeIBL_RenderPass; }
 
@@ -28,7 +30,7 @@ namespace MXRender
         std::shared_ptr < PreComputeIBL_RenderPass> precomputeibl_pass;
         DeferRender();
         virtual ~DeferRender();
-        void run(std::weak_ptr <VK_GraphicsContext> context) override;
+        void run(std::weak_ptr <VK_GraphicsContext> context, RenderScene* render_scene) override;
         void init(std::weak_ptr <VK_GraphicsContext> context, GLFWwindow* window,WindowUI* window_ui) override;
     private:
 

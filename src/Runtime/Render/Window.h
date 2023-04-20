@@ -12,6 +12,8 @@
 #include <vector>
 #include<memory>
 
+namespace MXRender { class RenderScene; }
+
 namespace MXRender
 {
 	class MyRender;

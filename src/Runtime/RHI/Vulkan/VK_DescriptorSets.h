@@ -17,6 +17,8 @@ namespace MXRender
     class VK_DescriptorSetLayout;
 
 
+	
+
     class VK_DescriptorPool
     {
     private:
@@ -25,6 +27,7 @@ namespace MXRender
         std::weak_ptr<VK_Device> device;
         const unsigned int max_descriptorsets;
         VkDescriptorPool descriptor_pool;
+        std::unordered_map<VkDescriptorSetLayout, VkDescriptorSet> descriptor_cache;
     public:
         
         VK_DescriptorPool(std::shared_ptr<VK_Device> InDevice, unsigned int InMaxDescriptorSets);
@@ -34,8 +37,8 @@ namespace MXRender
         std::weak_ptr<VK_Device> get_device() const;
         unsigned int get_max_descriptorsets() const;
         const VkDescriptorPool& get_descriptor_pool();
-        bool allocate_descriptorset(VkDescriptorSetLayout Layout, VkDescriptorSet& OutSet);
-        bool allocate_descriptorsets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets);
+        bool allocate_descriptorset(VkDescriptorSetLayout Layout, VkDescriptorSet& OutSet, bool b_use_set_cache=true);
+        bool allocate_descriptorsets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets, bool b_use_set_cache=true);
     };
 
     class VK_DescriptorSetLayout
@@ -91,24 +94,60 @@ namespace MXRender
  
     };
 
+	class DescriptorLayoutCache 
+    {
+	public:
+		void init(VkDevice newDevice);
+		void cleanup();
+
+		VkDescriptorSetLayout create_descriptor_layout(VkDescriptorSetLayoutCreateInfo* info);
+
+		struct DescriptorLayoutInfo 
+        {
+
+			std::vector<VkDescriptorSetLayoutBinding> bindings;
+
+			bool operator==(const DescriptorLayoutInfo& other) const;
+
+			size_t hash() const;
+		};
+
+
+
+	private:
+
+		struct DescriptorLayoutHash
+		{
+
+			std::size_t operator()(const DescriptorLayoutInfo& k) const
+			{
+				return k.hash();
+			}
+		};
+
+		std::unordered_map<DescriptorLayoutInfo, VkDescriptorSetLayout, DescriptorLayoutHash> layoutCache;
+		VkDevice device;
+	};
+
+
 	class DescriptorBuilder {
 	public:
 
-		static DescriptorBuilder begin(VK_DescriptorPool* allocator);
+		static DescriptorBuilder begin(DescriptorLayoutCache* cache,VK_DescriptorPool* allocator);
 
 		DescriptorBuilder& bind_buffer(uint32_t binding, VkDescriptorBufferInfo* bufferInfo, VkDescriptorType type, VkShaderStageFlags stageFlags);
 
 		DescriptorBuilder& bind_image(uint32_t binding, VkDescriptorImageInfo* imageInfo, VkDescriptorType type, VkShaderStageFlags stageFlags);
 
-		bool build(VkDescriptorSet& set, VkDescriptorSetLayout& layout);
-		bool build(VkDescriptorSet& set);
-
+		bool build(VkDescriptorSet& set, VkDescriptorSetLayout& layout, bool b_use_set_cache = true);
+		bool build(VkDescriptorSet& set,bool b_use_set_cache=true);
         std::vector<VkDescriptorImageInfo> image_infos;
 	private:
         
 		std::vector<VkWriteDescriptorSet> writes;
 		std::vector<VkDescriptorSetLayoutBinding> bindings;
 
+		DescriptorLayoutCache* cache;
 		VK_DescriptorPool* alloc;
 	};
 

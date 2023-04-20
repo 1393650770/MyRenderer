@@ -15,6 +15,8 @@
 #include "../Render/DefaultSetting.h"
 #include "../Render/TextureManager.h"
 #include "../Utils/Singleton.h"
+#include "TaskScheduler.h"
+#include "optick.h"
 std::string asset_path(std::string_view path)
 {
 	return "../../../../assets_export/" + std::string(path);
@@ -25,6 +27,23 @@ std::string asset_path(std::string_view path)
 std::string shader_path(std::string_view path)
 {
 	return "../../../../shaders/" + std::string(path);
+}
+
+void MXRender::GameObjectManager::load_objs()
+{
+	OPTICK_PUSH("Load_Obj")
+	object_list.emplace_back("viking_room1", "Resource/Mesh/viking_room.obj");
+	object_list.emplace_back("viking_room2", "Resource/Mesh/viking_room.obj");
+
+
+	//object_list.emplace_back("viking_room3", "Resource/Mesh/viking_room.obj");
+	//object_list.emplace_back("viking_room4", "Resource/Mesh/viking_room.obj");
+	//object_list.emplace_back("viking_room5", "Resource/Mesh/viking_room.obj");
+
+	object_list.emplace_back("pbr_stone", "Resource/Mesh/pbr_stone.obj");
+	object_list.back().get_transform()->set_scale(glm::vec3(0.005f));
+	object_list.back().get_transform()->set_translation(glm::vec3(-8.005f, 0.0f, 0.0f));
+	OPTICK_POP()
 }
 
 bool MXRender::GameObjectManager::load_image_to_cache(GraphicsContext* context,const char* name, const char* path)
@@ -76,11 +95,11 @@ MXRender::GameObjectManager::GameObjectManager(GraphicsContext* context)
 
 	//object_list.emplace_back("Resource/Mesh/rock.obj");
 
-	object_list.emplace_back("viking_room1","Resource/Mesh/viking_room.obj");
-	object_list.emplace_back("viking_room2", "Resource/Mesh/viking_room.obj");
-	object_list.emplace_back("pbr_stone", "Resource/Mesh/pbr_stone.obj");
-	object_list[2].get_transform()->set_scale(glm::vec3(0.005f));
-	object_list[2].get_transform()->set_translation(glm::vec3(-8.005f,0.0f,0.0f));
+	//object_list.emplace_back("viking_room1","Resource/Mesh/viking_room.obj");
+	//object_list.emplace_back("viking_room2", "Resource/Mesh/viking_room.obj");
+	//object_list.emplace_back("pbr_stone", "Resource/Mesh/pbr_stone.obj");
+	//object_list[2].get_transform()->set_scale(glm::vec3(0.005f));
+	//object_list[2].get_transform()->set_translation(glm::vec3(-8.005f,0.0f,0.0f));
 
 	//object_list.emplace_back("Resource/Mesh/sponza.obj");
 
@@ -120,7 +139,7 @@ void MXRender::GameObjectManager::destroy_object_list(GraphicsContext* context)
 
 void MXRender::GameObjectManager::start_load_prefabs(GraphicsContext* context)
 {
-	int dimHelmets = 20;
+	int dimHelmets = 0;
 	int i=0;
 	for (int x = -dimHelmets; x <= dimHelmets; x++) {
 		for (int y = -dimHelmets; y <= dimHelmets; y++) {
@@ -187,7 +206,7 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 		tex.sampler = lut_texture->textureSampler;
 		info.textures.push_back(tex);
 
-		info.baseTemplate = "mesh_pbr";
+		info.baseTemplate = Singleton<DefaultSetting>::get_instance().material_system->create_template_name("mesh_pbr");
 
 		stoneMaterial = Singleton<DefaultSetting>::get_instance().material_system->build_material("pbr_stone", info);
 
@@ -200,6 +219,48 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 			object_list[2].set_material(stoneMaterial);
 		}
 	}
+	if (Singleton<DefaultSetting>::get_instance().is_enable_gpu_driven)
+	{
+	
+		Material* gpu_driven_test = Singleton<DefaultSetting>::get_instance().material_system->get_material("gpu_driven_default");
+		if (!gpu_driven_test)
+		{
+
+			std::string texture_path = "Resource/Texture/viking_room.png";
+			VK_Texture* texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("viking_room", ENUM_TEXTURE_TYPE::ENUM_TYPE_2D, texture_path);
+			MaterialData info;
+			info.parameters = nullptr;
+			info.textures.clear();
+			SampledTexture tex;
+			tex.view = texture->textureImageView;
+			tex.sampler = texture->textureSampler;
+			info.textures.push_back(tex);
+			info.baseTemplate = Singleton<DefaultSetting>::get_instance().material_system->create_template_name("mesh");
+
+			gpu_driven_test = Singleton<DefaultSetting>::get_instance().material_system->build_material("gpu_driven_default", info);
+
+			if (!gpu_driven_test)
+			{
+				std::cout << "Error When building material";
+			}
+			else
+			{
+				object_list[0].set_material(gpu_driven_test);
+				object_list[1].set_material(gpu_driven_test);
+			}
+		}
+	}
+}
+
+void MXRender::GameObjectManager::start_load_asset(GraphicsContext* context)
+{
+	TaskGraph& task_graph= Singleton<DefaultSetting>::get_instance().task_system->task_graph;
+
+	task_graph.add_task_node(0,"Load_Obj",task_graph.get_task(&GameObjectManager::load_objs,this),{});
+	task_graph.add_task_node(1, "Load_Prefabs", task_graph.get_task(&GameObjectManager::start_load_prefabs,this,context), {0});
+
+	
+	//start_load_prefabs(context);
 }
 
 const std::unordered_map<std::string, MXRender::MeshBase*>& MXRender::GameObjectManager::get_mesh_cache() const
@@ -383,10 +444,10 @@ bool MXRender::GameObjectManager::load_prefab(const std::string& name,const char
 
 					if (material.transparency == assets::TransparencyMode::Transparent)
 					{
-						info.baseTemplate = "mesh_base";
+						info.baseTemplate = Singleton<DefaultSetting>::get_instance().material_system->create_template_name("mesh_base") ;
 					}
 					else {
-						info.baseTemplate = "mesh_base";
+						info.baseTemplate = Singleton<DefaultSetting>::get_instance().material_system->create_template_name("mesh_base");
 					}
 
 					info.textures.push_back(tex);

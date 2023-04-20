@@ -134,7 +134,7 @@ namespace MXRender
 	std::future<void> ThreadPool::excute_task_graph(TaskGraph* task_graph)
 	{
 		task_graph->compile();
-		auto lambda = [&, this]()
+		auto lambda = [&, this](TaskGraph* task_graph)
 		{
 			std::queue<std::future<void>> que;
 			int que_cout=task_graph->parallel_task_nums.front();
@@ -161,7 +161,7 @@ namespace MXRender
 			}
 		};
 
-		return submit_message(lambda);
+		return std::move(submit_message(lambda,task_graph));
 		
 	}
 
@@ -183,40 +183,49 @@ namespace MXRender
 		}
 	}
 
-	bool TaskGraph::add_task_node(int id, const std::string& name, const std::function<void()>& func, const std::unordered_set<int>& next_tasks)
+	bool TaskGraph::add_task_node(int id, const std::string& name, const std::function<void()>& func, const std::unordered_set<int>& pre_tasks)
 	{
+		already_add_but_dontuse_node_num++;
 		if (task_graph.find(id) != task_graph.end()) 
 		{
 			// 任务节点已存在，更新任务节点的状态和执行函数
-			std::cout<<"任务节点已存在:id="<<id<<std::endl;
+			//std::cout<<"任务节点已存在:id="<<id<<std::endl;
 			TaskNode& node = task_graph[id];
 			node.id = id;
 			node.name = name;
 			node.is_executed = false;
 			node.func = func;
-			node.next_tasks = next_tasks;
-			for (int next_id : next_tasks) 
+			node.pre_tasks = pre_tasks;
+			for (int pre_id : pre_tasks) 
 			{
-				task_graph[next_id].pre_tasks.insert(id);
-				auto it = indegree_zero.find(next_id);
+				if (task_graph.find(pre_id) != task_graph.end())
+				{
+					task_graph[pre_id].next_tasks.insert(id);
+					auto it = outdegree_zero.find(pre_id);
+					if (it != outdegree_zero.end())
+					{
+						outdegree_zero.erase(it);
+					}
+				}
+				else
+				{
+					std::cout<<"任务节点：" << id << " 的前驱节点："<<pre_id<<" 不存在！"<<std::endl;
+				}
+			}
+			if (pre_tasks.empty())
+			{
+				indegree_zero.insert(id);
+			}
+			else
+			{
+				auto it = indegree_zero.find(id);
 				if (it != indegree_zero.end())
 				{
 					indegree_zero.erase(it);
 				}
 			}
-			if (next_tasks.empty())
-			{
-				outdegree_zero.insert(id);
-			}
-			else
-			{
-				auto it = outdegree_zero.find(id);
-				if (it !=outdegree_zero.end())
-				{
-					outdegree_zero.erase(it);
-				}
-			}
-			return false;
+
+			return true;
 		}
 		else 
 		{
@@ -226,27 +235,45 @@ namespace MXRender
 			node.name = name;
 			node.is_executed = false;
 			node.func = func;
-			node.next_tasks = next_tasks;
+			node.pre_tasks = pre_tasks;
 			task_graph[id] = node;
 
-			indegree_zero.insert(id);
-			// 将当前任务的后继任务添加到前继任务列表中
-			for (int next_id : next_tasks) 
+			outdegree_zero.insert(id);
+			name_convert_to_id[name]=id;
+			for (int pre_id : pre_tasks)
 			{
-				task_graph[next_id].pre_tasks.insert(id);
-				auto it = indegree_zero.find(next_id);
-				if (it != indegree_zero.end())
+				task_graph[pre_id].next_tasks.insert(id);
+				auto it = outdegree_zero.find(pre_id);
+				if (it != outdegree_zero.end())
 				{
-					indegree_zero.erase(it);
+					outdegree_zero.erase(it);
 				}
 			}
-			if (next_tasks.empty())
+			if (pre_tasks.empty())
 			{
-				outdegree_zero.insert(id);
+				indegree_zero.insert(id);
 			}
+
 			return true;
 		}
 	}
+
+	/*bool TaskGraph::add_task_node(int id, const std::string& name, const std::function<void()>& func, const std::unordered_set<std::string>& pre_tasks)
+	{
+		std::unordered_set<int> pre_id_tasks;
+		for (auto& name:pre_tasks)
+		{
+			if (name_convert_to_id.find(name)!=name_convert_to_id.end())
+			{
+				pre_id_tasks.insert(name_convert_to_id[name]);
+			}
+			else
+			{
+				std::cout << "任务节点：" << id << " 的前驱节点：" << name << " 不存在！" << std::endl;
+			}
+		}
+		return add_task_node(id,name,std::move(func),pre_id_tasks);
+	}*/
 
 	void TaskGraph::execute_task(int task_id)
 	{
@@ -265,6 +292,15 @@ namespace MXRender
 
 	void TaskGraph::compile()
 	{
+		while (parallel_task_nums.empty()==false)
+		{
+			parallel_task_nums.pop();
+		}
+		while (topology_diagram.empty() == false)
+		{
+			topology_diagram.pop();
+		}
+
 		std::queue<int> que;
 		for (auto& it : indegree_zero)
 		{
@@ -272,7 +308,7 @@ namespace MXRender
 		}
 		indegree_zero.clear();
 
-		int all_count = 0,n=task_graph.size(),que_cout=que.size();
+		int all_count = 0,que_cout=que.size();
 		parallel_task_nums.push(que_cout);
 
 		while (que_cout!=0)
@@ -306,12 +342,12 @@ namespace MXRender
 				parallel_task_nums.push(que_cout);
 			}
 		}
-		if (all_count!=0&&all_count != n) 
+		if (all_count!=0&&all_count != already_add_but_dontuse_node_num)
 		{
 			std::cout<<"Error:拓扑图有环"<<std::endl;
 			std::abort();
 		}
-
+		already_add_but_dontuse_node_num=0;
 	}
 
 }

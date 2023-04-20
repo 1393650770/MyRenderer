@@ -76,6 +76,8 @@ namespace MXRender
 	{
 	private:
 		std::unordered_map<int, TaskNode> task_graph;
+		int already_add_but_dontuse_node_num=0;
+		std::unordered_map<std::string, int> name_convert_to_id;
 	public:
 		std::unordered_set<int> indegree_zero;
 		std::unordered_set<int> outdegree_zero;
@@ -98,9 +100,9 @@ namespace MXRender
 		}
 
 		template <typename C, typename F, typename... Args>
-		std::function<void()> get_task(F&& f, C* obj, Args&&... args)
+		std::function<void()> get_task(F C::* f, C* obj, Args&&... args)
 		{
-			std::function<decltype((obj->*f)(args...))()> func = std::bind(std::forward<F>(f), obj, std::forward<Args>(args)...);
+			std::function<decltype((obj->*f)(args...))()> func = std::bind((f), obj, std::forward<Args>(args)...);
 
 			auto task_ptr = std::make_shared<std::packaged_task<decltype((obj->*f)(args...))()>>(func);
 
@@ -111,7 +113,8 @@ namespace MXRender
 			return wrapper_func;
 		}
 
-		bool add_task_node(int id, const std::string& name, const std::function<void()>& func, const std::unordered_set<int>& next_tasks);
+		bool add_task_node(int id, const std::string& name, const std::function<void()>& func, const std::unordered_set<int>& pre_tasks);
+		/*bool add_task_node(int id, const std::string& name, const std::function<void()>& func, const std::unordered_set<std::string>& pre_tasks);*/
 		void execute_task(int task_id);
 		void compile();
 		TaskGraph()=default;
@@ -206,10 +209,10 @@ namespace MXRender
 		};
 
 		template <typename C, typename F, typename... Args>
-		auto submit_message( F&& f, C* obj, Args&&... args) -> std::future<decltype((obj->*f)(args...))>
+		auto submit_message(F C::* f, C* obj, Args&&... args) -> std::future<decltype((obj->*f)(args...))>
 		{
 			// 连接成员函数和参数定义，特殊函数类型，避免左右值错误
-			std::function<decltype((obj->*f)(args...))()> func = std::bind(std::forward<F>(f), obj, std::forward<Args>(args)...);
+			std::function<decltype((obj->*f)(args...))()> func = std::bind((f), obj, std::forward<Args>(args)...);
 
 			//将其封装到一个共享指针中以便能够复制构造
 			auto task_ptr = std::make_shared<std::packaged_task<decltype((obj->*f)(args...))()>>(func);
@@ -235,6 +238,12 @@ namespace MXRender
 		std::future<void> excute_task_graph(TaskGraph* task_graph);
 		void add_task_graph_to_todolist(const TaskGraph& task_graph);
 		void excute_todolist_taskgraph();
+	};
+
+	struct TaskSystem
+	{
+		ThreadPool thread_pool;
+		TaskGraph task_graph;
 	};
 }
 #endif //_THREADPOOL_

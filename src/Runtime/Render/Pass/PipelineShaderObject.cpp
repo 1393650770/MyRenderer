@@ -75,13 +75,14 @@ namespace MXRender
 
 	Material* MaterialSystem::build_material(const std::string& materialName, const MaterialData& info)
 	{
+		std::string name = materialName+(Singleton<DefaultSetting>::get_instance().is_enable_gpu_driven == true ? "_gpu_driven" : "");
 		Material* mat;
 		//search material in the cache first in case its already built
 		auto it = materialCache.find(info);
 		if (it != materialCache.end())
 		{
 			mat = (*it).second;
-			materials[materialName] = mat;
+			materials[name] = mat;
 		}
 		else 
 		{
@@ -94,7 +95,7 @@ namespace MXRender
 			////not handled yet
 			newMat->pass_sets[MeshpassType::DirectionalShadow] = VK_NULL_HANDLE;
 
-			DescriptorBuilder db = DescriptorBuilder::begin(descriptor_pool);
+			DescriptorBuilder db = DescriptorBuilder::begin(descriptorlayout_cache,descriptor_pool);
 			db.image_infos.resize(info.textures.size());
 			for (int i = 0; i < info.textures.size(); i++)
 			{
@@ -106,12 +107,12 @@ namespace MXRender
 			}
 
 				
-			db.build(newMat->pass_sets[MeshpassType::Forward]);
-			db.build(newMat->pass_sets[MeshpassType::Transparency]);
+			db.build(newMat->pass_sets[MeshpassType::Forward],false);
+			db.build(newMat->pass_sets[MeshpassType::Transparency], false);
 			//add material to cache
 			materialCache[info] = (newMat);
 			mat = newMat;
-			materials[materialName] = mat;
+			materials[name] = mat;
 		}
 
 		return mat;
@@ -143,9 +144,9 @@ namespace MXRender
 
 	}
 
-	MXRender::Material* MaterialSystem::get_material(const std::string& materialName)
+	MXRender::Material* MaterialSystem::get_material(const std::string& materialName) const
 	{
-		auto it = materials.find(materialName);
+		auto it = materials.find((materialName + (Singleton<DefaultSetting>::get_instance().is_enable_gpu_driven == true ? "_gpu_driven" : "")));
 		if (it != materials.end())
 		{
 			return(*it).second;
@@ -158,6 +159,16 @@ namespace MXRender
 	MXRender::VK_DescriptorPool* MaterialSystem::get_descript_pool() const
 	{
 		return descriptor_pool;
+	}
+
+	MXRender::DescriptorLayoutCache* MaterialSystem::get_descriptorlayout_cache() const
+	{
+		return descriptorlayout_cache;
+	}
+
+	std::string MaterialSystem::create_template_name(const std::string& Name)
+	{
+		return (Name + (Singleton<DefaultSetting>::get_instance().is_enable_gpu_driven == true ? "_gpu_driven" : ""));
 	}
 
 	MaterialSystem::MaterialSystem()
@@ -176,28 +187,52 @@ namespace MXRender
 		this->context=context;
 		build_pipeline_builder();
 		descriptor_pool=new VK_DescriptorPool(context->device,50000);
+		descriptorlayout_cache=new DescriptorLayoutCache();
+		descriptorlayout_cache->init(context->device->device);
 
 		VK_Shader* default_color = new  VK_Shader(context->device, "Shader/default_prefabs_mesh_vert.spv", "Shader/default_prefabs_mesh_frag.spv");
+		VK_Shader* default_color_gpu_driven = new  VK_Shader(context->device, "Shader/gpu_driven_tri_vert.spv", "Shader/default_prefabs_mesh_frag.spv");
+
 		VK_Shader* pbr_material = new  VK_Shader(context->device, "Shader/pbr_mesh_vert.spv", "Shader/pbr_mesh_frag.spv");
+		VK_Shader* pbr_material_gpu_driven = new  VK_Shader(context->device, "Shader/gpu_driven_tri_vert.spv", "Shader/pbr_mesh_frag.spv");
+
+		VK_Shader* gpu_driven_material = new  VK_Shader(context->device, "Shader/gpu_driven_tri_vert.spv", "Shader/mesh_rock_frag.spv");
 		VK_Shader* upload_comp= new VK_Shader(context->device, "", "","","Shader/upload_comp.spv");
+		VK_Shader* gpu_culling_comp = new VK_Shader(context->device, "", "", "", "Shader/gpu_culling_comp.spv");
 		VK_Shader::ReflectionOverrides overrides[] = {
 			{"mvp", VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC}	
 		};
 		default_color->reflect_layout(overrides, 1);
 		pbr_material->reflect_layout(overrides, 1);
+		default_color_gpu_driven->reflect_layout(overrides, 1);
+		pbr_material_gpu_driven->reflect_layout(overrides, 1);
+		gpu_driven_material->reflect_layout(overrides, 1);
 		upload_comp->reflect_layout(nullptr,0);
+		gpu_culling_comp->reflect_layout(nullptr, 0);
 
 		shaders["upload_comp"]=upload_comp;
 		shaders["default_mesh"] = default_color;
 		shaders["pbr_mesh"]=pbr_material;
+		shaders["default_mesh_gpu_driven"] = default_color_gpu_driven;
+		shaders["pbr_mesh_gpu_driven"] = pbr_material_gpu_driven;
+		shaders["gpu_driven_mesh"] = gpu_driven_material;
+		shaders["gpu_culling"] = gpu_culling_comp;
 
 		PipelineShaderObject* mesh_pso =  build_pso(context->mesh_pass, mesh_pass_builder, default_color);
 		PipelineShaderObject* pbr_mesh_pso = build_pso(context->mesh_pass, mesh_pass_builder, pbr_material);
+		PipelineShaderObject* mesh_gpu_driven_pso = build_pso(context->mesh_pass, mesh_pass_builder, default_color_gpu_driven);
+		PipelineShaderObject* pbr_mesh_gpu_driven_pso = build_pso(context->mesh_pass, mesh_pass_builder, pbr_material_gpu_driven);
+		PipelineShaderObject* gpu_driven_mesh_pso = build_pso(context->mesh_pass, mesh_pass_builder, gpu_driven_material);
 		PipelineShaderObject* upload_comp_pso= build_comp_pso(upload_comp);
+		PipelineShaderObject* gpu_culling_comp_pso = build_comp_pso(gpu_culling_comp);
 
 		psos["mesh_pass"] = mesh_pso;
 		psos["pbr_pass"] = pbr_mesh_pso;
+		psos["mesh_gpu_driven_pass"] = mesh_gpu_driven_pso;
+		psos["pbr_gpu_driven_pass"] = pbr_mesh_gpu_driven_pso;
 		psos["upload_comp"] = upload_comp_pso;
+		psos["gpu_driven_pso"] = gpu_driven_mesh_pso;
+		psos["gpu_culling_comp"] = gpu_culling_comp_pso;
 
 		templateCache["mesh_base"].pass_pso[MeshpassType::Forward]= mesh_pso;
 		templateCache["mesh_base"].pass_pso[MeshpassType::Transparency] = nullptr;
@@ -207,12 +242,28 @@ namespace MXRender
 		templateCache["mesh_pbr"].pass_pso[MeshpassType::Transparency] = nullptr;
 		templateCache["mesh_pbr"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
 
+		templateCache["mesh_base_gpu_driven"].pass_pso[MeshpassType::Forward] = mesh_gpu_driven_pso;
+		templateCache["mesh_base_gpu_driven"].pass_pso[MeshpassType::Transparency] = nullptr;
+		templateCache["mesh_base_gpu_driven"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
+
+		templateCache["mesh_pbr_gpu_driven"].pass_pso[MeshpassType::Forward] = pbr_mesh_gpu_driven_pso;
+		templateCache["mesh_pbr_gpu_driven"].pass_pso[MeshpassType::Transparency] = nullptr;
+		templateCache["mesh_pbr_gpu_driven"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
+
+		templateCache["mesh_gpu_driven"].pass_pso[MeshpassType::Forward] = gpu_driven_mesh_pso;
+		templateCache["mesh_gpu_driven"].pass_pso[MeshpassType::Transparency] = nullptr;
+		templateCache["mesh_gpu_driven"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
 	}
 
 	void MaterialSystem::destroy()
 	{
+
 		delete descriptor_pool;
 		descriptor_pool=nullptr;
+
+		descriptorlayout_cache->cleanup();
+		delete descriptorlayout_cache;
+
 		for (auto& it : materials)
 		{
 			delete it.second;

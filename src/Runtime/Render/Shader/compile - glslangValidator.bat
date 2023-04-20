@@ -11,5 +11,5 @@ C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V pbr_mesh.frag -o pbr_mesh_fra
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V pbr_mesh.vert -o pbr_mesh_vert.spv
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V gpu_driven_tri.vert -o gpu_driven_tri_vert.spv
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V upload.comp -o upload_comp.spv
-
+C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V gpu_culling.comp -o gpu_culling_comp.spv
 pause

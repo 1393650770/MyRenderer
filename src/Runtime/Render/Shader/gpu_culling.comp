@@ -1,0 +1,62 @@
+#version 460
+
+
+layout (local_size_x = 256) in;
+
+layout(push_constant) uniform  constants{   
+   int count;
+};
+
+struct DrawCommand
+{
+	
+	uint    indexCount;
+    uint    instanceCount;
+    uint    firstIndex;
+    int     vertexOffset;
+    uint    firstInstance;
+	uint objectID;
+	uint batchID;
+};
+
+//draw indirect buffer
+layout(set = 0, binding = 1)  buffer InstanceBuffer{   
+
+	DrawCommand Draws[];
+} drawBuffer;
+
+struct GPUInstance {
+	uint objectID;
+	uint batchID;
+};
+
+//draw indirect buffer
+layout(set = 0, binding = 2) readonly buffer InstanceBuffer2{   
+
+	GPUInstance Instances[];
+} compactInstanceBuffer;
+
+//draw indirect buffer
+layout(set = 0, binding = 3)  buffer InstanceBuffer3{   
+
+	uint IDs[];
+} finalInstanceBuffer;
+
+
+
+void main() 
+{		
+	uint gID = gl_GlobalInvocationID.x;
+	if(gID < count)
+	{
+		uint objectID = compactInstanceBuffer.Instances[gID].objectID;
+
+		uint batchIndex = compactInstanceBuffer.Instances[gID].batchID;
+		uint countIndex = atomicAdd(drawBuffer.Draws[batchIndex].instanceCount,1);
+
+		uint instanceIndex = drawBuffer.Draws[batchIndex].firstInstance + countIndex;
+
+		finalInstanceBuffer.IDs[instanceIndex] = objectID;
+	}
+		
+}

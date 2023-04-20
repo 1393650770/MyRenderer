@@ -19,6 +19,8 @@
 #include "../../Mesh/MeshBase.h"
 #include <mutex>
 
+namespace MXRender { struct RenderObject; }
+
 namespace MXRender { struct MeshObject; }
 
 
@@ -79,6 +81,7 @@ namespace MXRender
         void update_camera_uniform();
         void render_mesh(ComponentBase* mesh_component);
         void render_mesh(MeshObject* mesh_component, VkDescriptorSet GlobalSet,VkCommandBuffer command_buffer);
+        void render_mesh(RenderScene* render_scene, RenderObject* render_object,VkDescriptorSet global_set,VkCommandBuffer command_buffer);
         void dispatch_render_mesh(unsigned int start_index , unsigned int end_index, VkDescriptorSet GlobalSet);
 		std::vector<VkBuffer> uniform_buffers;
 		std::vector<VkDeviceMemory> uniform_buffers_memory;
@@ -92,12 +95,14 @@ namespace MXRender
 
         VkDescriptorSet GlobalSet;
         DynamicCPUUniformBuffer cpu_ubo_buffer;
+        void draw_gpudriven(GraphicsContext* context, RenderScene* render_scene = nullptr);
     public:
         virtual void post_initialize();
         virtual void set_commonInfo(const PassInfo& init_info);
         virtual void prepare_pass_data(const GraphicsContext& context);
-        virtual void draw(GraphicsContext* context);
+        virtual void draw(GraphicsContext* context, RenderScene* render_scene=nullptr);
 
+       
         Mesh_RenderPass();
         Mesh_RenderPass(const PassInfo& init_info);
         virtual ~Mesh_RenderPass();

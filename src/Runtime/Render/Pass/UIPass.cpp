@@ -129,7 +129,7 @@ void MXRender::UI_RenderPass::setup_descriptorpool()
 }
 
 
-void MXRender::UI_RenderPass::draw(GraphicsContext* context)
+void MXRender::UI_RenderPass::draw(GraphicsContext* context, RenderScene* render_scene)
 {
 	if (window_ui)
 	{

@@ -54,7 +54,7 @@ namespace MXRender
         virtual void set_commonInfo(const PassInfo& init_info);
         virtual void prepare_pass_data(const GraphicsContext& context);
 
-        virtual void draw(GraphicsContext* context);
+        virtual void draw(GraphicsContext* context, RenderScene* render_scene=nullptr);
 
         void begin_pass(GraphicsContext* context);
         void end_pass(GraphicsContext* context);

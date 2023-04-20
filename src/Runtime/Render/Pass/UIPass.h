@@ -48,7 +48,7 @@ namespace MXRender
 
 
 
-        virtual void draw(GraphicsContext* context) override;
+        virtual void draw(GraphicsContext* context, RenderScene* render_scene=nullptr) override;
 
     };
 

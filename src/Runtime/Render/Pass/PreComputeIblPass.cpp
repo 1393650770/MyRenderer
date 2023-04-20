@@ -220,7 +220,7 @@ namespace MXRender
 
 
 
-	void PreComputeIBL_RenderPass::draw(GraphicsContext* context)
+	void PreComputeIBL_RenderPass::draw(GraphicsContext* context, RenderScene* render_scene)
 	{
 		
 		update_buffer();

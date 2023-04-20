@@ -414,7 +414,7 @@ namespace MXRender
 
 
 
-	void MainCamera_RenderPass::draw(GraphicsContext* context)
+	void MainCamera_RenderPass::draw(GraphicsContext* context, RenderScene* render_scene)
 	{
 		
 		update_uniformbuffer();

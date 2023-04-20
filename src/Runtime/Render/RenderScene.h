@@ -10,6 +10,10 @@
 
 
 struct GLFWwindow;
+namespace MXRender { struct GPUInstance; }
+namespace MXRender { struct GPUIndirectObject; }
+namespace MXRender { class GPUDrivenSystem; }
+namespace MXRender { struct GPUObjectData; }
 namespace MXRender { struct GPUObjectData; }
 namespace MXRender { struct GPUIndirectObject; }
 namespace MXRender { struct GPUIndirectObject; }
@@ -53,7 +57,7 @@ namespace MXRender
 	struct RenderObject
 	{
 		Handle<DrawMesh> meshID;
-		Handle<Material> material;
+		Handle<Material> materialID;
 
 		uint32_t updateIndex;
 		uint32_t customSortKey{ 0 };
@@ -65,29 +69,44 @@ namespace MXRender
 		RenderBounds bounds;
 	};
 
-	struct GPUIndirectObject {
-		VkDrawIndexedIndirectCommand command;
-		uint32_t objectID;
-		uint32_t batchID;
-	};
+	//struct GPUIndirectObject {
+	//	VkDrawIndexedIndirectCommand command;
+	//	uint32_t objectID;
+	//	uint32_t batchID;
+	//};
 
 
 	class RenderScene
 	{
 	public:
+		GPUDrivenSystem* gpu_driven;
+
 		RenderScene();
 		virtual ~RenderScene();
 		void register_render_object(GameObject* game_object);
+		void update_object_transform(GameObject* game_object);
+		RenderObject* get_render_object(Handle<RenderObject> objectID);
+		Material* get_material(Handle<Material> materialID);
+		DrawMesh* get_mesh(Handle<DrawMesh> meshID);
+		void update_object(Handle<RenderObject> objectID);
+		void clear_dirty_objects();
+		void write_object_to_gpudata_buffer(GPUObjectData* target, Handle<RenderObject> objectID);
+		void write_object_to_indirectcommand_buffer(GPUIndirectObject* target);
+		void write_object_to_instance_buffer(GPUInstance* target);
+		std::vector<Handle<RenderObject>>& get_dirty_objects();
+		const RenderObject& get_renderable_obj(int index) const;
+		int get_renderables_size() const;
 		void merge_object(VK_GraphicsContext* context);
 		void create_indirect_drawcall(VK_GraphicsContext* context);
 		void create_object_data_buffer(VK_GraphicsContext* context);
 	protected:
+		std::unordered_map<GameObject* , Handle<RenderObject>> renderObjectConvert;
 		std::unordered_map<Material*, Handle<Material>> materialConvert;
 		std::unordered_map<MeshBase*, Handle<DrawMesh>> meshConvert;
 		std::vector<RenderObject> renderables;
 		std::vector<DrawMesh> meshes;
 		std::vector<Material*> materials;
-
+		std::vector<Handle<RenderObject>> dirtyObjects;
 		Handle<DrawMesh> get_mesh_id(MeshBase* mesh);
 		Handle<Material> get_material_id(Material* material);
 	private:

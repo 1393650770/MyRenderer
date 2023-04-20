@@ -38,6 +38,7 @@ namespace MXRender
 	{
 	friend GameObject;
 	private:
+		void load_objs();
 	protected:
 		std::unordered_map<std::string, MeshBase*> _meshes;
 		std::unordered_map<std::string, CacheTexture> _loadedTextures;
@@ -54,6 +55,7 @@ namespace MXRender
 		void destroy_object_list(GraphicsContext* context);
 		void start_load_prefabs(GraphicsContext* context);
 		void set_overload_material(GraphicsContext* context);
+		void start_load_asset(GraphicsContext* context);
 		const std::unordered_map<std::string, MeshBase*>& get_mesh_cache() const;
 		const std::unordered_map<std::string, CacheTexture >& get_texture_cache() const;
 		const std::unordered_map<std::string, assets::PrefabInfo*>& get_prefab_cache() const;

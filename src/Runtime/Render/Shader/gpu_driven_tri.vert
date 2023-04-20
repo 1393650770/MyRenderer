@@ -10,7 +10,9 @@ layout (location = 3) in vec2 vTexCoord;
 layout (location = 0) out vec3 outColor;
 layout (location = 1) out vec2 texCoord;
 layout (location = 2) out vec3 outNormal;
-layout(set=0,binding = 0) uniform MVP {
+layout (location = 3) out vec3 outPos;
+layout(set=0,binding = 0) uniform MVP 
+{
     mat4 model;
     mat4 view;
     mat4 proj;
@@ -26,13 +28,13 @@ vec4 extents;
 
 
 //all object matrices
-layout(std140,set = 1, binding = 0) readonly buffer ObjectBuffer{   
+layout(std140,set = 2, binding = 0) readonly buffer ObjectBuffer{   
 
 	ObjectData objects[];
 } objectBuffer;
 
 //all object indices
-layout(set = 1, binding = 1) readonly buffer InstanceBuffer{   
+layout(set = 2, binding = 1) readonly buffer InstanceBuffer{   
 
 	uint IDs[];
 } instanceBuffer;
@@ -49,5 +51,5 @@ void main()
 	outNormal = normalize((modelMatrix * vec4(vec_tre_Normal,0.f)).xyz);
 	outColor = vColor;
 	texCoord = vTexCoord;
-
+    outPos=vPosition;
 }

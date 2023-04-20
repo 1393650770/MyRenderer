@@ -147,6 +147,7 @@ namespace MXRender
 	protected:
 		VK_GraphicsContext* context;
 		VK_DescriptorPool* descriptor_pool;
+		DescriptorLayoutCache* descriptorlayout_cache;
 		PipelineBuilder mesh_pass_builder;
 	public:
 		std::unordered_map<std::string, VK_Shader*> shaders;
@@ -159,8 +160,10 @@ namespace MXRender
 		Material* build_material(const std::string& materialName, const MaterialData& info);
 		void build_pipeline_builder();
 		void build_default_pso();
-		Material* get_material(const std::string& materialName);
+		Material* get_material(const std::string& materialName) const;
 		VK_DescriptorPool* get_descript_pool() const;
+		DescriptorLayoutCache* get_descriptorlayout_cache() const;
+		std::string create_template_name(const std::string& Name);
 		MaterialSystem();
 		virtual ~MaterialSystem();
 		void init (VK_GraphicsContext* context);

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include "VK_Device.h"
+#include <algorithm>
 
 
 namespace MXRender
@@ -81,31 +82,60 @@ namespace MXRender
 		}
 	}
 
-	bool VK_DescriptorPool::allocate_descriptorset(VkDescriptorSetLayout Layout, VkDescriptorSet& OutSet)
+	bool VK_DescriptorPool::allocate_descriptorset(VkDescriptorSetLayout Layout, VkDescriptorSet& OutSet, bool b_use_set_cache)
 	{
 		if (descriptor_pool == VK_NULL_HANDLE|| device.expired())
 		{
 			return false;
 		}
+		if (b_use_set_cache&&descriptor_cache.find(Layout)!=descriptor_cache.end())
+		{
+			OutSet= descriptor_cache[Layout];
+			return true;
+		}
+
 		VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo;
 		DescriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		DescriptorSetAllocateInfo.descriptorPool = descriptor_pool;
 		DescriptorSetAllocateInfo.descriptorSetCount = 1;
 		DescriptorSetAllocateInfo.pSetLayouts = &Layout;
 		DescriptorSetAllocateInfo.pNext=VK_NULL_HANDLE;
-		return vkAllocateDescriptorSets(device.lock()->device, &DescriptorSetAllocateInfo, &OutSet)== VK_SUCCESS;
+		if (vkAllocateDescriptorSets(device.lock()->device, &DescriptorSetAllocateInfo, &OutSet) == VK_SUCCESS)
+		{
+			if (b_use_set_cache)
+			{
+				descriptor_cache[Layout]=OutSet;
+			}
+			return true;
+		}
+		return false;
 
 	}
 
-	bool VK_DescriptorPool::allocate_descriptorsets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets)
+	bool VK_DescriptorPool::allocate_descriptorsets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets, bool b_use_set_cache)
 	{
 		if (descriptor_pool == VK_NULL_HANDLE || device.expired())
 		{
 			return false;
 		}
+		if (b_use_set_cache && descriptor_cache.find(*(InDescriptorSetAllocateInfo.pSetLayouts)) != descriptor_cache.end())
+		{
+			OutSets = descriptor_cache[*(InDescriptorSetAllocateInfo.pSetLayouts)];
+			return true;
+		}
 		VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo = InDescriptorSetAllocateInfo;
 		DescriptorSetAllocateInfo.descriptorPool = descriptor_pool;
-		return vkAllocateDescriptorSets(device.lock()->device, &DescriptorSetAllocateInfo, &OutSets) == VK_SUCCESS;;
+		if (vkAllocateDescriptorSets(device.lock()->device, &DescriptorSetAllocateInfo, &OutSets) == VK_SUCCESS)
+		{
+			if (b_use_set_cache)
+			{
+				descriptor_cache[*(InDescriptorSetAllocateInfo.pSetLayouts)] = OutSets;
+			}
+			return true;
+		}
+		return false;
+		
+
 	}
 
 	std::weak_ptr<VK_Device> VK_DescriptorPool::get_device() const
@@ -265,10 +295,11 @@ namespace MXRender
 		
 	}
 
-	DescriptorBuilder DescriptorBuilder::begin(VK_DescriptorPool* allocator)
+	DescriptorBuilder DescriptorBuilder::begin(DescriptorLayoutCache* cache, VK_DescriptorPool* allocator)
 	{
 		DescriptorBuilder builder;
 		builder.alloc = allocator;
+		builder.cache = cache;
 		return builder;
 	}
 
@@ -328,7 +359,7 @@ namespace MXRender
 		return *this;
 	}
 
-	bool DescriptorBuilder::build(VkDescriptorSet& set, VkDescriptorSetLayout& layout)
+	bool DescriptorBuilder::build(VkDescriptorSet& set, VkDescriptorSetLayout& layout, bool b_use_set_cache)
 	{
 		//build layout first
 		VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -339,11 +370,13 @@ namespace MXRender
 		layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
 
 
-		vkCreateDescriptorSetLayout(alloc->get_device().lock()->device, &layoutInfo, nullptr, &layout);
+		layout = cache->create_descriptor_layout(&layoutInfo);
 
 
 		//allocate descriptor
-		bool success = alloc->allocate_descriptorset( layout, set);
+		bool success = false;
+
+		success=alloc->allocate_descriptorset(layout, set,b_use_set_cache);
 		if (!success) 
 		{ 
 			return false; 
@@ -359,15 +392,124 @@ namespace MXRender
 		return true;
 	}
 
-	bool DescriptorBuilder::build(VkDescriptorSet& set)
+	bool DescriptorBuilder::build(VkDescriptorSet& set, bool b_use_set_cache)
 	{
 		VkDescriptorSetLayout layout;
-		bool result= build(set, layout);
-		vkDestroyDescriptorSetLayout(alloc->get_device().lock()->device, layout, nullptr);
+		bool result= build(set, layout, b_use_set_cache);
 		return result;
 	}
 
 
+
+	
+
+	void DescriptorLayoutCache::init(VkDevice newDevice)
+	{
+		device = newDevice;
+	}
+
+	void DescriptorLayoutCache::cleanup()
+	{
+		for (auto pair : layoutCache)
+		{
+			vkDestroyDescriptorSetLayout(device, pair.second, nullptr);
+		}
+	}
+
+	VkDescriptorSetLayout DescriptorLayoutCache::create_descriptor_layout(VkDescriptorSetLayoutCreateInfo* info)
+	{
+		DescriptorLayoutInfo layoutinfo;
+		layoutinfo.bindings.reserve(info->bindingCount);
+		bool isSorted = true;
+		int32_t lastBinding = -1;
+		for (uint32_t i = 0; i < info->bindingCount; i++) 
+		{
+			layoutinfo.bindings.push_back(info->pBindings[i]);
+
+			//check that the bindings are in strict increasing order
+			if (static_cast<int32_t>(info->pBindings[i].binding) > lastBinding)
+			{
+				lastBinding = info->pBindings[i].binding;
+			}
+			else {
+				isSorted = false;
+			}
+		}
+		if (!isSorted)
+		{
+			std::sort(layoutinfo.bindings.begin(), layoutinfo.bindings.end(), [](VkDescriptorSetLayoutBinding& a, VkDescriptorSetLayoutBinding& b) {
+				return a.binding < b.binding;
+				});
+		}
+
+		auto it = layoutCache.find(layoutinfo);
+		if (it != layoutCache.end())
+		{
+			return (*it).second;
+		}
+		else {
+			VkDescriptorSetLayout layout;
+			vkCreateDescriptorSetLayout(device, info, nullptr, &layout);
+
+			//layoutCache.emplace()
+			//add to cache
+			layoutCache[layoutinfo] = layout;
+			return layout;
+		}
+	}
+
+	bool DescriptorLayoutCache::DescriptorLayoutInfo::operator==(const DescriptorLayoutInfo& other) const
+	{
+		if (other.bindings.size() != bindings.size())
+		{
+			return false;
+		}
+		else {
+			//compare each of the bindings is the same. Bindings are sorted so they will match
+			for (int i = 0; i < bindings.size(); i++) {
+				if (other.bindings[i].binding != bindings[i].binding)
+				{
+					return false;
+				}
+				if (other.bindings[i].descriptorType != bindings[i].descriptorType)
+				{
+					return false;
+				}
+				if (other.bindings[i].descriptorCount != bindings[i].descriptorCount)
+				{
+					return false;
+				}
+				if (other.bindings[i].stageFlags != bindings[i].stageFlags)
+				{
+					return false;
+				}
+				if (other.bindings[i].pImmutableSamplers != bindings[i].pImmutableSamplers)
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+	}
+
+	size_t DescriptorLayoutCache::DescriptorLayoutInfo::hash() const
+	{
+		using std::size_t;
+		using std::hash;
+
+		size_t result = hash<size_t>()(bindings.size());
+
+		for (const VkDescriptorSetLayoutBinding& b : bindings)
+		{
+			//pack the binding data into a single int64. Not fully correct but its ok
+			size_t binding_hash = b.binding | b.descriptorType << 8 | b.descriptorCount << 16 | b.stageFlags << 24;
+
+			//shuffle the packed binding data and xor it with the main hash
+			result ^= hash<size_t>()(binding_hash);
+		}
+
+		return result;
+	}
 
 }
 

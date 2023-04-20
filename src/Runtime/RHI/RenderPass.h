@@ -15,6 +15,8 @@
 #include<string>
 #include "vulkan/vulkan_core.h"
 
+namespace MXRender { class RenderScene; }
+
 namespace MXRender { class WindowUI; }
 
 namespace MXRender { class VK_Viewport; }
@@ -56,7 +58,7 @@ namespace MXRender
         virtual void set_commonInfo(const PassInfo& init_info);
         virtual void prepare_pass_data(const GraphicsContext& context);
         virtual void initialize_ui_renderbackend(WindowUI* window_ui);
-        virtual void draw(GraphicsContext* context);
+        virtual void draw(GraphicsContext* context,  RenderScene* render_scene=nullptr);
         std::weak_ptr<GraphicsContext> get_context();
         RenderPass();
         RenderPass(const PassInfo& init_info);
