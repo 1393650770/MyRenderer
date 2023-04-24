@@ -110,7 +110,7 @@ namespace MXRender
 		Handle<DrawMesh> get_mesh_id(MeshBase* mesh);
 		Handle<Material> get_material_id(Material* material);
 	private:
-
+		void register_objects(GameObject* game_object);
 	};
 
 }

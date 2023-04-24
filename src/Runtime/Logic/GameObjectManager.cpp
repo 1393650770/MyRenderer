@@ -17,6 +17,7 @@
 #include "../Utils/Singleton.h"
 #include "TaskScheduler.h"
 #include "optick.h"
+#include <xutility>
 std::string asset_path(std::string_view path)
 {
 	return "../../../../assets_export/" + std::string(path);
@@ -43,6 +44,7 @@ void MXRender::GameObjectManager::load_objs()
 	object_list.emplace_back("pbr_stone", "Resource/Mesh/pbr_stone.obj");
 	object_list.back().get_transform()->set_scale(glm::vec3(0.005f));
 	object_list.back().get_transform()->set_translation(glm::vec3(-8.005f, 0.0f, 0.0f));
+
 	OPTICK_POP()
 }
 
@@ -139,7 +141,7 @@ void MXRender::GameObjectManager::destroy_object_list(GraphicsContext* context)
 
 void MXRender::GameObjectManager::start_load_prefabs(GraphicsContext* context)
 {
-	int dimHelmets = 0;
+	int dimHelmets = 12;
 	int i=0;
 	for (int x = -dimHelmets; x <= dimHelmets; x++) {
 		for (int y = -dimHelmets; y <= dimHelmets; y++) {
@@ -172,6 +174,10 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 		return ;
 	}
 
+	for (int i=0;i<3;i++)
+	{
+		object_list[i].get_staticmesh()->get_mesh_data().lock()->init_mesh_info(context);
+	}
 
 	Material* stoneMaterial = Singleton<DefaultSetting>::get_instance().material_system->get_material("pbr_mesh");
 	if (!stoneMaterial)
@@ -381,8 +387,8 @@ bool MXRender::GameObjectManager::load_prefab(const std::string& name,const char
 			//add to worldmats 
 			node_worldmats[k] = root * nodematrix;
 			object.sub_objects.push_back(prefab_objinfo.node_objs[k]);
-			prefab_objinfo.node_objs[k]->parent_object=&object;
-			prefab_objinfo.node_objs[k]->parent_object->get_transform()->set_model_matrix(node_worldmats[k]);
+			prefab_objinfo.node_objs[k]->parent_object = &object;
+			prefab_objinfo.node_objs[k]->get_transform()->set_model_matrix(node_worldmats[k]);
 
 		}
 		else {
@@ -528,7 +534,7 @@ bool MXRender::GameObjectManager::load_prefab(const std::string& name,const char
 		uint32_t key = uint32_t(std::hash<int32_t>()(lx) ^ std::hash<int32_t>()(ly ^ 1337));
 
 		loadmesh.customSortKey = 0;// rng;// key;
-
+		prefab_objinfo.node_objs[k]->get_transform()->set_model_matrix(nodematrix);
 		prefab_objinfo.node_objs[k]->get_staticmesh()->reset_mesh(get_mesh(v.mesh_path.c_str()));
 		prefab_objinfo.node_objs[k]->set_material(objectMaterial);
 		prefab_objinfo.node_objs_use[k] = true;
@@ -539,8 +545,18 @@ bool MXRender::GameObjectManager::load_prefab(const std::string& name,const char
 	{
 		if (v==false)
 		{
+			if (prefab_objinfo.node_objs[k]->parent_object)
+			{
+				auto it = std::find(prefab_objinfo.node_objs[k]->parent_object->sub_objects.begin(), prefab_objinfo.node_objs[k]->parent_object->sub_objects.end(), prefab_objinfo.node_objs[k]);
+				if ((it)!= prefab_objinfo.node_objs[k]->parent_object->sub_objects.end())
+				{
+					prefab_objinfo.node_objs[k]->parent_object->sub_objects.erase(it);
+				}
+			}
 			delete prefab_objinfo.node_objs[k];
+			prefab_objinfo.node_objs[k]=nullptr;
 		}
+
 	}
 
 	return true;

@@ -25,23 +25,8 @@ namespace MXRender
 		OPTICK_EVENT()
 
 		OPTICK_PUSH("register_render_object")
-		RenderObject newObj;
-		newObj.bounds = game_object->get_staticmesh()->get_mesh_data().lock()->bounds;
-		newObj.transformMatrix = game_object->get_transform()->get_translation_matrix();
-		newObj.materialID = get_material_id(game_object->get_material());
-		newObj.meshID = get_mesh_id(game_object->get_staticmesh()->get_mesh_data().lock().get());
-		newObj.updateIndex = (uint32_t)-1;
-		//newObj.customSortKey = object->customSortKey;
-		newObj.passIndices.clear(-1);
-		Handle<RenderObject> handle;
-		handle.handle = static_cast<uint32_t>(renderables.size());
-
-		renderables.push_back(newObj);
-
-		renderObjectConvert[game_object]=handle;
-
-		update_object(handle);
-
+		register_objects(game_object);
+		
 		OPTICK_POP()
 		//if (object->bDrawForwardPass)
 		//{
@@ -74,7 +59,7 @@ namespace MXRender
 		{
 			RenderObject* render_object= get_render_object(renderObjectConvert[game_object]);
 			
-			render_object->transformMatrix= game_object->get_transform()->get_translation_matrix();
+			render_object->transformMatrix= game_object->get_transform()->get_model_matrix();
 		}
 		OPTICK_POP()
 	}
@@ -177,51 +162,6 @@ namespace MXRender
 		return renderables.size();
 	}
 
-	//void RenderScene::merge_object(VK_GraphicsContext* context)
-	//{
-	//	size_t total_vertices = 0;
-	//	size_t total_indices = 0;
-
-	//	for (auto& m : meshes)
-	//	{
-	//		m.firstIndex = static_cast<uint32_t>(total_indices);
-	//		m.firstVertex = static_cast<uint32_t>(total_vertices);
-
-	//		total_vertices += m.vertexCount;
-	//		total_indices += m.indexCount;
-
-	//		m.isMerged = true;
-	//	}
-
-	//	merged_vertexBuffer = VK_Utils::Create_buffer(context,total_vertices * sizeof(SimpleVertex), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-	//		VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-	//	merged_indexBuffer = VK_Utils::Create_buffer(context, total_indices * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-	//		VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-	//	VK_Utils::Immediate_Submit(context,[&](VkCommandBuffer cmd)
-	//		{
-	//			for (auto& m : meshes)
-	//			{
-	//				VkBufferCopy vertexCopy;
-	//				vertexCopy.dstOffset = m.firstVertex * sizeof(SimpleVertex);
-	//				vertexCopy.size = m.vertexCount * sizeof(SimpleVertex);
-	//				vertexCopy.srcOffset = 0;
-	//				VK_Mesh* vk_mesh = dynamic_cast<VK_Mesh*>(m.original);
-	//				if (!context || !vk_mesh) 
-	//					continue;
-	//				vkCmdCopyBuffer(cmd, vk_mesh->get_mesh_info().vertex_buffer, merged_vertexBuffer._buffer, 1, &vertexCopy);
-
-	//				VkBufferCopy indexCopy;
-	//				indexCopy.dstOffset = m.firstIndex * sizeof(uint32_t);
-	//				indexCopy.size = m.indexCount * sizeof(uint32_t);
-	//				indexCopy.srcOffset = 0;
-
-	//				vkCmdCopyBuffer(cmd, vk_mesh->get_mesh_info().index_buffer, merged_indexBuffer._buffer, 1, &indexCopy);
-	//			}
-	//		});
-	//}
-
 	
 	Handle<DrawMesh> RenderScene::get_mesh_id(MeshBase* mesh)
 	{
@@ -266,6 +206,38 @@ namespace MXRender
 			handle = (*it).second;
 		}
 		return handle;
+	}
+
+	void RenderScene::register_objects(GameObject* game_object)
+	{
+		if (game_object->get_component(StaticMeshComponent))
+		{
+
+			RenderObject newObj;
+			newObj.bounds = game_object->get_staticmesh()->get_mesh_data().lock()->bounds;
+			newObj.transformMatrix = game_object->get_transform()->get_model_matrix();
+			newObj.materialID = get_material_id(game_object->get_material());
+			newObj.meshID = get_mesh_id(game_object->get_staticmesh()->get_mesh_data().lock().get());
+			newObj.updateIndex = (uint32_t)-1;
+			//newObj.customSortKey = object->customSortKey;
+			newObj.passIndices.clear(-1);
+			Handle<RenderObject> handle;
+			handle.handle = static_cast<uint32_t>(renderables.size());
+
+			renderables.push_back(newObj);
+
+			renderObjectConvert[game_object] = handle;
+
+			update_object(handle);
+		}		
+		for (int i=0;i< game_object->sub_objects.size();i++)
+		{
+			if (game_object->sub_objects[i])
+			{
+				register_objects(game_object->sub_objects[i]);
+			}
+
+		}
 	}
 
 }

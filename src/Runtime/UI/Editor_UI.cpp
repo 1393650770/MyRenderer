@@ -397,7 +397,7 @@ void MXRender::EditorUI::show_editor_right_ui()
 			ImGui::DragFloat("rotation y", &rotation.g);
 			ImGui::DragFloat("rotation z", &rotation.b);
 		}
-		if (ImGui::CollapsingHeader("MaterialComponent", ImGuiTreeNodeFlags_DefaultOpen))
+		if (ImGui::CollapsingHeader("MaterialComponent", ImGuiTreeNodeFlags_DefaultOpen)&& static_mesh&& static_mesh->get_material())
 		{
 			ImGui::Text("%s", "pushconstant test");
 			ImGui::DragFloat("pushconstant z", &(static_mesh->get_material()->parameters.z));

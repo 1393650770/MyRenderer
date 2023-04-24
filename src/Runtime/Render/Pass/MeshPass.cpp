@@ -429,13 +429,16 @@ namespace MXRender
 
 		uint32_t offset = cpu_ubo_buffer.push(ubo);
 
-		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &GlobalSet, 1, &offset);
+		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &global_set, 1, &offset);
 
 
 		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 1, 1, &material->pass_sets[MeshpassType::Forward], 0, nullptr);
 
+		vkCmdPushConstants(command_buffer, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
+
 		VK_Mesh* vk_mesh = dynamic_cast<VK_Mesh*>(mesh->original);
 		if (!vk_mesh) return;
+		vk_mesh->init_mesh_info(cur_context.lock().get());
 		VkBuffer vertexBuffers[] = { vk_mesh->get_mesh_info().vertex_buffer };
 		VkDeviceSize offsets[] = { 0 };
 
@@ -449,11 +452,13 @@ namespace MXRender
 		OPTICK_POP()
 	}
 
-	void Mesh_RenderPass::dispatch_render_mesh(unsigned int start_index, unsigned int end_index, VkDescriptorSet GlobalSet)
+	
+	void Mesh_RenderPass::dispatch_render_mesh(RenderScene* render_scene,unsigned int start_index, unsigned int end_index, VkDescriptorSet GlobalSet)
 	{
 
 		OPTICK_EVENT();
-		VkCommandBuffer command_buffer= cur_context.lock()->get_cur_threadid_command_buffer(Singleton<DefaultSetting>::get_instance().task_system->thread_pool.get_current_thread_id());
+		std::weak_ptr<TaskSystem> task_system= Singleton<DefaultSetting>::get_instance().task_system;
+		VkCommandBuffer command_buffer= cur_context.lock()->get_cur_threadid_command_buffer(task_system.lock()->thread_pool.get_current_thread_id());
 		cur_context.lock()->thread_command_buffer_use_map[command_buffer]=1;
 
 		std::vector< VkClearValue> clearColor(2);
@@ -463,7 +468,7 @@ namespace MXRender
 		cur_context.lock()->renderpass_begin_info_map[render_pass].clearValueCount =0;
 		cur_context.lock()->renderpass_begin_info_map[render_pass].pClearValues = nullptr;
 		OPTICK_PUSH("BindPass")
-		vkCmdBeginRenderPass(command_buffer, &(cur_context.lock()->renderpass_begin_info_map[render_pass]), VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(command_buffer, &(cur_context.lock()->renderpass_begin_info_map[render_pass]),VK_SUBPASS_CONTENTS_INLINE);
 		OPTICK_POP()
 		vkCmdSetViewport(command_buffer, 0, 1, &cur_context.lock()->viewport);
 
@@ -473,15 +478,94 @@ namespace MXRender
 
 		vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 		
-		for (int i = start_index; i< end_index &&i < Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables.size(); i++)
+		for (int i = start_index; i< end_index &&i < render_scene->get_renderables_size(); i++)
 		{
-
-			render_mesh(&(Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables[i]), GlobalSet, command_buffer);
+			auto* it = const_cast<RenderObject*>(&(render_scene->get_renderable_obj(i)));
+			render_mesh(render_scene, it, GlobalSet, command_buffer);
 		}
 
 		vkCmdEndRenderPass(command_buffer);
 
 		//VK_Utils::Transition_ImageLayout(cur_context, command_buffer, cur_context.lock()->get_cur_swapchain_image(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT);
+	}
+
+	void Mesh_RenderPass::dispatch_gpudriven_render_mesh(RenderScene* render_scene, unsigned int start_index, unsigned int end_index, VkDescriptorSet global_set,VkDescriptorSet object_data_set)
+	{	
+		OPTICK_EVENT();
+		std::weak_ptr<TaskSystem> task_system = Singleton<DefaultSetting>::get_instance().task_system;
+		VkCommandBuffer command_buffer = cur_context.lock()->get_cur_threadid_command_buffer(task_system.lock()->thread_pool.get_current_thread_id());
+		cur_context.lock()->thread_command_buffer_use_map[command_buffer] = 1;
+
+		std::vector< VkClearValue> clearColor(2);
+		clearColor[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+		clearColor[1].depthStencil = { 1.0f, 0 };
+		cur_context.lock()->renderpass_begin_info_map[render_pass].renderPass = cur_context.lock()->mesh_pass;
+		cur_context.lock()->renderpass_begin_info_map[render_pass].clearValueCount = 0;
+		cur_context.lock()->renderpass_begin_info_map[render_pass].pClearValues = nullptr;
+		OPTICK_PUSH("BindPass")
+		vkCmdBeginRenderPass(command_buffer, &(cur_context.lock()->renderpass_begin_info_map[render_pass]), VK_SUBPASS_CONTENTS_INLINE);
+		OPTICK_POP()
+			vkCmdSetViewport(command_buffer, 0, 1, &cur_context.lock()->viewport);
+
+		VkRect2D scissor{};
+		scissor.offset = { 0, 0 };
+		scissor.extent = cur_context.lock()->get_swapchain_extent();
+
+		vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+
+		for (int i = start_index; i < end_index && i < render_scene->get_renderables_size(); i++)
+		{
+			const RenderObject& render_object = render_scene->get_renderable_obj(i);
+			Material* material = render_scene->get_material(render_object.materialID);
+			DrawMesh* mesh = render_scene->get_mesh(render_object.meshID);
+			if (!material || !mesh)
+			{
+				continue;
+			}
+
+			OPTICK_PUSH("Bind")
+			vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
+
+
+			MVP_Struct ubo{};
+			ubo.model = render_object.transformMatrix;
+			ubo.view = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
+			ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
+			ubo.proj[1][1] *= -1;
+
+			uint32_t offset = cpu_ubo_buffer.push(ubo);
+
+
+
+			vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &(global_set), 1, &offset);
+
+			vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 1, 1, &(material->pass_sets[MeshpassType::Forward]), 0, nullptr);
+
+			vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 2, 1, &object_data_set, 0, nullptr);
+
+			vkCmdPushConstants(command_buffer, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
+
+			OPTICK_POP()
+
+			VK_Mesh* vk_mesh = dynamic_cast<VK_Mesh*>(mesh->original);
+			if (vk_mesh)
+			{
+				
+
+				VkBuffer vertexBuffers[] = { vk_mesh->get_mesh_info().vertex_buffer };
+				VkDeviceSize offsets[] = { 0 };
+
+				vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
+
+				vkCmdBindIndexBuffer(command_buffer, vk_mesh->get_mesh_info().index_buffer, 0, VK_INDEX_TYPE_UINT32);
+
+				OPTICK_PUSH("Draw")
+				vkCmdDrawIndexedIndirect(command_buffer, render_scene->gpu_driven->drawIndirectBuffer._buffer, i * sizeof(GPUIndirectObject), 1, sizeof(GPUIndirectObject));
+				OPTICK_POP()
+			}
+		}
+
+		vkCmdEndRenderPass(command_buffer);
 	}
 
 	void Mesh_RenderPass::draw_gpudriven(GraphicsContext* context, RenderScene* render_scene /*= nullptr*/)
@@ -513,59 +597,78 @@ namespace MXRender
 
 			update_camera_uniform();
 
+			VkDescriptorSet object_data_set = VK_NULL_HANDLE;
+			VkDescriptorBufferInfo objectData = render_scene->gpu_driven->objectDataBuffer.get_info();
 
-			for (int i = 0; i < render_scene->get_renderables_size(); i++)
+			VkDescriptorBufferInfo instanceIdMapData = render_scene->gpu_driven->instanceIdMapBuffer.get_info();
+			auto builder = DescriptorBuilder::begin(Singleton<DefaultSetting>::get_instance().material_system->get_descriptorlayout_cache(), Singleton<DefaultSetting>::get_instance().material_system->get_descript_temp_pool());
+			builder.bind_buffer(0, &objectData, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+			builder.bind_buffer(1, &instanceIdMapData, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+			builder.build(object_data_set);
+
+			if (Singleton<DefaultSetting>::get_instance().is_enable_dispatch)
 			{
-				const RenderObject& render_object = render_scene->get_renderable_obj(i);
-				Material* material = render_scene->get_material(render_object.materialID);
-				DrawMesh* mesh = render_scene->get_mesh(render_object.meshID);
-				if (!material||!mesh)
+				unsigned int thread_num = Singleton<DefaultSetting>::get_instance().task_system->thread_pool.get_max_thread_num();
+				unsigned int clip_size = render_scene->get_renderables_size() / thread_num;
+
+				for (unsigned int i = 0; i < thread_num; i++)
 				{
-					continue;
+
+					auto fut = Singleton<DefaultSetting>::get_instance().task_system->thread_pool.submit_message(&Mesh_RenderPass::dispatch_gpudriven_render_mesh, this,render_scene, clip_size * i, clip_size * (i + 1), descriptor_sets[0],object_data_set);
+					vk_context->fut_que.push(std::move(fut));
 				}
-				vkCmdBindPipeline(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
-
-
-				MVP_Struct ubo{};
-				ubo.model = render_object.transformMatrix;
-				ubo.view = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
-				ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
-				ubo.proj[1][1] *= -1;
-
-				uint32_t offset = cpu_ubo_buffer.push(ubo);
-
-
-				VkDescriptorSet object_data_set = VK_NULL_HANDLE;
-				VkDescriptorBufferInfo objectData = render_scene->gpu_driven->objectDataBuffer.get_info();
-
-				VkDescriptorBufferInfo instanceIdMapData = render_scene->gpu_driven->instanceIdMapBuffer.get_info();
-				auto builder = DescriptorBuilder::begin(Singleton<DefaultSetting>::get_instance().material_system->get_descriptorlayout_cache(), Singleton<DefaultSetting>::get_instance().material_system->get_descript_temp_pool());
-				builder.bind_buffer(0, &objectData, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
-				builder.bind_buffer(1, &instanceIdMapData, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
-				builder.build(object_data_set);
-
-				vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &(descriptor_sets[0]), 1, &offset);
-
-				vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 1, 1, &(material->pass_sets[MeshpassType::Forward]), 0, nullptr);
-
-				vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 2, 1, &object_data_set, 0, nullptr);
-
-				vkCmdPushConstants(vk_context->get_cur_command_buffer(), (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
-
-
-				VK_Mesh* vk_mesh = dynamic_cast<VK_Mesh*>(mesh->original);
-				if (vk_mesh)
+				//vk_context->execute_all_threadid_command_buffer();
+			}
+			else
+			{ 
+				VkCommandBuffer command_buffer = cur_context.lock()->get_cur_command_buffer();
+				for (int i = 0;  i < render_scene->get_renderables_size(); i++)
 				{
-					vk_mesh->init_mesh_info(context);
+					
+					const RenderObject& render_object = render_scene->get_renderable_obj(i);
+					Material* material = render_scene->get_material(render_object.materialID);
+					DrawMesh* mesh = render_scene->get_mesh(render_object.meshID);
+					if (!material || !mesh)
+					{
+						continue;
+					}
 
-					VkBuffer vertexBuffers[] = { vk_mesh->get_mesh_info().vertex_buffer };
-					VkDeviceSize offsets[] = { 0 };
+					vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
 
-					vkCmdBindVertexBuffers(vk_context->get_cur_command_buffer(), 0, 1, vertexBuffers, offsets);
 
-					vkCmdBindIndexBuffer(vk_context->get_cur_command_buffer(), vk_mesh->get_mesh_info().index_buffer, 0, VK_INDEX_TYPE_UINT32);
+					MVP_Struct ubo{};
+					ubo.model = render_object.transformMatrix;
+					ubo.view = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
+					ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
+					ubo.proj[1][1] *= -1;
 
-					vkCmdDrawIndexedIndirect(vk_context->get_cur_command_buffer(), render_scene->gpu_driven->drawIndirectBuffer._buffer, i * sizeof(GPUIndirectObject), 1, sizeof(GPUIndirectObject));
+					uint32_t offset = cpu_ubo_buffer.push(ubo);
+
+
+
+					vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &(descriptor_sets[0]), 1, &offset);
+
+					vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 1, 1, &(material->pass_sets[MeshpassType::Forward]), 0, nullptr);
+
+					vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 2, 1, &object_data_set, 0, nullptr);
+
+					vkCmdPushConstants(command_buffer, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
+
+
+					VK_Mesh* vk_mesh = dynamic_cast<VK_Mesh*>(mesh->original);
+					if (vk_mesh)
+					{
+						vk_mesh->init_mesh_info(cur_context.lock().get());
+
+						VkBuffer vertexBuffers[] = { vk_mesh->get_mesh_info().vertex_buffer };
+						VkDeviceSize offsets[] = { 0 };
+
+						vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
+
+						vkCmdBindIndexBuffer(command_buffer, vk_mesh->get_mesh_info().index_buffer, 0, VK_INDEX_TYPE_UINT32);
+
+						vkCmdDrawIndexedIndirect(command_buffer, render_scene->gpu_driven->drawIndirectBuffer._buffer, i * sizeof(GPUIndirectObject), 1, sizeof(GPUIndirectObject));
+					}
 				}
 			}
 		}
@@ -639,34 +742,7 @@ namespace MXRender
 
 		vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, &descriptor_sets[1], 0, nullptr);
 
-		//ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		//ubo.proj = glm::perspective(glm::radians(60.0f), (float)cur_context.lock()->get_swapchain_extent().width / (float)cur_context.lock()->get_swapchain_extent().height, 0.1f, 1000.0f);
-
-
-
 		update_camera_uniform();
-
-		for(int i=0;i< Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list.size();i++)
-		{ 
-			
-			if (Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_material()!=nullptr)
-			{
-				 Material* material = Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_material();
-				vkCmdBindPipeline(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
-
-				vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 1, 1, &(material->pass_sets[MeshpassType::Forward]), 0, nullptr);
-				update_object_uniform(&Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i], (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout));
-
-				vkCmdPushConstants(vk_context->get_cur_command_buffer(), (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
-
-
-			}
-			else
-			{ 
-				update_object_uniform(&Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i],pipeline_layout);
-			}
-			render_mesh(Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i].get_staticmesh());
-		}
 
 
 		if (Singleton<DefaultSetting>::get_instance().is_enable_dispatch)
@@ -677,17 +753,18 @@ namespace MXRender
 			for(unsigned int i=0;i< thread_num;i++)
 			{ 
 				
-				auto fut= Singleton<DefaultSetting>::get_instance().task_system->thread_pool.submit_message(&Mesh_RenderPass::dispatch_render_mesh,this, clip_size*i, clip_size*(i+1), descriptor_sets[0]);
+				auto fut= Singleton<DefaultSetting>::get_instance().task_system->thread_pool.submit_message(&Mesh_RenderPass::dispatch_render_mesh,this,render_scene, clip_size*i, clip_size*(i+1), descriptor_sets[0]);
 				vk_context->fut_que.push(std::move(fut));
 			}
 			//vk_context->execute_all_threadid_command_buffer();
 		}
 		else
 		{
-			for (int i = 0; i < Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables.size(); i++)
+			for (int i = 0; i < render_scene->get_renderables_size(); i++)
 			{
-
-				render_mesh(&(Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables[i]), descriptor_sets[0], cur_context.lock()->get_cur_command_buffer());
+				auto* it=const_cast<RenderObject*>(&(render_scene->get_renderable_obj(i)));
+				render_mesh(render_scene,it, descriptor_sets[0], cur_context.lock()->get_cur_command_buffer());
+				//render_mesh(&(Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables[i]), descriptor_sets[0], cur_context.lock()->get_cur_command_buffer());
 			}
 		}
 	}

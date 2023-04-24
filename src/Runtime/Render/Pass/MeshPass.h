@@ -81,8 +81,10 @@ namespace MXRender
         void update_camera_uniform();
         void render_mesh(ComponentBase* mesh_component);
         void render_mesh(MeshObject* mesh_component, VkDescriptorSet GlobalSet,VkCommandBuffer command_buffer);
+
         void render_mesh(RenderScene* render_scene, RenderObject* render_object,VkDescriptorSet global_set,VkCommandBuffer command_buffer);
-        void dispatch_render_mesh(unsigned int start_index , unsigned int end_index, VkDescriptorSet GlobalSet);
+        void dispatch_render_mesh(RenderScene* render_scene, unsigned int start_index , unsigned int end_index, VkDescriptorSet GlobalSet);
+        void dispatch_gpudriven_render_mesh(RenderScene* render_scene, unsigned int start_index, unsigned int end_index, VkDescriptorSet global_set, VkDescriptorSet object_data_set);
 		std::vector<VkBuffer> uniform_buffers;
 		std::vector<VkDeviceMemory> uniform_buffers_memory;
 
@@ -93,7 +95,6 @@ namespace MXRender
         std::shared_ptr< VK_DescriptorSetLayout> descriptorset_layout2;
         std::shared_ptr< VK_Texture> cubemap_texture;
 
-        VkDescriptorSet GlobalSet;
         DynamicCPUUniformBuffer cpu_ubo_buffer;
         void draw_gpudriven(GraphicsContext* context, RenderScene* render_scene = nullptr);
     public:

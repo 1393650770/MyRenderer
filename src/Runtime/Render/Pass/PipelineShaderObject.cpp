@@ -252,7 +252,7 @@ namespace MXRender
 
 		PipelineShaderObject* mesh_pso =  build_pso(context->mesh_pass, mesh_pass_builder, default_color);
 		PipelineShaderObject* pbr_mesh_pso = build_pso(context->mesh_pass, mesh_pass_builder, pbr_material);
-		PipelineShaderObject* mesh_gpu_driven_pso = build_pso(context->mesh_pass, mesh_pass_builder, default_color_gpu_driven);
+		PipelineShaderObject* mesh_gpu_driven_pso = build_pso(context->mesh_pass, mesh_transparency_pass_builder, default_color_gpu_driven);
 		PipelineShaderObject* pbr_mesh_gpu_driven_pso = build_pso(context->mesh_pass, mesh_pass_builder, pbr_material_gpu_driven);
 		PipelineShaderObject* gpu_driven_mesh_pso = build_pso(context->mesh_pass, mesh_transparency_pass_builder, gpu_driven_material);
 		PipelineShaderObject* default_transparency_pso = build_pso(context->mesh_pass, mesh_transparency_pass_builder, default_transparency_material);
