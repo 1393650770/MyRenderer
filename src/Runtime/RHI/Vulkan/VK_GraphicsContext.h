@@ -57,7 +57,8 @@ namespace MXRender
 	};
 
 	const std::vector<const char*> deviceExtensions = {
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        "VK_EXT_sampler_filter_minmax"
 	};
 
     class VK_Device;
@@ -97,6 +98,8 @@ namespace MXRender
         void create_command_pool();
         void create_command_buffer();
         void create_sync_object();
+
+        void create_depth_pyramid_image();
 
         VkResult create_debug_utils_messengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
         void destroy_debug_utils_messengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
@@ -151,6 +154,7 @@ namespace MXRender
 		VkDeviceMemory depth_image_memory{ VK_NULL_HANDLE };
 		VkImageView    depth_image_view{ VK_NULL_HANDLE };
 
+
         bool framebufferResized = false;
 
         std::vector<std::function<void()>>  on_swapchain_recreate;
@@ -172,6 +176,14 @@ namespace MXRender
         std::unordered_map<VkCommandBuffer, unsigned int> thread_command_buffer_use_map;
 
         std::queue<std::future<void>> fut_que;
+
+		AllocatedImage depth_pyramid_image;
+		int depth_pyramid_width;
+		int depth_pyramid_height;
+		int depth_pyramid_levels;
+		VkSampler depth_sampler=VK_NULL_HANDLE;
+		VkImageView depth_pyramid_mips[16] = {};
+
         VmaAllocator _allocator;
         VK_GraphicsContext();
         virtual ~VK_GraphicsContext();

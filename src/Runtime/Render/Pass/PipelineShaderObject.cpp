@@ -90,13 +90,12 @@ namespace MXRender
 			//need to build the material
 			Material* newMat = new Material();
 			newMat->pass_pso = &templateCache[info.baseTemplate];
-			newMat->parameters = info.parameters;
+			//newMat->parameters = info.parameters;
 			newMat->textures=info.textures;
 			////not handled yet
 			newMat->pass_sets[MeshpassType::DirectionalShadow] = VK_NULL_HANDLE;
 
-			DescriptorBuilder db = DescriptorBuilder::begin(descriptorlayout_cache,descriptor_pool);
-			db.image_infos.resize(info.textures.size());
+			DescriptorBuilder db = DescriptorBuilder::begin(descriptorlayout_cache, cache_pool);
 			for (int i = 0; i < info.textures.size(); i++)
 			{
 				db.image_infos[i].sampler = info.textures[i].sampler;
@@ -107,8 +106,8 @@ namespace MXRender
 			}
 
 				
-			db.build(newMat->pass_sets[MeshpassType::Forward],false);
-			db.build(newMat->pass_sets[MeshpassType::Transparency], false);
+			db.build(newMat->pass_sets[MeshpassType::Forward]);
+			db.build(newMat->pass_sets[MeshpassType::Transparency]);
 			//add material to cache
 			materialCache[info] = (newMat);
 			mat = newMat;
@@ -137,6 +136,32 @@ namespace MXRender
 			//default depthtesting
 			mesh_pass_builder._depthStencil = VK_Utils::Depth_Stencil_Create_Info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
 		}
+
+		{
+
+			mesh_transparency_pass_builder.vertexDescription = SimpleVertex::get_vertex_description();
+
+			mesh_transparency_pass_builder._inputAssembly = VK_Utils::Input_Assembly_Create_Info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+
+
+			mesh_transparency_pass_builder._rasterizer = VK_Utils::Rasterization_State_Create_Info(VK_POLYGON_MODE_FILL);
+			mesh_transparency_pass_builder._rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;//BACK_BIT;
+			mesh_transparency_pass_builder._rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+			mesh_transparency_pass_builder._multisampling = VK_Utils::Multisampling_State_Create_Info();
+
+			mesh_transparency_pass_builder._colorBlendAttachment = VK_Utils::Color_Blend_Attachment_State();
+
+			mesh_transparency_pass_builder._colorBlendAttachment.blendEnable=VK_TRUE;
+			mesh_transparency_pass_builder._colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+			mesh_transparency_pass_builder._colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			mesh_transparency_pass_builder._colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+			mesh_transparency_pass_builder._colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			mesh_transparency_pass_builder._colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			mesh_transparency_pass_builder._colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+			//default depthtesting
+			mesh_transparency_pass_builder._depthStencil = VK_Utils::Depth_Stencil_Create_Info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
+		}
 	}
 
 	void MaterialSystem::build_default_pso()
@@ -156,14 +181,19 @@ namespace MXRender
 		}
 	}
 
-	MXRender::VK_DescriptorPool* MaterialSystem::get_descript_pool() const
+	MXRender::VK_DescriptorPool* MaterialSystem::get_descript_temp_pool() const
 	{
-		return descriptor_pool;
+		return descriptor_temp_pool;
 	}
 
 	MXRender::DescriptorLayoutCache* MaterialSystem::get_descriptorlayout_cache() const
 	{
 		return descriptorlayout_cache;
+	}
+
+	void MaterialSystem::reset_descript_temp_pool()
+	{
+		descriptor_temp_pool->reset_descript_pool(0);
 	}
 
 	std::string MaterialSystem::create_template_name(const std::string& Name)
@@ -186,7 +216,8 @@ namespace MXRender
 	{
 		this->context=context;
 		build_pipeline_builder();
-		descriptor_pool=new VK_DescriptorPool(context->device,50000);
+		cache_pool =new VK_DescriptorPool(context->device,100000);
+		descriptor_temp_pool = new VK_DescriptorPool(context->device, 150000);
 		descriptorlayout_cache=new DescriptorLayoutCache();
 		descriptorlayout_cache->init(context->device->device);
 
@@ -196,9 +227,11 @@ namespace MXRender
 		VK_Shader* pbr_material = new  VK_Shader(context->device, "Shader/pbr_mesh_vert.spv", "Shader/pbr_mesh_frag.spv");
 		VK_Shader* pbr_material_gpu_driven = new  VK_Shader(context->device, "Shader/gpu_driven_tri_vert.spv", "Shader/pbr_mesh_frag.spv");
 
-		VK_Shader* gpu_driven_material = new  VK_Shader(context->device, "Shader/gpu_driven_tri_vert.spv", "Shader/mesh_rock_frag.spv");
-		VK_Shader* upload_comp= new VK_Shader(context->device, "", "","","Shader/upload_comp.spv");
-		VK_Shader* gpu_culling_comp = new VK_Shader(context->device, "", "", "", "Shader/gpu_culling_comp.spv");
+		VK_Shader* gpu_driven_material = new  VK_Shader(context->device, "Shader/gpu_driven_tri_vert.spv", "Shader/mesh_rock_transparency_frag.spv");
+
+		VK_Shader* default_transparency_material = new  VK_Shader(context->device, "Shader/pbr_mesh_vert.spv", "Shader/mesh_rock_transparency_frag.spv");
+
+
 		VK_Shader::ReflectionOverrides overrides[] = {
 			{"mvp", VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC}	
 		};
@@ -207,32 +240,33 @@ namespace MXRender
 		default_color_gpu_driven->reflect_layout(overrides, 1);
 		pbr_material_gpu_driven->reflect_layout(overrides, 1);
 		gpu_driven_material->reflect_layout(overrides, 1);
-		upload_comp->reflect_layout(nullptr,0);
-		gpu_culling_comp->reflect_layout(nullptr, 0);
+		default_transparency_material->reflect_layout(overrides, 1);
 
-		shaders["upload_comp"]=upload_comp;
 		shaders["default_mesh"] = default_color;
 		shaders["pbr_mesh"]=pbr_material;
 		shaders["default_mesh_gpu_driven"] = default_color_gpu_driven;
 		shaders["pbr_mesh_gpu_driven"] = pbr_material_gpu_driven;
 		shaders["gpu_driven_mesh"] = gpu_driven_material;
-		shaders["gpu_culling"] = gpu_culling_comp;
+		shaders["default_transparency"] = default_transparency_material;
+
 
 		PipelineShaderObject* mesh_pso =  build_pso(context->mesh_pass, mesh_pass_builder, default_color);
 		PipelineShaderObject* pbr_mesh_pso = build_pso(context->mesh_pass, mesh_pass_builder, pbr_material);
 		PipelineShaderObject* mesh_gpu_driven_pso = build_pso(context->mesh_pass, mesh_pass_builder, default_color_gpu_driven);
 		PipelineShaderObject* pbr_mesh_gpu_driven_pso = build_pso(context->mesh_pass, mesh_pass_builder, pbr_material_gpu_driven);
-		PipelineShaderObject* gpu_driven_mesh_pso = build_pso(context->mesh_pass, mesh_pass_builder, gpu_driven_material);
-		PipelineShaderObject* upload_comp_pso= build_comp_pso(upload_comp);
-		PipelineShaderObject* gpu_culling_comp_pso = build_comp_pso(gpu_culling_comp);
+		PipelineShaderObject* gpu_driven_mesh_pso = build_pso(context->mesh_pass, mesh_transparency_pass_builder, gpu_driven_material);
+		PipelineShaderObject* default_transparency_pso = build_pso(context->mesh_pass, mesh_transparency_pass_builder, default_transparency_material);
 
 		psos["mesh_pass"] = mesh_pso;
 		psos["pbr_pass"] = pbr_mesh_pso;
 		psos["mesh_gpu_driven_pass"] = mesh_gpu_driven_pso;
 		psos["pbr_gpu_driven_pass"] = pbr_mesh_gpu_driven_pso;
-		psos["upload_comp"] = upload_comp_pso;
 		psos["gpu_driven_pso"] = gpu_driven_mesh_pso;
-		psos["gpu_culling_comp"] = gpu_culling_comp_pso;
+		psos["default_transparency_pso"] = default_transparency_pso;
+
+		CREATE_COMPUTE_PSO_WITHOUT_OVERRIDE("Shader/depth_reduce_comp.spv",depth_reduce)
+		CREATE_COMPUTE_PSO_WITHOUT_OVERRIDE("Shader/gpu_culling_comp.spv", gpu_culling)
+		CREATE_COMPUTE_PSO_WITHOUT_OVERRIDE("Shader/upload_comp.spv", upload)
 
 		templateCache["mesh_base"].pass_pso[MeshpassType::Forward]= mesh_pso;
 		templateCache["mesh_base"].pass_pso[MeshpassType::Transparency] = nullptr;
@@ -253,14 +287,19 @@ namespace MXRender
 		templateCache["mesh_gpu_driven"].pass_pso[MeshpassType::Forward] = gpu_driven_mesh_pso;
 		templateCache["mesh_gpu_driven"].pass_pso[MeshpassType::Transparency] = nullptr;
 		templateCache["mesh_gpu_driven"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
+
+		templateCache["default_transparency"].pass_pso[MeshpassType::Forward] = default_transparency_pso;
+		templateCache["default_transparency"].pass_pso[MeshpassType::Transparency] = nullptr;
+		templateCache["default_transparency"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
 	}
 
 	void MaterialSystem::destroy()
 	{
 
-		delete descriptor_pool;
-		descriptor_pool=nullptr;
-
+		delete descriptor_temp_pool;
+		descriptor_temp_pool=nullptr;
+		delete cache_pool;
+		cache_pool=nullptr;
 		descriptorlayout_cache->cleanup();
 		delete descriptorlayout_cache;
 

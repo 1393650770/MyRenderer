@@ -18,5 +18,5 @@ layout(set = 0, binding = 1) uniform  CameraData{
 } cameraData;
 
 void main() {
-    outColor =vec4(texture(basecolor_sampler, texCoord).rgba);
+    outColor =vec4(texture(basecolor_sampler, texCoord).rgb,z);
 }

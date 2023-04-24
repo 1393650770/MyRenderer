@@ -22,12 +22,15 @@ namespace MXRender
     class VK_DescriptorPool
     {
     private:
-        ;
+        VkDescriptorPool create_pool();
+        VkDescriptorPool grab_pool();
     protected:
         std::weak_ptr<VK_Device> device;
-        const unsigned int max_descriptorsets;
-        VkDescriptorPool descriptor_pool;
-        std::unordered_map<VkDescriptorSetLayout, VkDescriptorSet> descriptor_cache;
+        std::unordered_map<VkDescriptorPool,std::vector<VkDescriptorSet>> already_create_set;
+        const unsigned int max_descriptorsets=0;
+        VkDescriptorPool descriptor_pool=VK_NULL_HANDLE;
+		std::vector<VkDescriptorPool> used_pools;
+		std::vector<VkDescriptorPool> free_pools;
     public:
         
         VK_DescriptorPool(std::shared_ptr<VK_Device> InDevice, unsigned int InMaxDescriptorSets);
@@ -37,9 +40,12 @@ namespace MXRender
         std::weak_ptr<VK_Device> get_device() const;
         unsigned int get_max_descriptorsets() const;
         const VkDescriptorPool& get_descriptor_pool();
-        bool allocate_descriptorset(VkDescriptorSetLayout Layout, VkDescriptorSet& OutSet, bool b_use_set_cache=true);
-        bool allocate_descriptorsets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets, bool b_use_set_cache=true);
+        bool allocate_descriptorset(VkDescriptorSetLayout Layout, VkDescriptorSet& OutSet);
+        bool allocate_descriptorsets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets);
+        void reset_descript_pool(VkDescriptorPoolResetFlags flags);
     };
+
+    
 
     class VK_DescriptorSetLayout
     {
@@ -130,7 +136,8 @@ namespace MXRender
 	};
 
 
-	class DescriptorBuilder {
+	class DescriptorBuilder 
+    {
 	public:
 
 		static DescriptorBuilder begin(DescriptorLayoutCache* cache,VK_DescriptorPool* allocator);
@@ -139,9 +146,9 @@ namespace MXRender
 
 		DescriptorBuilder& bind_image(uint32_t binding, VkDescriptorImageInfo* imageInfo, VkDescriptorType type, VkShaderStageFlags stageFlags);
 
-		bool build(VkDescriptorSet& set, VkDescriptorSetLayout& layout, bool b_use_set_cache = true);
-		bool build(VkDescriptorSet& set,bool b_use_set_cache=true);
-        std::vector<VkDescriptorImageInfo> image_infos;
+		bool build(VkDescriptorSet& set, VkDescriptorSetLayout& layout);
+		bool build(VkDescriptorSet& set);
+        std::unordered_map<int,VkDescriptorImageInfo> image_infos;
 	private:
         
 		std::vector<VkWriteDescriptorSet> writes;

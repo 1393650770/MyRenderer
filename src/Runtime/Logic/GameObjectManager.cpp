@@ -250,6 +250,36 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 			}
 		}
 	}
+	else
+	{
+		Material* default_transparency = Singleton<DefaultSetting>::get_instance().material_system->get_material("default_transparency");
+		if (!default_transparency)
+		{
+
+			std::string texture_path = "Resource/Texture/viking_room.png";
+			VK_Texture* texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("viking_room", ENUM_TEXTURE_TYPE::ENUM_TYPE_2D, texture_path);
+			MaterialData info;
+			info.parameters = nullptr;
+			info.textures.clear();
+			SampledTexture tex;
+			tex.view = texture->textureImageView;
+			tex.sampler = texture->textureSampler;
+			info.textures.push_back(tex);
+			info.baseTemplate = Singleton<DefaultSetting>::get_instance().material_system->create_template_name("default_transparency");
+
+			default_transparency = Singleton<DefaultSetting>::get_instance().material_system->build_material("default_transparency", info);
+
+			if (!default_transparency)
+			{
+				std::cout << "Error When building material";
+			}
+			else
+			{
+				object_list[0].set_material(default_transparency);
+				object_list[1].set_material(default_transparency);
+			}
+		}
+	}
 }
 
 void MXRender::GameObjectManager::start_load_asset(GraphicsContext* context)

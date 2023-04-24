@@ -35,6 +35,9 @@ MXRender::DeferRender::~DeferRender()
 void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context,RenderScene* render_scene)
 {
 	if(context.expired()) return ;
+	context.lock()->pre_pass();
+
+	Singleton<DefaultSetting>::get_instance().material_system->reset_descript_temp_pool();
 
 	if (Singleton<DefaultSetting>::get_instance().is_enable_gpu_driven)
 	{
@@ -48,7 +51,9 @@ void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context,Rende
 
 	}
 
-	context.lock()->pre_pass();
+
+
+
 
 	main_camera_pass->begin_pass(context.lock().get());
 
@@ -58,10 +63,18 @@ void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context,Rende
 	OPTICK_POP()
 
 	main_camera_pass->draw(context.lock().get());
+
 	OPTICK_PUSH("UiDraw")
 	ui_pass->draw(context.lock().get());
 	OPTICK_POP()
+
 	main_camera_pass->end_pass(context.lock().get());
+
+
+	if (Singleton<DefaultSetting>::get_instance().is_enable_gpu_driven)
+	{
+		render_scene->gpu_driven->execute_reduce_depth_computepass(render_scene);
+	}
 
 	OPTICK_PUSH("SubmitQueueAndWaitIdle")
 	context.lock()->submit();

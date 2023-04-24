@@ -50,6 +50,7 @@ namespace MXRender
         virtual ~MeshBase();
         std::vector<SimpleVertex> vertices;
         std::vector<uint32_t> indices;
+        RenderBounds bounds;
         void load_model(const std::string& filename);
         bool load_asset(const  char* filename);
         virtual void destroy_mesh_info(GraphicsContext* context);

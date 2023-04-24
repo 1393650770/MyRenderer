@@ -19,6 +19,11 @@ layout(set = 1, binding = 3) uniform samplerCube cubemap_sampler;
 layout(set = 1, binding = 4) uniform samplerCube cubemap_irr_sampler;
 layout(set = 1, binding = 5) uniform sampler2D ibl_lut_sampler;
 
+layout(push_constant) uniform  constants{   
+   float z;
+};
+
+
 layout(set = 0, binding = 1) uniform  CameraData{   
     vec3 viewPos; // w is for exponent
     vec3 viewDir;

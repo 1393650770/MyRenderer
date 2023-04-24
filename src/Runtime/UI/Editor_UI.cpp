@@ -367,6 +367,7 @@ void MXRender::EditorUI::show_editor_right_ui()
 			return;
 		}
 		TransformComponent* transform = object_detail->get_component(TransformComponent);
+		StaticMeshComponent* static_mesh = object_detail->get_component(StaticMeshComponent);
 		std::string name = object_detail->get_name();
 		glm::vec3 translation = transform->get_translation();
 		glm::vec3 scale = transform->get_scale();
@@ -396,7 +397,12 @@ void MXRender::EditorUI::show_editor_right_ui()
 			ImGui::DragFloat("rotation y", &rotation.g);
 			ImGui::DragFloat("rotation z", &rotation.b);
 		}
-
+		if (ImGui::CollapsingHeader("MaterialComponent", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			ImGui::Text("%s", "pushconstant test");
+			ImGui::DragFloat("pushconstant z", &(static_mesh->get_material()->parameters.z));
+			ImGui::Separator();
+		}
 		transform->set_translation(translation);
 		transform->set_scale(scale);
 		transform->set_rotation(rotation);

@@ -135,6 +135,12 @@ namespace MXRender
 		VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 		colorBlendAttachment.blendEnable = VK_FALSE;
+		colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+		colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+		colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 		VkPipelineColorBlendStateCreateInfo colorBlending{};
 		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -158,10 +164,16 @@ namespace MXRender
 		std::vector< VkDescriptorSetLayout> descriptors{
 			descriptorset_layout->get_descriptorset_layout(), descriptorset_layout2->get_descriptorset_layout()
 		};
+		VkPushConstantRange pushConstantRange = {};
+		pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		pushConstantRange.offset = 0;
+		pushConstantRange.size = sizeof(float);
+
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutInfo.setLayoutCount = descriptors.size();
-		//pipelineLayoutInfo.pushConstantRangeCount = 0;
+		pipelineLayoutInfo.pushConstantRangeCount = 1;
+		pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 		pipelineLayoutInfo.pSetLayouts = descriptors.data();
 
 		if (vkCreatePipelineLayout(cur_context.lock()->device->device, &pipelineLayoutInfo, nullptr, &pipeline_layout) != VK_SUCCESS) {
@@ -522,11 +534,24 @@ namespace MXRender
 
 				uint32_t offset = cpu_ubo_buffer.push(ubo);
 
+
+				VkDescriptorSet object_data_set = VK_NULL_HANDLE;
+				VkDescriptorBufferInfo objectData = render_scene->gpu_driven->objectDataBuffer.get_info();
+
+				VkDescriptorBufferInfo instanceIdMapData = render_scene->gpu_driven->instanceIdMapBuffer.get_info();
+				auto builder = DescriptorBuilder::begin(Singleton<DefaultSetting>::get_instance().material_system->get_descriptorlayout_cache(), Singleton<DefaultSetting>::get_instance().material_system->get_descript_temp_pool());
+				builder.bind_buffer(0, &objectData, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+				builder.bind_buffer(1, &instanceIdMapData, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+				builder.build(object_data_set);
+
 				vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &(descriptor_sets[0]), 1, &offset);
 
 				vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 1, 1, &(material->pass_sets[MeshpassType::Forward]), 0, nullptr);
 
-				vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 2, 1, &render_scene->gpu_driven->object_data_set, 0, nullptr);
+				vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 2, 1, &object_data_set, 0, nullptr);
+
+				vkCmdPushConstants(vk_context->get_cur_command_buffer(), (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
+
 
 				VK_Mesh* vk_mesh = dynamic_cast<VK_Mesh*>(mesh->original);
 				if (vk_mesh)
@@ -631,6 +656,10 @@ namespace MXRender
 
 				vkCmdBindDescriptorSets(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 1, 1, &(material->pass_sets[MeshpassType::Forward]), 0, nullptr);
 				update_object_uniform(&Singleton<DefaultSetting>::get_instance().gameobject_manager->object_list[i], (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout));
+
+				vkCmdPushConstants(vk_context->get_cur_command_buffer(), (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
+
+
 			}
 			else
 			{ 

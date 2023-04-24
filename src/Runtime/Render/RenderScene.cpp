@@ -26,7 +26,7 @@ namespace MXRender
 
 		OPTICK_PUSH("register_render_object")
 		RenderObject newObj;
-		//newObj.bounds = object->bounds;
+		newObj.bounds = game_object->get_staticmesh()->get_mesh_data().lock()->bounds;
 		newObj.transformMatrix = game_object->get_transform()->get_translation_matrix();
 		newObj.materialID = get_material_id(game_object->get_material());
 		newObj.meshID = get_mesh_id(game_object->get_staticmesh()->get_mesh_data().lock().get());

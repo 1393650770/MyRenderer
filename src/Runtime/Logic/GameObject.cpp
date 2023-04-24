@@ -53,13 +53,9 @@ MXRender::GameObject::GameObject(const std::string& name, const std::string& mes
 
 MXRender::GameObject::~GameObject()
 {
-	if (transform)
+	for (auto& it : component_array)
 	{
-		delete transform;
-	}
-	if (staticmesh)
-	{
-		delete staticmesh;
+		delete it;
 	}
 	//delete in materialsystem
 	//if (material)

@@ -95,7 +95,7 @@ namespace MXRender
 
 	struct ShaderParameters
 	{
-
+		float z=1.0f;
 	};
 
 	struct SampledTexture {
@@ -116,7 +116,7 @@ namespace MXRender
 		EffectTemplate* pass_pso;
 		PerPassData<VkDescriptorSet> pass_sets;
 		std::vector<SampledTexture> textures;
-		ShaderParameters* parameters;
+		ShaderParameters parameters;
         Material();
 		virtual ~Material();
         Material& operator=(const Material& other) = default;
@@ -146,9 +146,11 @@ namespace MXRender
 	private:
 	protected:
 		VK_GraphicsContext* context;
-		VK_DescriptorPool* descriptor_pool;
+		VK_DescriptorPool* cache_pool;
+		VK_DescriptorPool* descriptor_temp_pool;
 		DescriptorLayoutCache* descriptorlayout_cache;
 		PipelineBuilder mesh_pass_builder;
+		PipelineBuilder mesh_transparency_pass_builder;
 	public:
 		std::unordered_map<std::string, VK_Shader*> shaders;
 		std::unordered_map<std::string, PipelineShaderObject*> psos;
@@ -161,13 +163,23 @@ namespace MXRender
 		void build_pipeline_builder();
 		void build_default_pso();
 		Material* get_material(const std::string& materialName) const;
-		VK_DescriptorPool* get_descript_pool() const;
+		VK_DescriptorPool* get_descript_temp_pool() const;
 		DescriptorLayoutCache* get_descriptorlayout_cache() const;
+		void reset_descript_temp_pool();
 		std::string create_template_name(const std::string& Name);
 		MaterialSystem();
 		virtual ~MaterialSystem();
 		void init (VK_GraphicsContext* context);
 		void destroy();
+
+	#define CREATE_COMPUTE_PSO_WITHOUT_OVERRIDE(SHADER_PATH, NAME) \
+		VK_Shader* NAME##_comp = new VK_Shader(context->device, "", "", "", SHADER_PATH); \
+		NAME##_comp->reflect_layout(nullptr, 0);\
+		shaders[#NAME] = NAME##_comp;\
+		PipelineShaderObject* NAME##_comp_pso = build_comp_pso(NAME##_comp);\
+		psos[#NAME##"_comp"] = NAME##_comp_pso;
+
+
 	};
 }
 #endif

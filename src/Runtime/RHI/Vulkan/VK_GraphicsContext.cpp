@@ -123,6 +123,9 @@ void MXRender::VK_GraphicsContext::create_logical_device()
 
 	VkPhysicalDeviceFeatures deviceFeatures{};
 	deviceFeatures.multiDrawIndirect= VK_TRUE;
+	deviceFeatures.samplerAnisotropy = VK_TRUE;
+	//deviceFeatures.pipelineStatisticsQuery = VK_TRUE;
+	//deviceFeatures.drawIndirectFirstInstance = VK_TRUE;
 
 	VkDeviceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -241,7 +244,110 @@ void MXRender::VK_GraphicsContext::create_sync_object()
 	}
 }
 
+uint32_t previousPow2(uint32_t v)
+{
+	uint32_t r = 1;
 
+	while (r * 2 < v)
+		r *= 2;
+
+	return r;
+}
+uint32_t getImageMipLevels(uint32_t width, uint32_t height)
+{
+	uint32_t result = 1;
+
+	while (width > 1 || height > 1)
+	{
+		result++;
+		width /= 2;
+		height /= 2;
+	}
+
+	return result;
+}
+
+void MXRender::VK_GraphicsContext::create_depth_pyramid_image()
+{
+	VmaAllocationCreateInfo dimg_allocinfo = {};
+	dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	dimg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	depth_pyramid_width = previousPow2(swapchain_extent.width);
+	depth_pyramid_height = previousPow2(swapchain_extent.height);
+	depth_pyramid_levels = getImageMipLevels(depth_pyramid_width, depth_pyramid_height);
+
+	VkExtent3D pyramidExtent = {
+		static_cast<uint32_t>(depth_pyramid_width),
+		static_cast<uint32_t>(depth_pyramid_height),
+		1
+	};
+	//the depth image will be a image with the format we selected and Depth Attachment usage flag
+	VkImageCreateInfo pyramidInfo = VK_Utils::Image_Create_Info(VK_FORMAT_R32_SFLOAT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, pyramidExtent);
+
+	pyramidInfo.mipLevels = depth_pyramid_levels;
+
+	//allocate and create the image
+	vmaCreateImage(_allocator, &pyramidInfo, &dimg_allocinfo, &depth_pyramid_image._image, &depth_pyramid_image._allocation, nullptr);
+
+	//build a image-view for the depth image to use for rendering
+	VkImageViewCreateInfo priview_info =VK_Utils::Imageview_Create_Info(VK_FORMAT_R32_SFLOAT, depth_pyramid_image._image, VK_IMAGE_ASPECT_COLOR_BIT);
+	priview_info.subresourceRange.levelCount = depth_pyramid_levels;
+
+
+	vkCreateImageView(device->device, &priview_info, nullptr, &depth_pyramid_image._defaultView);
+
+
+	for (int32_t i = 0; i < depth_pyramid_levels; ++i)
+	{
+		VkImageViewCreateInfo level_info = VK_Utils::Imageview_Create_Info(VK_FORMAT_R32_SFLOAT, depth_pyramid_image._image, VK_IMAGE_ASPECT_COLOR_BIT);
+		level_info.subresourceRange.levelCount = 1;
+		level_info.subresourceRange.baseMipLevel = i;
+
+		VkImageView pyramid;
+		vkCreateImageView(device->device, &level_info, nullptr, &pyramid);
+
+		depth_pyramid_mips[i] = pyramid;
+		assert(depth_pyramid_mips[i]);
+	}
+
+
+
+
+
+	VkSamplerCreateInfo createInfo = {};
+
+	auto reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN;
+
+	createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	createInfo.magFilter = VK_FILTER_LINEAR;
+	createInfo.minFilter = VK_FILTER_LINEAR;
+	createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+	createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	createInfo.minLod = 0;
+	createInfo.maxLod = 16.f;
+
+	VkSamplerReductionModeCreateInfoEXT createInfoReduction = { VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT };
+
+	if (reductionMode != VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE_EXT)
+	{
+		createInfoReduction.reductionMode = reductionMode;
+
+		createInfo.pNext = &createInfoReduction;
+	}
+
+
+	vkCreateSampler(device->device, &createInfo, 0, &depth_sampler);
+
+
+	VK_Utils::Immediate_Submit(this, [&](VkCommandBuffer cmd) {
+			VK_Utils::Transition_ImageLayout(Singleton<DefaultSetting>::get_instance().context, depth_pyramid_image._image
+			, VK_IMAGE_LAYOUT_UNDEFINED
+			, VK_IMAGE_LAYOUT_GENERAL,1,depth_pyramid_levels, VK_IMAGE_ASPECT_COLOR_BIT);
+		});
+}
 
 VkResult MXRender::VK_GraphicsContext::create_debug_utils_messengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
 {
@@ -495,7 +601,7 @@ void MXRender::VK_GraphicsContext::init(Window* new_window)
 	create_command_buffer();
 	create_sync_object();
 	init_pass();
-
+	create_depth_pyramid_image();
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
 	viewport.width = get_swapchain_extent().width;
@@ -622,6 +728,9 @@ void MXRender::VK_GraphicsContext::recreate_swapchain()
 	{
 		func();
 	}
+
+	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_width(width);
+	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_width(height);
 }
 
 void MXRender::VK_GraphicsContext::clean_swapchain()
@@ -677,8 +786,8 @@ void MXRender::VK_GraphicsContext::create_framebuffer_imageAndview()
 		swapchain_extent.height,
 		depth_image_format,
 		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-		VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+		 VK_IMAGE_USAGE_SAMPLED_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		depth_image,
 		depth_image_memory,
@@ -896,7 +1005,8 @@ void MXRender::VK_GraphicsContext::add_on_shutdown_clean_func(const std::functio
 void MXRender::VK_GraphicsContext::pre_pass()
 {
 	vkWaitForFences(device->device, 1, &frame_in_flight_fence[current_frame_index], VK_TRUE, UINT64_MAX);
-
+	vkResetFences(device->device, 1, &frame_in_flight_fence[current_frame_index]);
+	vkQueueWaitIdle(graphicsQueue);
 
 	VkResult result = vkAcquireNextImageKHR(device->device, swapchain, UINT64_MAX, image_available_for_render_semaphore[current_frame_index], VK_NULL_HANDLE, &current_swapchain_image_index);
 
@@ -908,7 +1018,6 @@ void MXRender::VK_GraphicsContext::pre_pass()
 		throw std::runtime_error("failed to acquire swap chain image!");
 	}
 
-	vkResetFences(device->device, 1, &frame_in_flight_fence[current_frame_index]);
 
 	reset_all_threadid_command_buffer();
 	vkResetCommandBuffer(command_buffer[current_frame_index], /*VkCommandBufferResetFlagBits*/ 0);

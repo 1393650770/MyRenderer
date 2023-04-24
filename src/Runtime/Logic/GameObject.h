@@ -9,6 +9,8 @@
 #include "Component/TransformComponent.h"
 #include "Component/StaticMeshComponent.h"
 
+namespace MXRender { class MaterialComponent; }
+
 namespace MXRender { struct MeshObject; }
 
 namespace MXRender { class Material; }
@@ -25,7 +27,6 @@ namespace MXRender
 
 		TransformComponent* transform=nullptr;
 		StaticMeshComponent* staticmesh=nullptr;
-
 		std::string name;
 
 	public:

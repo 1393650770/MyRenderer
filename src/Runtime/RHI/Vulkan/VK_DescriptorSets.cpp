@@ -9,9 +9,8 @@
 namespace MXRender
 {
 
-	VK_DescriptorPool::VK_DescriptorPool(std::shared_ptr<VK_Device> InDevice, unsigned int InMaxDescriptorSets):device(InDevice),max_descriptorsets(InMaxDescriptorSets)
+	VkDescriptorPool VK_DescriptorPool::create_pool()
 	{
-		if (device.expired()) return;
 		const unsigned int LimitMaxUniformBuffers = max_descriptorsets * 2;
 		const unsigned int LimitMaxSamplers = max_descriptorsets / 2;
 		const unsigned int LimitMaxCombinedImageSamplers = max_descriptorsets * 3;
@@ -62,36 +61,69 @@ namespace MXRender
 
 
 		VkDescriptorPoolCreateInfo PoolInfo;
-		PoolInfo.sType= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		PoolInfo.flags= 0;
+		PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		PoolInfo.flags = 0;
 		PoolInfo.poolSizeCount = Types.size();
 		PoolInfo.pPoolSizes = Types.data();
 		PoolInfo.maxSets = max_descriptorsets;
-		PoolInfo.pNext=0U;
-
-		if (vkCreateDescriptorPool(device.lock()->device, &PoolInfo, nullptr, &descriptor_pool) != VK_SUCCESS) {
+		PoolInfo.pNext = 0U;
+		VkDescriptorPool temp_descriptor_pool;
+		if (vkCreateDescriptorPool(device.lock()->device, &PoolInfo, nullptr, &temp_descriptor_pool) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create descriptor pool!");
 		}
+		return temp_descriptor_pool;
+	}
+
+	VkDescriptorPool VK_DescriptorPool::grab_pool()
+	{
+		if (free_pools.size() > 0)
+		{
+			VkDescriptorPool pool = free_pools.back();
+			free_pools.pop_back();
+			return pool;
+		}
+		else 
+		{
+			return create_pool();
+		}
+	}
+
+	VK_DescriptorPool::VK_DescriptorPool(std::shared_ptr<VK_Device> InDevice, unsigned int InMaxDescriptorSets) :device(InDevice), max_descriptorsets(InMaxDescriptorSets)
+	{
+		if (device.expired()) return;
 	}
 
 	VK_DescriptorPool::~VK_DescriptorPool()
 	{
-		if (descriptor_pool != VK_NULL_HANDLE&&device.expired()==false)
-		{
-			vkDestroyDescriptorPool(device.lock()->device, descriptor_pool, nullptr);
+		if (device.expired()==false)
+		{	
+			if(descriptor_pool != VK_NULL_HANDLE)
+			{ 
+				vkDestroyDescriptorPool(device.lock()->device, descriptor_pool, nullptr);
+			}
+			//delete every pool held
+			for (auto p : free_pools)
+			{
+				vkDestroyDescriptorPool(device.lock()->device , p, nullptr);
+			}
+			for (auto p : used_pools)
+			{
+				vkDestroyDescriptorPool(device.lock()->device , p, nullptr);
+			}
 		}
+
 	}
 
-	bool VK_DescriptorPool::allocate_descriptorset(VkDescriptorSetLayout Layout, VkDescriptorSet& OutSet, bool b_use_set_cache)
+	bool VK_DescriptorPool::allocate_descriptorset(VkDescriptorSetLayout Layout, VkDescriptorSet& OutSet)
 	{
-		if (descriptor_pool == VK_NULL_HANDLE|| device.expired())
+		if (device.expired())
 		{
 			return false;
 		}
-		if (b_use_set_cache&&descriptor_cache.find(Layout)!=descriptor_cache.end())
+		if (descriptor_pool == VK_NULL_HANDLE)
 		{
-			OutSet= descriptor_cache[Layout];
-			return true;
+			descriptor_pool = grab_pool();
+			used_pools.push_back(descriptor_pool);
 		}
 
 		VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo;
@@ -100,42 +132,109 @@ namespace MXRender
 		DescriptorSetAllocateInfo.descriptorSetCount = 1;
 		DescriptorSetAllocateInfo.pSetLayouts = &Layout;
 		DescriptorSetAllocateInfo.pNext=VK_NULL_HANDLE;
-		if (vkAllocateDescriptorSets(device.lock()->device, &DescriptorSetAllocateInfo, &OutSet) == VK_SUCCESS)
-		{
-			if (b_use_set_cache)
-			{
-				descriptor_cache[Layout]=OutSet;
-			}
+		VkResult allocResult = vkAllocateDescriptorSets(device.lock()->device, &DescriptorSetAllocateInfo, &OutSet) ;
+		bool needReallocate = false;
+
+		switch (allocResult) {
+		case VK_SUCCESS:
+			//all good, return
+			already_create_set[descriptor_pool].push_back(OutSet);
 			return true;
+
+			break;
+		case VK_ERROR_FRAGMENTED_POOL:
+		case VK_ERROR_OUT_OF_POOL_MEMORY:
+			//reallocate pool
+			needReallocate = true;
+			break;
+		default:
+			//unrecoverable error
+			needReallocate = true;
+			return false;
+		}
+
+		if (needReallocate)
+		{
+			//allocate a new pool and retry
+			descriptor_pool = grab_pool();
+			used_pools.push_back(descriptor_pool);
+
+			allocResult = vkAllocateDescriptorSets(device.lock()->device, &DescriptorSetAllocateInfo, &OutSet);
+
+			if (allocResult == VK_SUCCESS)
+			{
+				already_create_set[descriptor_pool].push_back(OutSet);
+				return true;
+			}
 		}
 		return false;
 
 	}
 
-	bool VK_DescriptorPool::allocate_descriptorsets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets, bool b_use_set_cache)
+	bool VK_DescriptorPool::allocate_descriptorsets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets)
 	{
-		if (descriptor_pool == VK_NULL_HANDLE || device.expired())
+		if (device.expired())
 		{
 			return false;
 		}
-		if (b_use_set_cache && descriptor_cache.find(*(InDescriptorSetAllocateInfo.pSetLayouts)) != descriptor_cache.end())
+		if (descriptor_pool == VK_NULL_HANDLE)
 		{
-			OutSets = descriptor_cache[*(InDescriptorSetAllocateInfo.pSetLayouts)];
-			return true;
+			descriptor_pool = grab_pool();
+			used_pools.push_back(descriptor_pool);
 		}
+
 		VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo = InDescriptorSetAllocateInfo;
 		DescriptorSetAllocateInfo.descriptorPool = descriptor_pool;
-		if (vkAllocateDescriptorSets(device.lock()->device, &DescriptorSetAllocateInfo, &OutSets) == VK_SUCCESS)
-		{
-			if (b_use_set_cache)
-			{
-				descriptor_cache[*(InDescriptorSetAllocateInfo.pSetLayouts)] = OutSets;
-			}
+		VkResult allocResult = vkAllocateDescriptorSets(device.lock()->device, &DescriptorSetAllocateInfo, &OutSets);
+		bool needReallocate = false;
+
+		switch (allocResult) {
+		case VK_SUCCESS:
+			already_create_set[descriptor_pool].push_back(OutSets);
 			return true;
+
+			break;
+		case VK_ERROR_FRAGMENTED_POOL:
+		case VK_ERROR_OUT_OF_POOL_MEMORY:
+			//reallocate pool
+			needReallocate = true;
+			break;
+		default:
+			//unrecoverable error
+			return false;
+		}
+
+		if (needReallocate)
+		{
+			//allocate a new pool and retry
+			descriptor_pool = grab_pool();
+			used_pools.push_back(descriptor_pool);
+
+			allocResult = vkAllocateDescriptorSets(device.lock()->device, &DescriptorSetAllocateInfo, &OutSets);
+
+			if (allocResult == VK_SUCCESS)
+			{
+				already_create_set[descriptor_pool].push_back(OutSets);
+				return true;
+			}
 		}
 		return false;
 		
 
+	}
+
+	void VK_DescriptorPool::reset_descript_pool(VkDescriptorPoolResetFlags flags)
+	{
+
+
+		for (auto p : used_pools)
+		{
+			vkResetDescriptorPool(device.lock()->device, p, flags);
+		}
+
+		free_pools = used_pools;
+		used_pools.clear();
+		descriptor_pool = VK_NULL_HANDLE;
 	}
 
 	std::weak_ptr<VK_Device> VK_DescriptorPool::get_device() const
@@ -150,6 +249,11 @@ namespace MXRender
 
 	const VkDescriptorPool& VK_DescriptorPool::get_descriptor_pool()
 	{
+		if (descriptor_pool == VK_NULL_HANDLE)
+		{
+			descriptor_pool = grab_pool();
+			used_pools.push_back(descriptor_pool);
+		}
 		return descriptor_pool;
 	}
 
@@ -340,26 +444,23 @@ namespace MXRender
 
 		bindings.push_back(newBinding);
 
-		image_infos.push_back(VkDescriptorImageInfo());
 		image_infos[binding].sampler = imageInfo->sampler;
 		image_infos[binding].imageLayout = imageInfo->imageLayout;
 		image_infos[binding].imageView = imageInfo->imageView;
 
+		writes.push_back(VkWriteDescriptorSet());
+		writes.back().sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writes.back().pNext = nullptr;
+		writes.back().descriptorCount = 1;
+		writes.back().descriptorType = type;
+		writes.back().pImageInfo = &(image_infos[binding]);
+		writes.back().dstBinding = binding;
 
-		VkWriteDescriptorSet newWrite{};
-		newWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		newWrite.pNext = nullptr;
 
-		newWrite.descriptorCount = 1;
-		newWrite.descriptorType = type;
-		newWrite.pImageInfo = &image_infos[binding];
-		newWrite.dstBinding = binding;
-
-		writes.push_back(newWrite);
 		return *this;
 	}
 
-	bool DescriptorBuilder::build(VkDescriptorSet& set, VkDescriptorSetLayout& layout, bool b_use_set_cache)
+	bool DescriptorBuilder::build(VkDescriptorSet& set, VkDescriptorSetLayout& layout)
 	{
 		//build layout first
 		VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -376,7 +477,7 @@ namespace MXRender
 		//allocate descriptor
 		bool success = false;
 
-		success=alloc->allocate_descriptorset(layout, set,b_use_set_cache);
+		success=alloc->allocate_descriptorset(layout, set);
 		if (!success) 
 		{ 
 			return false; 
@@ -392,10 +493,10 @@ namespace MXRender
 		return true;
 	}
 
-	bool DescriptorBuilder::build(VkDescriptorSet& set, bool b_use_set_cache)
+	bool DescriptorBuilder::build(VkDescriptorSet& set)
 	{
 		VkDescriptorSetLayout layout;
-		bool result= build(set, layout, b_use_set_cache);
+		bool result= build(set, layout);
 		return result;
 	}
 
@@ -501,15 +602,17 @@ namespace MXRender
 
 		for (const VkDescriptorSetLayoutBinding& b : bindings)
 		{
-			//pack the binding data into a single int64. Not fully correct but its ok
+
 			size_t binding_hash = b.binding | b.descriptorType << 8 | b.descriptorCount << 16 | b.stageFlags << 24;
 
-			//shuffle the packed binding data and xor it with the main hash
+
 			result ^= hash<size_t>()(binding_hash);
 		}
 
 		return result;
 	}
+
+
 
 }
 

@@ -111,15 +111,16 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
 
 	while (!glfwWindowShouldClose(window))
     {
+
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 		OPTICK_FRAME("MainThread");
 
+
 		Singleton<DefaultSetting>::get_instance().input_system->process_input(window);
 
         glfwPollEvents();
-
 
 		task_graph.add_task_node(4, "update_object_to_render_scene", task_graph.get_task(
 			&(update_data),

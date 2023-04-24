@@ -28,6 +28,23 @@ namespace MXRender
 		uint32_t objectID;
 		uint32_t batchID;
 	};
+	
+
+	struct DrawCullData
+	{
+		glm::mat4 view;
+		float P00, P11, znear, zfar; 
+		float oct_frustum[4];
+		float lodBase, lodStep;
+		float pyramidWidth, pyramidHeight; 
+
+		uint32_t drawCount;
+
+		int cullingEnabled;
+		int lodEnabled;
+		int occlusionEnabled;
+		int distCull;
+	};
 
 	class GPUDrivenSystem
 	{
@@ -36,12 +53,13 @@ namespace MXRender
 		AllocatedBuffer<GPUIndirectObject> drawIndirectBuffer;
 		AllocatedBuffer<uint32_t> instanceIdMapBuffer;
 		AllocatedBuffer<GPUInstance> instanceBuffer;
-		VkDescriptorSet object_data_set=VK_NULL_HANDLE;
+
 		GPUDrivenSystem();
 		virtual ~GPUDrivenSystem();
 		void destroy();
 		void excute_upload_computepass(RenderScene* render_scene);
 		void execute_gpu_culling_computepass(RenderScene* render_scene);
+		void execute_reduce_depth_computepass(RenderScene* render_scene);
 		void update_descriptorset();
 	protected:
 	private:
