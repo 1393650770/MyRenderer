@@ -37,8 +37,9 @@ namespace MXRender
 		int width = 800;
 		int height = 600;
 		bool is_enable_dispatch= true;
-		bool is_enable_gpu_driven = false;
-		bool is_enable_debug_loop=true;
+		bool is_enable_gpu_driven = true;
+		bool is_enable_debug_loop=false;
+		bool is_enable_batch=false;
 	private:
 
 	};

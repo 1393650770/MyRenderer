@@ -62,6 +62,11 @@ namespace MXRender
 		{
 			render_scene->register_render_object(&it);
 		}
+		if (Singleton<DefaultSetting>::get_instance().is_enable_batch)
+		{
+			render_scene->merger_mesh();
+			render_scene->merger_renderobj();
+		}
 	}
 
 	void update_data(RenderScene* render_scene, GameObjectManager* gameobject_manager)
@@ -71,6 +76,7 @@ namespace MXRender
 		{
 			render_scene->update_object_transform(&it);
 		}
+
 	}
 }
 void MXRender::Window::run(std::shared_ptr<MyRender> render)

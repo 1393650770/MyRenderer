@@ -61,7 +61,7 @@ namespace MXRender
 
 		uint32_t updateIndex;
 		uint32_t customSortKey{ 0 };
-
+		uint32_t merge_key{0};
 		PerPassData<int32_t> passIndices;
 
 		glm::mat4 transformMatrix;
@@ -81,6 +81,9 @@ namespace MXRender
 	public:
 		GPUDrivenSystem* gpu_driven;
 
+		AllocatedBuffer<SimpleVertex> merged_vertex_buffer;
+		AllocatedBuffer<uint32_t> merged_index_buffer;
+		std::unordered_map<uint32_t, std::vector<Handle<RenderObject>>> merge_batch;
 		RenderScene();
 		virtual ~RenderScene();
 		void register_render_object(GameObject* game_object);
@@ -88,6 +91,8 @@ namespace MXRender
 		RenderObject* get_render_object(Handle<RenderObject> objectID);
 		Material* get_material(Handle<Material> materialID);
 		DrawMesh* get_mesh(Handle<DrawMesh> meshID);
+		void merger_mesh();
+		void merger_renderobj();
 		void update_object(Handle<RenderObject> objectID);
 		void clear_dirty_objects();
 		void write_object_to_gpudata_buffer(GPUObjectData* target, Handle<RenderObject> objectID);
@@ -96,19 +101,20 @@ namespace MXRender
 		std::vector<Handle<RenderObject>>& get_dirty_objects();
 		const RenderObject& get_renderable_obj(int index) const;
 		int get_renderables_size() const;
-		void merge_object(VK_GraphicsContext* context);
-		void create_indirect_drawcall(VK_GraphicsContext* context);
-		void create_object_data_buffer(VK_GraphicsContext* context);
+
 	protected:
 		std::unordered_map<GameObject* , Handle<RenderObject>> renderObjectConvert;
 		std::unordered_map<Material*, Handle<Material>> materialConvert;
 		std::unordered_map<MeshBase*, Handle<DrawMesh>> meshConvert;
+
 		std::vector<RenderObject> renderables;
 		std::vector<DrawMesh> meshes;
 		std::vector<Material*> materials;
 		std::vector<Handle<RenderObject>> dirtyObjects;
 		Handle<DrawMesh> get_mesh_id(MeshBase* mesh);
 		Handle<Material> get_material_id(Material* material);
+
+
 	private:
 		void register_objects(GameObject* game_object);
 	};

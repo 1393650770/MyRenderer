@@ -512,59 +512,122 @@ namespace MXRender
 		scissor.extent = cur_context.lock()->get_swapchain_extent();
 
 		vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+		bool is_bind_vertex_index = false;
 
-		for (int i = start_index; i < end_index && i < render_scene->get_renderables_size(); i++)
+		if (Singleton<DefaultSetting>::get_instance().is_enable_batch)
 		{
-			const RenderObject& render_object = render_scene->get_renderable_obj(i);
-			Material* material = render_scene->get_material(render_object.materialID);
-			DrawMesh* mesh = render_scene->get_mesh(render_object.meshID);
-			if (!material || !mesh)
+			int draw_index = 0,i=0;
+			for (auto& [k, v] : render_scene->merge_batch)
 			{
-				continue;
-			}
+				if (v.size() <= 0)
+				{
+					continue;
+				}
+				if (i<start_index||i >= end_index || i >= render_scene->merge_batch.size())
+				{
+					i++;
+					draw_index += v.size();
+					continue;
+				}
+				i++;
+				const RenderObject& render_object = render_scene->get_renderable_obj(v[0].handle);
+				Material* material = render_scene->get_material(render_object.materialID);
+				DrawMesh* mesh = render_scene->get_mesh(render_object.meshID);
+				if (!material || !mesh)
+				{
+					continue;
+				}
 
-			OPTICK_PUSH("Bind")
-			vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
+				vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
 
 
-			MVP_Struct ubo{};
-			ubo.model = render_object.transformMatrix;
-			ubo.view = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
-			ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
-			ubo.proj[1][1] *= -1;
+				MVP_Struct ubo{};
+				ubo.model = render_object.transformMatrix;
+				ubo.view = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
+				ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
+				ubo.proj[1][1] *= -1;
 
-			uint32_t offset = cpu_ubo_buffer.push(ubo);
+				uint32_t offset = cpu_ubo_buffer.push(ubo);
 
 
 
-			vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &(global_set), 1, &offset);
+				vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &(descriptor_sets[0]), 1, &offset);
 
-			vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 1, 1, &(material->pass_sets[MeshpassType::Forward]), 0, nullptr);
+				vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 1, 1, &(material->pass_sets[MeshpassType::Forward]), 0, nullptr);
 
-			vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 2, 1, &object_data_set, 0, nullptr);
+				vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 2, 1, &object_data_set, 0, nullptr);
 
-			vkCmdPushConstants(command_buffer, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
+				vkCmdPushConstants(command_buffer, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
 
-			OPTICK_POP()
+				if (is_bind_vertex_index == false)
+				{
 
-			VK_Mesh* vk_mesh = dynamic_cast<VK_Mesh*>(mesh->original);
-			if (vk_mesh)
-			{
-				
+					VkBuffer vertexBuffers[] = { render_scene->merged_vertex_buffer._buffer };
+					VkDeviceSize offsets[] = { 0 };
 
-				VkBuffer vertexBuffers[] = { vk_mesh->get_mesh_info().vertex_buffer };
-				VkDeviceSize offsets[] = { 0 };
+					vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
 
-				vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
+					vkCmdBindIndexBuffer(command_buffer, render_scene->merged_index_buffer._buffer, 0, VK_INDEX_TYPE_UINT32);
+				}
 
-				vkCmdBindIndexBuffer(command_buffer, vk_mesh->get_mesh_info().index_buffer, 0, VK_INDEX_TYPE_UINT32);
+				vkCmdDrawIndexedIndirect(command_buffer, render_scene->gpu_driven->drawIndirectBuffer._buffer, draw_index * sizeof(GPUIndirectObject), v.size(), sizeof(GPUIndirectObject));
 
-				OPTICK_PUSH("Draw")
-				vkCmdDrawIndexedIndirect(command_buffer, render_scene->gpu_driven->drawIndirectBuffer._buffer, i * sizeof(GPUIndirectObject), 1, sizeof(GPUIndirectObject));
-				OPTICK_POP()
+				draw_index += v.size();
 			}
 		}
+		else
+		{ 
+			for (int i = start_index; i < end_index && i < render_scene->get_renderables_size(); i++)
+			{
+				const RenderObject& render_object = render_scene->get_renderable_obj(i);
+				Material* material = render_scene->get_material(render_object.materialID);
+				DrawMesh* mesh = render_scene->get_mesh(render_object.meshID);
+				if (!material || !mesh)
+				{
+					continue;
+				}
 
+				OPTICK_PUSH("Bind")
+				vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
+
+
+				MVP_Struct ubo{};
+				ubo.model = render_object.transformMatrix;
+				ubo.view = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
+				ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
+				ubo.proj[1][1] *= -1;
+
+				uint32_t offset = cpu_ubo_buffer.push(ubo);
+
+
+
+				vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &(global_set), 1, &offset);
+
+				vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 1, 1, &(material->pass_sets[MeshpassType::Forward]), 0, nullptr);
+
+				vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 2, 1, &object_data_set, 0, nullptr);
+
+				vkCmdPushConstants(command_buffer, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
+
+				OPTICK_POP()
+
+				VK_Mesh* vk_mesh = dynamic_cast<VK_Mesh*>(mesh->original);
+				if (vk_mesh)
+				{
+				
+
+					VkBuffer vertexBuffers[] = { vk_mesh->get_mesh_info().vertex_buffer };
+					VkDeviceSize offsets[] = { 0 };
+
+					vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
+
+					vkCmdBindIndexBuffer(command_buffer, vk_mesh->get_mesh_info().index_buffer, 0, VK_INDEX_TYPE_UINT32);
+					OPTICK_PUSH("Draw")
+					vkCmdDrawIndexedIndirect(command_buffer, render_scene->gpu_driven->drawIndirectBuffer._buffer, i * sizeof(GPUIndirectObject), 1, sizeof(GPUIndirectObject));
+					OPTICK_POP()
+				}
+			}
+		}
 		vkCmdEndRenderPass(command_buffer);
 	}
 
@@ -609,65 +672,131 @@ namespace MXRender
 			if (Singleton<DefaultSetting>::get_instance().is_enable_dispatch)
 			{
 				unsigned int thread_num = Singleton<DefaultSetting>::get_instance().task_system->thread_pool.get_max_thread_num();
-				unsigned int clip_size = render_scene->get_renderables_size() / thread_num;
+				unsigned int clip_size; 
+				if (Singleton<DefaultSetting>::get_instance().is_enable_batch)
+				{
+					clip_size = render_scene->merge_batch.size() / thread_num;
+				}
+				else
+				{
+					clip_size = render_scene->get_renderables_size() / thread_num;
+				}
 
 				for (unsigned int i = 0; i < thread_num; i++)
 				{
 
-					auto fut = Singleton<DefaultSetting>::get_instance().task_system->thread_pool.submit_message(&Mesh_RenderPass::dispatch_gpudriven_render_mesh, this,render_scene, clip_size * i, clip_size * (i + 1), descriptor_sets[0],object_data_set);
+					auto fut = Singleton<DefaultSetting>::get_instance().task_system->thread_pool.submit_message(&Mesh_RenderPass::dispatch_gpudriven_render_mesh, this, render_scene, clip_size * i, clip_size * (i + 1), descriptor_sets[0], object_data_set);
 					vk_context->fut_que.push(std::move(fut));
 				}
+				
 				//vk_context->execute_all_threadid_command_buffer();
 			}
 			else
 			{ 
 				VkCommandBuffer command_buffer = cur_context.lock()->get_cur_command_buffer();
-				for (int i = 0;  i < render_scene->get_renderables_size(); i++)
+				bool is_bind_vertex_index=false;
+				if (Singleton<DefaultSetting>::get_instance().is_enable_batch)
 				{
-					
-					const RenderObject& render_object = render_scene->get_renderable_obj(i);
-					Material* material = render_scene->get_material(render_object.materialID);
-					DrawMesh* mesh = render_scene->get_mesh(render_object.meshID);
-					if (!material || !mesh)
+					int index=0;
+					for (auto& [k,v]: render_scene->merge_batch)
 					{
-						continue;
+						if (v.size()<=0)
+						{
+							continue;
+						}
+						const RenderObject& render_object = render_scene->get_renderable_obj(v[0].handle);
+						Material* material = render_scene->get_material(render_object.materialID);
+						DrawMesh* mesh = render_scene->get_mesh(render_object.meshID);
+						if (!material || !mesh)
+						{
+							continue;
+						}
+
+						vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
+
+
+						MVP_Struct ubo{};
+						ubo.model = render_object.transformMatrix;
+						ubo.view = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
+						ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
+						ubo.proj[1][1] *= -1;
+
+						uint32_t offset = cpu_ubo_buffer.push(ubo);
+
+
+
+						vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &(descriptor_sets[0]), 1, &offset);
+
+						vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 1, 1, &(material->pass_sets[MeshpassType::Forward]), 0, nullptr);
+
+						vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 2, 1, &object_data_set, 0, nullptr);
+
+						vkCmdPushConstants(command_buffer, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
+
+						if (is_bind_vertex_index == false)
+						{
+
+							VkBuffer vertexBuffers[] = { render_scene->merged_vertex_buffer._buffer };
+							VkDeviceSize offsets[] = { 0 };
+
+							vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
+
+							vkCmdBindIndexBuffer(command_buffer, render_scene->merged_index_buffer._buffer, 0, VK_INDEX_TYPE_UINT32);
+						}
+
+						vkCmdDrawIndexedIndirect(command_buffer, render_scene->gpu_driven->drawIndirectBuffer._buffer, index * sizeof(GPUIndirectObject), v.size(), sizeof(GPUIndirectObject));
+						index +=v.size();
 					}
-
-					vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
-
-
-					MVP_Struct ubo{};
-					ubo.model = render_object.transformMatrix;
-					ubo.view = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
-					ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
-					ubo.proj[1][1] *= -1;
-
-					uint32_t offset = cpu_ubo_buffer.push(ubo);
-
-
-
-					vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &(descriptor_sets[0]), 1, &offset);
-
-					vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 1, 1, &(material->pass_sets[MeshpassType::Forward]), 0, nullptr);
-
-					vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 2, 1, &object_data_set, 0, nullptr);
-
-					vkCmdPushConstants(command_buffer, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
-
-
-					VK_Mesh* vk_mesh = dynamic_cast<VK_Mesh*>(mesh->original);
-					if (vk_mesh)
+				}
+				else
+				{ 
+					for (int i = 0;  i < render_scene->get_renderables_size(); i++)
 					{
-						vk_mesh->init_mesh_info(cur_context.lock().get());
+					
+						const RenderObject& render_object = render_scene->get_renderable_obj(i);
+						Material* material = render_scene->get_material(render_object.materialID);
+						DrawMesh* mesh = render_scene->get_mesh(render_object.meshID);
+						if (!material || !mesh)
+						{
+							continue;
+						}
 
-						VkBuffer vertexBuffers[] = { vk_mesh->get_mesh_info().vertex_buffer };
-						VkDeviceSize offsets[] = { 0 };
+						vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
 
-						vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
 
-						vkCmdBindIndexBuffer(command_buffer, vk_mesh->get_mesh_info().index_buffer, 0, VK_INDEX_TYPE_UINT32);
+						MVP_Struct ubo{};
+						ubo.model = render_object.transformMatrix;
+						ubo.view = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
+						ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
+						ubo.proj[1][1] *= -1;
 
+						uint32_t offset = cpu_ubo_buffer.push(ubo);
+
+
+
+						vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &(descriptor_sets[0]), 1, &offset);
+
+						vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 1, 1, &(material->pass_sets[MeshpassType::Forward]), 0, nullptr);
+
+						vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 2, 1, &object_data_set, 0, nullptr);
+
+						vkCmdPushConstants(command_buffer, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
+
+						if (is_bind_vertex_index == false)
+						{
+
+							VkBuffer vertexBuffers[] = { render_scene->merged_vertex_buffer._buffer };
+							VkDeviceSize offsets[] = { 0 };
+
+							vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
+
+							vkCmdBindIndexBuffer(command_buffer, render_scene->merged_index_buffer._buffer, 0, VK_INDEX_TYPE_UINT32);
+						}
+
+		
+						
 						vkCmdDrawIndexedIndirect(command_buffer, render_scene->gpu_driven->drawIndirectBuffer._buffer, i * sizeof(GPUIndirectObject), 1, sizeof(GPUIndirectObject));
+						
 					}
 				}
 			}

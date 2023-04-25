@@ -7,6 +7,8 @@
 #include "../RHI/Vulkan/VK_Utils.h"
 #include "GPUDriven.h"
 #include "optick.h"
+#include "DefaultSetting.h"
+#include "../Utils/Singleton.h"
 namespace MXRender
 {
 
@@ -79,6 +81,72 @@ namespace MXRender
 		return &(meshes[meshID.handle]);
 	}
 
+	void RenderScene::merger_mesh()
+	{
+		VK_GraphicsContext* context = Singleton<DefaultSetting>::get_instance().context.get();
+		if (context==nullptr)
+		{
+			return;
+		}
+		uint32_t total_vertex=0,total_index=0;
+		for (auto& m:meshes)
+		{
+			m.firstIndex = (total_index);
+			m.firstVertex = (total_vertex);
+
+			total_vertex += m.vertexCount;
+			total_index += m.indexCount;
+
+			m.isMerged = true;
+		}
+
+		if (merged_vertex_buffer._buffer==VK_NULL_HANDLE)
+		{
+			merged_vertex_buffer=VK_Utils::Create_buffer(context, total_vertex * sizeof(SimpleVertex), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+				VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+			merged_index_buffer = VK_Utils::Create_buffer(context, total_index * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+				VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		}
+
+		VK_Utils::Immediate_Submit(context,[&](VkCommandBuffer cmd)
+			{
+				for (auto& m : meshes)
+				{
+					VK_Mesh* vk_mesh=dynamic_cast<VK_Mesh*>(m.original);
+					if (vk_mesh==nullptr)
+					{
+						return;
+					}
+					vk_mesh->init_mesh_info(context);
+
+					VkBufferCopy vertexCopy;
+					vertexCopy.dstOffset = m.firstVertex * sizeof(SimpleVertex);
+					vertexCopy.size = m.vertexCount * sizeof(SimpleVertex);
+					vertexCopy.srcOffset = 0;
+
+					vkCmdCopyBuffer(cmd, vk_mesh->get_mesh_info().vertex_buffer, merged_vertex_buffer._buffer, 1, &vertexCopy);
+
+					VkBufferCopy indexCopy;
+					indexCopy.dstOffset = m.firstIndex * sizeof(uint32_t);
+					indexCopy.size = m.indexCount * sizeof(uint32_t);
+					indexCopy.srcOffset = 0;
+
+					vkCmdCopyBuffer(cmd, vk_mesh->get_mesh_info().index_buffer, merged_index_buffer._buffer, 1, &indexCopy);
+				}
+			});
+	}
+
+	void RenderScene::merger_renderobj()
+	{
+		uint32_t i=0;
+		for (auto& obj : renderables)
+		{
+			merge_batch[obj.merge_key].push_back(Handle<RenderObject>(i));
+			i++;
+		}
+	}
+
 	void RenderScene::update_object(Handle<RenderObject> objectID)
 	{
 		if (get_render_object(objectID)->updateIndex == (uint32_t)-1)
@@ -115,18 +183,35 @@ namespace MXRender
 	{
 		OPTICK_PUSH("write_object_to_indirectcommand_buffer")
 		int dataIndex = 0;
-		for (int i = 0; i < renderables.size(); i++) {
-
-
-			target[dataIndex].command.firstInstance = i;//i;
-			target[dataIndex].command.instanceCount = 0;
-			target[dataIndex].command.firstIndex = 0;
-			target[dataIndex].command.vertexOffset = 0;
-			target[dataIndex].command.indexCount = get_mesh(renderables[i].meshID)->indexCount;
-			target[dataIndex].objectID = i;
-			target[dataIndex].batchID = i;
-
-			dataIndex++;
+		if (Singleton<DefaultSetting>::get_instance().is_enable_batch==false)
+		{
+			for (int i = 0; i < renderables.size(); i++) {
+				target[dataIndex].command.firstInstance = i;//i;
+				target[dataIndex].command.instanceCount = 0;
+				target[dataIndex].command.firstIndex = get_mesh(renderables[i].meshID)->firstIndex;
+				target[dataIndex].command.vertexOffset = get_mesh(renderables[i].meshID)->firstVertex;
+				target[dataIndex].command.indexCount = get_mesh(renderables[i].meshID)->indexCount;
+				target[dataIndex].objectID = i;
+				target[dataIndex].batchID = i;
+				dataIndex++;
+			}
+		}
+		else
+		{ 
+			for (auto& [k,v]:merge_batch)
+			{
+				for (auto& i:v)
+				{
+					target[dataIndex].command.firstInstance = dataIndex;//i;
+					target[dataIndex].command.instanceCount = 0;
+					target[dataIndex].command.firstIndex = get_mesh(get_render_object(i)->meshID)->firstIndex;
+					target[dataIndex].command.vertexOffset = get_mesh(get_render_object(i)->meshID)->firstVertex;
+					target[dataIndex].command.indexCount = get_mesh(get_render_object(i)->meshID)->indexCount;
+					target[dataIndex].objectID = i.handle;
+					target[dataIndex].batchID = dataIndex;
+					dataIndex++;
+				}
+			}
 		}
 		OPTICK_POP()
 	}
@@ -135,14 +220,25 @@ namespace MXRender
 	{
 		OPTICK_PUSH("write_object_to_instance_buffer")
 		int dataIndex = 0;
-		for (int i = 0; i < renderables.size(); i++) {
-
-
-
-			target[dataIndex].objectID = i;
-			target[dataIndex].batchID = i;
-
-			dataIndex++;
+		if (Singleton<DefaultSetting>::get_instance().is_enable_batch==false)
+		{
+			for (int i = 0; i < renderables.size(); i++) {
+				target[dataIndex].objectID = i;
+				target[dataIndex].batchID = i;
+				dataIndex++;
+			}
+		}
+		else
+		{ 
+			for (auto& [k, v] : merge_batch)
+			{
+				for (auto& i : v)
+				{
+					target[dataIndex].objectID = i.handle;
+					target[dataIndex].batchID = dataIndex;
+					dataIndex++;
+				}
+			}
 		}
 		OPTICK_POP()
 	}
@@ -210,7 +306,7 @@ namespace MXRender
 
 	void RenderScene::register_objects(GameObject* game_object)
 	{
-		if (game_object->get_component(StaticMeshComponent))
+		if (game_object->get_component(StaticMeshComponent)&& game_object->get_component(StaticMeshComponent)->get_material()!=nullptr)
 		{
 
 			RenderObject newObj;
@@ -221,8 +317,17 @@ namespace MXRender
 			newObj.updateIndex = (uint32_t)-1;
 			//newObj.customSortKey = object->customSortKey;
 			newObj.passIndices.clear(-1);
+			
+			uint64_t pipelinehash = std::hash<uint64_t>()(uint64_t(game_object->get_material()->pass_pso->pass_pso[MeshpassType::Forward]->pipeline));
+			uint64_t sethash = std::hash<uint64_t>()((uint64_t)game_object->get_material()->pass_sets[MeshpassType::Forward]);
+
+			uint32_t mathash = static_cast<uint32_t>(pipelinehash ^ sethash);
+
+			newObj.merge_key = mathash;
+			
 			Handle<RenderObject> handle;
 			handle.handle = static_cast<uint32_t>(renderables.size());
+
 
 			renderables.push_back(newObj);
 

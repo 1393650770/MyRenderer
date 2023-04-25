@@ -33,7 +33,7 @@ namespace MXRender
 
 	class AllocatedBufferUntyped {
 	public:
-		VkBuffer _buffer{};
+		VkBuffer _buffer{VK_NULL_HANDLE};
 		VmaAllocation _allocation{};
 		VkDeviceSize _size{ 0 };
 		VkDescriptorBufferInfo get_info(VkDeviceSize offset = 0);

@@ -70,7 +70,7 @@ void MXRender::VK_Mesh::setup_vk_vertexbuffer(VK_GraphicsContext* cur_context, V
 	vkUnmapMemory(cur_context->device->device, stagingBufferMemory);
 
 
-	VK_Utils::Create_VKBuffer(cur_context->device, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertex_buffer, vertex_buffer_memory);
+	VK_Utils::Create_VKBuffer(cur_context->device, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT| VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertex_buffer, vertex_buffer_memory);
 	
 	VK_Utils::Copy_VKBuffer(cur_context, stagingBuffer, vertex_buffer, bufferSize);
 
@@ -93,7 +93,7 @@ void MXRender::VK_Mesh::setup_vk_indexbuffer(VK_GraphicsContext* cur_context, Vk
 	vkUnmapMemory(cur_context->device->device, stagingBufferMemory);
 
 
-	VK_Utils::Create_VKBuffer(cur_context->device, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, index_buffer, index_buffer_memory);
+	VK_Utils::Create_VKBuffer(cur_context->device, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT| VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, index_buffer, index_buffer_memory);
 
 	VK_Utils::Copy_VKBuffer(cur_context, stagingBuffer, index_buffer, bufferSize);
 
