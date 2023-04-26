@@ -153,11 +153,11 @@ namespace MXRender
 	{
 		OPTICK_EVENT()
 		OPTICK_PUSH("GpuDriven_Gpu_Culling")
-		if (render_scene->get_dirty_objects().size() <= 0)
+		if (Singleton<DefaultSetting>::get_instance().is_enable_culling==false)
 		{
 			return;
 		}
-		if (Singleton<DefaultSetting>::get_instance().is_enable_debug_loop)
+
 		{
 
 			VK_GraphicsContext* context = Singleton<DefaultSetting>::get_instance().context.get();
@@ -210,12 +210,14 @@ namespace MXRender
 		cull_data.pyramidWidth = static_cast<float>(context->depth_pyramid_width);
 		cull_data.pyramidHeight = static_cast<float>(context->depth_pyramid_height);
 		cull_data.view=Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
-		glm::mat4 projection = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
+		glm::mat4 projection = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
+		cull_data.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
 		cull_data.P00 = projection[0][0];
 		cull_data.P11 = projection[1][1];
 		cull_data.znear = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_near_plane();
 		cull_data.zfar = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_far_plane();
 		cull_data.distCull=0;
+		cull_data.isFirstFrame=is_first_frame==true? 1 :0;
 
 		VK_Utils::Immediate_Submit(context,
 			[&](VkCommandBuffer cmd)
@@ -227,7 +229,9 @@ namespace MXRender
 
 				vkCmdDispatch(cmd, ((launchcount) / 256) + 1, 1, 1);
 			});
+		is_first_frame=false;
 		OPTICK_POP()
+
 	}
 
 	struct alignas(16) DepthReduceData

@@ -208,7 +208,7 @@ namespace MXRender
 
 	MaterialSystem::~MaterialSystem()
 	{
-		destroy();
+		//destroy();
 
 	}
 
@@ -231,6 +231,7 @@ namespace MXRender
 
 		VK_Shader* default_transparency_material = new  VK_Shader(context->device, "Shader/pbr_mesh_vert.spv", "Shader/mesh_rock_transparency_frag.spv");
 
+		VK_Shader* copy_one_texture = new  VK_Shader(context->device, "Shader/fullscreen_vert.spv", "Shader/copy_frag.spv");
 
 		VK_Shader::ReflectionOverrides overrides[] = {
 			{"mvp", VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC}	
@@ -241,6 +242,7 @@ namespace MXRender
 		pbr_material_gpu_driven->reflect_layout(overrides, 1);
 		gpu_driven_material->reflect_layout(overrides, 1);
 		default_transparency_material->reflect_layout(overrides, 1);
+		copy_one_texture->reflect_layout(nullptr,0);
 
 		shaders["default_mesh"] = default_color;
 		shaders["pbr_mesh"]=pbr_material;
@@ -248,7 +250,7 @@ namespace MXRender
 		shaders["pbr_mesh_gpu_driven"] = pbr_material_gpu_driven;
 		shaders["gpu_driven_mesh"] = gpu_driven_material;
 		shaders["default_transparency"] = default_transparency_material;
-
+		shaders["copy_one_texture"]=copy_one_texture;
 
 		PipelineShaderObject* mesh_pso =  build_pso(context->mesh_pass, mesh_pass_builder, default_color);
 		PipelineShaderObject* pbr_mesh_pso = build_pso(context->mesh_pass, mesh_pass_builder, pbr_material);
@@ -302,8 +304,8 @@ namespace MXRender
 		cache_pool=nullptr;
 		descriptorlayout_cache->cleanup();
 		delete descriptorlayout_cache;
-
-		for (auto& it : materials)
+		descriptorlayout_cache=nullptr;
+		for (auto& it : materialCache)
 		{
 			delete it.second;
 		}

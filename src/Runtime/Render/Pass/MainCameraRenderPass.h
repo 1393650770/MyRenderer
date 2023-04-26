@@ -40,7 +40,12 @@ namespace MXRender
         void update_uniformbuffer();
 
         void destroy_framebuffer();
-        std::vector<VkFramebuffer> swapchain_framebuffers;
+        VkViewport viewport;
+		VkImage color_image;
+        VkDeviceMemory color_image_memory{ VK_NULL_HANDLE };
+        VkFormat color_image_format= VK_FORMAT_R32G32B32A32_SFLOAT;
+        VkRenderPass clear_pass;
+        VkFramebuffer framebuffer;
 
 		std::vector<VkBuffer> uniform_buffers;
 		std::vector<VkDeviceMemory> uniform_buffers_memory;
@@ -50,6 +55,8 @@ namespace MXRender
 
         std::shared_ptr< VK_DescriptorSetLayout> descriptorset_layout;
     public:
+		VkImageView color_imageview;
+		VkSampler color_image_sampler;
         virtual void post_initialize();
         virtual void set_commonInfo(const PassInfo& init_info);
         virtual void prepare_pass_data(const GraphicsContext& context);
@@ -63,11 +70,12 @@ namespace MXRender
         MainCamera_RenderPass(const PassInfo& init_info);
         virtual ~MainCamera_RenderPass();
 
-        virtual VkRenderPass& get_render_pass() ;
-        std::vector<VkFramebuffer>& get_swapchain_framebuffers();
+		virtual VkRenderPass& get_render_pass();
+
 
         virtual void initialize(const PassInfo& init_info, PassOtherInfo* other_info) override;
 
+        void destroy();
     };
 
 

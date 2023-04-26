@@ -83,6 +83,7 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
 {
 	
 	Singleton<DefaultSetting>::get_instance().context->init(this);
+	Singleton<DefaultSetting>::get_instance().material_system->init(Singleton<DefaultSetting>::get_instance().context.get());
 
 	RenderScene render_scene;
 	EditorUI edit_ui;
@@ -92,7 +93,7 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
 	edit_ui.initialize(&editui_info);
 	render->init(Singleton<DefaultSetting>::get_instance().context,window,&edit_ui);
 
-	Singleton<DefaultSetting>::get_instance().material_system->init(Singleton<DefaultSetting>::get_instance().context.get());
+
 	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_window(window);
 	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_height(Singleton<DefaultSetting>::get_instance().height);
 	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_width(Singleton<DefaultSetting>::get_instance().width);

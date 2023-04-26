@@ -14,6 +14,7 @@ C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V upload.comp -o upload_comp.sp
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V gpu_culling.comp -o gpu_culling_comp.spv
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V depth_reduce.comp -o depth_reduce_comp.spv
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V mesh_rock_transparency.frag -o mesh_rock_transparency_frag.spv
-
+C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V fullscreen.vert -o fullscreen_vert.spv
+C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V copy.frag -o copy_frag.spv
 
 pause

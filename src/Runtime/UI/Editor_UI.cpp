@@ -101,12 +101,15 @@ void MXRender::EditorUI::show_editor_top_ui()
 					ImGui::Checkbox("Dispatch", &Singleton<DefaultSetting>::get_instance().is_enable_dispatch);
 					ImGui::Checkbox("GPUDriven", &Singleton<DefaultSetting>::get_instance().is_enable_gpu_driven);
 					ImGui::Checkbox("DebugLoop", &(Singleton<DefaultSetting>::get_instance().is_enable_debug_loop));
+					ImGui::Checkbox("Batch", &(Singleton<DefaultSetting>::get_instance().is_enable_batch));
+					ImGui::Checkbox("Culling", &(Singleton<DefaultSetting>::get_instance().is_enable_culling));
 					ImGui::End();
 				}
 				ImGui::EndMenu();
 			}
 			if (ImGui::MenuItem("Exit"))
 			{
+
 				Singleton<DefaultSetting>::get_instance().destroy();
 				exit(0);
 			}
@@ -433,7 +436,7 @@ void MXRender::EditorUI::show_center_main_window()
 	glm::vec2 new_window_pos = { 0.0f, 0.0f };
 	glm::vec2 new_window_size = { 0.0f, 0.0f };
 	new_window_pos.x = ImGui::GetWindowPos().x;
-	new_window_pos.y = ImGui::GetWindowPos().y + menu_bar_rect.Min.y;
+	new_window_pos.y = ImGui::GetWindowPos().y + menu_bar_rect.Min.y*0.90f;
 	new_window_size.x = ImGui::GetWindowSize().x;
 	new_window_size.y = ImGui::GetWindowSize().y - menu_bar_rect.Min.y;
 
@@ -444,6 +447,8 @@ void MXRender::EditorUI::show_center_main_window()
 		vk_context->viewport.y = new_window_pos.y;
 		vk_context->viewport.width= new_window_size.x;
 		vk_context->viewport.height= new_window_size.y;
+		Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_width(vk_context->viewport.width);
+		Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_height(vk_context->viewport.height);
 	}
 
 	ImGui::End();

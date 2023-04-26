@@ -167,7 +167,6 @@ namespace MXRender
 		VkQueue presentQueue;
         VkQueue computeQueue;
         VkRenderPass mesh_pass;
-        VkRenderPass clear_pass;
         VkDescriptorPool descriptor_pool;
         VkCommandPool command_pool;//[max_frames_in_flight];
         std::vector< VkCommandPool> thread_command_pool;

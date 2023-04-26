@@ -72,7 +72,7 @@ target("Renderer")
     add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr")
 
     before_build(function (target)
-        os.run("$(projectdir)/src/Runtime/Render/Shader/compile - glslangValidator.bat")
+        os.run("$(projectdir)/src/Runtime/Render/Shader/compile-glslangValidator.bat")
     end)
 
     after_build(function (target)

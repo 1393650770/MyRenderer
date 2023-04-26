@@ -20,6 +20,7 @@ struct DrawCommand
 struct DrawCullData
 {
 	mat4 view;
+	mat4 proj;
 	float P00, P11, znear, zfar; // symmetric projection parameters
 	float frustum[4]; // data for left/right/top/bottom frustum planes
 	float lodBase, lodStep; // lod distance i = base * pow(step, i)
@@ -31,6 +32,7 @@ struct DrawCullData
 	int lodEnabled;
 	int occlusionEnabled;
 	int distCull;
+	int isfirstframe;
 };
 
 struct ObjectData{
@@ -78,11 +80,11 @@ layout(set = 0, binding = 3)  buffer InstanceBuffer3{
 
 layout(set = 0,binding = 4) uniform sampler2D depthPyramid;
 
-// 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
-bool projectSphere(vec3 C, float r, float znear, float P00, float P11, out vec4 aabb)
+//2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
+bool projectSphere(vec4 C, float r, float znear, float P00, float P11, out vec4 aabb)
 {
-	// if (C.z < r + znear)
-	// 	return false;
+	if (C.z < r + znear)
+		return false;
 
 	vec2 cx = -C.xz;
 	vec2 vx = vec2(sqrt(dot(cx, cx) - r * r), r);
@@ -100,6 +102,54 @@ bool projectSphere(vec3 C, float r, float znear, float P00, float P11, out vec4 
 	return true;
 }
 
+bool occlusionCulling(vec4 c, float r, float znear)
+{
+
+	float minx=c.x-r,maxx=c.x+r,miny=c.y-r,maxy=c.y+r,minz=c.z-r,maxz=c.z+r;
+	// if (minz<znear)
+	// 	return false;
+	vec4 aabb_point[8];
+	aabb_point[0]=vec4(minx,miny,minz,1.f);
+	aabb_point[1]=vec4(maxx,miny,minz,1.f);
+	aabb_point[2]=vec4(minx,maxy,minz,1.f);
+	aabb_point[3]=vec4(minx,miny,maxz,1.f);
+	aabb_point[4]=vec4(maxx,maxy,minz,1.f);
+	aabb_point[5]=vec4(maxx,miny,maxz,1.f);
+	aabb_point[6]=vec4(minx,maxy,maxz,1.f);
+	aabb_point[7]=vec4(maxx,maxy,maxz,1.f);
+	float minX = 1, minY = 1, minZ = 1, maxX = -1, maxY = -1, maxZ = -1;
+	for(int i=0 ;i<8;i++)
+	{
+		aabb_point[i]=(cullData.proj*cullData.view * (aabb_point[i]));
+		vec3 ndc=aabb_point[i].xyz/aabb_point[i].w;
+		if (minX > ndc.x) minX = ndc.x;
+        if (minY > ndc.y) minY = ndc.y;
+        if (minZ > ndc.z) minZ = ndc.z;
+        if (maxX < ndc.x) maxX = ndc.x;
+        if (maxY < ndc.y) maxY = ndc.y;
+        if (maxZ < ndc.z) maxZ = ndc.z;
+	}
+	minZ=minZ*0.5f+0.5f;
+	maxZ=maxZ*0.5f+0.5f;
+	vec2 uvLeftBottom = vec2(minX, minY) * 0.5f + 0.5f;
+    vec2 uvRightTop = vec2(maxX, maxY) * 0.5f + 0.5f;
+
+
+    float mipmapLevel =(floor(log2(max(maxX - minX, maxY - minY)*0.5f*cullData.pyramidWidth)));// (uint)clamp(log2(max(maxX - minX, maxY - minY) * 0.5f * cullData.pyramidWidth), 0, log2(cullData.pyramidWidth) - 4);
+    //当前mipmap的大小
+    float size = cullData.pyramidWidth / (1 << int(mipmapLevel));
+
+    vec2 pixelLeftBottom = vec2(clamp(uvLeftBottom.x * size, 0, size - 1), clamp(uvLeftBottom.y * size, 0, size - 1));
+    vec2 pixelRightTop = vec2(clamp(uvRightTop.x * size, 0, size - 1), clamp(uvRightTop.y * size, 0, size - 1));
+
+
+	float depth = textureLod(depthPyramid, pixelLeftBottom , mipmapLevel).x;
+
+
+	return minZ-0.05f >= depth;
+}
+
+
 
 bool IsVisible(uint objectIndex)
 {
@@ -107,9 +157,13 @@ bool IsVisible(uint objectIndex)
 
 	vec4 sphereBounds = objectBuffer.objects[index].spherebounds;
 
-	vec3 center = sphereBounds.xyz;
-	center = (cullData.view * vec4(center,1.f)).xyz;
+	vec4 center = vec4(sphereBounds.xyz,1.f);
 	float radius = sphereBounds.w;
+	vec4 back_center=center;
+	back_center.z=center.z-radius;
+	vec4 center_view_space=cullData.view * (center);
+	vec4 center_proj_space = (cullData.proj*cullData.view * (center));
+	back_center = (cullData.proj*cullData.view * (back_center));
 	
 	bool visible = true;
 
@@ -117,41 +171,35 @@ bool IsVisible(uint objectIndex)
 
 	// if(cullData.distCull != 0)
 	// {// the near/far plane culling uses camera space Z directly
-	// 	visible = visible && center.z + radius > cullData.znear && center.z - radius < cullData.zfar;
+	// 	visible = visible && center_view_space.z + radius > cullData.znear && center_view_space.z - radius < cullData.zfar;
 	// }
 	
 
 	//visible = visible || cullData.cullingEnabled == 0;
 
 	//flip Y because we access depth texture that way
-	center.y *= -1;
+	//center.y *= -1;
 
 	if(visible && cullData.occlusionEnabled != 0)
 	{
-		vec4 aabb;
-		if (projectSphere(center, radius, cullData.znear, cullData.P00, cullData.P11, aabb))
-		{
-			float width = (aabb.z - aabb.x) * cullData.pyramidWidth;
-			float height = (aabb.w - aabb.y) * cullData.pyramidHeight;
+		// vec4 aabb;
+		// if (projectSphere(center, radius, cullData.znear, cullData.P00, cullData.P11, aabb))
+		// {
+		// 	float width = (aabb.z - aabb.x) * cullData.pyramidWidth;
+		// 	float height = (aabb.w - aabb.y) * cullData.pyramidHeight;
 
-			float level = floor(log2(max(width, height)));
+		// 	float level = floor(log2(max(width, height)));
 
-			// Sampler is set up to do min reduction, so this computes the minimum depth of a 2x2 texel quad
+		// 	// Sampler is set up to do min reduction, so this computes the minimum depth of a 2x2 texel quad
 			
-			float depth = textureLod(depthPyramid, (aabb.xy + aabb.zw) * 0.5, level).x;
-			float depthSphere =cullData.znear / (center.z - radius);
+		// 	float depth = textureLod(depthPyramid, (aabb.xy + aabb.zw) * 0.5, level).x;
+		// 	float depthSphere =(center.z);
 
-			visible = visible && depthSphere < depth;
-		}
-		else
-		{
-			visible=false;
-		}
+		// 	visible = visible && depthSphere < depth;
+		// }
+		visible =visible&& occlusionCulling(center,radius,cullData.znear);
 	}
-	else
-	{
-		visible = false;
-	}
+
 
 	return visible;
 }
@@ -163,7 +211,7 @@ void main()
 	{
 		uint objectID = compactInstanceBuffer.Instances[gID].objectID;
 		bool visible =  IsVisible(objectID);
-		if(visible)
+		if(visible||cullData.isfirstframe>0)
 		{
 			uint batchIndex = compactInstanceBuffer.Instances[gID].batchID;
 			uint countIndex = atomicAdd(drawBuffer.Draws[batchIndex].instanceCount,1);

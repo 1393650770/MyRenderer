@@ -374,8 +374,9 @@ namespace MXRender
 		OPTICK_PUSH("Bind")
 		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_component->material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
 
-
-		vkCmdSetViewport(command_buffer, 0, 1, &cur_context.lock()->viewport);
+		viewport.width = cur_context.lock()->get_swapchain_extent().width;
+		viewport.height = cur_context.lock()->get_swapchain_extent().height;
+		vkCmdSetViewport(command_buffer, 0, 1, &viewport);
 
 		MVP_Struct ubo{};
 		ubo.model = mesh_component->transformMatrix;
@@ -418,8 +419,9 @@ namespace MXRender
 		OPTICK_PUSH("Bind")
 		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
 
-
-		vkCmdSetViewport(command_buffer, 0, 1, &cur_context.lock()->viewport);
+		viewport.width = cur_context.lock()->get_swapchain_extent().width;
+		viewport.height = cur_context.lock()->get_swapchain_extent().height;
+		vkCmdSetViewport(command_buffer, 0, 1, &viewport);
 
 		MVP_Struct ubo{};
 		ubo.model = render_object->transformMatrix;
@@ -470,7 +472,10 @@ namespace MXRender
 		OPTICK_PUSH("BindPass")
 		vkCmdBeginRenderPass(command_buffer, &(cur_context.lock()->renderpass_begin_info_map[render_pass]),VK_SUBPASS_CONTENTS_INLINE);
 		OPTICK_POP()
-		vkCmdSetViewport(command_buffer, 0, 1, &cur_context.lock()->viewport);
+
+		viewport.width = cur_context.lock()->get_swapchain_extent().width;
+		viewport.height = cur_context.lock()->get_swapchain_extent().height;
+		vkCmdSetViewport(command_buffer, 0, 1, &viewport);
 
 		VkRect2D scissor{};
 		scissor.offset = { 0, 0 };
@@ -505,7 +510,10 @@ namespace MXRender
 		OPTICK_PUSH("BindPass")
 		vkCmdBeginRenderPass(command_buffer, &(cur_context.lock()->renderpass_begin_info_map[render_pass]), VK_SUBPASS_CONTENTS_INLINE);
 		OPTICK_POP()
-			vkCmdSetViewport(command_buffer, 0, 1, &cur_context.lock()->viewport);
+
+		viewport.width = cur_context.lock()->get_swapchain_extent().width;
+		viewport.height = cur_context.lock()->get_swapchain_extent().height;
+		vkCmdSetViewport(command_buffer, 0, 1, &viewport);
 
 		VkRect2D scissor{};
 		scissor.offset = { 0, 0 };
@@ -649,7 +657,10 @@ namespace MXRender
 			{
 				return;
 			}
-			vkCmdSetViewport(vk_context->get_cur_command_buffer(), 0, 1, &cur_context.lock()->viewport);
+
+			viewport.width = cur_context.lock()->get_swapchain_extent().width;
+			viewport.height = cur_context.lock()->get_swapchain_extent().height;
+			vkCmdSetViewport(vk_context->get_cur_command_buffer(), 0, 1, &viewport);
 
 
 			VkRect2D scissor{};
@@ -697,6 +708,7 @@ namespace MXRender
 				bool is_bind_vertex_index=false;
 				if (Singleton<DefaultSetting>::get_instance().is_enable_batch)
 				{
+					OPTICK_PUSH("Batch_Draw")
 					int index=0;
 					for (auto& [k,v]: render_scene->merge_batch)
 					{
@@ -747,9 +759,11 @@ namespace MXRender
 						vkCmdDrawIndexedIndirect(command_buffer, render_scene->gpu_driven->drawIndirectBuffer._buffer, index * sizeof(GPUIndirectObject), v.size(), sizeof(GPUIndirectObject));
 						index +=v.size();
 					}
+					OPTICK_POP()
 				}
 				else
 				{ 
+					OPTICK_PUSH("All_Draw")
 					for (int i = 0;  i < render_scene->get_renderables_size(); i++)
 					{
 					
@@ -798,6 +812,7 @@ namespace MXRender
 						vkCmdDrawIndexedIndirect(command_buffer, render_scene->gpu_driven->drawIndirectBuffer._buffer, i * sizeof(GPUIndirectObject), 1, sizeof(GPUIndirectObject));
 						
 					}
+					OPTICK_POP()
 				}
 			}
 		}
@@ -818,6 +833,13 @@ namespace MXRender
 		setup_descriptorsets();
 
 		cpu_ubo_buffer.init(cur_context.lock().get(), uniform_buffers_memory[0]);
+
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = cur_context.lock()->get_swapchain_extent().width;
+		viewport.height = cur_context.lock()->get_swapchain_extent().height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
 	}
 
 	void Mesh_RenderPass::post_initialize()
@@ -860,8 +882,9 @@ namespace MXRender
 
 		vkCmdBindPipeline(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-
-		vkCmdSetViewport(vk_context->get_cur_command_buffer(), 0, 1, &vk_context-> viewport);
+		viewport.width = cur_context.lock()->get_swapchain_extent().width;
+		viewport.height = cur_context.lock()->get_swapchain_extent().height;
+		vkCmdSetViewport(vk_context->get_cur_command_buffer(), 0, 1, &viewport);
 
 		VkRect2D scissor{};
 		scissor.offset = { 0, 0 };

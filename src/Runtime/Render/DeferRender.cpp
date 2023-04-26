@@ -21,6 +21,7 @@
 #include "optick.h"
 #include "RenderScene.h"
 #include "GPUDriven.h"
+#include "Pass/CopyPass.h"
 
 
 MXRender::DeferRender::DeferRender()
@@ -64,9 +65,6 @@ void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context,Rende
 
 	main_camera_pass->draw(context.lock().get());
 
-	OPTICK_PUSH("UiDraw")
-	ui_pass->draw(context.lock().get());
-	OPTICK_POP()
 
 	main_camera_pass->end_pass(context.lock().get());
 
@@ -75,6 +73,15 @@ void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context,Rende
 	{
 		render_scene->gpu_driven->execute_reduce_depth_computepass(render_scene);
 	}
+
+	copy_pass->begin_pass(context.lock().get());
+	copy_pass->build_input_set({ main_camera_pass->color_image_sampler,main_camera_pass->color_imageview,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+	copy_pass->draw(context.lock().get());
+	OPTICK_PUSH("UiDraw")
+	ui_pass->draw(context.lock().get());
+	OPTICK_POP()
+
+	copy_pass->end_pass(context.lock().get());
 
 	OPTICK_PUSH("SubmitQueueAndWaitIdle")
 	context.lock()->submit();
@@ -92,13 +99,19 @@ void MXRender::DeferRender::init(std::weak_ptr <VK_GraphicsContext> context,GLFW
 	mesh_pass=std::make_shared<Mesh_RenderPass>();
 	ui_pass = std::make_shared<UI_RenderPass>();
 	precomputeibl_pass = std::make_shared<PreComputeIBL_RenderPass>();
+	copy_pass=std::make_shared<Copy_RenderPass>();
+
 
 	main_camera_pass->initialize(pass_info, &other_info);
 	//context.lock()->mesh_pass=main_camera_pass->get_render_pass();
 	other_info.render_pass=main_camera_pass->get_render_pass();
 	mesh_pass->initialize(pass_info, &other_info);
-	ui_pass->initialize(pass_info,&other_info);
+
 	precomputeibl_pass->initialize(pass_info, &other_info);
+	copy_pass->initialize(pass_info, &other_info);
+	other_info.render_pass = copy_pass->get_render_pass();
+	ui_pass->initialize(pass_info,&other_info);
+
 
 	ui_pass->initialize_ui_renderbackend(window_ui);
 	window_ui->initialize_resource();

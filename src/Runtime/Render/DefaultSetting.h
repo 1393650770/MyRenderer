@@ -39,7 +39,8 @@ namespace MXRender
 		bool is_enable_dispatch= true;
 		bool is_enable_gpu_driven = true;
 		bool is_enable_debug_loop=false;
-		bool is_enable_batch=false;
+		bool is_enable_culling = true;
+		bool is_enable_batch=true;
 	private:
 
 	};

@@ -137,6 +137,8 @@ void MXRender::GameObjectManager::destroy_object_list(GraphicsContext* context)
 	default:
 		break;
 	}
+	object_list.clear();
+
 }
 
 void MXRender::GameObjectManager::start_load_prefabs(GraphicsContext* context)

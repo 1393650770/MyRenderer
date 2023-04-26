@@ -33,6 +33,7 @@ namespace MXRender
 	struct DrawCullData
 	{
 		glm::mat4 view;
+		glm::mat4 proj;
 		float P00, P11, znear, zfar; 
 		float oct_frustum[4];
 		float lodBase, lodStep;
@@ -44,6 +45,7 @@ namespace MXRender
 		int lodEnabled;
 		int occlusionEnabled;
 		int distCull;
+		int isFirstFrame;
 	};
 
 	class GPUDrivenSystem
@@ -64,6 +66,7 @@ namespace MXRender
 	protected:
 	private:
 		bool is_fill_indirectcommand=false;
+		bool is_first_frame=true;
 	};
 }
 #endif //_GPUDRIVEN_

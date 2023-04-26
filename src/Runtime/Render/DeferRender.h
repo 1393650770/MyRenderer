@@ -3,6 +3,8 @@
 #define _DEFERRENDER_
 #include "MyRender.h"
 
+namespace MXRender { class Copy_RenderPass; }
+
 namespace MXRender { class RenderScene; }
 
 
@@ -26,6 +28,7 @@ namespace MXRender
         std::shared_ptr < VK_Viewport> main_viewport;
         std::shared_ptr < MainCamera_RenderPass> main_camera_pass ;
         std::shared_ptr < Mesh_RenderPass> mesh_pass; 
+        std::shared_ptr < Copy_RenderPass> copy_pass;
         std::shared_ptr < UI_RenderPass> ui_pass;
         std::shared_ptr < PreComputeIBL_RenderPass> precomputeibl_pass;
         DeferRender();

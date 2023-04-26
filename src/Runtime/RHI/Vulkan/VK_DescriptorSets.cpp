@@ -97,10 +97,7 @@ namespace MXRender
 	{
 		if (device.expired()==false)
 		{	
-			if(descriptor_pool != VK_NULL_HANDLE)
-			{ 
-				vkDestroyDescriptorPool(device.lock()->device, descriptor_pool, nullptr);
-			}
+
 			//delete every pool held
 			for (auto p : free_pools)
 			{
@@ -510,7 +507,7 @@ namespace MXRender
 	}
 
 	void DescriptorLayoutCache::cleanup()
-	{
+	{ 
 		for (auto pair : layoutCache)
 		{
 			vkDestroyDescriptorSetLayout(device, pair.second, nullptr);

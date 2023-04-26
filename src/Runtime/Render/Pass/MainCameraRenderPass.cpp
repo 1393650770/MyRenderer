@@ -27,17 +27,17 @@ namespace MXRender
 
 	void MainCamera_RenderPass::setup_renderpass()
 	{
-
+		
 
 		VkAttachmentDescription colorAttachment{};
-		colorAttachment.format = cur_context.lock()->get_swapchain_image_format();
+		colorAttachment.format = color_image_format;
 		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 		VkAttachmentReference colorAttachmentRef{};
 		colorAttachmentRef.attachment = 0;
@@ -86,6 +86,68 @@ namespace MXRender
 		if (vkCreateRenderPass(cur_context.lock()->device->device, &renderPassInfo, nullptr, &render_pass) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create render pass!");
 		}
+
+
+		{
+			VkAttachmentDescription colorAttachment{};
+			colorAttachment.format = color_image_format;
+			colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+			colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+			VkAttachmentReference colorAttachmentRef{};
+			colorAttachmentRef.attachment = 0;
+			colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+
+			VkAttachmentDescription depthAttachment{};
+			depthAttachment.format = cur_context.lock()->get_depth_image_format();
+			depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+			depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+
+			VkAttachmentReference depthAttachmentRef{};
+			depthAttachmentRef.attachment = 1;
+			depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+			VkSubpassDescription subpass{};
+			subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+			subpass.colorAttachmentCount = 1;
+			subpass.pColorAttachments = &colorAttachmentRef;
+			subpass.pDepthStencilAttachment = &depthAttachmentRef;
+
+			VkSubpassDependency dependency{};
+			dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+			dependency.dstSubpass = 0;
+			dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			dependency.srcAccessMask = 0;
+			dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+			std::vector<VkAttachmentDescription> attachments = { colorAttachment, depthAttachment };
+			VkRenderPassCreateInfo renderPassInfo{};
+			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+			renderPassInfo.attachmentCount = attachments.size();
+			renderPassInfo.pAttachments = attachments.data();
+			renderPassInfo.subpassCount = 1;
+			renderPassInfo.pSubpasses = &subpass;
+			renderPassInfo.dependencyCount = 1;
+			renderPassInfo.pDependencies = &dependency;
+
+			if (vkCreateRenderPass(cur_context.lock()-> device->device, &renderPassInfo, nullptr, &clear_pass) != VK_SUCCESS) {
+				throw std::runtime_error("failed to create render pass!");
+			}
+		}
+
 	}
 
 	void MainCamera_RenderPass::setup_descriptorset_layout()
@@ -239,14 +301,34 @@ namespace MXRender
 
 	void MainCamera_RenderPass::setup_framebuffer()
 	{
-		unsigned int swap_chain_images_num  = cur_context.lock()->swapchain_imageviews.size();
-		swapchain_framebuffers.resize(swap_chain_images_num);
-		cur_context.lock()->swapchain_framebuffers.resize(swap_chain_images_num);
-		for (int i = 0; i < swap_chain_images_num; i++)
+	
+		VK_Utils::Create_Image(cur_context.lock()->device->gpu,
+			cur_context.lock()->device->device,
+			cur_context.lock()->get_swapchain_extent().width,
+			cur_context.lock()->get_swapchain_extent().height,
+			color_image_format,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+			VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			color_image,
+			color_image_memory,
+			0,
+			1,
+			1);
+		color_imageview = VK_Utils::Create_ImageView(cur_context.lock()->device->device,
+			color_image,
+			color_image_format,
+			VK_IMAGE_ASPECT_COLOR_BIT,
+			VK_IMAGE_VIEW_TYPE_2D,
+			1,
+			1);
+		color_image_sampler = VK_Utils::Create_Linear_Sampler(cur_context.lock()->device->gpu, cur_context.lock()->device->device);
 		{
+			
 			std::array<VkImageView, 2> attachments = {
-					cur_context.lock()->swapchain_imageviews[i],
-					cur_context.lock()->get_depth_image_view()
+			color_imageview,
+			cur_context.lock()->get_depth_image_view()
 			};
 			VkFramebufferCreateInfo framebuffer_create_info{};
 			framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -256,14 +338,12 @@ namespace MXRender
 			framebuffer_create_info.width = cur_context.lock()->get_swapchain_extent().width;
 			framebuffer_create_info.height = cur_context.lock()->get_swapchain_extent().height;
 			framebuffer_create_info.layers = 1;
-			
 			if (vkCreateFramebuffer(
-				cur_context.lock()->device->device, &framebuffer_create_info, nullptr, &swapchain_framebuffers[i]) !=
+				cur_context.lock()->device->device, &framebuffer_create_info, nullptr, &framebuffer) !=
 				VK_SUCCESS)
 			{
 				throw std::runtime_error("create main camera framebuffer");
 			}
-			cur_context.lock()->swapchain_framebuffers[i]=&swapchain_framebuffers[i];
 		}
 	}
 
@@ -383,10 +463,13 @@ namespace MXRender
 
 	void MainCamera_RenderPass::destroy_framebuffer()
 	{
-		for (size_t i = 0; i < swapchain_framebuffers.size(); i++) {
-			vkDestroyFramebuffer(cur_context.lock()->device->device, swapchain_framebuffers[i], nullptr);
-			cur_context.lock()->swapchain_framebuffers[i] = nullptr;
-		}
+		vkDestroyImageView(cur_context.lock()->device->device, color_imageview, nullptr);
+
+		vkDestroyImage(cur_context.lock()->device->device, color_image, nullptr);
+		vkFreeMemory(cur_context.lock()->device->device, color_image_memory, nullptr);
+		vkDestroySampler(cur_context.lock()->device->device, color_image_sampler, nullptr);
+		vkDestroyFramebuffer(cur_context.lock()->device->device, framebuffer, nullptr);
+
 	}
 
 
@@ -405,6 +488,18 @@ namespace MXRender
 		setup_descriptorsets();
 		cur_context.lock()->add_on_swapchain_recreate_func(std::bind(&MainCamera_RenderPass::setup_framebuffer, this));
 		cur_context.lock()->add_on_swapchain_clean_func(std::bind(&MainCamera_RenderPass::destroy_framebuffer, this));
+
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = cur_context.lock()->get_swapchain_extent().width;
+		viewport.height = cur_context.lock()->get_swapchain_extent().height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+	}
+
+	void MainCamera_RenderPass::destroy()
+	{
+		destroy_framebuffer();
 	}
 
 	void MainCamera_RenderPass::post_initialize()
@@ -437,7 +532,10 @@ namespace MXRender
 		vkCmdBindPipeline(vk_context->get_cur_command_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
 
-		vkCmdSetViewport(vk_context->get_cur_command_buffer(), 0, 1, &vk_context->viewport);
+		viewport.width = vk_context->get_swapchain_extent().width;
+		viewport.height = vk_context->get_swapchain_extent().height;
+
+		vkCmdSetViewport(vk_context->get_cur_command_buffer(), 0, 1, &viewport);
 
 		VkRect2D scissor{};
 		scissor.offset = { 0, 0 };
@@ -467,7 +565,7 @@ namespace MXRender
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = render_pass;
-		renderPassInfo.framebuffer = swapchain_framebuffers[image_index];
+		renderPassInfo.framebuffer = framebuffer;
 		renderPassInfo.renderArea.offset = { 0, 0 };
 		renderPassInfo.renderArea.extent = vk_context->get_swapchain_extent();
 
@@ -489,8 +587,8 @@ namespace MXRender
 				image_index = vk_context->get_current_swapchain_image_index();
 				VkRenderPassBeginInfo renderPassInfo{};
 				renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-				renderPassInfo.renderPass = vk_context->clear_pass;
-				renderPassInfo.framebuffer = swapchain_framebuffers[image_index];
+				renderPassInfo.renderPass = clear_pass;
+				renderPassInfo.framebuffer = framebuffer;
 				renderPassInfo.renderArea.offset = { 0, 0 };
 				renderPassInfo.renderArea.extent = vk_context->get_swapchain_extent();
 
@@ -507,7 +605,7 @@ namespace MXRender
 		vkCmdBeginRenderPass(vk_context->get_cur_command_buffer(), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		vk_context->inheritance_info_map[render_pass].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-		vk_context->inheritance_info_map[render_pass].framebuffer = swapchain_framebuffers[image_index];
+		vk_context->inheritance_info_map[render_pass].framebuffer = framebuffer;
 		vk_context->inheritance_info_map[render_pass].renderPass = render_pass;
 		
 		vk_context->renderpass_begin_info_map[render_pass]= renderPassInfo;
@@ -537,9 +635,6 @@ namespace MXRender
 		vkDestroyPipelineLayout(cur_context.lock()->device->device, pipeline_layout, nullptr);
 		vkDestroyRenderPass(cur_context.lock()->device->device, render_pass, nullptr);
 
-		for (size_t i = 0; i < swapchain_framebuffers.size(); i++) {
-			vkDestroyFramebuffer(cur_context.lock()->device->device, swapchain_framebuffers[i], nullptr);
-		}
 
 		for (size_t i = 0; i < uniform_buffers.size(); i++) {
 			vkDestroyBuffer(cur_context.lock()->device->device, uniform_buffers[i], nullptr);
@@ -555,10 +650,6 @@ namespace MXRender
 		return render_pass;
 	}
 
-	std::vector<VkFramebuffer>& MainCamera_RenderPass::get_swapchain_framebuffers()
-	{
-		return swapchain_framebuffers;
-	}
 
 	MXRender::MainCamera_RenderPass::MainCamera_RenderPass(const PassInfo& init_info)
     {
