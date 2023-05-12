@@ -84,32 +84,11 @@ layout(set = 0,binding = 5, r32f) uniform writeonly image2D outImage;
 
 bool IsInClipSpace(vec4 clipSpacePosition)
 {
-	return clipSpacePosition.x > -clipSpacePosition.w && clipSpacePosition.x < clipSpacePosition.w&&
-	clipSpacePosition.y > -clipSpacePosition.w && clipSpacePosition.y < clipSpacePosition.w&&
-	clipSpacePosition.z > -clipSpacePosition.w && clipSpacePosition.z < clipSpacePosition.w;
+	return clipSpacePosition.x >= -1.0f && clipSpacePosition.x <= 1.0f&&
+	clipSpacePosition.y >= -1.0f && clipSpacePosition.y <= 1.0f&&
+	clipSpacePosition.z >= -1.0f && clipSpacePosition.z <= 1.0f;
 }
 
-//2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
-bool projectSphere(vec4 C, float r, float znear, float P00, float P11, out vec4 aabb)
-{
-	if (C.z < r + znear)
-		return false;
-
-	vec2 cx = -C.xz;
-	vec2 vx = vec2(sqrt(dot(cx, cx) - r * r), r);
-	vec2 minx = mat2(vx.x, vx.y, -vx.y, vx.x) * cx;
-	vec2 maxx = mat2(vx.x, -vx.y, vx.y, vx.x) * cx;
-
-	vec2 cy = -C.yz;
-	vec2 vy = vec2(sqrt(dot(cy, cy) - r * r), r);
-	vec2 miny = mat2(vy.x, vy.y, -vy.y, vy.x) * cy;
-	vec2 maxy = mat2(vy.x, -vy.y, vy.y, vy.x) * cy;
-
-	aabb = vec4(minx.x / minx.y * P00, miny.x / miny.y * P11, maxx.x / maxx.y * P00, maxy.x / maxy.y * P11);
-	aabb = aabb.xwzy * vec4(0.5f, -0.5f, 0.5f, -0.5f) + vec4(0.5f); // clip space -> uv space
-
-	return true;
-}
 
 bool occlusionCulling(vec4 c, float r, float znear,uint objectIndex)
 {
@@ -130,9 +109,9 @@ bool occlusionCulling(vec4 c, float r, float znear,uint objectIndex)
 	for(int i=0 ;i<8;i++)
 	{
 		aabb_point[i]=(cullData.proj*cullData.view *objectBuffer.objects[objectIndex].model* (aabb_point[i]));
+		vec3 ndc=aabb_point[i].xyz/aabb_point[i].w;
 		if (!isInClipSpace && IsInClipSpace(aabb_point[i]))
             isInClipSpace = true;
-		vec3 ndc=aabb_point[i].xyz/aabb_point[i].w;
 		if (minX > ndc.x) minX = ndc.x;
         if (minY > ndc.y) minY = ndc.y;
         if (minZ > ndc.z) minZ = ndc.z;
@@ -140,16 +119,25 @@ bool occlusionCulling(vec4 c, float r, float znear,uint objectIndex)
         if (maxY < ndc.y) maxY = ndc.y;
         if (maxZ < ndc.z) maxZ = ndc.z;
 	}
-	// if (!isInClipSpace)
-    //     return false;
+
 	minZ=minZ*0.5f+0.5f;
 	maxZ=maxZ*0.5f+0.5f;
+	if(minZ>=1.0f)
+		return false;
+	// if (!isInClipSpace)
+    //     return false;
+	// minX=minX*0.5f+0.5f;
+	// maxX=maxX*0.5f+0.5f;
+	// minY=minY*0.5f+0.5f;
+	// maxY=maxY*0.5f+0.5f;
 	vec2 uvLeftBottom = vec2(minX, minY) * 0.5f + 0.5f;
-    vec2 uvRightTop = vec2(maxX, maxY) * 0.5f + 0.5f;
+    vec2 uvRightTop = vec2(maxX, maxY)* 0.5f + 0.5f;
+	// uvLeftBottom.y=1.0f-uvLeftBottom.y;
+	// uvRightTop.y=1.0f-uvRightTop.y;
 
+    float mipmapLevel =clamp(floor(log2(max((maxX - minX)*cullData.pyramidWidth, (maxY - minY)*cullData.pyramidHeight))),0,log2(max(cullData.pyramidWidth, cullData.pyramidHeight)));// (uint)clamp(log2(max(maxX - minX, maxY - minY) * 0.5f * cullData.pyramidWidth), 0, log2(cullData.pyramidWidth) - 4);
 
-    float mipmapLevel =(floor(log2(max((maxX - minX)*cullData.pyramidWidth, (maxY - minY)*cullData.pyramidHeight))));// (uint)clamp(log2(max(maxX - minX, maxY - minY) * 0.5f * cullData.pyramidWidth), 0, log2(cullData.pyramidWidth) - 4);
-    //当前mipmap的大小
+	//当前mipmap的大小
 	//mipmapLevel=0;
     float size_x = cullData.pyramidWidth / (1 << int(mipmapLevel));
 	float size_y = cullData.pyramidHeight / (1 << int(mipmapLevel));
@@ -162,13 +150,14 @@ bool occlusionCulling(vec4 c, float r, float znear,uint objectIndex)
     vec2 oldRightTop = vec2(clamp(uvRightTop.x * size_x, 0, size_x - 1), clamp(uvRightTop.y * size_y, 0, size_y - 1));
 
 	float depth =1.0f;
-	depth=max( textureLod(depthPyramid, vec2(pixelLeftBottom.x,pixelLeftBottom.y) , mipmapLevel).x,
+	depth=//textureLod(depthPyramid, (pixelLeftBottom+pixelRightTop)*0.5f , mipmapLevel).x;
+			max( textureLod(depthPyramid, vec2(pixelLeftBottom.x,pixelLeftBottom.y) , mipmapLevel).x,
 			max( textureLod(depthPyramid,vec2(pixelRightTop.x,pixelRightTop.y)  , mipmapLevel).x,
 			max( textureLod(depthPyramid, vec2(pixelLeftBottom.x,pixelRightTop.y) , mipmapLevel).x,
 			textureLod(depthPyramid, vec2(pixelLeftBottom.y,pixelRightTop.x) , mipmapLevel).x)));
 
-	//imageStore(outImage, ivec2((oldLeftBottom+oldRightTop)*0.5f), vec4(depth,mipmapLevel,pixelLeftBottom.x,pixelLeftBottom.y));
-	return minZ<=depth;
+	imageStore(outImage, ivec2((oldLeftBottom+oldRightTop)*0.5f), vec4(depth,mipmapLevel,pixelLeftBottom.x,pixelLeftBottom.y));
+	return minZ*0.985f <= depth*1.015f;
 }
 
 
@@ -183,18 +172,18 @@ bool IsVisible(uint objectIndex)
 	float radius = sphereBounds.w;
 	vec4 back_center=center;
 	back_center.z=center.z-radius;
-	vec4 center_view_space=cullData.view * (center);
-	vec4 center_proj_space = (cullData.proj*cullData.view * (center));
+	vec4 center_view_space=cullData.view *objectBuffer.objects[index].model* (center);
+	vec4 center_proj_space = (cullData.proj*cullData.view *objectBuffer.objects[index].model* (center));
 	back_center = (cullData.proj*cullData.view * (back_center));
 	
 	bool visible = true;
 
 
 
-	// if(cullData.distCull != 0)
-	// {// the near/far plane culling uses camera space Z directly
-	// 	visible = visible && center_view_space.z + radius > cullData.znear && center_view_space.z - radius < cullData.zfar;
-	// }
+	if(cullData.distCull != 0)
+	{// the near/far plane culling uses camera space Z directly
+		visible = visible && center_view_space.z + radius > cullData.znear && center_view_space.z - radius < cullData.zfar;
+	}
 	
 
 	//visible = visible || cullData.cullingEnabled == 0;
@@ -215,10 +204,10 @@ bool IsVisible(uint objectIndex)
 
 		// 	// Sampler is set up to do min reduction, so this computes the minimum depth of a 2x2 texel quad
 			
-		// 	float depth = textureLod(depthPyramid, (aabb.xy + aabb.zw) * 0.5, level).x;
-		// 	float depthSphere =(center_view_space.z);
-
-		// 	visible = visible && depthSphere < depth;
+		// 	float depth = textureLod(depthPyramid, (aabb.xy + aabb.zw) * 0.5f, level).x;
+		// 	float depthSphere =cullData.znear / (center_view_space.z-radius);
+		// 	imageStore(outImage, ivec2((aabb.xy + aabb.zw)*0.5f), vec4(depth,depthSphere,aabb.x,aabb.y));
+		// 	visible = visible && depthSphere <= depth;
 		// }
 		visible =visible&& occlusionCulling(center,radius,cullData.znear,objectIndex);
 	}

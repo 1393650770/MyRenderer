@@ -319,7 +319,7 @@ void MXRender::VK_GraphicsContext::create_depth_pyramid_image()
 
 	VkSamplerCreateInfo createInfo = {};
 
-	auto reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN;
+	auto reductionMode = VK_SAMPLER_REDUCTION_MODE_MAX;
 
 	createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	createInfo.magFilter = VK_FILTER_LINEAR;
@@ -331,14 +331,14 @@ void MXRender::VK_GraphicsContext::create_depth_pyramid_image()
 	createInfo.minLod = 0;
 	createInfo.maxLod = 16.f;
 
-	VkSamplerReductionModeCreateInfoEXT createInfoReduction = { VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT };
+	//VkSamplerReductionModeCreateInfoEXT createInfoReduction = { VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT };
 
-	if (reductionMode != VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE_EXT)
-	{
-		createInfoReduction.reductionMode = reductionMode;
+	//if (reductionMode != VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE_EXT)
+	//{
+	//	createInfoReduction.reductionMode = reductionMode;
 
-		createInfo.pNext = &createInfoReduction;
-	}
+	//	createInfo.pNext = &createInfoReduction;
+	//}
 
 
 	vkCreateSampler(device->device, &createInfo, 0, &depth_sampler);
