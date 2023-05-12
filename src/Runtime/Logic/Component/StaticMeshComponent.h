@@ -64,7 +64,7 @@ namespace MXRender
 	private:
 		void spawn_mesh_data_shared_ptr();
 	protected:
-		std::shared_ptr< MeshBase> mesh_data;
+		MeshBase* mesh_data;
 		Material* material=nullptr;
 		bool is_already_load_mesh=false;
 
@@ -77,7 +77,7 @@ namespace MXRender
 		void reset_mesh(MeshBase* mesh);
 		void set_overmaterial(Material* material);
 		Material* get_material() const;
-		std::weak_ptr<MeshBase> get_mesh_data();
+		MeshBase* get_mesh_data();
 		bool get_already_load_mesh() const;
 		void set_already_load_mesh_to_true();
 

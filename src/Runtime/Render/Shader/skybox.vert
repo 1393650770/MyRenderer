@@ -56,7 +56,7 @@ vec3 positions[36] = vec3[](
 
 void main() {
     vec4 pos = mvp.proj * mvp.view * vec4(positions[gl_VertexIndex], 1.0f);
-    pos.z=pos.w*0.99f;
+    pos.z=pos.w*0.9999999999f;
     gl_Position = pos;
     TexCoords= positions[gl_VertexIndex] ;
 }

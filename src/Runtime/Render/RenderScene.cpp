@@ -259,6 +259,19 @@ namespace MXRender
 	}
 
 	
+	void RenderScene::destroy()
+	{
+		if (Singleton<DefaultSetting>::get_instance().is_enable_gpu_driven)
+		{
+			gpu_driven->destroy();
+		}
+		delete gpu_driven;
+		VK_GraphicsContext* context = Singleton<DefaultSetting>::get_instance().context.get();
+		VK_Utils::Destroy_Buffer(context, merged_index_buffer);
+		VK_Utils::Destroy_Buffer(context, merged_vertex_buffer);
+
+	}
+
 	Handle<DrawMesh> RenderScene::get_mesh_id(MeshBase* mesh)
 	{
 		Handle<DrawMesh> handle;
@@ -310,10 +323,10 @@ namespace MXRender
 		{
 
 			RenderObject newObj;
-			newObj.bounds = game_object->get_staticmesh()->get_mesh_data().lock()->bounds;
+			newObj.bounds = game_object->get_staticmesh()->get_mesh_data()->bounds;
 			newObj.transformMatrix = game_object->get_transform()->get_model_matrix();
 			newObj.materialID = get_material_id(game_object->get_material());
-			newObj.meshID = get_mesh_id(game_object->get_staticmesh()->get_mesh_data().lock().get());
+			newObj.meshID = get_mesh_id(game_object->get_staticmesh()->get_mesh_data());
 			newObj.updateIndex = (uint32_t)-1;
 			//newObj.customSortKey = object->customSortKey;
 			newObj.passIndices.clear(-1);

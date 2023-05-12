@@ -23,6 +23,7 @@
 #include <array>
 #include "../../RHI/Vulkan/VK_RenderPass.h"
 #include "../../Mesh/GL_Mesh.h"
+#include <type_traits>
 namespace MXRender
 {
 
@@ -43,6 +44,7 @@ namespace MXRender
 		pipeline_layout=in_shader->get_built_layout();
 		in_pipeline_builder->set_shaders(shader);
 		pipeline = in_pipeline_builder->build_pipeline(device, in_renderpass);
+		
 	}
 
 	Material::Material()
@@ -127,7 +129,7 @@ namespace MXRender
 
 
 			mesh_pass_builder._rasterizer = VK_Utils::Rasterization_State_Create_Info(VK_POLYGON_MODE_FILL);
-			mesh_pass_builder._rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;//BACK_BIT;
+			mesh_pass_builder._rasterizer.cullMode = VK_CULL_MODE_NONE;//BACK_BIT;
 			mesh_pass_builder._rasterizer.frontFace= VK_FRONT_FACE_COUNTER_CLOCKWISE;
 			mesh_pass_builder._multisampling = VK_Utils::Multisampling_State_Create_Info();
 
@@ -145,7 +147,7 @@ namespace MXRender
 
 
 			mesh_transparency_pass_builder._rasterizer = VK_Utils::Rasterization_State_Create_Info(VK_POLYGON_MODE_FILL);
-			mesh_transparency_pass_builder._rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;//BACK_BIT;
+			mesh_transparency_pass_builder._rasterizer.cullMode = VK_CULL_MODE_NONE;//BACK_BIT;
 			mesh_transparency_pass_builder._rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 			mesh_transparency_pass_builder._multisampling = VK_Utils::Multisampling_State_Create_Info();
 
@@ -222,8 +224,9 @@ namespace MXRender
 		descriptorlayout_cache->init(context->device->device);
 
 		VK_Shader* default_color = new  VK_Shader(context->device, "Shader/default_prefabs_mesh_vert.spv", "Shader/default_prefabs_mesh_frag.spv");
+		VK_Shader* default_color_revert_uv = new  VK_Shader(context->device, "Shader/default_prefabs_mesh_vert.spv", "Shader/default_prefabs_mesh_copy_frag.spv");
 		VK_Shader* default_color_gpu_driven = new  VK_Shader(context->device, "Shader/gpu_driven_tri_vert.spv", "Shader/default_prefabs_mesh_frag.spv");
-
+		VK_Shader* default_color_revert_uv_gpu_driven = new  VK_Shader(context->device, "Shader/gpu_driven_tri_vert.spv", "Shader/default_prefabs_mesh_copy_frag.spv");
 		VK_Shader* pbr_material = new  VK_Shader(context->device, "Shader/pbr_mesh_vert.spv", "Shader/pbr_mesh_frag.spv");
 		VK_Shader* pbr_material_gpu_driven = new  VK_Shader(context->device, "Shader/gpu_driven_tri_vert.spv", "Shader/pbr_mesh_frag.spv");
 
@@ -238,6 +241,8 @@ namespace MXRender
 		};
 		default_color->reflect_layout(overrides, 1);
 		pbr_material->reflect_layout(overrides, 1);
+		default_color_revert_uv->reflect_layout(overrides, 1);
+		default_color_revert_uv_gpu_driven->reflect_layout(overrides, 1);
 		default_color_gpu_driven->reflect_layout(overrides, 1);
 		pbr_material_gpu_driven->reflect_layout(overrides, 1);
 		gpu_driven_material->reflect_layout(overrides, 1);
@@ -246,6 +251,8 @@ namespace MXRender
 
 		shaders["default_mesh"] = default_color;
 		shaders["pbr_mesh"]=pbr_material;
+		shaders["default_mesh_revert_uv"] = default_color_revert_uv;
+		shaders["default_mesh_revert_uv_gpu_driven"] = default_color_revert_uv_gpu_driven;
 		shaders["default_mesh_gpu_driven"] = default_color_gpu_driven;
 		shaders["pbr_mesh_gpu_driven"] = pbr_material_gpu_driven;
 		shaders["gpu_driven_mesh"] = gpu_driven_material;
@@ -254,13 +261,17 @@ namespace MXRender
 
 		PipelineShaderObject* mesh_pso =  build_pso(context->mesh_pass, mesh_pass_builder, default_color);
 		PipelineShaderObject* pbr_mesh_pso = build_pso(context->mesh_pass, mesh_pass_builder, pbr_material);
+		PipelineShaderObject* mesh_revert_uv_pso = build_pso(context->mesh_pass, mesh_pass_builder, default_color_revert_uv);
+		PipelineShaderObject* mesh_revert_uv_gpu_driven_pso = build_pso(context->mesh_pass, mesh_pass_builder, default_color_revert_uv_gpu_driven);
 		PipelineShaderObject* mesh_gpu_driven_pso = build_pso(context->mesh_pass, mesh_transparency_pass_builder, default_color_gpu_driven);
 		PipelineShaderObject* pbr_mesh_gpu_driven_pso = build_pso(context->mesh_pass, mesh_pass_builder, pbr_material_gpu_driven);
-		PipelineShaderObject* gpu_driven_mesh_pso = build_pso(context->mesh_pass, mesh_transparency_pass_builder, gpu_driven_material);
-		PipelineShaderObject* default_transparency_pso = build_pso(context->mesh_pass, mesh_transparency_pass_builder, default_transparency_material);
+		PipelineShaderObject* gpu_driven_mesh_pso = build_pso(context->mesh_pass, mesh_pass_builder, gpu_driven_material);
+		PipelineShaderObject* default_transparency_pso = build_pso(context->mesh_pass, mesh_pass_builder, default_transparency_material);
 
 		psos["mesh_pass"] = mesh_pso;
 		psos["pbr_pass"] = pbr_mesh_pso;
+		psos["mesh_revert_uv_pass"] = mesh_revert_uv_pso;
+		psos["mesh_revert_uv_gpu_driven_pass"] = mesh_revert_uv_gpu_driven_pso;
 		psos["mesh_gpu_driven_pass"] = mesh_gpu_driven_pso;
 		psos["pbr_gpu_driven_pass"] = pbr_mesh_gpu_driven_pso;
 		psos["gpu_driven_pso"] = gpu_driven_mesh_pso;
@@ -273,6 +284,14 @@ namespace MXRender
 		templateCache["mesh_base"].pass_pso[MeshpassType::Forward]= mesh_pso;
 		templateCache["mesh_base"].pass_pso[MeshpassType::Transparency] = nullptr;
 		templateCache["mesh_base"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
+
+		templateCache["mesh_base_revert_uv"].pass_pso[MeshpassType::Forward] = mesh_revert_uv_pso;
+		templateCache["mesh_base_revert_uv"].pass_pso[MeshpassType::Transparency] = nullptr;
+		templateCache["mesh_base_revert_uv"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
+
+		templateCache["mesh_base_revert_uv_gpu_driven"].pass_pso[MeshpassType::Forward] = mesh_revert_uv_gpu_driven_pso;
+		templateCache["mesh_base_revert_uv_gpu_driven"].pass_pso[MeshpassType::Transparency] = nullptr;
+		templateCache["mesh_base_revert_uv_gpu_driven"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
 
 		templateCache["mesh_pbr"].pass_pso[MeshpassType::Forward] = pbr_mesh_pso;
 		templateCache["mesh_pbr"].pass_pso[MeshpassType::Transparency] = nullptr;
@@ -358,6 +377,16 @@ namespace MXRender
 		}
 
 		return result;
+	}
+
+	uint32_t SampledTexture::get_hash()
+	{
+		using std::hash;
+
+		size_t hash1 = hash<size_t>()((size_t)(void*)((uint64_t*)view));
+		size_t hash2 = hash<size_t>()((size_t)(void*)((uint64_t*)sampler));
+		
+		return hash<size_t>()(hash1|hash2);;
 	}
 
 }

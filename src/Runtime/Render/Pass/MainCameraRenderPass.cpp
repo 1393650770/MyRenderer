@@ -217,7 +217,7 @@ namespace MXRender
 		rasterizer.rasterizerDiscardEnable = VK_FALSE;
 		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterizer.lineWidth = 1.0f;
-		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterizer.cullMode = VK_CULL_MODE_NONE;
 		rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -395,7 +395,7 @@ namespace MXRender
 		std::string cubemap_path3 = "Resource/Texture/Skybox/bolonga_lod.dds";
 
 
-		VK_Texture* cubemap_texture= Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("skybox",ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP, cubemap_path2);
+		VK_Texture* cubemap_texture= Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("skybox",ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP, cubemap_path3);
 		if (cubemap_texture==nullptr)
 		{
 			return;
@@ -634,7 +634,7 @@ namespace MXRender
 		vkDestroyPipeline(cur_context.lock()->device->device, pipeline, nullptr);
 		vkDestroyPipelineLayout(cur_context.lock()->device->device, pipeline_layout, nullptr);
 		vkDestroyRenderPass(cur_context.lock()->device->device, render_pass, nullptr);
-
+		vkDestroyRenderPass(cur_context.lock()->device->device, clear_pass, nullptr);
 
 		for (size_t i = 0; i < uniform_buffers.size(); i++) {
 			vkDestroyBuffer(cur_context.lock()->device->device, uniform_buffers[i], nullptr);

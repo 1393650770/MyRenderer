@@ -16,5 +16,7 @@ C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V depth_reduce.comp -o depth_re
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V mesh_rock_transparency.frag -o mesh_rock_transparency_frag.spv
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V fullscreen.vert -o fullscreen_vert.spv
 C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V copy.frag -o copy_frag.spv
+C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V mesh_rock_copy.vert -o mesh_rock_copy_vert.spv
+C:/VulkanSDK/1.3.231.1/Bin/glslangValidator.exe -V default_prefabs_mesh_copy.frag -o default_prefabs_mesh_copy_frag.spv
 
 pause

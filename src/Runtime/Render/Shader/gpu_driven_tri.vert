@@ -50,6 +50,6 @@ void main()
 	gl_Position = transformMatrix * vec4(vPosition, 1.0f);
 	outNormal = normalize((modelMatrix * vec4(vec_tre_Normal,0.f)).xyz);
 	outColor = vColor;
-	texCoord = vec2(vTexCoord.x,1.0f-vTexCoord.y);
+	texCoord = vTexCoord;
     outPos=vPosition;
 }

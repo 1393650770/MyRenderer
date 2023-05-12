@@ -172,7 +172,9 @@ namespace MXRender
 
 	Copy_RenderPass::~Copy_RenderPass()
 	{
-
+		vkDestroyPipeline(cur_context.lock()->device->device, pipeline, nullptr);
+		vkDestroyPipelineLayout(cur_context.lock()->device->device, pipeline_layout, nullptr);
+		vkDestroyRenderPass(cur_context.lock()->device->device, render_pass, nullptr);
 	}
 
 	void Copy_RenderPass::begin_pass(GraphicsContext* context)

@@ -114,7 +114,7 @@ namespace MXRender
 		rasterizer.rasterizerDiscardEnable = VK_FALSE;
 		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterizer.lineWidth = 1.0f;
-		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterizer.cullMode = VK_CULL_MODE_NONE;
 		rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -443,7 +443,7 @@ namespace MXRender
 		vk_mesh->init_mesh_info(cur_context.lock().get());
 		VkBuffer vertexBuffers[] = { vk_mesh->get_mesh_info().vertex_buffer };
 		VkDeviceSize offsets[] = { 0 };
-
+		Singleton<DefaultSetting>::get_instance().mianshu += vk_mesh->indices.size()/3;
 		vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
 
 		vkCmdBindIndexBuffer(command_buffer, vk_mesh->get_mesh_info().index_buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -795,18 +795,36 @@ namespace MXRender
 						vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), 2, 1, &object_data_set, 0, nullptr);
 
 						vkCmdPushConstants(command_buffer, (material->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
-
-						if (is_bind_vertex_index == false)
+						if (Singleton<DefaultSetting>::get_instance().is_enable_batch)
 						{
+						
+							if (is_bind_vertex_index == false)
+							{
 
-							VkBuffer vertexBuffers[] = { render_scene->merged_vertex_buffer._buffer };
-							VkDeviceSize offsets[] = { 0 };
+								VkBuffer vertexBuffers[] = { render_scene->merged_vertex_buffer._buffer };
+								VkDeviceSize offsets[] = { 0 };
 
-							vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
+								vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
 
-							vkCmdBindIndexBuffer(command_buffer, render_scene->merged_index_buffer._buffer, 0, VK_INDEX_TYPE_UINT32);
+								vkCmdBindIndexBuffer(command_buffer, render_scene->merged_index_buffer._buffer, 0, VK_INDEX_TYPE_UINT32);
+							}
 						}
+						else
+						{
+							VK_Mesh* vk_mesh = dynamic_cast<VK_Mesh*>(mesh->original);
+							if (vk_mesh)
+							{
 
+
+								VkBuffer vertexBuffers[] = { vk_mesh->get_mesh_info().vertex_buffer };
+								VkDeviceSize offsets[] = { 0 };
+
+								vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
+
+								vkCmdBindIndexBuffer(command_buffer, vk_mesh->get_mesh_info().index_buffer, 0, VK_INDEX_TYPE_UINT32);
+								OPTICK_PUSH("Draw")
+							}
+						}
 		
 						
 						vkCmdDrawIndexedIndirect(command_buffer, render_scene->gpu_driven->drawIndirectBuffer._buffer, i * sizeof(GPUIndirectObject), 1, sizeof(GPUIndirectObject));

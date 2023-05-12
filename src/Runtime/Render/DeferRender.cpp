@@ -35,11 +35,15 @@ MXRender::DeferRender::~DeferRender()
 
 void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context,RenderScene* render_scene)
 {
+	OPTICK_EVENT()
 	if(context.expired()) return ;
+	OPTICK_PUSH("WaitLastFrame")
 	context.lock()->pre_pass();
-
+	OPTICK_POP()
+	OPTICK_PUSH("ResetResource")
 	Singleton<DefaultSetting>::get_instance().material_system->reset_descript_temp_pool();
-
+	OPTICK_POP()
+	OPTICK_PUSH("PreGpuDriven")
 	if (Singleton<DefaultSetting>::get_instance().is_enable_gpu_driven)
 	{
 		render_scene->gpu_driven->excute_upload_computepass(render_scene);
@@ -49,9 +53,8 @@ void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context,Rende
 		{
 			render_scene->clear_dirty_objects();
 		}
-
 	}
-
+	OPTICK_POP()
 
 
 
@@ -86,7 +89,8 @@ void MXRender::DeferRender::run(std::weak_ptr <VK_GraphicsContext> context,Rende
 	OPTICK_PUSH("SubmitQueueAndWaitIdle")
 	context.lock()->submit();
 	OPTICK_POP()
-
+	int mians= Singleton<DefaultSetting>::get_instance().mianshu;
+	Singleton<DefaultSetting>::get_instance().mianshu =0;
 }
 
 void MXRender::DeferRender::init(std::weak_ptr <VK_GraphicsContext> context,GLFWwindow* window, WindowUI* window_ui)

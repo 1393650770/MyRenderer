@@ -14,6 +14,7 @@
 #define VMA_IMPLEMENTATION
 #include "../../../ThirdParty/vma/vk_mem_alloc.h"
 #include "../MyTexture.h"
+#include "optick.h"
 
 
 
@@ -583,7 +584,14 @@ MXRender::VK_GraphicsContext::VK_GraphicsContext()
 
 MXRender::VK_GraphicsContext::~VK_GraphicsContext()
 {
-	cleanup();
+	vkDestroyDevice(device->device, nullptr);
+
+	if (enableValidationLayers) {
+		destroy_debug_utils_messengerEXT(instance, debug_messenger, nullptr);
+	}
+
+	vkDestroySurfaceKHR(instance, surface, nullptr);
+	vkDestroyInstance(instance, nullptr);
 }
 
 void MXRender::VK_GraphicsContext::init(Window* new_window)
@@ -867,13 +875,16 @@ void MXRender::VK_GraphicsContext::submit_all_threadid_command_buffer()
 	//	{
 			submitInfo.commandBufferCount = thread_command_buffer.size();
 			submitInfo.pCommandBuffers = thread_command_buffer.data();
+			OPTICK_PUSH("QueueSubmit")
 			vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+			OPTICK_POP()
 			//thread_command_buffer_use_map[thread_command_buffer[i]] = 0;
 	//	}
 	//}
 
-
-	vkQueueWaitIdle(graphicsQueue);
+	//OPTICK_PUSH("WaitIdle")
+	//vkQueueWaitIdle(graphicsQueue);
+	OPTICK_POP()
 }
 
 void MXRender::VK_GraphicsContext::wait_all_task()
@@ -1105,7 +1116,10 @@ void MXRender::VK_GraphicsContext::submit()
 	if (vkEndCommandBuffer(command_buffer[current_frame_index]) != VK_SUCCESS) {
 		throw std::runtime_error("failed to record command buffer!");
 	}
+
+	OPTICK_PUSH("WaitAllTask")
 	wait_all_task();
+	OPTICK_POP()
 
 	end_all_threadid_command_buffer();
 	submit_all_threadid_command_buffer();
@@ -1127,11 +1141,11 @@ void MXRender::VK_GraphicsContext::submit()
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
 
-
+	OPTICK_PUSH("QueueSubmit")
 	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, frame_in_flight_fence[current_frame_index]) != VK_SUCCESS) {
 		throw std::runtime_error("failed to submit draw command buffer!");
 	}
-
+	OPTICK_POP()
 
 	VkPresentInfoKHR presentInfo{};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1144,9 +1158,9 @@ void MXRender::VK_GraphicsContext::submit()
 	presentInfo.pSwapchains = swapChains;
 
 	presentInfo.pImageIndices = &current_swapchain_image_index;
-
+	OPTICK_PUSH("QueuePresent")
 	VkResult result = vkQueuePresentKHR(presentQueue, &presentInfo);
-
+	OPTICK_POP()
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
 		framebufferResized = false;
@@ -1175,24 +1189,38 @@ void MXRender::VK_GraphicsContext::cleanup()
 	}
 
 	vkDestroyCommandPool(device->device, command_pool, nullptr);
-	//for (auto& it : on_shutdown_clean)
-	//{
-	//	it();
-	//}
+	for (auto& it : on_shutdown_clean)
+	{
+		it();
+	}
 	for (unsigned int i = 0; i < thread_command_pool.size(); i++)
 	{
 		vkDestroyCommandPool(device->device, thread_command_pool[i], nullptr);
 	}
 
+	vmaDestroyImage(_allocator, depth_pyramid_image._image, depth_pyramid_image._allocation);
+	vkDestroyImageView(device->device, depth_pyramid_image._defaultView, nullptr);
 	vmaDestroyAllocator(_allocator);
-	vkDestroyDevice(device->device, nullptr);
 
-	if (enableValidationLayers) {
-		destroy_debug_utils_messengerEXT(instance, debug_messenger, nullptr);
+	//vkDestroyDevice(device->device, nullptr);
+
+	//if (enableValidationLayers) {
+	//	destroy_debug_utils_messengerEXT(instance, debug_messenger, nullptr);
+	//}
+
+	//vkDestroySurfaceKHR(instance, surface, nullptr);
+	//vkDestroyInstance(instance, nullptr);
+	for (auto& it: depth_pyramid_mips)
+	{
+		if (it)
+		{
+			vkDestroyImageView(device->device,it,nullptr);
+		}
+
 	}
+	vkDestroySampler(device->device, depth_sampler,nullptr);
 
-	vkDestroySurfaceKHR(instance, surface, nullptr);
-	vkDestroyInstance(instance, nullptr);
+	vkDestroyRenderPass(device->device,mesh_pass,nullptr);
 }
 
 MXRender::AllocatedBufferUntyped MXRender::VK_GraphicsContext::create_allocate_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkMemoryPropertyFlags required_flags)
@@ -1307,8 +1335,9 @@ MXRender::AllocatedImage MXRender::VK_GraphicsContext::upload_allocate_image(VK_
 		view_info.subresourceRange.levelCount = newImage.mipLevels;
 		vkCreateImageView(context->device->device, &view_info, nullptr, &newImage._defaultView);
 
-		context->add_on_shutdown_clean_func([=, &context]() {
+		context->add_on_shutdown_clean_func([=]() {
 			vmaDestroyImage(context->_allocator, newImage._image, newImage._allocation);
+			vkDestroyImageView(context->device->device,newImage._defaultView,nullptr);
 			});
 
 		return newImage;

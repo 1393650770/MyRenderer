@@ -124,9 +124,9 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
         lastFrame = currentFrame;
 		OPTICK_FRAME("MainThread");
 
-
+		OPTICK_PUSH("ProccessInput")
 		Singleton<DefaultSetting>::get_instance().input_system->process_input(window);
-
+		OPTICK_POP()
         glfwPollEvents();
 
 		task_graph.add_task_node(4, "update_object_to_render_scene", task_graph.get_task(
@@ -140,18 +140,24 @@ void MXRender::Window::run(std::shared_ptr<MyRender> render)
 		//	Singleton<DefaultSetting>::get_instance().context,
 		//	&render_scene),
 		//	{});
-
+		OPTICK_PUSH("PreRender")
 		auto wait_handle= Singleton<DefaultSetting>::get_instance().task_system->thread_pool.excute_task_graph(&task_graph);
+		OPTICK_POP()
+
 
         render->run(Singleton<DefaultSetting>::get_instance().context,&render_scene);
 
+
 		wait_handle.wait();
 
-        //glfwSwapBuffers(window);
+        glfwSwapBuffers(window);
     }
 
 	vkDeviceWaitIdle(Singleton<DefaultSetting>::get_instance().context->device->device);
+	render_scene.destroy();
+	Singleton<DefaultSetting>::get_instance().context->cleanup();
 	Singleton<DefaultSetting>::get_instance().destroy();
+
 
 }
 

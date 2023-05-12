@@ -101,6 +101,8 @@ namespace MXRender
 	struct SampledTexture {
 		VkSampler sampler;
 		VkImageView view;
+		ENUM_TEXTURE_TYPE texture_type;
+		uint32_t get_hash();
 	};
 	struct EffectTemplate {
 		PerPassData<PipelineShaderObject*> pass_pso;

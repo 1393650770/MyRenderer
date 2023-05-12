@@ -27,3 +27,8 @@ void MXRender::DefaultSetting::destroy()
 	material_system->destroy();
 	gameobject_manager->destroy_object_list(context.get());
 }
+
+void MXRender::DefaultSetting::load_setting()
+{
+	
+}

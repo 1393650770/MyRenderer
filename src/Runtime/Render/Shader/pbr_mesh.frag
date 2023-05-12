@@ -32,15 +32,16 @@ layout(set = 0, binding = 1) uniform  CameraData{
 
 
 void main() {
-    vec3 normalNor = normalize(getNomalFormMap(normal_sampler,texCoord,inPos,inNormal)*2.0f-1.0f);
+    vec2 usetexCoord=vec2(texCoord.x,1.0f-texCoord.y);
+    vec3 normalNor = normalize(getNomalFormMap(normal_sampler,usetexCoord,inPos,inNormal)*2.0f-1.0f);
 
     vec3 viewDir= normalize(cameraData.viewPos.rgb - inPos);
     vec3 lightDir= viewDir;
     vec3 reflectDir = reflect(-viewDir,normalNor); 
     vec3 halfDir = normalize(viewDir + viewDir);
 
-    vec4 textureDiffuse = texture(basecolor_sampler, texCoord);
-    vec4  Aorm = texture(aorm_sampler, texCoord);
+    vec4 textureDiffuse = texture(basecolor_sampler, usetexCoord);
+    vec4  Aorm = texture(aorm_sampler, usetexCoord);
     
     vec4 F0Vec4= vec4(0.04f, 0.04f, 0.04f, 1.0f);
     vec4 lightdiffuse= vec4(1.0f, 1.0f, 1.0f, 1.0f);

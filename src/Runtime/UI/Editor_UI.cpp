@@ -168,6 +168,7 @@ void MXRender::EditorUI::show_camera_right_detail()
 	ImGui::DragFloat("Camera Near Plane", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_near_plane());
 	ImGui::DragFloat("Camera Far Plane", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_far_plane());
 	ImGui::DragFloat("Camera Fov", &Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_fov());
+	Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.set_near(Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_near_plane());
 }
 
 void MXRender::EditorUI::show_one_gameobject(GameObject* gameobject)
@@ -205,7 +206,7 @@ void MXRender::EditorUI::show_one_directory(const std::string& selected_asset_fo
 		MaterialSystem* material_system= (Singleton<DefaultSetting>::get_instance().material_system.get());
 		for (auto& it: material_system->materials)
 		{
-			show_one_file(it.first,selected_asset_folder,allready_show_num_in_one_line);
+			show_one_file(it.first,selected_asset_folder,allready_show_num_in_one_line, content_icon_ds);
 		}
 	}
 	else if (selected_asset_folder == "Mesh")
@@ -213,7 +214,7 @@ void MXRender::EditorUI::show_one_directory(const std::string& selected_asset_fo
 		auto& mesh_dir= (Singleton<DefaultSetting>::get_instance().gameobject_manager->get_mesh_cache());
 		for (auto& it : mesh_dir)
 		{
-			show_one_file(it.first, selected_asset_folder, allready_show_num_in_one_line);
+			show_one_file(it.first, selected_asset_folder, allready_show_num_in_one_line, content_icon_ds);
 		}
 	}
 	else if (selected_asset_folder == "Texture")
@@ -221,7 +222,7 @@ void MXRender::EditorUI::show_one_directory(const std::string& selected_asset_fo
 		auto& texture_dir = (Singleton<DefaultSetting>::get_instance().gameobject_manager->get_texture_cache());
 		for (auto& it : texture_dir)
 		{
-			show_one_file(it.first, selected_asset_folder, allready_show_num_in_one_line);
+			show_one_file(it.first, selected_asset_folder, allready_show_num_in_one_line, content_icon_ds);
 		}
 	}
 	else if (selected_asset_folder == "Prefabs")
@@ -229,7 +230,7 @@ void MXRender::EditorUI::show_one_directory(const std::string& selected_asset_fo
 		auto& prefabs_dir = (Singleton<DefaultSetting>::get_instance().gameobject_manager->get_prefab_cache());
 		for (auto& it : prefabs_dir)
 		{
-			show_one_file(it.first, selected_asset_folder, allready_show_num_in_one_line);
+			show_one_file(it.first, selected_asset_folder, allready_show_num_in_one_line, content_icon_ds);
 		}
 	}
 
@@ -238,7 +239,7 @@ void MXRender::EditorUI::show_one_directory(const std::string& selected_asset_fo
 	ImGui::EndChild();
 }
 
-void MXRender::EditorUI::show_one_file(const std::string& name, const std::string& type,unsigned int& allready_show_num_in_one_line)
+void MXRender::EditorUI::show_one_file(const std::string& name, const std::string& type,unsigned int& allready_show_num_in_one_line, VkDescriptorSet icon)
 {
 
 
@@ -247,7 +248,7 @@ void MXRender::EditorUI::show_one_file(const std::string& name, const std::strin
 
 	ImGui::BeginChild((name+"Asset Details").c_str(), ImVec2(file_content_icon_size.first, file_content_icon_size.second),true);
 	ImGui::BeginGroup();
-	ImGui::Image(content_icon_ds, ImVec2(75, 75));
+	ImGui::Image(icon, ImVec2(75, 75));
 	ImGui::Separator();
 	ImGui::TextWrapped(("Type: "+type).c_str());
 	ImGui::TextWrapped(("Name: "+name).c_str());
@@ -260,6 +261,17 @@ void MXRender::EditorUI::show_one_file(const std::string& name, const std::strin
 		allready_show_num_in_one_line=0;
 	}
 	allready_show_num_in_one_line++;
+}
+
+
+
+VkDescriptorSet MXRender::EditorUI::get_or_create_icon(SampledTexture* tex)
+{
+	if (icon_cache.find(tex->get_hash()) == icon_cache.end())
+	{
+		icon_cache[tex->get_hash()]= ImGui_ImplVulkan_AddTexture(tex->sampler, tex->view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	}
+	return icon_cache[tex->get_hash()];
 }
 
 MXRender::EditorUI::EditorUI()
@@ -402,8 +414,17 @@ void MXRender::EditorUI::show_editor_right_ui()
 		}
 		if (ImGui::CollapsingHeader("MaterialComponent", ImGuiTreeNodeFlags_DefaultOpen)&& static_mesh&& static_mesh->get_material())
 		{
-			ImGui::Text("%s", "pushconstant test");
-			ImGui::DragFloat("pushconstant z", &(static_mesh->get_material()->parameters.z));
+			ImGui::Text("%s", "UseTextureSRV");
+			for (auto& tex:static_mesh->get_material()->textures)
+			{
+				if (tex.texture_type!=ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP)
+				{
+				
+					ImVec2 image_size = ImVec2(150, 150);
+					VkDescriptorSet tex_set = get_or_create_icon(&tex);
+					ImGui::Image((ImTextureID)tex_set, image_size);
+				}
+			}
 			ImGui::Separator();
 		}
 		transform->set_translation(translation);

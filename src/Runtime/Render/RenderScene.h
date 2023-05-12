@@ -101,7 +101,7 @@ namespace MXRender
 		std::vector<Handle<RenderObject>>& get_dirty_objects();
 		const RenderObject& get_renderable_obj(int index) const;
 		int get_renderables_size() const;
-
+		void destroy();
 	protected:
 		std::unordered_map<GameObject* , Handle<RenderObject>> renderObjectConvert;
 		std::unordered_map<Material*, Handle<Material>> materialConvert;

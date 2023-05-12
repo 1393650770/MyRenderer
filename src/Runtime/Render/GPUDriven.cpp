@@ -30,6 +30,12 @@ namespace MXRender
 		VK_Utils::Destroy_Buffer(context, drawIndirectBuffer);
 		VK_Utils::Destroy_Buffer(context, instanceIdMapBuffer);
 		VK_Utils::Destroy_Buffer(context, instanceBuffer);
+
+		vkDestroyImageView(context->device->device, color_imageview, nullptr);
+
+		vkDestroyImage(context->device->device, color_image, nullptr);
+		vkFreeMemory(context->device->device, color_image_memory, nullptr);
+		vkDestroySampler(context->device->device, color_image_sampler, nullptr);
 	}
 
 	void GPUDrivenSystem::excute_upload_computepass(RenderScene* render_scene)
@@ -153,14 +159,41 @@ namespace MXRender
 	{
 		OPTICK_EVENT()
 		OPTICK_PUSH("GpuDriven_Gpu_Culling")
-		if (Singleton<DefaultSetting>::get_instance().is_enable_culling==false)
-		{
-			return;
-		}
+
 
 		{
 
 			VK_GraphicsContext* context = Singleton<DefaultSetting>::get_instance().context.get();
+
+			if (context&&color_image_memory== VK_NULL_HANDLE)
+			{
+				VK_Utils::Create_Image(context->device->gpu,
+					context->device->device,
+					context->get_swapchain_extent().width,
+					context->get_swapchain_extent().height,
+					color_image_format,
+					VK_IMAGE_TILING_OPTIMAL,
+					VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+					VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT| VK_IMAGE_USAGE_STORAGE_BIT,
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+					color_image,
+					color_image_memory,
+					0,
+					1,
+					1);
+				color_imageview = VK_Utils::Create_ImageView(context->device->device,
+					color_image,
+					color_image_format,
+					VK_IMAGE_ASPECT_COLOR_BIT,
+					VK_IMAGE_VIEW_TYPE_2D,
+					1,
+					1);
+				color_image_sampler = VK_Utils::Create_Linear_Sampler(context->device->gpu, context->device->device);
+
+				VK_Utils::Transition_ImageLayout(Singleton<DefaultSetting>::get_instance().context, color_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT);
+			
+			}
+
 			VK_Utils::Destroy_Buffer(context, drawIndirectBuffer);
 			VK_Utils::Destroy_Buffer(context, instanceIdMapBuffer);
 			VK_Utils::Destroy_Buffer(context, instanceBuffer);
@@ -194,6 +227,12 @@ namespace MXRender
 		depthPyramid.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 
+
+		VkDescriptorImageInfo color;
+		color.sampler = color_image_sampler;
+		color.imageView = color_imageview;
+		color.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
 		VkDescriptorSet COMPObjectDataSet;
 		DescriptorBuilder::begin(Singleton<DefaultSetting>::get_instance().material_system->get_descriptorlayout_cache(), Singleton<DefaultSetting>::get_instance().material_system->get_descript_temp_pool())
 			.bind_buffer(0, &objectDataInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
@@ -201,19 +240,21 @@ namespace MXRender
 			.bind_buffer(2, &instanceInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
 			.bind_buffer(3, &finalInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
 			.bind_image(4, &depthPyramid, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.bind_image(5, &color, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
 			.build(COMPObjectDataSet);
 
 		int launchcount = render_scene->get_renderables_size();
 		DrawCullData cull_data;
 		cull_data.drawCount= launchcount;
-		cull_data.occlusionEnabled=true;
+		cull_data.occlusionEnabled= Singleton<DefaultSetting>::get_instance().is_enable_culling;
 		cull_data.pyramidWidth = static_cast<float>(context->depth_pyramid_width);
 		cull_data.pyramidHeight = static_cast<float>(context->depth_pyramid_height);
 		cull_data.view=Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
-		glm::mat4 projection = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
+		glm::mat4 projection = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
 		cull_data.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
+		cull_data.proj[1][1] *= -1;
 		cull_data.P00 = projection[0][0];
-		cull_data.P11 = projection[1][1];
+		cull_data.P11 = -projection[1][1];
 		cull_data.znear = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_near_plane();
 		cull_data.zfar = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_far_plane();
 		cull_data.distCull=0;

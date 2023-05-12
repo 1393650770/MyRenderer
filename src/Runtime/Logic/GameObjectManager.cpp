@@ -36,15 +36,20 @@ void MXRender::GameObjectManager::load_objs()
 	object_list.emplace_back("viking_room1", "Resource/Mesh/viking_room.obj");
 	object_list.emplace_back("viking_room2", "Resource/Mesh/viking_room.obj");
 
-
+	_meshes["Resource/Mesh/viking_room.obj"] = object_list.back().get_staticmesh()->get_mesh_data();
 	//object_list.emplace_back("viking_room3", "Resource/Mesh/viking_room.obj");
 	//object_list.emplace_back("viking_room4", "Resource/Mesh/viking_room.obj");
 	//object_list.emplace_back("viking_room5", "Resource/Mesh/viking_room.obj");
 
 	object_list.emplace_back("pbr_stone", "Resource/Mesh/pbr_stone.obj");
+	_meshes["Resource/Mesh/pbr_stone.obj"] = object_list.back().get_staticmesh()->get_mesh_data();
 	object_list.back().get_transform()->set_scale(glm::vec3(0.005f));
 	object_list.back().get_transform()->set_translation(glm::vec3(-8.005f, 0.0f, 0.0f));
 
+	object_list.emplace_back("common_stone");
+	object_list.back().get_staticmesh()->reset_mesh(_meshes["Resource/Mesh/pbr_stone.obj"]);
+	object_list.back().get_transform()->set_scale(glm::vec3(0.005f));
+	object_list.back().get_transform()->set_translation(glm::vec3(-15.005f, 0.0f, 0.0f));
 	OPTICK_POP()
 }
 
@@ -93,6 +98,8 @@ MXRender::MeshBase* MXRender::GameObjectManager::get_mesh(const std::string& nam
 
 MXRender::GameObjectManager::GameObjectManager(GraphicsContext* context)
 {
+	main_camera.set_position(glm::vec3(-1.0f,30.0f,0.0f));
+	//main_camera.set_direction(glm::vec3(0.0f, 1.0f, 0.0f));
 	//object_list.emplace_back("Resource/Mesh/viking_room.obj");
 
 	//object_list.emplace_back("Resource/Mesh/rock.obj");
@@ -125,9 +132,10 @@ void MXRender::GameObjectManager::destroy_object_list(GraphicsContext* context)
 		{
 			it.second->destroy_mesh_info(context);
 		}
+		_meshes.clear();
 		for (int i=0;i<object_list.size();i++)
 		{
-			object_list[i].get_staticmesh()->get_mesh_data().lock()->destroy_mesh_info(context);
+			object_list[i].get_staticmesh()->get_mesh_data()->destroy_mesh_info(context);
 		}
 
 
@@ -143,12 +151,12 @@ void MXRender::GameObjectManager::destroy_object_list(GraphicsContext* context)
 
 void MXRender::GameObjectManager::start_load_prefabs(GraphicsContext* context)
 {
-	int dimHelmets = 12;
+	int dimHelmets = 15;
 	int i=0;
 	for (int x = -dimHelmets; x <= dimHelmets; x++) {
 		for (int y = -dimHelmets; y <= dimHelmets; y++) {
 
-			glm::mat4 translation = glm::translate(glm::mat4{ 1.0 }, glm::vec3(x * 2, 0, y * 2));
+			glm::mat4 translation = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-x * 3, -(x+y)*3, y * 3));
 			glm::mat4 scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3(10));
 			i++;
 			load_prefab("FlightHelmet"+ std::to_string(i), asset_path("FlightHelmet/FlightHelmet.pfb").c_str(), (translation * scale), context);
@@ -178,7 +186,7 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 
 	for (int i=0;i<3;i++)
 	{
-		object_list[i].get_staticmesh()->get_mesh_data().lock()->init_mesh_info(context);
+		object_list[i].get_staticmesh()->get_mesh_data()->init_mesh_info(context);
 	}
 
 	Material* stoneMaterial = Singleton<DefaultSetting>::get_instance().material_system->get_material("pbr_mesh");
@@ -189,6 +197,9 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 		VK_Texture* normal_texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("pbr_stone_normal", ENUM_TEXTURE_TYPE::ENUM_TYPE_2D, "Resource/Texture/pbr_stone/pbr_stone_normal.dds");
 		VK_Texture* cubemap_texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("skybox", ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP, "Resource/Texture/Skybox/kyoto_lod.dds");
 		VK_Texture* cubemap_irr_texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("skybox_irr", ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP, "Resource/Texture/Skybox/kyoto_irr.dds");
+		//VK_Texture* cubemap_texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("skybox", ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP, "Resource/Texture/Skybox/bolonga_lod.dds");
+		//VK_Texture* cubemap_irr_texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("skybox_irr", ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP, "Resource/Texture/Skybox/bolonga_lod.dds");
+
 		VK_Texture* lut_texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("ibl_lut", ENUM_TEXTURE_TYPE::ENUM_TYPE_2D, "Resource/Texture/ibl_lut.png");
 
 		MaterialData info;
@@ -206,12 +217,15 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 		info.textures.push_back(tex);
 		tex.view = cubemap_texture->textureImageView;
 		tex.sampler = cubemap_texture->textureSampler;
+		tex.texture_type= ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP;
 		info.textures.push_back(tex);
 		tex.view = cubemap_irr_texture->textureImageView;
 		tex.sampler = cubemap_irr_texture->textureSampler;
+		tex.texture_type = ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP;
 		info.textures.push_back(tex);
 		tex.view = lut_texture->textureImageView;
 		tex.sampler = lut_texture->textureSampler;
+		tex.texture_type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
 		info.textures.push_back(tex);
 
 		info.baseTemplate = Singleton<DefaultSetting>::get_instance().material_system->create_template_name("mesh_pbr");
@@ -227,6 +241,36 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 			object_list[2].set_material(stoneMaterial);
 		}
 	}
+	Material* common_stoneMaterial = Singleton<DefaultSetting>::get_instance().material_system->get_material("command_stone");
+	if (!common_stoneMaterial)
+	{
+
+		VK_Texture* base_color_texture = Singleton<DefaultSetting>::get_instance().texture_manager->get_or_create_texture("pbr_stone_base_color", ENUM_TEXTURE_TYPE::ENUM_TYPE_2D, "Resource/Texture/pbr_stone/pbr_stone_base_color.dds");
+		
+
+		MaterialData info;
+		info.parameters = nullptr;
+		info.textures.clear();
+		SampledTexture tex;
+		tex.view = base_color_texture->textureImageView;
+		tex.sampler = base_color_texture->textureSampler;
+		info.textures.push_back(tex);
+		
+
+		info.baseTemplate = Singleton<DefaultSetting>::get_instance().material_system->create_template_name("mesh_base_revert_uv");
+
+		common_stoneMaterial = Singleton<DefaultSetting>::get_instance().material_system->build_material("command_stone", info);
+
+		if (!common_stoneMaterial)
+		{
+			std::cout << "Error When building material";
+		}
+		else
+		{
+			object_list[3].set_material(common_stoneMaterial);
+		}
+	}
+
 	if (Singleton<DefaultSetting>::get_instance().is_enable_gpu_driven)
 	{
 	
@@ -359,6 +403,9 @@ bool MXRender::GameObjectManager::load_prefab(const std::string& name,const char
 	VkSampler smoothSampler;
 	vkCreateSampler(vk_context->device->device, &samplerInfo, nullptr, &smoothSampler);
 
+	vk_context->add_on_shutdown_clean_func([=]() {
+		vkDestroySampler(vk_context->device->device,smoothSampler,nullptr);
+		});
 
 	std::unordered_map<uint64_t, glm::mat4> node_worldmats;
 

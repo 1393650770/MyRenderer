@@ -3,6 +3,9 @@
 #include "../../UI/Window_UI.h"
 #include "VK_Utils.h"
 #include "VK_Shader.h"
+#include "../../Render/DefaultSetting.h"
+#include "../../Utils/Singleton.h"
+#include "VK_GraphicsContext.h"
 
 namespace MXRender
 {
@@ -132,6 +135,10 @@ namespace MXRender
 		}
 		else
 		{
+			VK_GraphicsContext* context=Singleton<DefaultSetting>::get_instance().context.get();
+			context->add_on_shutdown_clean_func([=]() {
+				vkDestroyPipeline(device,newPipeline,nullptr);
+				});
 			return newPipeline;
 		}
 	}
@@ -169,6 +176,10 @@ namespace MXRender
 		}
 		else
 		{
+			VK_GraphicsContext* context = Singleton<DefaultSetting>::get_instance().context.get();
+			context->add_on_shutdown_clean_func([=]() {
+				vkDestroyPipeline(device, newPipeline, nullptr);
+				});
 			return newPipeline;
 		}
 	}

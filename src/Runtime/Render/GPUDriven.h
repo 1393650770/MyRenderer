@@ -55,6 +55,11 @@ namespace MXRender
 		AllocatedBuffer<GPUIndirectObject> drawIndirectBuffer;
 		AllocatedBuffer<uint32_t> instanceIdMapBuffer;
 		AllocatedBuffer<GPUInstance> instanceBuffer;
+		VkImageView color_imageview;
+		VkSampler color_image_sampler;
+		VkImage color_image;
+		VkDeviceMemory color_image_memory{ VK_NULL_HANDLE };
+		VkFormat color_image_format = VK_FORMAT_R32G32B32A32_SFLOAT;
 
 		GPUDrivenSystem();
 		virtual ~GPUDrivenSystem();

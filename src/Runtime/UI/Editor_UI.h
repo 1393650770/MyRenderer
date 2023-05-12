@@ -10,6 +10,10 @@
 #include "vulkan/vulkan_core.h"
 #include <string>
 #include <utility>
+#include <type_traits>
+#include <unordered_map>
+
+namespace MXRender { struct SampledTexture; }
 
 namespace MXRender { class VK_Texture; }
 
@@ -147,6 +151,8 @@ namespace MXRender
 
 		VkDescriptorSet directory_icon_ds;
 		
+        std::unordered_map<uint32_t, VkDescriptorSet> icon_cache;
+
         std::pair<float,float> file_content_icon_size= std::make_pair(95.0f, 130.f);
 	protected:
 		GraphicsContext* context;
@@ -159,7 +165,9 @@ namespace MXRender
 		void show_one_gameobject(GameObject* gameobject);
 
         void show_one_directory(const std::string& selected_asset_folder);
-        void show_one_file(const std::string& name, const std::string& type, unsigned int& allready_show_num_in_one_line);
+        void show_one_file(const std::string& name, const std::string& type, unsigned int& allready_show_num_in_one_line, VkDescriptorSet icon);
+
+        VkDescriptorSet get_or_create_icon(SampledTexture* tex);
 	public:
 		EditorUI();
 		virtual ~EditorUI();

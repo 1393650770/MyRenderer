@@ -267,7 +267,7 @@ void MXRender::Camera::input_bingding_func()
 }
 
 
-MXRender::Camera::Camera():fov(60.0f), far(100.0f), near(1.f), movement_speed(1.0f), width(1920.0f), height(1080.0f), direction(glm::vec3(0.0f, 0.0f, -1.0f)), up(glm::vec3(0.0f, 5.0f, 0.0f)), right(glm::normalize(glm::cross(up, direction))), focal_point(glm::vec3(0.0f, 0.0f, -1.0f))
+MXRender::Camera::Camera():fov(60.0f), far(1000.0f), near(0.3f), movement_speed(1.0f), width(1920.0f), height(1080.0f), direction(glm::vec3(0.0f, 0.0f, -1.0f)), up(glm::vec3(0.0f, 5.0f, 0.0f)), right(glm::normalize(glm::cross(up, direction))), focal_point(glm::vec3(0.0f, 0.0f, -1.0f))
 {
 	transform = new TransformComponent();
 	input_component = new InputComponent();

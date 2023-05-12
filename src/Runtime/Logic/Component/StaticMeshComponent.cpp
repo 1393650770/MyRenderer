@@ -30,7 +30,7 @@ void MXRender::StaticMeshComponent::spawn_mesh_data_shared_ptr()
 	default:
 		break;
 	}
-	mesh_data = std::shared_ptr<MeshBase>(mesh_base);
+	mesh_data = mesh_base;
 }
 
 
@@ -52,7 +52,7 @@ MXRender::StaticMeshComponent::StaticMeshComponent()
 
 MXRender::StaticMeshComponent::~StaticMeshComponent()
 {
-
+	//delete mesh_data;
 }
 
 void MXRender::StaticMeshComponent::load_mesh(const std::string& mesh_path)
@@ -69,7 +69,8 @@ void MXRender::StaticMeshComponent::load_mesh(const std::string& mesh_path)
 
 void MXRender::StaticMeshComponent::reset_mesh(MeshBase* mesh)
 {
-	mesh_data.reset(mesh);
+	delete mesh_data;
+	mesh_data=mesh;
 }
 
 void MXRender::StaticMeshComponent::set_overmaterial(MXRender::Material* material)
@@ -82,7 +83,7 @@ void MXRender::StaticMeshComponent::set_overmaterial(MXRender::Material* materia
 	return material;
 }
 
-std::weak_ptr<MXRender::MeshBase> MXRender::StaticMeshComponent::get_mesh_data()
+MXRender::MeshBase* MXRender::StaticMeshComponent::get_mesh_data()
 {
 	return mesh_data;
 }
@@ -104,7 +105,7 @@ void MXRender::StaticMeshComponent::render_mesh(RenderMeshInfo* render_mesh_info
 	case ENUM_RENDER_API_TYPE::Vulkan:
 	{
 		VK_GraphicsContext* vk_context=dynamic_cast<VK_GraphicsContext*>(render_mesh_info->context);
-		VK_Mesh* vk_mesh=dynamic_cast<VK_Mesh *>(mesh_data.get());
+		VK_Mesh* vk_mesh=dynamic_cast<VK_Mesh *>(mesh_data);
 		if(!vk_context||!vk_mesh) return ;
 		VkBuffer vertexBuffers[] = { vk_mesh->get_mesh_info().vertex_buffer };
 		VkDeviceSize offsets[] = { 0 };
