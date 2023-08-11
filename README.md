@@ -4,10 +4,17 @@
 ## How to build 
 ①You should download the xmake : https://github.com/xmake-io/xmake
 
-②Open cmd in this document folder , then input :
+②Open cmd in this document folder , then input then you can build win project:
 <pre>
 xmake project -k vsxmake -m "debug;release"
 </pre>
+
+③Build the Project in debug mode
+<pre>
+xmake config -m debug
+xmake
+</pre>
+
 ## To do list
  
  - [ ] wrap opengl 
