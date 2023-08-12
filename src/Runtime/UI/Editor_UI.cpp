@@ -98,6 +98,7 @@ void MXRender::EditorUI::show_editor_top_ui()
 			    bool is_open_window=false;
 				if (ImGui::Begin("OtherSetting", &is_open_window))
 				{
+					ImGui::SliderInt("ThreadNum", &Singleton<DefaultSetting>::get_instance().threadNum,0,10);
 					ImGui::Checkbox("Dispatch", &Singleton<DefaultSetting>::get_instance().is_enable_dispatch);
 					ImGui::Checkbox("GPUDriven", &Singleton<DefaultSetting>::get_instance().is_enable_gpu_driven);
 					ImGui::Checkbox("DebugLoop", &(Singleton<DefaultSetting>::get_instance().is_enable_debug_loop));

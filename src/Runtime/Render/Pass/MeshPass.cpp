@@ -917,7 +917,7 @@ namespace MXRender
 
 		if (Singleton<DefaultSetting>::get_instance().is_enable_dispatch)
 		{
-			unsigned int thread_num = Singleton<DefaultSetting>::get_instance().task_system->thread_pool.get_max_thread_num();
+			unsigned int thread_num = Singleton<DefaultSetting>::get_instance().threadNum; //Singleton<DefaultSetting>::get_instance().task_system->thread_pool.get_max_thread_num();
 			unsigned int clip_size= Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables.size()/thread_num;
 
 			for(unsigned int i=0;i< thread_num;i++)

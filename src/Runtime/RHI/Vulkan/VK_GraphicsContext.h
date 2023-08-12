@@ -33,6 +33,7 @@
 
 #include "../../../ThirdParty/vma/vk_mem_alloc.h"
 
+
 namespace MXRender { struct MipmapInfo; }
 
 namespace MXRender { class AllocatedImage; }
@@ -52,14 +53,7 @@ namespace MXRender {class MaterialSystem;}
 namespace MXRender
 {
 
-	const std::vector<const char*> validationLayers = {
-		"VK_LAYER_KHRONOS_validation"
-	};
 
-	const std::vector<const char*> deviceExtensions = {
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        "VK_EXT_sampler_filter_minmax"
-	};
 
     class VK_Device;
     struct QueueFamilyIndices {
@@ -162,7 +156,7 @@ namespace MXRender
         std::vector<std::function<void()>>  on_shutdown_clean;
         //std::shared_ptr <VK_DescriptorPool> descriptor_pool;
     public:
-        VkViewport       viewport;
+        VkViewport viewport;
 		VkQueue graphicsQueue;
 		VkQueue presentQueue;
         VkQueue computeQueue;

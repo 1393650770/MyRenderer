@@ -1,7 +1,15 @@
 #include "Vk_Device.h"
 #include <iostream>
 
-MXRender::VK_Device::~VK_Device()
+MYRENDERER_BEGIN_NAMESPACE(MXRender)
+MYRENDERER_BEGIN_NAMESPACE(RHI)
+MYRENDERER_BEGIN_NAMESPACE(Vulkan)
+
+void VK_Device::Init(int device_index)
 {
-	std::cout<<"111"<<std::endl;
+
 }
+
+MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE

@@ -7,12 +7,13 @@
 #include <string>
 #include<vector>
 #include<memory>
+#include "../Core/ConstDefine.h"
 
 struct GLFWwindow;
 namespace MXRender { class Window; }
 
-namespace MXRender
-{
+MYRENDERER_BEGIN_NAMESPACE(MXRender)
+
     class GraphicsContext
     {
     private:
@@ -34,6 +35,6 @@ namespace MXRender
 
 
     };
-}
+MYRENDERER_END_NAMESPACE
 #endif
 

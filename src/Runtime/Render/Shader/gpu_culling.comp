@@ -150,14 +150,14 @@ bool occlusionCulling(vec4 c, float r, float znear,uint objectIndex)
     vec2 oldRightTop = vec2(clamp(uvRightTop.x * size_x, 0, size_x - 1), clamp(uvRightTop.y * size_y, 0, size_y - 1));
 
 	float depth =1.0f;
-	depth=//textureLod(depthPyramid, (pixelLeftBottom+pixelRightTop)*0.5f , mipmapLevel).x;
-			max( textureLod(depthPyramid, vec2(pixelLeftBottom.x,pixelLeftBottom.y) , mipmapLevel).x,
-			max( textureLod(depthPyramid,vec2(pixelRightTop.x,pixelRightTop.y)  , mipmapLevel).x,
-			max( textureLod(depthPyramid, vec2(pixelLeftBottom.x,pixelRightTop.y) , mipmapLevel).x,
-			textureLod(depthPyramid, vec2(pixelLeftBottom.y,pixelRightTop.x) , mipmapLevel).x)));
+	depth=textureLod(depthPyramid, (pixelLeftBottom+pixelRightTop)*0.5f , mipmapLevel).x;
+			// max( textureLod(depthPyramid, vec2(pixelLeftBottom.x,pixelLeftBottom.y) , mipmapLevel).x,
+			// max( textureLod(depthPyramid,vec2(pixelRightTop.x,pixelRightTop.y)  , mipmapLevel).x,
+			// max( textureLod(depthPyramid, vec2(pixelLeftBottom.x,pixelRightTop.y) , mipmapLevel).x,
+			// textureLod(depthPyramid, vec2(pixelLeftBottom.y,pixelRightTop.x) , mipmapLevel).x)));
 
 	imageStore(outImage, ivec2((oldLeftBottom+oldRightTop)*0.5f), vec4(depth,mipmapLevel,pixelLeftBottom.x,pixelLeftBottom.y));
-	return minZ*0.985f <= depth*1.015f;
+	return minZ*0.99f <= depth*1.015f;
 }
 
 

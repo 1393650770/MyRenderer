@@ -18,5 +18,5 @@ layout(set = 0, binding = 1) uniform  CameraData{
 } cameraData;
 
 void main() {
-    outFragColor = vec4(texture(basecolor_sampler, texCoord).xyz,z);
+    outFragColor = vec4(texture(basecolor_sampler, texCoord).xyz,0.5f);
 }
