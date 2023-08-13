@@ -4,6 +4,11 @@
 #define _CONSTDEFINE_
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
+#include <optional>
+#include <string>
+#include <queue>
+#include <stack>
 
 #ifndef MYRENDERER_C_INTERFACE
 #    ifdef __cplusplus
@@ -27,6 +32,7 @@
 #    pragma error Unexpected value of UINTPTR_MAX
 #endif
 
+
 #define MYRENDERER_BEGIN_NAMESPACE(Name) \
         namespace Name                 \
         {
@@ -44,12 +50,18 @@
 
 #define MYRENDERER_GLOBAL_FUNCTION(FuncName) FuncName
 
+
+#define MYRENDERER_BEGIN_STRUCT(Name) struct Name  \
+                                    {
+
 #define MYRENDERER_BEGIN_CLASS(Name) class Name  \
                                     {
 
 #define MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Name, ...) class Name : __VA_ARGS__ \
                                                 {
 #define MYRENDERER_END_CLASS };
+
+#define MYRENDERER_END_STRUCT };
 
 #define MYRENDERER_VALUE(x) = x
 
@@ -77,13 +89,26 @@ using Int = std::int32_t;
 using Int64 = std::int64_t;
 using Bool = bool;
 using Char = char;
+using String = std::string;
 using Float32 = float;
 using Float64 = double;
 
 template <typename T>
 using Vector = std::vector<T>; 
 
+template <typename K,typename T>
+using Map = std::unordered_map<K,T>;
+
 template <typename T>
-using Map = std::unordered_map<T>;
+using Optional = std::optional<T>;
+
+template <typename T>
+using Set = std::unordered_set<T>;
+
+template <typename T>
+using Queue =std::queue<T>;
+
+template <typename T>
+using Stack = std::stack<T>;
 
 #endif 

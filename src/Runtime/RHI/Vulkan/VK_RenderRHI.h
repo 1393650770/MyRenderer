@@ -7,7 +7,7 @@
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
-MYRENDERER_BEGIN_NAMESPACE(VulkanRHI)
+MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VulkanRenderFactory,public RenderFactory)
 public:
@@ -50,7 +50,7 @@ void METHOD(CreateSurface)();
 Bool METHOD(CheckValidationlayerSupport)();
 Vector<CONST Char*> METHOD(GetRequiredExtensions)(Bool enable_validation_layers);
 void METHOD(PopulateDebugMessengerCreateInfo)(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
-VkResult METHOD(create_debug_utils_messengerEXT)(VkInstance instance, CONST VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, CONST VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
+VkResult METHOD(CreateDebugUtilsMessengerEXT)(VkInstance instance, CONST VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, CONST VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 protected:
 
 #pragma endregion
@@ -62,6 +62,10 @@ protected:
 	VkInstance instance=VK_NULL_HANDLE;
 	VkDebugUtilsMessengerEXT debug_messenger;
 	VkSurfaceKHR surface;
+
+	Vector<VK_Viewport*> viewports;
+
+	friend class VK_Viewport;
 #pragma endregion
 
 MYRENDERER_END_CLASS

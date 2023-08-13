@@ -1,29 +1,31 @@
 #pragma once
 #ifndef _VIEWPORT_
 #define _VIEWPORT_
+#include "../Core/ConstDefine.h"
 
-#include <glad/glad.h>
-#include <glm/glm.hpp>
-#include <string>
-#include<vector>
-#include <fstream>
-#include <sstream>
-#include <iostream>
+MYRENDERER_BEGIN_NAMESPACE(MXRender)
+MYRENDERER_BEGIN_NAMESPACE(RHI)
 
-#include "RenderEnum.h"
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Viewport,  public RenderResource)
+#pragma region METHOD
+public:
+	Viewport() DEFAULT;
+	VIRTUAL ~Viewport() DEFAULT;
+protected:
 
-namespace MXRender
-{
-   
+private:
+
+#pragma endregion
 
 
-    class Viewport
-    {
-    private:
+#pragma region MEMBER
 
-    public:
-        
-    };
+#pragma endregion
 
-}
+
+
+MYRENDERER_END_CLASS
+
+MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE
 #endif

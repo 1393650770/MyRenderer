@@ -9,12 +9,31 @@
 #include <string>
 #include "vulkan/vulkan_core.h"
 #include "gli/format.hpp"
+#include "../../Core/ConstDefine.h"
 
-namespace MXRender
-{
 
-    class VK_Texture
-    {
+
+MYRENDERER_BEGIN_NAMESPACE(MXRender)
+MYRENDERER_BEGIN_NAMESPACE(RHI)
+MYRENDERER_BEGIN_NAMESPACE(Vulkan)
+
+class VK_Device;
+
+MYRENDERER_BEGIN_STRUCT(VK_TextureView)
+
+VK_TextureView() DEFAULT;
+
+void METHOD(Create)(VK_Device& device, VkImage in_image, VkImageViewType view_type, VkImageAspectFlags aspect_flags, ENUM_TEXTURE_FORMAT vk_format, VkFormat format, UInt32 first_mip, UInt32 num_mips, UInt32 array_slice_index, UInt32 num_array_slices, Bool use_identity_swizzle = false);
+
+void METHOD(Destroy)(VK_Device& device);
+
+VkImageView view=VK_NULL_HANDLE;
+VkImage image=VK_NULL_HANDLE;
+UInt32 viewId=0;
+MYRENDERER_END_STRUCT
+
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Texture,public RenderResource)
+    
     private:
         ENUM_TEXTURE_TYPE type=ENUM_TEXTURE_TYPE::ENUM_TYPE_NOT_VALID;
 		unsigned id;
@@ -60,8 +79,8 @@ namespace MXRender
 
         VkAttachmentDescription& get_attachment_description();
         VkAttachmentReference& get_attachment_reference();
-    };
-    
-} // namespace name
-
+MYRENDERER_END_CLASS
+MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE
 #endif
