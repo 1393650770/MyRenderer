@@ -5,9 +5,12 @@
 #include "../RenderRHI.h"
 #include "vulkan/vulkan_core.h"
 
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
+
+class VK_Device;
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VulkanRenderFactory,public RenderFactory)
 public:
@@ -15,7 +18,7 @@ public:
 MYRENDERER_END_CLASS
 
 
-MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VulkanRHI,RenderRHI)
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VulkanRHI,public RenderRHI)
 
 #pragma region MATHOD
 
@@ -42,10 +45,12 @@ public:
 
 
 private:
+Bool METHOD(CheckGpuSuitable)(VkPhysicalDevice gpu);
 
+VkPhysicalDevice METHOD(GetGpuFromHarddrive)();
+void METHOD(CreateDevice)(Bool enable_validation_layers);
 void METHOD(CreateInstance)(Bool enable_validation_layers);
 void METHOD(InitializeDebugmessenger)(Bool enable_validation_layers);
-void METHOD(CreateSurface)();
 
 Bool METHOD(CheckValidationlayerSupport)();
 Vector<CONST Char*> METHOD(GetRequiredExtensions)(Bool enable_validation_layers);
@@ -61,8 +66,7 @@ private:
 protected:
 	VkInstance instance=VK_NULL_HANDLE;
 	VkDebugUtilsMessengerEXT debug_messenger;
-	VkSurfaceKHR surface;
-
+	VK_Device* device=nullptr;
 	Vector<VK_Viewport*> viewports;
 
 	friend class VK_Viewport;

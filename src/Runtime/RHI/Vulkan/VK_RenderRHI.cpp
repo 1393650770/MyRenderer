@@ -1,5 +1,7 @@
 
 #include "VK_RenderRHI.h"
+
+#include "Vk_Device.h"
 #include "GLFW/glfw3.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -17,10 +19,7 @@ CONST Vector<CONST Char*> deviceExtensions = {
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
 	std::cerr << "validation layer: " << messageSeverity << " " << messageType << " " << pCallbackData->pMessage << std::endl;
-	if (VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT == messageSeverity && messageType == VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
-	{
-		std::abort();
-	}
+	CHECK(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT == messageSeverity && messageType == VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
 	return VK_FALSE;
 }
 
@@ -30,7 +29,7 @@ void VulkanRHI::Init(RenderFactory* render_factory)
 	Bool enable_render_debug = vulkan_render_factory->enable_render_debug;
 	CreateInstance(enable_render_debug);
 	InitializeDebugmessenger(enable_render_debug);
-	CreateSurface();
+	CreateDevice();
 }
 
 void VulkanRHI::PostInit()
@@ -42,6 +41,60 @@ void VulkanRHI::PostInit()
 void VulkanRHI::Shutdown()
 {
 
+}
+
+Bool VulkanRHI::CheckGpuSuitable(VkPhysicalDevice gpu)
+{
+	//TODO: Check Queue Family Suitable
+	
+	uint32_t extensionCount;
+	vkEnumerateDeviceExtensionProperties(gpu, nullptr, &extensionCount, nullptr);
+
+	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+	vkEnumerateDeviceExtensionProperties(gpu, nullptr, &extensionCount, availableExtensions.data());
+
+	Set<String> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+
+	for (const auto& extension : availableExtensions) {
+		requiredExtensions.erase(extension.extensionName);
+	}
+
+	return requiredExtensions.empty();
+}
+
+
+VkPhysicalDevice VulkanRHI::GetGpuFromHarddrive()
+{
+	VkPhysicalDevice gpu=VK_NULL_HANDLE;
+	uint32_t device_count = 0;
+	vkEnumeratePhysicalDevices(instance, &device_count, nullptr);
+
+	if (device_count == 0) {
+		throw std::runtime_error("failed to find GPUs with Vulkan support!");
+	}
+
+	std::vector<VkPhysicalDevice> gpus(device_count);
+	vkEnumeratePhysicalDevices(instance, &device_count, gpus.data());
+
+	for (const auto& cur_gpu : gpus) {
+		if (CheckGpuSuitable(cur_gpu)) {
+			gpu= cur_gpu;
+			break;
+		}
+	}
+	CHECK_WITH_LOG(gpu==VK_NULL_HANDLE,"RHI Error: failed to find a suitable GPU!");
+	return gpu;
+}
+
+void VulkanRHI::CreateDevice(Bool enable_validation_layers)
+{
+	if(device==nullptr)
+	{
+		VkPhysicalDevice physicalDevice =  GetGpuFromHarddrive();
+		CHECK_WITH_LOG(physicalDevice==VK_NULL_HANDLE,"RHI Error: failed to find a suitable GPU!");
+		device= new  VK_Device(this,physicalDevice);
+		device->Init(0,enable_validation_layers,deviceExtensions,validationLayers);
+	}
 }
 
 
@@ -157,12 +210,6 @@ VkResult VulkanRHI::CreateDebugUtilsMessengerEXT(VkInstance instance, CONST VkDe
 		return VK_ERROR_EXTENSION_NOT_PRESENT;
 	}
 }
-
-void VulkanRHI::CreateSurface()
-{
-
-}
-
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

@@ -20,6 +20,8 @@ public:
 	VIRTUAL ~VK_Queue();
 
 	void METHOD(Submit)(VK_CommandBuffer* command_list,  UInt32 NumSignalSemaphores = 0, VkSemaphore* SignalSemaphores = nullptr);
+	UInt32 METHOD(GetFamily)() CONST;
+	UInt32 METHOD(GetQueueIndex)() CONST;
 protected:
 
 private:

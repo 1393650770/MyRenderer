@@ -1,5 +1,6 @@
 #include "Vk_Device.h"
 #include <iostream>
+#include <utility>
 #include "VK_Queue.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -50,7 +51,7 @@ void VK_Device::CreateDevice(bool enable_validation_layers, Vector<CONST Char*> 
 	QueueFamilyIndices indices = FindQueueFamilies(gpu);
 
 	Vector<VkDeviceQueueCreateInfo> queue_create_infos;
-	Set<UInt32> unique_queue_families = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+	Set<UInt32> unique_queue_families = { indices.graphicsFamily.value(), indices.computeFamily.value() };
 
 	float queuePriority = 1.0f;
 	for (UInt32   queueFamily : unique_queue_families) {
@@ -87,11 +88,7 @@ void VK_Device::CreateDevice(bool enable_validation_layers, Vector<CONST Char*> 
 		create_info.enabledLayerCount = 0;
 	}
 
-	if (vkCreateDevice(gpu, &create_info, nullptr, &(device)) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create logical device!");
-	}
-
-
+	CHECK_WITH_LOG(vkCreateDevice(gpu, &create_info, nullptr, &(device)) != VK_SUCCESS,"RHI Error: failed to create logical device!");
 	CreateQueue(indices);
 }
 
@@ -106,12 +103,44 @@ void VK_Device::CreateQueue(QueueFamilyIndices family_indice)
 {
 	graph_queue=new VK_Queue(this,family_indice.graphicsFamily.value());
 	compute_queue = new VK_Queue(this, family_indice.computeFamily.value());
-	present_queue = new VK_Queue(this, family_indice.presentFamily.value());
+	//present_queue = new VK_Queue(this, family_indice.presentFamily.value());
 }
 
-void VK_Device::Init(int device_index,bool enable_validation_layers, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers)
+void VK_Device::Init(Int device_index,Bool enable_validation_layers, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers)
 {
-	CreateDevice(enable_validation_layers,device_extensions,validation_layers);
+	CreateDevice(enable_validation_layers, std::move(device_extensions), std::move(validation_layers));
+}
+
+VkDevice VK_Device::GetDevice()
+{
+	return device;
+}
+
+VkPhysicalDevice VK_Device::GetGpu()
+{
+	return gpu;
+}
+
+void VK_Device::CreatePresentQueue(VkSurfaceKHR surface)
+{
+	if(!present_queue)
+	{
+		auto check_and_create_queue=[&](VK_Queue* queue) ->Bool
+		{
+			VkBool32 present_support = false;
+			if(queue)
+			{
+				vkGetPhysicalDeviceSurfaceSupportKHR(gpu, queue->GetFamily(), surface, &present_support);
+				if (present_support&& !present_queue) {
+					present_queue = new VK_Queue(this, graph_queue->GetFamily());
+				}
+			}
+			return present_support;
+		};
+
+		CHECK_WITH_LOG(check_and_create_queue(graph_queue) || check_and_create_queue(compute_queue)||check_and_create_queue(transfer_queue),
+						"RHI Error: failed to create present queue!")
+	}
 }
 
 VK_Device::~VK_Device()
@@ -120,8 +149,8 @@ VK_Device::~VK_Device()
 }
 
 VK_Device::VK_Device(VulkanRHI* in_vulkan_rhi, VkPhysicalDevice in_gpu):
-	vulkan_rhi(in_vulkan_rhi),
-	gpu(in_gpu)
+	gpu(in_gpu),
+	vulkan_rhi(in_vulkan_rhi)
 {
 	vkGetPhysicalDeviceProperties(gpu,&gpu_props);
 	vendor_id=gpu_props.vendorID;

@@ -9,6 +9,7 @@
 #include <string>
 #include <queue>
 #include <stack>
+#include <stdexcept>
 
 #ifndef MYRENDERER_C_INTERFACE
 #    ifdef __cplusplus
@@ -65,6 +66,12 @@
 
 #define MYRENDERER_VALUE(x) = x
 
+#define CHECK(Flag) if(Flag) { std::abort(); }
+#define CHECK_WITH_LOG(Flag,LOG) if(Flag) \
+                                {\
+                                    throw std::runtime_error(LOG); \
+                                }
+
 #define THIS
 #define THIS_
 #define VIRTUAL      virtual
@@ -90,6 +97,7 @@ using Int64 = std::int64_t;
 using Bool = bool;
 using Char = char;
 using String = std::string;
+using Text = std::string;
 using Float32 = float;
 using Float64 = double;
 

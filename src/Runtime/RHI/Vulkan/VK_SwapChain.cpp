@@ -10,17 +10,19 @@
 #include<memory>
 #include <stdexcept>
 #include "VK_Device.h"
+#include "VK_Platform.h"
 #include "vulkan/vulkan_core.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
-VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* window_handle, ENUM_TEXTURE_FORMAT& in_out_pixel_format, Int width, Int height, Bool is_full_screen,
+VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* in_window_handle, ENUM_TEXTURE_FORMAT& in_out_pixel_format, Int width, Int height, Bool is_full_screen,
 	UInt32* in_out_desired_num_back_buffers, Vector<VkImage>& out_images, Int in_lock_to_vsync, VK_SwapChainRecreateInfo* recreate_info) :
 	swapchain(VK_NULL_HANDLE)
 	, device(in_device)
 	, surface(VK_NULL_HANDLE)
+	, window_handle(in_window_handle)
 	, current_image_index(-1)
 	, semaphore_index(0)
 	, num_present_calls(0)
@@ -28,9 +30,6 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* w
 	, instance(in_instance)
 	, lock_to_vsync(in_lock_to_vsync)
 {
-
-
-	
 	if (recreate_info != nullptr && recreate_info->swapchain != VK_NULL_HANDLE)
 	{
 		surface = recreate_info->surface;
@@ -40,13 +39,10 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* w
 	{
 		surface = recreate_info->surface;
 		recreate_info->surface = VK_NULL_HANDLE;
-	}
+	} 
 	else
 	{
-		GLFWwindow* windows = static_cast<GLFWwindow*>(window_handle);
-		if (glfwCreateWindowSurface(instance, windows, nullptr, &surface) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create window surface!");
-		}
+		VK_Platform::CreateSurface(window_handle,instance,&surface);
 	}
 
 	unsigned int num_formats;
@@ -59,14 +55,14 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* w
 	vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetGpu(), surface, &num_formats, Formats.data());
 
 	VkColorSpaceKHR requested_colorspace = Formats[0].colorSpace;
-	VkSurfaceFormatKHR CurrFormat = Formats[0];
+	VkSurfaceFormatKHR cur_format = Formats[0];
 	for (const auto& Format : Formats) {
 		if (Format.format == VK_FORMAT_B8G8R8A8_SRGB && Format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-			CurrFormat = Format;
+			cur_format = Format;
 			requested_colorspace = Format.colorSpace;
 			break;
 		}
-	}
+	} 
 
 	VkSurfaceCapabilitiesKHR surf_properties;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetGpu(), surface, &surf_properties);
@@ -111,8 +107,8 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* w
 	VkSwapchainCreateInfoKHR swapchain_info;
 	swapchain_info.surface = surface;
 	swapchain_info.minImageCount = desired_num_buffers;
-	swapchain_info.imageFormat = CurrFormat.format;
-	swapchain_info.imageColorSpace = CurrFormat.colorSpace;
+	swapchain_info.imageFormat = cur_format.format;
+	swapchain_info.imageColorSpace = cur_format.colorSpace;
 	swapchain_info.imageExtent.width = width;
 	swapchain_info.imageExtent.height = height;
 	swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -133,16 +129,21 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* w
 	swapchain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	*in_out_desired_num_back_buffers = desired_num_buffers;
 
-	if (vkCreateSwapchainKHR(device->GetDevice(), &swapchain_info, nullptr, &swapchain) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create swap chain!");
-	}
+	CHECK_WITH_LOG(vkCreateSwapchainKHR(device->GetDevice(), &swapchain_info, nullptr, &swapchain) != VK_SUCCESS,
+					"RHI Error: failed to create swap chain!")
+
 
 	vkGetSwapchainImagesKHR(device->GetDevice(), swapchain, &num_swap_chain_images, nullptr);
 	out_images.resize(num_swap_chain_images);
 	vkGetSwapchainImagesKHR(device->GetDevice(), swapchain, &num_swap_chain_images, out_images.data());
 
-	image_format = CurrFormat.format;
-	Image_extent2D = swapchain_info.imageExtent;
+	image_format = cur_format.format;
+	image_extent2D = swapchain_info.imageExtent;
+
+	if(surface)
+	{
+		device->CreatePresentQueue(surface);
+	}
 }
 
 
@@ -183,7 +184,7 @@ VkSwapchainKHR& VK_SwapChain::get_swapchain()
 
 VkExtent2D VK_SwapChain::get_extent2D() const
 {
-	return Image_extent2D;
+	return image_extent2D;
 }
 
 unsigned int VK_SwapChain::get_swap_chain_images_num() const

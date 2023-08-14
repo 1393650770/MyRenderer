@@ -75,35 +75,36 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Device , public RenderResource)
 
 private:
 	QueueFamilyIndices METHOD(FindQueueFamilies)(VkPhysicalDevice device);
+	void METHOD(CreateQueue)(QueueFamilyIndices family_indice);
 protected:
 	void METHOD(CreateDevice)(bool enableValidationLayers, Vector<CONST Char*> deviceExtensions, Vector<CONST Char*> validationLayers);
 	static void METHOD(GetDeviceExtensionsAndLayers)(VkPhysicalDevice Gpu, UInt32 VendorId, Vector<CONST Char*>& OutDeviceExtensions, Vector<CONST Char*>& OutDeviceLayers, Vector<String>& OutAllDeviceExtensions, Vector<String>& OutAllDeviceLayers, bool& bOutDebugMarkers);
-	void METHOD(CreateQueue)(QueueFamilyIndices family_indice);
+	
 public:
 	VK_Device(VulkanRHI* in_vulkan_rhi, VkPhysicalDevice in_gpu);
 	VIRTUAL ~VK_Device();
 
-void METHOD(Init)(int device_index, bool enableValidationLayers, Vector<CONST Char*> deviceExtensions, Vector<CONST Char*> validationLayers);
+	void METHOD(Init)(int device_index, bool enableValidationLayers, Vector<CONST Char*> deviceExtensions, Vector<CONST Char*> validationLayers);
 
 	VkDevice METHOD(GetDevice)();
 	VkPhysicalDevice METHOD(GetGpu)();
-
+	void METHOD(CreatePresentQueue)(VkSurfaceKHR surface);
 #pragma endregion
 
 #pragma region MEMBER
 	
 private:
 protected:
-	VkDevice device;
+	VkDevice device = VK_NULL_HANDLE;
 	VkPhysicalDevice gpu = VK_NULL_HANDLE;
-	VkPhysicalDeviceProperties gpu_props;
+	VkPhysicalDeviceProperties gpu_props{};
 	UInt32 vendor_id;
 	VulkanRHI* vulkan_rhi;
 
-	VK_Queue* graph_queue;
-	VK_Queue* compute_queue;
-	VK_Queue* transfer_queue;
-	VK_Queue* present_queue;
+	VK_Queue* graph_queue = nullptr;
+	VK_Queue* compute_queue = nullptr;
+	VK_Queue* transfer_queue = nullptr;
+	VK_Queue* present_queue = nullptr;
 public:
 
 

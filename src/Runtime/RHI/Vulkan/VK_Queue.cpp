@@ -19,6 +19,16 @@ VK_Queue::~VK_Queue()
 
 }
 
+UInt32 VK_Queue::GetFamily() const
+{
+	return family_index;
+}
+
+UInt32 VK_Queue::GetQueueIndex() const
+{
+	return queue_index;
+}
+
 void VK_Queue::Submit(VK_CommandBuffer* command_list, UInt32 NumSignalSemaphores = 0, VkSemaphore* SignalSemaphores = nullptr)
 {
 

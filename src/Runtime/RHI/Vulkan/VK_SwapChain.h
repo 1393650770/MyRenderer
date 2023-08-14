@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 #include "../RenderEnum.h"
+#include "../RenderRource.h"
 #include "../../Core/ConstDefine.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -17,14 +18,14 @@ class VK_Device;
 
 MYRENDERER_BEGIN_STRUCT(VK_SwapChainRecreateInfo)
 	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
-	VkSurfaceKHR surface;
+	VkSurfaceKHR surface{};
 MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_SwapChain,public RenderResource)
 
 #pragma region METHOD
 public:
-	VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* window_handle, ENUM_TEXTURE_FORMAT& in_out_pixel_format, Int width, Int height, Bool is_full_screen,
+	VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* in_window_handle, ENUM_TEXTURE_FORMAT& in_out_pixel_format, Int width, Int height, Bool is_full_screen,
 		UInt32* in_out_desired_num_back_buffers, Vector<VkImage>& out_images, Int in_lock_to_vsync, VK_SwapChainRecreateInfo* recreate_info);
 	VIRTUAL ~VK_SwapChain();
 
@@ -43,14 +44,15 @@ public:
 
 private:
 protected:
-	VkSurfaceTransformFlagBitsKHR QCOMRenderPassTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+	VkSurfaceTransformFlagBitsKHR qcom_render_pass_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 
 	VkFormat image_format = VK_FORMAT_UNDEFINED;
-	VkExtent2D Image_extent2D;
+	VkExtent2D image_extent2D;
 	VkSwapchainKHR swapchain;
 	VK_Device* device;
 
 	VkSurfaceKHR surface;
+	void* window_handle;
 
 	int current_image_index;
 	int semaphore_index;
@@ -61,8 +63,9 @@ protected:
 	bool b_internal_fullscreen = false;
 
 	int RT_pacing_sample_count = 0;
-	double RT_pacing_previous_frameCPUtime = 0;
-	double RT_pacing_sampled_deltatimeMS = 0;
+
+	double rt_pacing_previous_frameCPUtime = 0;
+	double rt_pacing_sampled_deltatimeMS = 0;
 
 	double next_present_target_time = 0;
 

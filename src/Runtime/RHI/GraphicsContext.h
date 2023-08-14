@@ -7,34 +7,36 @@
 #include <string>
 #include<vector>
 #include<memory>
+
+#include "RenderRource.h"
 #include "../Core/ConstDefine.h"
 
 struct GLFWwindow;
 namespace MXRender { class Window; }
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
+MYRENDERER_BEGIN_NAMESPACE(RHI)
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(GraphicsContext,public RenderResource)
 
-    class GraphicsContext
-    {
-    private:
-    protected:
-    public:
+private:
+protected:
+public:
 #define NDEBUG
 #ifdef NDEBUG
-		const bool enableValidationLayers = false;
+	const bool enableValidationLayers = false;
 #else
-		const bool enableValidationLayers = true;
+	const bool enableValidationLayers = true;
 #endif
 
-        GraphicsContext();
-        virtual ~GraphicsContext() = default;
-        virtual void init(Window* new_window)=0;
-        virtual void pre_init();
+    GraphicsContext();
+    virtual ~GraphicsContext() = default;
+    virtual void init(Window* new_window)=0;
+    virtual void pre_init();
 
-        std::unique_ptr<RenderState> render_state;
+    std::unique_ptr<RenderState> render_state;
 
-
-    };
+MYRENDERER_END_CLASS
+MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 #endif
 
