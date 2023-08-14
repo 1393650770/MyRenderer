@@ -15,8 +15,8 @@ MYRENDERER_BEGIN_NAMESPACE(RHI)
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderResource,public IObject)
 public:
-	RenderResource() = default;
-	virtual~RenderResource() = default;
+	RenderResource() DEFAULT;
+	VIRTUAL~RenderResource() DEFAULT;
 
 private:
 

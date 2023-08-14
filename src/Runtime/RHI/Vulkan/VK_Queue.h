@@ -12,6 +12,7 @@ MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 class VK_Device;
+class VK_CommandBuffer;
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Queue,public RenderResource)
 #pragma region METHOD

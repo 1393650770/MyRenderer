@@ -2,7 +2,7 @@
 #include <GLFW/glfw3.h>
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
-    MYRENDERER_BEGIN_NAMESPACE(RHI)
+MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 void VK_Platform::CreateSurface(void* window_handle, VkInstance instance, VkSurfaceKHR* out_suface)
 {

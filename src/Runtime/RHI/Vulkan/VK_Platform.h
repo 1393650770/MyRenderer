@@ -1,9 +1,10 @@
 #pragma once
 
-#ifndef _VK_VIEWPORT_
-#define _VK_VIEWPORT_
-#include "../Viewport.h"
+#ifndef _VK_PLATFORM_
+#define _VK_PLATFORM_
+
 #include "vulkan/vulkan_core.h"
+#include "../../Core/ConstDefine.h"
 
 
 
