@@ -2,7 +2,7 @@
 #ifndef _VIEWPORT_
 #define _VIEWPORT_
 #include "../Core/ConstDefine.h"
-
+#include "RenderEnum.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 

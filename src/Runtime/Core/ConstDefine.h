@@ -10,6 +10,7 @@
 #include <queue>
 #include <stack>
 #include <stdexcept>
+#include <boost/stacktrace.hpp>
 
 #ifndef MYRENDERER_C_INTERFACE
 #    ifdef __cplusplus
@@ -69,7 +70,8 @@
 #define CHECK(Flag) if(Flag) { std::abort(); }
 #define CHECK_WITH_LOG(Flag,LOG) if(Flag) \
                                 {\
-                                    throw std::runtime_error(LOG); \
+                                    boost::stacktrace::stacktrace stack_trace;\
+                                   	throw std::runtime_error(String(LOG)+"\n"+boost::stacktrace::to_string(stack_trace)); \
                                 }
 
 #define THIS
@@ -83,8 +85,8 @@
 #define REF          &
 #define METHOD(Name) MYRENDERER_CALL_TYPE Name
 
-#define STATIC_CAST(Pointer,Type) static_cast<Type*>(Pointer)
-#define DYNAMIC_CAST(Pointer,Type) dynamic_cast<Type*>(Pointer)
+#define STATIC_CAST(Pointer,Type) (static_cast<(Type)*>(Pointer))
+#define DYNAMIC_CAST(Pointer,Type) (dynamic_cast<(Type)*>(Pointer))
 
 using UInt8 = std::uint8_t;
 using UInt16 = std::uint16_t;

@@ -8,8 +8,19 @@
 #include "VK_RenderRHI.h"
 
 
+namespace MXRender
+{
+	namespace RHI
+	{
+		namespace Vulkan
+		{
+			class VK_FenceManager;
+		}
+	}
+}
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
-MYRENDERER_BEGIN_NAMESPACE(RHI)
+	MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 class VK_Queue;
@@ -88,6 +99,7 @@ public:
 
 	VkDevice METHOD(GetDevice)();
 	VkPhysicalDevice METHOD(GetGpu)();
+	VK_FenceManager* METHOD(GetFenceManager)();
 	void METHOD(CreatePresentQueue)(VkSurfaceKHR surface);
 #pragma endregion
 
@@ -105,6 +117,8 @@ protected:
 	VK_Queue* compute_queue = nullptr;
 	VK_Queue* transfer_queue = nullptr;
 	VK_Queue* present_queue = nullptr;
+
+	VK_FenceManager* fence_manager= nullptr;
 public:
 
 

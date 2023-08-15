@@ -3,6 +3,7 @@
 #include "vulkan/vulkan_core.h"
 #include "VK_Device.h"
 #include "VK_CommandBuffer.h"
+#include "VK_Fence.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -17,7 +18,7 @@ VK_Queue::VK_Queue(VK_Device* in_device, UInt32 in_family_index):family_index(in
 
 VK_Queue::~VK_Queue()
 {
-
+	
 }
 
 UInt32 VK_Queue::GetFamily() const
@@ -32,7 +33,17 @@ UInt32 VK_Queue::GetQueueIndex() const
 
 void VK_Queue::Submit(VK_CommandBuffer* command_list, UInt32 NumSignalSemaphores = 0, VkSemaphore* SignalSemaphores = nullptr)
 {
+	const VkCommandBuffer command_buffers[]={command_list->GetCommandBuffer()};
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount=1;
+	submitInfo.pCommandBuffers=command_buffers;
+	submitInfo.signalSemaphoreCount=NumSignalSemaphores;
+	submitInfo.pSignalSemaphores=SignalSemaphores;
 
+	VK_Fence* fence = command_list->GetFence();
+
+	vkQueueSubmit(queue,1,&submitInfo,fence->GetFence());
 }
 
 

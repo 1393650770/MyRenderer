@@ -1,6 +1,8 @@
 #include "Vk_Device.h"
 #include <iostream>
 #include <utility>
+
+#include "VK_Fence.h"
 #include "VK_Queue.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -109,6 +111,8 @@ void VK_Device::CreateQueue(QueueFamilyIndices family_indice)
 void VK_Device::Init(Int device_index,Bool enable_validation_layers, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers)
 {
 	CreateDevice(enable_validation_layers, std::move(device_extensions), std::move(validation_layers));
+
+	fence_manager=new VK_FenceManager(this);
 }
 
 VkDevice VK_Device::GetDevice()
@@ -119,6 +123,11 @@ VkDevice VK_Device::GetDevice()
 VkPhysicalDevice VK_Device::GetGpu()
 {
 	return gpu;
+}
+
+VK_FenceManager* VK_Device::GetFenceManager()
+{
+	return fence_manager;
 }
 
 void VK_Device::CreatePresentQueue(VkSurfaceKHR surface)
