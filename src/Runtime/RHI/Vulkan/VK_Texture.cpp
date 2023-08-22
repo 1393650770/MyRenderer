@@ -203,10 +203,10 @@ VK_Texture::VK_Texture(ENUM_TEXTURE_TYPE _type, unsigned width,unsigned height, 
     attachment_description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     attachment_description.finalLayout = VK_Utils::Translate_Texture_usage_type_To_Vulkan(usage_type);
 
-    //TODO:Ö¸¶¨format
+    //TODO:æŒ‡å®šformat
     attachment_description.format = VK_FORMAT_UNDEFINED;
 
-    //TODO:Éè¶¨attachment_reference
+    //TODO:è®¾å®šattachment_reference
 	attachment_reference.attachment = 0;
     attachment_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
@@ -320,28 +320,28 @@ void VK_Texture::load_dds_cubemap(ENUM_TEXTURE_TYPE _type, const std::string& te
 	std::weak_ptr<VK_Device> device = Singleton<DefaultSetting>::get_instance().context->device;
 	if (device.expired())
 		return;
-	// ÉèÖÃÍ¼Ïñ´´½¨ĞÅÏ¢
+	// è®¾ç½®å›¾åƒåˆ›å»ºä¿¡æ¯
 	VkImageCreateInfo imageCreateInfo = {};
 	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageCreateInfo.format = trans_gli_format_to_vulkan(cubemap.format()); // ¼ÙÉèCube MapÊÇRGBA8¸ñÊ½
+	imageCreateInfo.format = trans_gli_format_to_vulkan(cubemap.format()); // å‡è®¾Cube Mapæ˜¯RGBA8æ ¼å¼
 	imageCreateInfo.extent = { static_cast<uint32_t>(cubemap.extent().x), static_cast<uint32_t>(cubemap.extent().y), 1 };
 	imageCreateInfo.mipLevels = static_cast<uint32_t>(cubemap.levels());
-	imageCreateInfo.arrayLayers = cubemap.faces(); // Cube MapĞèÒª6¸öÊı×é²ã
+	imageCreateInfo.arrayLayers = cubemap.faces(); // Cube Mapéœ€è¦6ä¸ªæ•°ç»„å±‚
 	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageCreateInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // ÉèÖÃÎªCube Map¼æÈİ
+	imageCreateInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // è®¾ç½®ä¸ºCube Mapå…¼å®¹
 
-	// ´´½¨VulkanÍ¼Ïñ
+	// åˆ›å»ºVulkanå›¾åƒ
 	VkResult result = vkCreateImage(device.lock()->device, &imageCreateInfo, nullptr, &textureImage);
 	if (result != VK_SUCCESS) {
 		return;
 	}
 
-	// ·ÖÅäÍ¼ÏñÄÚ´æ
+	// åˆ†é…å›¾åƒå†…å­˜
 	VkMemoryRequirements memReqs;
 	vkGetImageMemoryRequirements(device.lock()->device, textureImage, &memReqs);
 
@@ -356,7 +356,7 @@ void VK_Texture::load_dds_cubemap(ENUM_TEXTURE_TYPE _type, const std::string& te
 		return;
 	}
 
-	// °ó¶¨Í¼ÏñÄÚ´æ
+	// ç»‘å®šå›¾åƒå†…å­˜
 	vkBindImageMemory(device.lock()->device, textureImage, textureImageMemory, 0);
 
 

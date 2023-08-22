@@ -26,6 +26,16 @@ namespace MXRender
 		Count
 	};
 
+	enum class ENUM_BUFFER_TYPE
+	{
+		None=0,
+		Static,
+		Dynamic,
+		
+
+		Count
+	};
+
 	enum  ENUM_SHADER_STAGE
 	{
 		Shader_Vertex = 0,

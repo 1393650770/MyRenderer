@@ -8,23 +8,12 @@
 #include "VK_RenderRHI.h"
 
 
-namespace MXRender
-{
-	namespace RHI
-	{
-		namespace Vulkan
-		{
-			class VK_FenceManager;
-		}
-	}
-}
-
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
-	MYRENDERER_BEGIN_NAMESPACE(RHI)
+MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 class VK_Queue;
-
+class VK_FenceManager;
 MYRENDERER_BEGIN_CLASS(OptionalVulkanDeviceExtensions)
 union
 {

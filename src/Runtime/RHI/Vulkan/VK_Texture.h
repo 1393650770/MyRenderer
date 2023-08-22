@@ -7,6 +7,8 @@
 
 #include <vector>
 #include <string>
+
+#include "../MyTexture.h"
 #include "vulkan/vulkan_core.h"
 #include "gli/format.hpp"
 #include "../../Core/ConstDefine.h"
@@ -32,7 +34,7 @@ VkImage image=VK_NULL_HANDLE;
 UInt32 viewId=0;
 MYRENDERER_END_STRUCT
 
-MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Texture,public RenderResource)
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Texture,public Texture)
     
     private:
         ENUM_TEXTURE_TYPE type=ENUM_TEXTURE_TYPE::ENUM_TYPE_NOT_VALID;

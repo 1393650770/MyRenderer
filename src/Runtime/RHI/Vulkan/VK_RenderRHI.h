@@ -28,13 +28,13 @@ public:
 
 #pragma region INIT_MATHOD
 
-	VIRTUAL void METHOD(Init)(RenderFactory* render_factory) OVERIDE FINAL;
+	VIRTUAL void METHOD(Init)(RenderFactory* render_factory) OVERRIDE FINAL;
 
 
-	VIRTUAL void METHOD(PostInit)() OVERIDE FINAL;
+	VIRTUAL void METHOD(PostInit)() OVERRIDE FINAL;
 
 
-	VIRTUAL void METHOD(Shutdown)() OVERIDE FINAL;
+	VIRTUAL void METHOD(Shutdown)() OVERRIDE FINAL;
 #pragma endregion
 
 

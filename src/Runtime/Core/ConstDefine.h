@@ -80,7 +80,7 @@
 #define CONST        const
 #define DEFAULT      =default
 #define PURE         = 0
-#define OVERIDE      override
+#define OVERRIDE      override
 #define FINAL        final
 #define REF          &
 #define METHOD(Name) MYRENDERER_CALL_TYPE Name
