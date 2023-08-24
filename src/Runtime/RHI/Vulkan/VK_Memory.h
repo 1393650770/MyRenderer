@@ -11,11 +11,12 @@
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
-    MYRENDERER_BEGIN_NAMESPACE(RHI)
+MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 class VK_Device;
 class VK_DeviceMemoryAllocation;
+class VK_DeviceMemoryManager;
 
 MYRENDERER_BEGIN_STRUCT(MemoryHeap)
 VkDeviceSize used_size=0;
@@ -49,6 +50,8 @@ MYRENDERER_END_STRUCT
 
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_DeviceMemoryAllocation,public RenderResource)
+friend  VK_DeviceMemoryManager;
+
 #pragma region METHOD
 public:
 VK_DeviceMemoryAllocation();
@@ -75,6 +78,7 @@ union MemoryProperty
 {
     struct
     {
+        UInt16 memory_type_index : 8;
         UInt16 is_can_be_mapped : 1;
         UInt16 is_coherent : 1;
         UInt16 is_cached : 1;
@@ -123,7 +127,10 @@ protected:
 VK_Device* device=nullptr;
 UInt32 num_allocations=0;
 UInt32 max_num_allocations=0;
-
+VkPhysicalDeviceMemoryBudgetPropertiesEXT memory_budget;
+VkPhysicalDeviceMemoryProperties memory_properties;
+Int primary_heap_index=0;
+Bool is_support_lazily_allocated=false;
 Vector<MemoryHeap> memory_heaps;
 Map<MemoryBlockKey,MemoryBlock> memory_block_map;
 

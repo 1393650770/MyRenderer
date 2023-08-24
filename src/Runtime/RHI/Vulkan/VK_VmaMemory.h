@@ -1,11 +1,10 @@
 #pragma once
-#ifndef _VK_MEMORY_
-#define _VK_MEMORY_
+#ifndef _VK_VMAMEMORY_
+#define _VK_VMAMEMORY_
 
 #include <vulkan/vulkan_core.h>
-
+#include <vma/vk_mem_alloc.h>
 #include "../../Core/ConstDefine.h"
-#include "optick.h"
 #include "../RenderRource.h"
 
 

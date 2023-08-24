@@ -14,35 +14,61 @@ MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 class VK_Queue;
 class VK_FenceManager;
-MYRENDERER_BEGIN_CLASS(OptionalVulkanDeviceExtensions)
+MYRENDERER_BEGIN_STRUCT(OptionalVulkanDeviceExtensions)
 union
 {
 	struct
 	{
-		UInt32 HasKHRMaintenance1 : 1;
-		UInt32 HasKHRMaintenance2 : 1;
-		UInt32 HasMirrorClampToEdge : 1;
-		UInt32 HasKHRDedicatedAllocation : 1;
-		UInt32 HasEXTValidationCache : 1;
-		UInt32 HasAMDBufferMarker : 1;
-		UInt32 HasNVDiagnosticCheckpoints : 1;
-		UInt32 HasNVDeviceDiagnosticConfig : 1;
-		UInt32 HasYcbcrSampler : 1;
-		UInt32 HasMemoryPriority : 1;
-		UInt32 HasMemoryBudget : 1;
-		UInt32 HasDriverProperties : 1;
-		UInt32 HasEXTFragmentDensityMap : 1;
-		UInt32 HasEXTFragmentDensityMap2 : 1;
-		UInt32 HasKHRFragmentShadingRate : 1;
-		UInt32 HasEXTFullscreenExclusive : 1;
-		UInt32 HasKHRImageFormatList : 1;
-		UInt32 HasEXTASTCDecodeMode : 1;
-		UInt32 HasQcomRenderPassTransform : 1;
-		UInt32 HasBufferAtomicInt64 : 1;
-		UInt32 HasScalarBlockLayoutFeatures : 1;
-		UInt32 HasKHRMultiview : 1;
+		// Optional Extensions
+		UInt64 HasEXTValidationCache : 1;
+		UInt64 HasMemoryPriority : 1;
+		UInt64 HasMemoryBudget : 1;
+		UInt64 HasEXTASTCDecodeMode : 1;
+		UInt64 HasEXTFragmentDensityMap : 1;
+		UInt64 HasEXTFragmentDensityMap2 : 1;
+		UInt64 HasKHRFragmentShadingRate : 1;
+		UInt64 HasEXTFullscreenExclusive : 1;
+		UInt64 HasImageAtomicInt64 : 1;
+		UInt64 HasAccelerationStructure : 1;
+		UInt64 HasRayTracingPipeline : 1;
+		UInt64 HasRayQuery : 1;
+		UInt64 HasDeferredHostOperations : 1;
+		UInt64 HasEXTCalibratedTimestamps : 1;
+		UInt64 HasEXTDescriptorBuffer : 1;
+		UInt64 HasEXTDeviceFault : 1;
+
+		// Vendor specific
+		UInt64 HasAMDBufferMarker : 1;
+		UInt64 HasNVDiagnosticCheckpoints : 1;
+		UInt64 HasNVDeviceDiagnosticConfig : 1;
+		UInt64 HasQcomRenderPassTransform : 1;
+
+		// Promoted to 1.1
+		UInt64 HasKHRMultiview : 1;
+		UInt64 HasKHR16bitStorage : 1;
+
+		// Promoted to 1.2
+		UInt64 HasKHRRenderPass2 : 1;
+		UInt64 HasKHRImageFormatList : 1;
+		UInt64 HasKHRShaderAtomicInt64 : 1;
+		UInt64 HasEXTScalarBlockLayout : 1;
+		UInt64 HasBufferDeviceAddress : 1;
+		UInt64 HasSPIRV_14 : 1;
+		UInt64 HasShaderFloatControls : 1;
+		UInt64 HasKHRShaderFloat16 : 1;
+		UInt64 HasEXTDescriptorIndexing : 1;
+		UInt64 HasEXTShaderViewportIndexLayer : 1;
+		UInt64 HasSeparateDepthStencilLayouts : 1;
+		UInt64 HasEXTHostQueryReset : 1;
+
+		// Promoted to 1.3
+		UInt64 HasEXTTextureCompressionASTCHDR : 1;
+		UInt64 HasKHRMaintenance4 : 1;
+		UInt64 HasKHRSynchronization2 : 1;
+		UInt64 HasEXTSubgroupSizeControl : 1;
+		
 	};
-	UInt32 Packed;
+	UInt64 Packed;
 };
 
 OptionalVulkanDeviceExtensions()
@@ -55,7 +81,7 @@ inline bool METHOD(HasGPUCrashDumpExtensions)() const
 {
 	return HasAMDBufferMarker || HasNVDiagnosticCheckpoints;
 }
-MYRENDERER_END_CLASS
+MYRENDERER_END_STRUCT
 
 
 MYRENDERER_BEGIN_CLASS(QueueFamilyIndices)
@@ -89,7 +115,9 @@ public:
 	VkDevice METHOD(GetDevice)();
 	VkPhysicalDevice METHOD(GetGpu)();
 	VK_FenceManager* METHOD(GetFenceManager)();
+	CONST OptionalVulkanDeviceExtensions& METHOD(GetOptionalExtensions)() CONST;
 	void METHOD(CreatePresentQueue)(VkSurfaceKHR surface);
+	CONST VkPhysicalDeviceLimits&  METHOD(GetLimits)() CONST;
 #pragma endregion
 
 #pragma region MEMBER
@@ -101,7 +129,7 @@ protected:
 	VkPhysicalDeviceProperties gpu_props{};
 	UInt32 vendor_id;
 	VulkanRHI* vulkan_rhi;
-
+	OptionalVulkanDeviceExtensions extensions;
 	VK_Queue* graph_queue = nullptr;
 	VK_Queue* compute_queue = nullptr;
 	VK_Queue* transfer_queue = nullptr;

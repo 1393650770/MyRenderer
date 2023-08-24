@@ -130,6 +130,11 @@ VK_FenceManager* VK_Device::GetFenceManager()
 	return fence_manager;
 }
 
+const OptionalVulkanDeviceExtensions& VK_Device::GetOptionalExtensions() const
+{
+	return extensions;
+}
+
 void VK_Device::CreatePresentQueue(VkSurfaceKHR surface)
 {
 	if(!present_queue)
@@ -150,6 +155,11 @@ void VK_Device::CreatePresentQueue(VkSurfaceKHR surface)
 		CHECK_WITH_LOG(check_and_create_queue(graph_queue) || check_and_create_queue(compute_queue)||check_and_create_queue(transfer_queue),
 						"RHI Error: failed to create present queue!")
 	}
+}
+
+const VkPhysicalDeviceLimits& VK_Device::GetLimits() const
+{
+	return gpu_props.limits;
 }
 
 VK_Device::~VK_Device()

@@ -150,4 +150,18 @@ namespace MXRender
     };
     
 }
+
+MYRENDERER_BEGIN_NAMESPACE(MXRender)
+MYRENDERER_BEGIN_NAMESPACE(RHI)
+MYRENDERER_BEGIN_NAMESPACE(Vulkan)
+
+template<typename BitsType>
+constexpr bool VKHasAllFlags(VkFlags flags, BitsType contains)
+{
+	return (flags & contains) == contains;
+}
+
+MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE
 #endif
