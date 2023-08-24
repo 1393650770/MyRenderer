@@ -121,4 +121,10 @@ using Queue =std::queue<T>;
 template <typename T>
 using Stack = std::stack<T>;
 
+#define CORE_API DLLEXPORT
+#define TRACELOG_API DLLIMPORT
+#define DESKTOPPLATFORM_API DLLIMPORT
+#define ANALYTICS_API DLLIMPORT
+#define DIRECTORYWATCHER_API DLLIMPORT
+
 #endif 

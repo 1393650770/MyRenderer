@@ -3,9 +3,10 @@
 #include "VK_Define.h"
 #include "VK_Device.h"
 #include "VK_Utils.h"
+#include "../../Core/ConstGlobals.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
-MYRENDERER_BEGIN_NAMESPACE(RHI)
+    MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 UInt32 g_vulkan_budget_percentage_scale = 100;
@@ -231,6 +232,25 @@ VK_DeviceMemoryAllocation* VK_DeviceMemoryManager::Alloc(VkDeviceSize allocation
 
 void VK_DeviceMemoryManager::Free(VK_DeviceMemoryAllocation*& allocation)
 {
+    VkDeviceSize allocation_size = allocation->size;
+    MemoryBlockKey key = { allocation->property.memory_type_index, allocation_size };
+    MemoryBlock block = memory_block_map[key];
+    MemoryBlock::FreeBlock free_block = {allocation, g_frame_number_render_thread};
+    block.allocations.push_back(free_block);
+    
+    
+    --num_allocations;
+
+    UInt32 HeapIndex = memory_properties.memoryTypes[allocation->property.memory_type_index].heapIndex;
+
+    memory_heaps[HeapIndex].used_size -= allocation->size;
+    auto it= std::find(memory_heaps[HeapIndex].allocations.begin(),memory_heaps[HeapIndex].allocations.end(),allocation);
+    if(it!=memory_heaps[HeapIndex].allocations.end())
+        memory_heaps[HeapIndex].allocations.erase(it);
+    allocation->property.is_freed_by_system = true;
+
+    delete allocation;
+    allocation = nullptr;
 }
 
 MYRENDERER_END_NAMESPACE
