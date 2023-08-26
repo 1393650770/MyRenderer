@@ -130,6 +130,11 @@ VK_FenceManager* VK_Device::GetFenceManager()
 	return fence_manager;
 }
 
+VK_DeviceMemoryManager* VK_Device::GetDeviceMemoryManager()
+{
+	return device_memory_manager;
+}
+
 const OptionalVulkanDeviceExtensions& VK_Device::GetOptionalExtensions() const
 {
 	return extensions;

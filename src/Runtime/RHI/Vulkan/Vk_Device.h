@@ -8,12 +8,15 @@
 #include "VK_RenderRHI.h"
 
 
+
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
-MYRENDERER_BEGIN_NAMESPACE(RHI)
+	MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 class VK_Queue;
 class VK_FenceManager;
+class VK_DeviceMemoryManager;
 MYRENDERER_BEGIN_STRUCT(OptionalVulkanDeviceExtensions)
 union
 {
@@ -115,6 +118,7 @@ public:
 	VkDevice METHOD(GetDevice)();
 	VkPhysicalDevice METHOD(GetGpu)();
 	VK_FenceManager* METHOD(GetFenceManager)();
+	VK_DeviceMemoryManager* METHOD(GetDeviceMemoryManager)();
 	CONST OptionalVulkanDeviceExtensions& METHOD(GetOptionalExtensions)() CONST;
 	void METHOD(CreatePresentQueue)(VkSurfaceKHR surface);
 	CONST VkPhysicalDeviceLimits&  METHOD(GetLimits)() CONST;
@@ -136,6 +140,7 @@ protected:
 	VK_Queue* present_queue = nullptr;
 
 	VK_FenceManager* fence_manager= nullptr;
+	VK_DeviceMemoryManager* device_memory_manager=nullptr;
 public:
 
 

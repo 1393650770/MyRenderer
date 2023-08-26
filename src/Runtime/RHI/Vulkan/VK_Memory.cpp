@@ -230,6 +230,7 @@ VK_DeviceMemoryAllocation* VK_DeviceMemoryManager::Alloc(VkDeviceSize allocation
     return memory_allocation;
 }
 
+
 void VK_DeviceMemoryManager::Free(VK_DeviceMemoryAllocation*& allocation)
 {
     VkDeviceSize allocation_size = allocation->size;
@@ -251,6 +252,43 @@ void VK_DeviceMemoryManager::Free(VK_DeviceMemoryAllocation*& allocation)
 
     delete allocation;
     allocation = nullptr;
+}
+
+
+CONST UInt32 VK_DeviceMemoryManager::GetMemoryTypeNum() CONST
+{
+    return memory_properties.memoryTypeCount;
+}
+
+UInt32 VK_DeviceMemoryManager::GetHeapIndex(UInt32 memory_type_index)
+{
+	return memory_properties.memoryTypes[memory_type_index].heapIndex;
+}
+CONST VkPhysicalDeviceMemoryProperties& VK_DeviceMemoryManager::GetMemoryProperties() CONST
+{
+    return memory_properties;
+}
+VK_MemoryManager::VK_MemoryManager(VK_Device* in_device):device_memory_manager(in_device->GetDeviceMemoryManager())
+{
+    CONST UInt32 type_bit = (1<<device_memory_manager->GetMemoryTypeNum())-1;
+    CONST VkPhysicalDeviceMemoryProperties& memory_properties = device_memory_manager->GetMemoryProperties();
+    resource_heaps.resize(memory_properties.memoryTypeCount)
+
+}
+VK_DeviceMemoryManager* VK_MemoryManager::GetDeviceMemoryManager()
+{
+    return device_memory_manager;
+}
+
+VK_MemoryResourceHeap::VK_MemoryResourceHeap(VK_MemoryManager* InOwner, UInt32 InMemoryTypeIndex, UInt32 InOverridePageSize /*= 0*/)
+: owner(InOwner),memory_type_index(InMemoryTypeIndex),override_page_size(InOverridePageSize)
+{
+    heap_index=owner->GetDeviceMemoryManager()->GetHeapIndex(memory_type_index);
+}
+
+VK_MemoryResourceHeap::~VK_MemoryResourceHeap()
+{
+
 }
 
 MYRENDERER_END_NAMESPACE

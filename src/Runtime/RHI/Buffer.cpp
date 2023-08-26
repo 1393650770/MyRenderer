@@ -25,3 +25,4 @@ BufferDesc Buffer::GetBufferDesc() const
 MYRENDERER_END_NAMESPACE
 
 MYRENDERER_END_NAMESPACE
+

@@ -121,6 +121,9 @@ using Queue =std::queue<T>;
 template <typename T>
 using Stack = std::stack<T>;
 
+#define DLLEXPORT __declspec(dllexport)
+#define DLLIMPORT __declspec(dllimport)
+
 #define CORE_API DLLEXPORT
 #define TRACELOG_API DLLIMPORT
 #define DESKTOPPLATFORM_API DLLIMPORT
