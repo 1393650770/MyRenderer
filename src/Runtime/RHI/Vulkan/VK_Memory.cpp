@@ -6,9 +6,10 @@
 #include "../../Core/ConstGlobals.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
-    MYRENDERER_BEGIN_NAMESPACE(RHI)
+MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
+#define VK_MEMORY_MAX_SUB_ALLOCATION (64llu << 20llu) //64MB?
 UInt32 g_vulkan_budget_percentage_scale = 100;
 
 VK_DeviceMemoryAllocation::VK_DeviceMemoryAllocation()
@@ -268,20 +269,135 @@ CONST VkPhysicalDeviceMemoryProperties& VK_DeviceMemoryManager::GetMemoryPropert
 {
     return memory_properties;
 }
+
+VkResult VK_DeviceMemoryManager::GetMemoryTypeFromProperties(UInt32 type_bits, VkMemoryPropertyFlags properties, UInt32* out_type_index)
+{
+	for (UInt32 i = 0; i < memory_properties.memoryTypeCount && type_bits; i++)
+	{
+		if ((type_bits & 1) == 1)
+		{
+			if ((memory_properties.memoryTypes[i].propertyFlags & properties) == properties)
+			{
+				*out_type_index = i;
+				return VK_SUCCESS;
+			}
+		}
+		type_bits >>= 1;
+	}
+	return VK_ERROR_FEATURE_NOT_PRESENT;
+}
+
 VK_MemoryManager::VK_MemoryManager(VK_Device* in_device):device_memory_manager(in_device->GetDeviceMemoryManager())
 {
-    CONST UInt32 type_bit = (1<<device_memory_manager->GetMemoryTypeNum())-1;
+    CONST UInt32 type_bits = (1<<device_memory_manager->GetMemoryTypeNum())-1;
     CONST VkPhysicalDeviceMemoryProperties& memory_properties = device_memory_manager->GetMemoryProperties();
-    resource_heaps.resize(memory_properties.memoryTypeCount)
+    resource_heaps.resize(memory_properties.memoryTypeCount);
+
+	auto GetMemoryTypesFromPropertiesFunc = [memory_properties](UInt32 in_type_bits, VkMemoryPropertyFlags properties, Vector<UInt32>& out_type_indices)
+	{
+		for (UInt32 i = 0; i < memory_properties.memoryTypeCount && in_type_bits; i++)
+		{
+			if ((in_type_bits & 1) == 1)
+			{
+				// Type is available, does it match user properties?
+				if ((memory_properties.memoryTypes[i].propertyFlags & properties) == properties)
+				{
+					out_type_indices.push_back(i);
+				}
+			}
+			in_type_bits >>= 1;
+		}
+		return out_type_indices.size() > 0;
+	};
+
+    {
+        UInt32 type_index=0;
+        device_memory_manager->GetMemoryTypeFromProperties(type_bits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &type_index);
+        UInt64 heap_size =memory_properties.memoryHeaps[memory_properties.memoryTypes[type_index].heapIndex].size;
+        resource_heaps[type_index]= new VK_MemoryResourceHeap(this,type_index, STAGING_HEAP_PAGE_SIZE);
+        auto& page_size_buckets= resource_heaps[type_index]->page_size_buckets;
+        VK_VulkanPageSizeBucket bucket0 = {STAGING_HEAP_PAGE_SIZE,STAGING_HEAP_PAGE_SIZE,VK_VulkanPageSizeBucket::BUCKET_MASK_IMAGE|VK_VulkanPageSizeBucket::BUCKET_MASK_BUFFER};
+        VK_VulkanPageSizeBucket bucket1= { UINT64_MAX, 0, VK_VulkanPageSizeBucket::BUCKET_MASK_IMAGE | VK_VulkanPageSizeBucket::BUCKET_MASK_BUFFER };
+        page_size_buckets.push_back(bucket0);
+        page_size_buckets.push_back(bucket1);
+    }
+
+    {
+        UInt32 type_index=0;
+        UInt32 host_vis_cached_index=0;
+        VkResult host_cache_result= device_memory_manager->GetMemoryTypeFromProperties(type_bits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, &host_vis_cached_index);
+        UInt32 host_vis_index=0;
+        VkResult host_result = device_memory_manager->GetMemoryTypeFromProperties(type_bits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &host_vis_index);
+		if (host_cache_result == VK_SUCCESS)
+		{
+			type_index = host_vis_cached_index;
+		}
+		else if (host_result == VK_SUCCESS)
+		{
+            type_index = host_vis_index;
+		}
+        CHECK_WITH_LOG(host_cache_result != VK_SUCCESS&& host_result != VK_SUCCESS,"RHI Error : No Memory Type Found Supporting VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT ! ")
+        auto& page_size_buckets= resource_heaps[type_index]->page_size_buckets;
+		VK_VulkanPageSizeBucket bucket0 = { STAGING_HEAP_PAGE_SIZE, STAGING_HEAP_PAGE_SIZE, VK_VulkanPageSizeBucket::BUCKET_MASK_IMAGE | VK_VulkanPageSizeBucket::BUCKET_MASK_BUFFER };
+        VK_VulkanPageSizeBucket bucket1 = { UINT64_MAX, 0, VK_VulkanPageSizeBucket::BUCKET_MASK_IMAGE | VK_VulkanPageSizeBucket::BUCKET_MASK_BUFFER };
+        page_size_buckets.push_back(bucket0);
+        page_size_buckets.push_back(bucket1);
+    }
+
+	{
+		Vector<UInt32> type_indices;
+		GetMemoryTypesFromPropertiesFunc(type_bits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, type_indices);
+
+		for (UInt32 index = 0; index < memory_properties.memoryTypeCount; ++index)
+		{
+			Int heap_index = memory_properties.memoryTypes[index].heapIndex;
+			VkDeviceSize heap_size = memory_properties.memoryHeaps[heap_index].size;
+			if (!resource_heaps[index])
+			{
+                resource_heaps[index] = new VK_MemoryResourceHeap(this, index);
+                resource_heaps[index]->is_support_host_cached = ((memory_properties.memoryTypes[index].propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) == VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+                resource_heaps[index]->is_support_lazily_allocated = ((memory_properties.memoryTypes[index].propertyFlags & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT) == VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
+				auto& page_size_buckets = resource_heaps[index]->page_size_buckets;
+
+/*#if PLATFORM_ANDROID
+				FVulkanPageSizeBucket BucketImage = { UINT64_MAX, (uint32)ANDROID_MAX_HEAP_IMAGE_PAGE_SIZE, FVulkanPageSizeBucket::BUCKET_MASK_IMAGE };
+				FVulkanPageSizeBucket BucketBuffer = { UINT64_MAX, (uint32)ANDROID_MAX_HEAP_BUFFER_PAGE_SIZE, FVulkanPageSizeBucket::BUCKET_MASK_BUFFER };
+				PageSizeBuckets.Add(BucketImage);
+				PageSizeBuckets.Add(BucketBuffer);
+#else*/
+				UInt32 small_allocation_threshold = 2 << 20;
+                UInt32 large_allocation_threshold = VK_MEMORY_MAX_SUB_ALLOCATION;
+				VkDeviceSize small_page_size = 8llu << 20;
+				VkDeviceSize large_page_size = std::min<VkDeviceSize>(heap_size / 8, GPU_ONLY_HEAP_PAGE_SIZE);
+
+				VK_VulkanPageSizeBucket bucket_small_image = { small_allocation_threshold, (UInt32)small_page_size, VK_VulkanPageSizeBucket::BUCKET_MASK_IMAGE };
+                VK_VulkanPageSizeBucket bucket_large_image = { large_allocation_threshold, (UInt32)large_page_size, VK_VulkanPageSizeBucket::BUCKET_MASK_IMAGE };
+                VK_VulkanPageSizeBucket bucket_small_buffer = { small_allocation_threshold, (UInt32)small_page_size, VK_VulkanPageSizeBucket::BUCKET_MASK_BUFFER };
+                VK_VulkanPageSizeBucket bucket_large_buffer = { large_allocation_threshold, (UInt32)large_page_size, VK_VulkanPageSizeBucket::BUCKET_MASK_BUFFER };
+                VK_VulkanPageSizeBucket bucket_remainder = { UINT64_MAX, 0, VK_VulkanPageSizeBucket::BUCKET_MASK_BUFFER | VK_VulkanPageSizeBucket::BUCKET_MASK_IMAGE };
+                page_size_buckets.push_back(bucket_small_image);
+                page_size_buckets.push_back(bucket_large_image);
+                page_size_buckets.push_back(bucket_small_buffer);
+                page_size_buckets.push_back(bucket_large_buffer);
+                page_size_buckets.push_back(bucket_remainder);
+			}
+		}
+	}
 
 }
+
+Bool VK_MemoryManager::AllocateBufferPooled(VK_Allocation* out_allocation)
+{
+
+}
+
 VK_DeviceMemoryManager* VK_MemoryManager::GetDeviceMemoryManager()
 {
     return device_memory_manager;
 }
 
-VK_MemoryResourceHeap::VK_MemoryResourceHeap(VK_MemoryManager* InOwner, UInt32 InMemoryTypeIndex, UInt32 InOverridePageSize /*= 0*/)
-: owner(InOwner),memory_type_index(InMemoryTypeIndex),override_page_size(InOverridePageSize)
+VK_MemoryResourceHeap::VK_MemoryResourceHeap(VK_MemoryManager* in_owner, UInt32 in_memory_type_index, UInt32 in_override_page_size /*= 0*/)
+: owner(in_owner),memory_type_index(in_memory_type_index),override_page_size(in_override_page_size)
 {
     heap_index=owner->GetDeviceMemoryManager()->GetHeapIndex(memory_type_index);
 }

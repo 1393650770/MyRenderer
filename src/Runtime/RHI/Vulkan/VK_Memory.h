@@ -22,6 +22,41 @@ class VK_MemoryManager;
 class VK_MemoryResourceHeap;
 class VK_MemoryResourceFragmentAllocator;
 
+enum class ENUM_VK_AllocationType : UInt8
+{
+	EVulkanAllocationEmpty=0,
+	EVulkanAllocationPooledBuffer,
+	EVulkanAllocationBuffer,
+	EVulkanAllocationImage,
+	EVulkanAllocationImageDedicated,
+};
+
+enum class ENUM_VK_AllocationMetaType : UInt8
+{
+	EVulkanAllocationMetaUnknown=0,
+	EVulkanAllocationMetaUniformBuffer,
+	EVulkanAllocationMetaMultiBuffer,
+	EVulkanAllocationMetaRingBuffer,
+	EVulkanAllocationMetaFrameTempBuffer,
+	EVulkanAllocationMetaImageRenderTarget,
+	EVulkanAllocationMetaImageOther,
+	EVulkanAllocationMetaBufferUAV,
+	EVulkanAllocationMetaBufferStaging,
+	EVulkanAllocationMetaBufferOther,
+	EVulkanAllocationMetaSize,
+};
+
+enum
+{
+	GPU_ONLY_HEAP_PAGE_SIZE = 128 * 1024 * 1024,
+	STAGING_HEAP_PAGE_SIZE = 32 * 1024 * 1024,
+	ANDROID_MAX_HEAP_PAGE_SIZE = 16 * 1024 * 1024,
+	ANDROID_MAX_HEAP_IMAGE_PAGE_SIZE = 16 * 1024 * 1024,
+	ANDROID_MAX_HEAP_BUFFER_PAGE_SIZE = 4 * 1024 * 1024,
+};
+
+
+
 MYRENDERER_BEGIN_STRUCT(MemoryHeapInfo)
     VkDeviceSize used_size=0;
     VkDeviceSize max_size=0;
@@ -52,6 +87,12 @@ MYRENDERER_BEGIN_STRUCT(MemoryBlock)
 
 MYRENDERER_END_STRUCT
 
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Evictable,public RenderResource)
+#pragma region METHOD
+public: 
+
+#pragma endregion
+MYRENDERER_END_CLASS
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_DeviceMemoryAllocation,public RenderResource)
 friend  VK_DeviceMemoryManager;
@@ -121,6 +162,7 @@ public:
     CONST UInt32 METHOD(GetMemoryTypeNum)() CONST;
     UInt32 METHOD(GetHeapIndex)(UInt32 memory_type_index);
     CONST VkPhysicalDeviceMemoryProperties& METHOD(GetMemoryProperties)() CONST;
+    VkResult METHOD(GetMemoryTypeFromProperties)(UInt32 type_bits, VkMemoryPropertyFlags properties, UInt32* out_type_index);
 protected:
     
 private:
@@ -230,7 +272,12 @@ public:
     VK_MemoryManager(VK_Device* in_device);
     VIRTUAL ~VK_MemoryManager() DEFAULT;
 
-    Bool METHOD(TryAlloc)(VK_Allocation* out_allocation);
+    Bool METHOD(AllocateBufferPooled)(VK_Allocation* out_allocation);
+    Bool METHOD(AllocateImageMemory)(VK_Allocation* out_allocation);
+    Bool METHOD(AllocateBufferMemory)(VK_Allocation* out_allocation);
+    Bool METHOD(AllocateDedicatedImageMemory)(VK_Allocation* out_allocation);
+    Bool METHOD(AllocateUniformBuffer)(VK_Allocation* out_allocation);
+
     VK_DeviceMemoryManager* METHOD(GetDeviceMemoryManager)();
 protected:
 
