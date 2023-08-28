@@ -21,6 +21,7 @@ class VK_DeviceMemoryManager;
 class VK_MemoryManager;
 class VK_MemoryResourceHeap;
 class VK_MemoryResourceFragmentAllocator;
+class VK_Allocation;
 
 enum class ENUM_VK_AllocationType : UInt8
 {
@@ -55,6 +56,19 @@ enum
 	ANDROID_MAX_HEAP_BUFFER_PAGE_SIZE = 4 * 1024 * 1024,
 };
 
+enum class ENUM_VK_HeapAllocationType :UInt32
+{
+    None=0,
+    Image,
+    Buffer,
+    Count
+};
+
+enum ENUM_VK_LegacyVulkanAllocationFlags
+{
+	VulkanAllocationFlagsMapped = 0x1,
+	VulkanAllocationFlagsCanEvict = 0x2,
+};
 
 
 MYRENDERER_BEGIN_STRUCT(MemoryHeapInfo)
@@ -147,8 +161,6 @@ private:
 MYRENDERER_END_CLASS
 
 
-
-
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_DeviceMemoryManager,public RenderResource)
 
 #pragma region METHOD
@@ -163,6 +175,7 @@ public:
     UInt32 METHOD(GetHeapIndex)(UInt32 memory_type_index);
     CONST VkPhysicalDeviceMemoryProperties& METHOD(GetMemoryProperties)() CONST;
     VkResult METHOD(GetMemoryTypeFromProperties)(UInt32 type_bits, VkMemoryPropertyFlags properties, UInt32* out_type_index);
+    Bool METHOD(GetIsSupportUnifiedMemory)() CONST;
 protected:
     
 private:
@@ -182,6 +195,8 @@ protected:
     Bool is_support_lazily_allocated=false;
     Vector<MemoryHeapInfo> memory_heaps;
     Map<MemoryBlockKey,MemoryBlock> memory_block_map;
+	Bool is_support_unified_memory=false;
+    Bool is_support_memory_less=false;
 
 private:
 
@@ -203,7 +218,28 @@ MYRENDERER_BEGIN_STRUCT(VK_Section)
 
 MYRENDERER_END_STRUCT
 
-MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_MemoryResourceHeap, public RenderResource)
+MYRENDERER_BEGIN_CLASS(VK_MemoryResourceFragmentAllocator)
+#pragma region METHOD
+public:
+    VK_MemoryResourceFragmentAllocator();
+    VIRTUAL ~VK_MemoryResourceFragmentAllocator();
+
+    Bool METHOD(TryAllocate)(VK_Allocation& out_allocation, VK_Evictable* owner, UInt32 in_size, UInt32 in_alignment, ENUM_VK_AllocationMetaType in_meta_type, CONST Char* file, UInt32 line);
+protected:
+private:
+
+#pragma endregion
+
+#pragma region MEMBER
+public:
+protected:
+private:
+
+#pragma endregion
+
+MYRENDERER_END_CLASS
+
+MYRENDERER_BEGIN_CLASS(VK_MemoryResourceHeap)
 friend class VK_MemoryManager;
 friend class VK_MemoryResourceFragmentAllocator;
 
@@ -211,8 +247,12 @@ friend class VK_MemoryResourceFragmentAllocator;
 public:
     VK_MemoryResourceHeap(VK_MemoryManager* in_owner, UInt32 InMemoryTypeIndex, UInt32 InOverridePageSize = 0);
     VIRTUAL ~VK_MemoryResourceHeap();
-protected:
 
+    UInt32 METHOD(GetPageSizeBucket)(VK_VulkanPageSizeBucket& out_bucket,ENUM_VK_HeapAllocationType type, UInt32 allocation_size,Bool is_force_single_allocation);
+protected:
+    Bool METHOD(TryRealloc)(VK_Allocation& out_allocation);
+    Bool METHOD(AllocateResource)(VK_Allocation& out_allocation,  VK_Evictable* allocation_owner, ENUM_VK_HeapAllocationType type, UInt32 size, UInt32 alignment, Bool is_map_allocation, Bool is_force_separate_allocation, ENUM_VK_AllocationMetaType meta_type, Bool is_external, CONST Char* file, UInt32 line);
+    Bool METHOD(AllocateDedicatedImage)(VK_Allocation& out_allocation,  VK_Evictable* allocation_owner, ENUM_VK_HeapAllocationType type, UInt32 size, UInt32 alignment, Bool is_map_allocation, Bool is_force_separate_allocation, ENUM_VK_AllocationMetaType meta_type, Bool is_external, CONST Char* file, UInt32 line);
 private:
 
 #pragma endregion 
@@ -241,6 +281,8 @@ private:
 
 #pragma endregion
 MYRENDERER_END_CLASS
+
+
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Allocation,public RenderResource)
 #pragma region METHOD

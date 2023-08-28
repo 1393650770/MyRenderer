@@ -272,7 +272,7 @@ CONST VkPhysicalDeviceMemoryProperties& VK_DeviceMemoryManager::GetMemoryPropert
 
 VkResult VK_DeviceMemoryManager::GetMemoryTypeFromProperties(UInt32 type_bits, VkMemoryPropertyFlags properties, UInt32* out_type_index)
 {
-	for (UInt32 i = 0; i < memory_properties.memoryTypeCount && type_bits; i++)
+	for (UInt32 i = 0; i < memory_properties.memoryTypeCount && type_bits; ++i)
 	{
 		if ((type_bits & 1) == 1)
 		{
@@ -287,6 +287,11 @@ VkResult VK_DeviceMemoryManager::GetMemoryTypeFromProperties(UInt32 type_bits, V
 	return VK_ERROR_FEATURE_NOT_PRESENT;
 }
 
+Bool VK_DeviceMemoryManager::GetIsSupportUnifiedMemory() CONST
+{
+    return is_support_unified_memory;
+}
+
 VK_MemoryManager::VK_MemoryManager(VK_Device* in_device):device_memory_manager(in_device->GetDeviceMemoryManager())
 {
     CONST UInt32 type_bits = (1<<device_memory_manager->GetMemoryTypeNum())-1;
@@ -295,7 +300,7 @@ VK_MemoryManager::VK_MemoryManager(VK_Device* in_device):device_memory_manager(i
 
 	auto GetMemoryTypesFromPropertiesFunc = [memory_properties](UInt32 in_type_bits, VkMemoryPropertyFlags properties, Vector<UInt32>& out_type_indices)
 	{
-		for (UInt32 i = 0; i < memory_properties.memoryTypeCount && in_type_bits; i++)
+		for (UInt32 i = 0; i < memory_properties.memoryTypeCount && in_type_bits; ++i)
 		{
 			if ((in_type_bits & 1) == 1)
 			{
@@ -403,6 +408,78 @@ VK_MemoryResourceHeap::VK_MemoryResourceHeap(VK_MemoryManager* in_owner, UInt32 
 }
 
 VK_MemoryResourceHeap::~VK_MemoryResourceHeap()
+{
+
+}
+
+bool MetaTypeCanEvict(ENUM_VK_AllocationMetaType meta_type)
+{
+	switch (meta_type)
+	{
+	case ENUM_VK_AllocationMetaType::EVulkanAllocationMetaImageOther:
+		return true;
+	default:
+		return false;
+	}
+}
+
+Bool VK_MemoryResourceHeap::AllocateResource(VK_Allocation& out_allocation, VK_Evictable* allocation_owner, ENUM_VK_HeapAllocationType type, UInt32 size, UInt32 alignment, Bool is_map_allocation, Bool is_force_separate_allocation, ENUM_VK_AllocationMetaType meta_type, Bool is_external, CONST Char* file, UInt32 line)
+{
+
+    VK_DeviceMemoryManager* device_memory_manager = owner->GetDeviceMemoryManager();
+    VK_VulkanPageSizeBucket memory_bucket;
+    UInt32 bucket_id= GetPageSizeBucket(memory_bucket,type,size , is_force_separate_allocation);
+    Bool is_support_unified_memory= device_memory_manager->GetIsSupportUnifiedMemory();
+    Vector<VK_MemoryResourceFragmentAllocator*>& used_pages = active_pages[bucket_id];
+    ENUM_VK_AllocationType allocation_type = (type==ENUM_VK_HeapAllocationType::Image)? ENUM_VK_AllocationType::EVulkanAllocationImage : 
+                                             (type == ENUM_VK_HeapAllocationType::Buffer) ? ENUM_VK_AllocationType::EVulkanAllocationBuffer: ENUM_VK_AllocationType::EVulkanAllocationEmpty;
+    UInt8 allocation_flags = (!is_support_unified_memory&& MetaTypeCanEvict(meta_type))? VulkanAllocationFlagsCanEvict: 0;
+    if(is_map_allocation)
+    {
+        allocation_flags |= VulkanAllocationFlagsMapped;
+    }
+    UInt32 allocation_size;
+    if (is_force_separate_allocation == false)
+    {
+        if (size < memory_bucket.page_size)
+        {
+            for (Int index = 0 ; index < used_pages.size(); ++index)
+            {
+                VK_MemoryResourceFragmentAllocator* page = used_pages[index];
+                if (page->TryAllocate())
+                {
+
+                }
+            }
+        }
+    }
+    return false;
+}
+
+UInt32 VK_MemoryResourceHeap::GetPageSizeBucket(VK_VulkanPageSizeBucket& out_bucket, ENUM_VK_HeapAllocationType type, UInt32 allocation_size, Bool is_force_single_allocation)
+{
+    if (is_force_single_allocation)
+    {
+        UInt32 bucket_id=page_size_buckets.size()-1;
+        out_bucket=page_size_buckets[bucket_id];
+        return bucket_id;
+    }
+    UInt32 mask=0;
+    mask |= type== ENUM_VK_HeapAllocationType::Image? VK_VulkanPageSizeBucket::BUCKET_MASK_IMAGE : 0;
+    mask |= type == ENUM_VK_HeapAllocationType::Buffer ? VK_VulkanPageSizeBucket::BUCKET_MASK_BUFFER : 0;
+    for (VK_VulkanPageSizeBucket& bucket : page_size_buckets)
+    {
+        if (mask == (bucket.bucket_mask & mask) && allocation_size <= bucket.max_allocation)
+        {
+            out_bucket=bucket;
+            return &bucket - &page_size_buckets[0];
+        }
+    }
+
+    return 0xffffffff;
+}
+
+Bool VK_MemoryResourceFragmentAllocator::TryAllocate(VK_Allocation& out_allocation, VK_Evictable* owner, UInt32 in_size, UInt32 in_alignment, ENUM_VK_AllocationMetaType in_meta_type, CONST Char* file, UInt32 line)
 {
 
 }
