@@ -446,12 +446,16 @@ Bool VK_MemoryResourceHeap::AllocateResource(VK_Allocation& out_allocation, VK_E
             for (Int index = 0 ; index < used_pages.size(); ++index)
             {
                 VK_MemoryResourceFragmentAllocator* page = used_pages[index];
-                if (page->TryAllocate())
-                {
-
+                if (page->GetSubresourceAllcatorFlags()== allocation_flags)
+                {   
+					if (page->TryAllocate(out_allocation,allocation_owner,size,alignment,meta_type,file,line))
+					{
+	                    return true;
+					}
                 }
             }
         }
+
     }
     return false;
 }
@@ -484,7 +488,13 @@ Bool VK_MemoryResourceFragmentAllocator::TryAllocate(VK_Allocation& out_allocati
 
 }
 
+UInt8 VK_MemoryResourceFragmentAllocator::GetSubresourceAllcatorFlags()
+{
+    return subresource_allocator_flags;
+}
+
 MYRENDERER_END_NAMESPACE
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
+

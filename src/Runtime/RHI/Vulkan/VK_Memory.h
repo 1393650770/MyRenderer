@@ -225,6 +225,8 @@ public:
     VIRTUAL ~VK_MemoryResourceFragmentAllocator();
 
     Bool METHOD(TryAllocate)(VK_Allocation& out_allocation, VK_Evictable* owner, UInt32 in_size, UInt32 in_alignment, ENUM_VK_AllocationMetaType in_meta_type, CONST Char* file, UInt32 line);
+    UInt8 GetSubresourceAllcatorFlags();
+
 protected:
 private:
 
@@ -233,6 +235,29 @@ private:
 #pragma region MEMBER
 public:
 protected:
+    ENUM_VK_AllocationType type;
+    VK_MemoryManager* owner_memory_manager = nullptr;
+    VkMemoryPropertyFlags memory_property_flags;
+    UInt32 max_size=0;
+    UInt32 alignment=0;
+    UInt32 frame_freed=0;
+    UInt32 last_defrag_frame=0;
+    Int64 used_size=0;
+	VkBufferUsageFlags buffer_usage_flags;
+	VkBuffer buffer;
+    UInt32 buffer_id;
+    Int pool_size_index;
+    UInt32 allocator_index;
+    UInt8 subresource_allocator_flags;
+    UInt8 bucket_id;
+	Bool is_evicting = false;
+    Bool is_locked = false;
+    Bool is_defragging = false;
+
+    UInt32 NumSubAllocations = 0;
+    UInt32 AllocCalls = 0;
+    UInt32 FreeCalls = 0;
+    Vector<VK_Section> free_list;
 private:
 
 #pragma endregion
