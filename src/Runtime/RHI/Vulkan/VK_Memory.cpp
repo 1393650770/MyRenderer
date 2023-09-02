@@ -11,8 +11,10 @@ MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 #define VK_MEMORY_MAX_SUB_ALLOCATION (64llu << 20llu) //64MB?
-UInt32 g_vulkan_budget_percentage_scale = 100;
 
+
+UInt32 g_vulkan_budget_percentage_scale = 100;
+Int g_vulkan_use_buffer_binning = 0;
 
 static VkMemoryPropertyFlags GetMemoryPropertyFlags(ENUM_VulkanAllocationFlags alloc_flags, bool is_has_unified_memory)
 {
@@ -453,6 +455,11 @@ VK_DeviceMemoryManager* VK_MemoryManager::GetDeviceMemoryManager()
     return device_memory_manager;
 }
 
+Bool VK_MemoryManager::AllocateImageMemory(VK_Allocation& out_allocation, VkImage in_image, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment /*= 1*/)
+{
+
+}
+
 Bool VK_MemoryManager::AllocateBufferMemory(VK_Allocation& out_allocation, VkBuffer in_buffer, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment /*= 1*/)
 {
 	VkBufferMemoryRequirementsInfo2 buffer_memory_requirements_Info;
@@ -617,6 +624,45 @@ Bool VK_MemoryResourceHeap::AllocateResource(VK_Allocation& out_allocation, VK_E
     return false;
 }
 
+void VK_MemoryResourceHeap::ReleasePage(VK_MemoryResourceFragmentAllocator* in_page)
+{
+	owner->UnregisterSubresourceAllocator(in_page);
+    VK_DeviceMemoryAllocation* allocation = in_page->memory_allocation;
+	in_page->memory_allocation = 0;
+	owner->GetDeviceMemoryManager()->Free(allocation);
+    used_memory -= in_page->max_size;
+	delete in_page;
+}
+
+void VK_MemoryResourceHeap::FreePage(VK_MemoryResourceFragmentAllocator* in_page)
+{
+
+	//in_page->FrameFreed = GFrameNumberRenderThread;
+
+	if (in_page->type == ENUM_VK_AllocationType::EVulkanAllocationImageDedicated)
+	{
+		auto it = std::find(used_dedicated_pages.begin(), used_dedicated_pages.end(), in_page);
+		if (it !=used_dedicated_pages.end())
+		{
+			used_dedicated_pages.erase(it);
+		}
+		ReleasePage(in_page);
+
+	}
+	else
+	{
+		UInt8 bucket_id = in_page->bucket_id;
+
+		Vector<VK_MemoryResourceFragmentAllocator*>& pages = active_pages[bucket_id];
+		auto it = std::find(pages.begin(), pages.end(), in_page);
+		if (it != used_dedicated_pages.end())
+		{
+			pages.erase(it);
+		}
+		ReleasePage(in_page);
+	}
+}
+
 UInt32 VK_MemoryResourceHeap::GetPageSizeBucket(VK_VulkanPageSizeBucket& out_bucket, ENUM_VK_HeapAllocationType type, UInt32 allocation_size, Bool is_force_single_allocation)
 {
     if (is_force_single_allocation)
@@ -728,6 +774,26 @@ void VK_MemoryResourceFragmentAllocator::Free(VK_Allocation& allocation)
 		owner_memory_manager->ReleaseSubresourceAllocator(this);
 	}
 }
+
+void VK_MemoryManager::ReleaseSubresourceAllocator(VK_MemoryResourceFragmentAllocator* subresource_allocator)
+{
+	if (subresource_allocator->type == ENUM_VK_AllocationType::EVulkanAllocationPooledBuffer)
+	{
+		auto it = std::find(used_buffer_allocations[subresource_allocator->pool_size_index].begin(), used_buffer_allocations[subresource_allocator->pool_size_index].end(), subresource_allocator);
+		if (it != used_buffer_allocations[subresource_allocator->pool_size_index].end())
+		{
+			used_buffer_allocations[subresource_allocator->pool_size_index].erase(it);
+		}
+		//SubresourceAllocator->FrameFreed = GFrameNumberRenderThread;
+		free_buffer_allocations[subresource_allocator->pool_size_index].push_back(subresource_allocator);
+	}
+	else
+	{
+		VK_MemoryResourceHeap* Heap = resource_type_heaps[subresource_allocator->memory_type_index];
+		Heap->FreePage(subresource_allocator);
+	}
+}
+
 
 VK_MemoryResourceFragmentAllocator::~VK_MemoryResourceFragmentAllocator()
 {

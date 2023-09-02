@@ -87,6 +87,17 @@ enum class ENUM_VulkanAllocationFlags : UInt16
 };
 ENUM_CLASS_FLAGS(ENUM_VulkanAllocationFlags)
 
+enum class ENUM_DelayAcquireImageType : UInt32
+{
+	None,			// acquire next image on frame start
+	DelayAcquire,	// acquire next image just before presenting, rendering is done to intermediate image which is copied to real backbuffer
+	LazyAcquire,	// acquire next image on first use
+};
+
+extern ENUM_DelayAcquireImageType g_vulkan_delay_acquire_image;
+
+extern Int g_vulkan_use_buffer_binning;
+
 MYRENDERER_BEGIN_STRUCT(MemoryHeapInfo)
     VkDeviceSize used_size=0;
     VkDeviceSize max_size=0;
@@ -293,6 +304,9 @@ MYRENDERER_BEGIN_STRUCT(VK_AllocationInternalInfo)
 MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_CLASS(VK_MemoryResourceFragmentAllocator)
+friend class VK_MemoryManager;
+friend class VK_MemoryResourceHeap;
+
 #pragma region METHOD
 public:
     VK_MemoryResourceFragmentAllocator();
@@ -317,7 +331,9 @@ protected:
     UInt32 memory_used[(UInt32)ENUM_VK_AllocationMetaType::EVulkanAllocationMetaSize];
     ENUM_VK_AllocationType type;
     VK_MemoryManager* owner_memory_manager = nullptr;
+    UInt32 memory_type_index=0;
     VkMemoryPropertyFlags memory_property_flags;
+	VK_DeviceMemoryAllocation* memory_allocation;
     UInt32 max_size=0;
     UInt32 alignment=0;
     UInt32 frame_freed=0;
@@ -354,6 +370,9 @@ friend class VK_MemoryResourceFragmentAllocator;
 public:
     VK_MemoryResourceHeap(VK_MemoryManager* in_owner, UInt32 InMemoryTypeIndex, UInt32 InOverridePageSize = 0);
     VIRTUAL ~VK_MemoryResourceHeap();
+
+	void FreePage(VK_MemoryResourceFragmentAllocator* InPage);
+	void ReleasePage(VK_MemoryResourceFragmentAllocator* InPage);
 
     UInt32 METHOD(GetPageSizeBucket)(VK_VulkanPageSizeBucket& out_bucket,ENUM_VK_HeapAllocationType type, UInt32 allocation_size,Bool is_force_single_allocation);
 protected:
@@ -461,11 +480,13 @@ public:
     VIRTUAL ~VK_MemoryManager() DEFAULT;
 
     //Bool METHOD(AllocateBufferPooled)(VK_Allocation* out_allocation);
-    //Bool METHOD(AllocateImageMemory)(VK_Allocation* out_allocation);
-    Bool METHOD(AllocateBufferMemory)(VK_Allocation& out_allocation, VkBuffer InBuffer, ENUM_VulkanAllocationFlags InAllocFlags, UInt32 InForceMinAlignment = 1);
+    Bool METHOD(AllocateImageMemory)(VK_Allocation& out_allocation, VkImage in_image, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment = 1);
+    Bool METHOD(AllocateBufferMemory)(VK_Allocation& out_allocation, VkBuffer in_buffer, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment = 1);
     //Bool METHOD(AllocateDedicatedImageMemory)(VK_Allocation* out_allocation);
     //Bool METHOD(AllocateUniformBuffer)(VK_Allocation* out_allocation);
-
+	void RegisterSubresourceAllocator(VK_MemoryResourceFragmentAllocator* SresourceAllocator);
+	void UnregisterSubresourceAllocator(VK_MemoryResourceFragmentAllocator* SubresourceAllocator);
+	void ReleaseSubresourceAllocator(VK_MemoryResourceFragmentAllocator* SubresourceAllocator);
     VK_DeviceMemoryManager* METHOD(GetDeviceMemoryManager)();
 protected:
 
@@ -476,6 +497,82 @@ private:
 public:
 
 protected:
+	VK_DeviceMemoryManager* device_memory_manager;
+	Vector<VK_MemoryResourceHeap*> resource_type_heaps;
+
+	enum
+	{
+		BufferAllocationSize = 1 * 1024 * 1024,
+		UniformBufferAllocationSize = 2 * 1024 * 1024,
+	};
+
+
+	// pool sizes that we support
+	enum class EPoolSizes : UInt8
+	{
+		// 			E32,
+		// 			E64,
+		E128 = 0,
+		E256,
+		E512,
+		E1k,
+		E2k,
+		E8k,
+		E16k,
+		SizesCount,
+	};
+
+	constexpr static UInt32 PoolSizes[(Int)EPoolSizes::SizesCount] =
+	{
+		// 			32,
+		// 			64,
+					128,
+					256,
+					512,
+					1024,
+					2048,
+					8192,
+					// 			16 * 1024,
+	};
+
+	constexpr static UInt32 BufferSizes[(Int)EPoolSizes::SizesCount + 1] =
+	{
+		// 			64 * 1024,
+		// 			64 * 1024,
+					128 * 1024,
+					128 * 1024,
+					256 * 1024,
+					256 * 1024,
+					512 * 1024,
+					512 * 1024,
+					1024 * 1024,
+					1 * 1024 * 1024,
+	};
+
+	EPoolSizes GetPoolTypeForAlloc(UInt32 size, UInt32 alignment)
+	{
+		EPoolSizes pool_size = EPoolSizes::SizesCount;
+		if (g_vulkan_use_buffer_binning != 0)
+		{
+			for (Int i = 0; i < (Int)EPoolSizes::SizesCount; ++i)
+			{
+				if (PoolSizes[i] >= size)
+				{
+					pool_size = (EPoolSizes)i;
+					break;
+				}
+			}
+		}
+		return pool_size;
+	}
+	Vector<VK_MemoryResourceFragmentAllocator*> used_buffer_allocations[(Int)EPoolSizes::SizesCount + 1];
+    Vector<VK_MemoryResourceFragmentAllocator*> free_buffer_allocations[(Int)EPoolSizes::SizesCount + 1];
+    Vector<VK_MemoryResourceFragmentAllocator*> all_buffer_allocations;
+
+	UInt64 pending_evict_bytes = 0;
+	Bool is_evicting = false;
+    Bool is_want_eviction = false;
+
     VK_DeviceMemoryManager* device_memory_manager;
     VK_Device* device;
     Vector<VK_MemoryResourceHeap*> resource_heaps;
