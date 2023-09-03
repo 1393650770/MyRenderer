@@ -128,14 +128,19 @@ void VK_DeviceMemoryAllocation::InvalidateMappedMemory(VkDeviceSize in_size, VkD
     }
 }
 
-Bool VK_DeviceMemoryAllocation::GetIsCanBeMapped() const
+Bool VK_DeviceMemoryAllocation::GetIsCanBeMapped() CONST
 {
     return property.is_can_be_mapped;
 }
 
-Bool VK_DeviceMemoryAllocation::GetIsCoherent() const
+Bool VK_DeviceMemoryAllocation::GetIsCoherent() CONST
 {
     return property.is_coherent;
+}
+
+Bool VK_DeviceMemoryAllocation::CheckIsMapped() CONST
+{
+	return mapped_pointer!=nullptr;
 }
 
 VK_DeviceMemoryManager::VK_DeviceMemoryManager(VK_Device* in_device):device(in_device)
@@ -200,7 +205,7 @@ VK_DeviceMemoryManager::~VK_DeviceMemoryManager()
 }
 
 VK_DeviceMemoryAllocation* VK_DeviceMemoryManager::Alloc(VkDeviceSize allocation_size, UInt32 memory_type_index,
-    void* dedicated_allocate_info, float priority, bool is_external, const char* file, UInt32 line)
+    void* dedicated_allocate_info, float priority, bool is_external)
 {
     if (dedicated_allocate_info==nullptr)
     {
@@ -619,9 +624,50 @@ Bool VK_MemoryResourceHeap::AllocateResource(VK_Allocation& out_allocation, VK_E
                 }
             }
         }
-
+		allocation_size = std::max(size,memory_bucket.page_size);
     }
-    return false;
+	else
+	{
+		allocation_size = size;
+	}
+
+	VK_DeviceMemoryAllocation* device_memory_allocation = device_memory_manager->Alloc( allocation_size, memory_type_index, nullptr, VULKAN_MEMORY_HIGHEST_PRIORITY, is_external);
+	if (!device_memory_allocation && size != allocation_size)
+	{
+		// Retry with a smaller size
+		device_memory_allocation = device_memory_manager->Alloc( size, memory_type_index, nullptr, VULKAN_MEMORY_HIGHEST_PRIORITY, is_external);
+		if (!device_memory_allocation)
+		{
+			return false;
+		}
+	}
+	if (!device_memory_allocation)
+	{
+		//LOG
+	}
+	if (is_map_allocation)
+	{
+		device_memory_allocation->Map(allocation_size, 0);
+	}
+
+	UInt32 buffer_id = 0;
+	//if (UseVulkanDescriptorCache())
+	//{
+	//	BufferId = ++GVulkanBufferHandleIdCounter;
+	//}
+	++page_id_counter;
+	VK_MemoryResourceFragmentAllocator* Page = new VK_MemoryResourceFragmentAllocator(allocation_type,owner, allocation_flags, device_memory_allocation, memory_type_index, buffer_id);
+	owner->RegisterSubresourceAllocator(Page);
+	Page->bucket_id = bucket_id;
+	active_pages[bucket_id].push_back(Page);
+
+	used_memory += allocation_size;
+
+	peak_page_size = std::max(peak_page_size, allocation_size);
+
+
+	bool bOk = Page->TryAllocate(out_allocation, allocation_owner, size, alignment, meta_type);
+    return bOk;
 }
 
 void VK_MemoryResourceHeap::ReleasePage(VK_MemoryResourceFragmentAllocator* in_page)
@@ -848,6 +894,26 @@ Bool VK_MemoryResourceFragmentAllocator::MergeFreeBlocks()
 		}
 	}
 	return false;
+}
+
+VK_MemoryResourceFragmentAllocator::VK_MemoryResourceFragmentAllocator(ENUM_VK_AllocationType in_type, VK_MemoryManager* in_owner, UInt8 in_subresource_allocator_flags, VK_DeviceMemoryAllocation* in_device_memory_allocation, UInt32 in_memory_type_index, UInt32 buffer_id /*= 0xffffffff*/)
+:type(in_type),owner_memory_manager(in_owner),subresource_allocator_flags(in_subresource_allocator_flags),memory_allocation(in_device_memory_allocation),memory_type_index(in_memory_type_index),buffer_id(buffer_id)
+{
+	max_size = in_device_memory_allocation->GetSize();
+
+	if (in_device_memory_allocation->IsMapped())
+	{
+		subresource_allocator_flags |= VulkanAllocationFlagsMapped;
+	}
+	else
+	{
+		subresource_allocator_flags &= ~VulkanAllocationFlagsMapped;
+	}
+
+	VK_Section FullRange;
+	FullRange.offset = 0;
+	FullRange.size = max_size;
+	free_list.push_back(FullRange);
 }
 
 void VK_AllocationInternalInfo::Init(CONST VK_Allocation& alloc, VK_Evictable* in_allocation_owner, UInt32 in_allocation_offset, UInt32 in_allocation_size, UInt32 in_alignment)

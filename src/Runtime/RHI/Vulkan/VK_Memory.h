@@ -9,7 +9,10 @@
 #include "../RenderRource.h"
 #include "../../Core/TypeHash.h"
 
-
+#define VULKAN_MEMORY_LOW_PRIORITY 0.f
+#define VULKAN_MEMORY_MEDIUM_PRIORITY 0.5f
+#define VULKAN_MEMORY_HIGHER_PRIORITY 0.75f
+#define VULKAN_MEMORY_HIGHEST_PRIORITY 1.f
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -150,8 +153,9 @@ public:
     void* METHOD(GetMappedPointer)();
     void METHOD(FlushMappedMemory)(VkDeviceSize in_size,VkDeviceSize offset);
     void METHOD(InvalidateMappedMemory)(VkDeviceSize in_size,VkDeviceSize offset);
-    Bool METHOD(GetIsCanBeMapped)() const;
-    Bool METHOD(GetIsCoherent)()const;
+    Bool METHOD(GetIsCanBeMapped)() CONST;
+    Bool METHOD(GetIsCoherent)()CONST;
+    Bool METHOD(CheckIsMapped)() CONST;
 protected:
     
 private:
@@ -195,7 +199,7 @@ public:
     VK_DeviceMemoryManager(VK_Device* in_device);
     VIRTUAL~VK_DeviceMemoryManager() OVERRIDE;
 
-    VK_DeviceMemoryAllocation* METHOD(Alloc)(VkDeviceSize allocation_size, UInt32 memory_type_index, void* dedicated_allocate_info, float priority, bool is_external, const char* file, UInt32 line);
+    VK_DeviceMemoryAllocation* METHOD(Alloc)(VkDeviceSize allocation_size, UInt32 memory_type_index, void* dedicated_allocate_info, float priority, bool is_external);
 
     void METHOD(Free)(VK_DeviceMemoryAllocation*& allocation);
     CONST UInt32 METHOD(GetMemoryTypeNum)() CONST;
@@ -309,7 +313,8 @@ friend class VK_MemoryResourceHeap;
 
 #pragma region METHOD
 public:
-    VK_MemoryResourceFragmentAllocator();
+	VK_MemoryResourceFragmentAllocator(ENUM_VK_AllocationType InType, VK_MemoryManager* InOwner, UInt8 InSubResourceAllocatorFlags, VK_DeviceMemoryAllocation* InDeviceMemoryAllocation,
+		UInt32 InMemoryTypeIndex, UInt32 BufferId = 0xffffffff);
     VIRTUAL ~VK_MemoryResourceFragmentAllocator();
 
     Bool METHOD(TryAllocate)(VK_Allocation& out_allocation, VK_Evictable* owner, UInt32 in_size, UInt32 in_alignment, ENUM_VK_AllocationMetaType in_meta_type);
