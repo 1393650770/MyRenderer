@@ -6,12 +6,15 @@
 #include "../../Core/ConstGlobals.h"
 #include "../../Core/ConstDefine.h"
 
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 #define VK_MEMORY_MAX_SUB_ALLOCATION (64llu << 20llu) //64MB?
-
+#define VK_MEMORY_KEEP_FREELIST_SORTED	1
+#define VK_MEMORY_JOIN_FREELIST_ON_THE_FLY	(VK_MEMORY_KEEP_FREELIST_SORTED && 1)
+#define VK_MEMORY_KEEP_FREELIST_SORTED_CATCHBUGS			0 // debugging
 
 UInt32 g_vulkan_budget_percentage_scale = 100;
 Int g_vulkan_use_buffer_binning = 0;
@@ -462,7 +465,68 @@ VK_DeviceMemoryManager* VK_MemoryManager::GetDeviceMemoryManager()
 
 Bool VK_MemoryManager::AllocateImageMemory(VK_Allocation& out_allocation, VkImage in_image, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment /*= 1*/)
 {
+	VkImageMemoryRequirementsInfo2 image_memory_requirements_info;
+	image_memory_requirements_info.sType= VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
+	image_memory_requirements_info.image = in_image;
 
+	VkMemoryDedicatedRequirements dedicated_requirements;
+	dedicated_requirements.sType= VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
+
+	VkMemoryRequirements2 memory_requirements;
+	memory_requirements.sType= VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+	memory_requirements.pNext = &dedicated_requirements;
+
+	vkGetImageMemoryRequirements2(device->GetDevice(), &image_memory_requirements_info, &memory_requirements);
+
+	// Allow caller to force his own alignment requirements
+	memory_requirements.memoryRequirements.alignment = std::max(memory_requirements.memoryRequirements.alignment, (VkDeviceSize)in_force_min_alignment);
+
+	if (dedicated_requirements.requiresDedicatedAllocation || dedicated_requirements.prefersDedicatedAllocation)
+	{
+		in_alloc_flags |= ENUM_VulkanAllocationFlags::Dedicated;
+	}
+
+	// For now, translate all the flags into a call to the legacy AllocateImageMemory() function
+	const VkMemoryPropertyFlags memory_property_flags = GetMemoryPropertyFlags(in_alloc_flags, device_memory_manager->GetIsSupportUnifiedMemory());
+	const bool is_external = EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::External);
+	const bool is_force_separate_allocation = EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::Dedicated);
+
+	//AllocateImageMemory
+	{
+		VkMemoryPropertyFlags use_memory_property_flags = memory_property_flags;
+		UInt32 type_index = 0;
+		VkResult result = device_memory_manager->GetMemoryTypeFromProperties(memory_requirements.memoryRequirements.memoryTypeBits, use_memory_property_flags, &type_index);
+		bool is_mapped = VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+		if ((result != VK_SUCCESS) || !resource_heaps[type_index])
+		{
+			if (VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_HOST_CACHED_BIT))
+			{
+				// Try non-cached flag
+				use_memory_property_flags = use_memory_property_flags & ~VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+			}
+
+			if (VKHasAllFlags(memory_property_flags, VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT))
+			{
+				// Try non-lazy flag
+				use_memory_property_flags = use_memory_property_flags & ~VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
+			}
+		}
+
+		const bool is_force_separate_allocation = is_external || VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
+		if (!resource_heaps[type_index]->AllocateResource(out_allocation, nullptr, ENUM_VK_HeapAllocationType::Image, memory_requirements.memoryRequirements.size, memory_requirements.memoryRequirements.alignment, is_mapped, is_force_separate_allocation, ENUM_VK_AllocationMetaType::EVulkanAllocationMetaImageOther, is_external))
+		{
+
+			use_memory_property_flags &= (~VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			CHECK_WITH_LOG(device_memory_manager->GetMemoryTypeFromPropertiesExcluding(memory_requirements.memoryRequirements.memoryTypeBits, use_memory_property_flags, type_index, &type_index) != VK_SUCCESS,
+				"RHI Error: failed to getMemoryTypeFromPropertiesExcluding index !")
+				is_mapped = VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+			if (!resource_heaps[type_index]->AllocateResource(out_allocation, nullptr, ENUM_VK_HeapAllocationType::Image, memory_requirements.memoryRequirements.size, memory_requirements.memoryRequirements.alignment, is_mapped, is_force_separate_allocation, ENUM_VK_AllocationMetaType::EVulkanAllocationMetaImageOther, is_external))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
 }
 
 Bool VK_MemoryManager::AllocateBufferMemory(VK_Allocation& out_allocation, VkBuffer in_buffer, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment /*= 1*/)
@@ -840,6 +904,16 @@ void VK_MemoryManager::ReleaseSubresourceAllocator(VK_MemoryResourceFragmentAllo
 	}
 }
 
+Bool VK_MemoryManager::FreeAllocation(VK_Allocation& allocation)
+{
+	CONST UInt32 index = allocation.allocator_index;
+	GetSubresourceAllocator(index)->Free(allocation);
+}
+
+VK_MemoryResourceFragmentAllocator* VK_MemoryManager::GetSubresourceAllocator(const UInt32 allocator_index)
+{
+	return all_buffer_allocations[allocator_index];
+}
 
 VK_MemoryResourceFragmentAllocator::~VK_MemoryResourceFragmentAllocator()
 {
@@ -901,7 +975,7 @@ VK_MemoryResourceFragmentAllocator::VK_MemoryResourceFragmentAllocator(ENUM_VK_A
 {
 	max_size = in_device_memory_allocation->GetSize();
 
-	if (in_device_memory_allocation->IsMapped())
+	if (in_device_memory_allocation->CheckIsMapped())
 	{
 		subresource_allocator_flags |= VulkanAllocationFlagsMapped;
 	}
@@ -938,6 +1012,174 @@ void VK_Allocation::Init(ENUM_VK_AllocationType Type, ENUM_VK_AllocationMetaType
 void VK_Allocation::Free(VK_Device& Device)
 {
 
+}
+
+Int VK_Section::Add(Vector<VK_Section>& ranges, CONST VK_Section& item)
+{
+#if	VK_MEMORY_KEEP_FREELIST_SORTED
+	Int num_ranges = ranges.size();
+	if (num_ranges <= 0)
+	{
+		ranges.push_back(item);
+		return ranges.size() - 1;
+	}
+
+	VK_Section* data = ranges.data();
+	for (Int index = 0; index < num_ranges; ++index)
+	{
+		if ((data[index].offset > item.offset))
+		{
+			return InsertAndTryToMerge(ranges, item, index);
+		}
+	}
+	return AppendAndTryToMerge(ranges, item);
+#else
+	return ranges.push_back(item);
+#endif
+}
+
+Int VK_Section::InsertAndTryToMerge(Vector<VK_Section>& ranges, CONST VK_Section& item, Int proposed_index)
+{
+#if !VK_MEMORY_JOIN_FREELIST_ON_THE_FLY
+	Int ret = proposed_index;
+	auto it = ranges.begin() + proposed_index;
+	ranges.insert(it, item);
+#else
+	// there are four cases here
+	// 1) nothing can be merged (distinct ranges)		 XXXX YYY ZZZZZ  =>   XXXX YYY ZZZZZ
+	// 2) new range can be merged with the previous one: XXXXYYY  ZZZZZ  =>   XXXXXXX  ZZZZZ
+	// 3) new range can be merged with the next one:     XXXX  YYYZZZZZ  =>   XXXX  ZZZZZZZZ
+	// 4) new range perfectly fills the gap:             XXXXYYYYYZZZZZ  =>   XXXXXXXXXXXXXX
+
+	// note: we can have a case where we're inserting at the beginning of the array (no previous element), but we won't have a case
+	// where we're inserting at the end (no next element) - AppendAndTryToMerge() should be called instead
+	CHECK_WITH_LOG(!(item.offset < ranges[proposed_index].offset), 
+		("RHI Error: VK_Section::InsertAndTryToMerge() was called to append an element - internal logic error, VK_Section::AppendAndTryToMerge() should have been called instead."))
+	Int ret = proposed_index;
+	if (proposed_index == 0)
+	{
+		VK_Section& next_range = ranges[ret];
+
+		if (next_range.offset == item.offset + item.size)
+		{
+			next_range.offset = item.offset;
+			next_range.size += item.size;
+		}
+		else
+		{
+			auto ret_it = ranges.insert(ranges.begin(),item);
+			ret = 0;
+		}
+	}
+	else
+	{
+		// all cases apply
+		VK_Section& next_range = ranges[proposed_index];
+		VK_Section& prev_range = ranges[proposed_index - 1];
+
+		// see if we can merge with previous
+		if (prev_range.offset + prev_range.size	 == item.offset)
+		{
+			// case 2, can still end up being case 4
+			prev_range.size += item.size;
+
+			if (prev_range.offset + prev_range.size == next_range.offset)
+			{
+				// case 4
+				prev_range.size += next_range.size;
+				auto find_res= std::find(ranges.begin(), ranges.end(), next_range);
+				if(find_res!=ranges.end())
+					ranges.erase(find_res);
+				ret = proposed_index - 1;
+			}
+		}
+		else if (item.offset + item.size == next_range.offset)
+		{
+			// case 3
+			next_range.offset = item.offset;
+			next_range.size += item.size;
+		}
+		else
+		{
+			// case 1 - the new range is disjoint with both
+			ret = proposed_index;
+			auto it = ranges.begin() + proposed_index;
+			ranges.insert(it, item);	// this can invalidate NextRange/PrevRange references, don't touch them after this
+		}
+	}
+#endif
+#if VK_MEMORY_KEEP_FREELIST_SORTED_CATCHBUGS
+	SanityCheck(ranges);
+#endif
+	return ret;
+}
+
+Int VK_Section::AppendAndTryToMerge(Vector<VK_Section>& ranges, CONST VK_Section& item)
+{
+#if !VK_MEMORY_JOIN_FREELIST_ON_THE_FLY
+	ranges.push_back(item);
+	Int ret = ranges.size() - 1;
+#else
+	Int ret = ranges.size() - 1;
+	// we only get here when we have an element in front of us
+	CHECK_WITH_LOG((ret < 0), 
+		("RHI Error: VK_Section::AppendAndTryToMerge() was called on an empty array."))
+	VK_Section& prev_range = ranges[ret];
+	if (prev_range.offset + prev_range.size == item.offset)
+	{
+		prev_range.size += item.size;
+	}
+	else
+	{
+		ranges.push_back(item);
+		ret = ranges.size() - 1;
+	}
+#endif
+#if VK_MEMORY_KEEP_FREELIST_SORTED_CATCHBUGS
+	SanityCheck(ranges);
+#endif
+	return ret;
+}
+
+void VK_Section::AllocateFromEntry(Vector<VK_Section>& ranges, Int index, UInt32 size_to_allocate)
+{
+	VK_Section& entry = ranges[index];
+	if (size_to_allocate < entry.size)
+	{
+		// Modify current free entry in-place.
+		entry.size -= size_to_allocate;
+		entry.offset += size_to_allocate;
+	}
+	else
+	{
+		// Remove this free entry.
+		auto it = ranges.begin() + index;
+		ranges.erase(it);
+#if VK_MEMORY_KEEP_FREELIST_SORTED_CATCHBUGS
+		SanityCheck(ranges);
+#endif
+	}
+}
+
+void VK_Section::SanityCheck(Vector<VK_Section>& ranges)
+{
+#if VK_MEMORY_KEEP_FREELIST_SORTED_CATCHBUGS
+	Int num_ranges = ranges.size();
+	if (num_ranges <= 0)
+	{
+		return;
+
+	}
+
+	VK_Section* data = ranges.data();
+	for (Int index = 0; index < num_ranges - 1; ++index)
+	{
+		CHECK_WITH_LOG((data[index].offset + data[index].size >= data[index + 1].offset), 
+					("RHI Error: VK_Section::SanityCheck() failed :Ranges are overlapping or adjoining!"))
+		CHECK_WITH_LOG((data[index].offset >= data[index + 1].offset),
+			("RHI Error: VK_Section::SanityCheck() failed : Array is not sorted!"))
+	}
+#endif
 }
 
 MYRENDERER_END_NAMESPACE

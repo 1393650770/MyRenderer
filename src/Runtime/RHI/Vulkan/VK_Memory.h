@@ -248,6 +248,9 @@ MYRENDERER_BEGIN_STRUCT(VK_VulkanPageSizeBucket)
 
 MYRENDERER_END_STRUCT
 
+/// <summary>
+/// 具体的碎片整理
+/// </summary>
 MYRENDERER_BEGIN_STRUCT(VK_Section)
     UInt32 offset;
     UInt32 size;
@@ -257,22 +260,22 @@ MYRENDERER_BEGIN_STRUCT(VK_Section)
 	    return offset < in.offset;
     }
 
-    static void MergeConsecutiveRanges(Vector<VK_Section>& Ranges);
+    static void METHOD(MergeConsecutiveRanges)(Vector<VK_Section>& ranges);
 
     /** Tries to insert the item so it has index ProposedIndex, but may end up merging it with neighbors */
-    static Int InsertAndTryToMerge(Vector<VK_Section>& Ranges, CONST VK_Section& Item, Int ProposedIndex);
+    static Int METHOD(InsertAndTryToMerge)(Vector<VK_Section>& ranges, CONST VK_Section& item, Int proposed_index);
 
     /** Tries to append the item to the end but may end up merging it with the neighbor */
-    static Int AppendAndTryToMerge(Vector<VK_Section>& Ranges, CONST VK_Section& Item);
+    static Int METHOD(AppendAndTryToMerge)(Vector<VK_Section>& ranges, CONST VK_Section& item);
 
     /** Attempts to allocate from an entry - can remove it if it was used up*/
-    static void AllocateFromEntry(Vector<VK_Section>& Ranges, Int Index, UInt32 SizeToAllocate);
+    static void METHOD(AllocateFromEntry)(Vector<VK_Section>& ranges, Int index, UInt32 size_to_allocate);
 
     /** Sanity checks an array of ranges */
-    static void SanityCheck(Vector<VK_Section>& Ranges);
+    static void METHOD(SanityCheck)(Vector<VK_Section>& ranges);
 
     /** Adds to the array while maintaing the sort. */
-    static Int Add(Vector<VK_Section>& Ranges, CONST VK_Section& Item);
+    static Int METHOD(Add)(Vector<VK_Section>& ranges, CONST VK_Section& item);
 
 MYRENDERER_END_STRUCT
 
@@ -439,13 +442,13 @@ public:
 	    type = (UInt8)in_type;
     }
 
-    void* GetMappedPointer(VK_Device* Device);
-    void FlushMappedMemory(VK_Device* Device);
-    void InvalidateMappedMemory(VK_Device* Device);
-    VkBuffer GetBufferHandle() const;
-    UInt32 GetBufferAlignment(VK_Device* Device) const;
-    VkDeviceMemory GetDeviceMemoryHandle(VK_Device* Device) const;
-    VK_MemoryResourceFragmentAllocator* GetSubresourceAllocator(VK_Device* Device) const;
+    void* METHOD(GetMappedPointer)(VK_Device* Device);
+    void METHOD(FlushMappedMemory)(VK_Device* Device);
+    void METHOD(InvalidateMappedMemory)(VK_Device* Device);
+    VkBuffer GetBufferHandle() CONST;
+    UInt32 GetBufferAlignment(VK_Device* Device) CONST;
+    VkDeviceMemory GetDeviceMemoryHandle(VK_Device* Device) CONST;
+    VK_MemoryResourceFragmentAllocator* METHOD(GetSubresourceAllocator)(VK_Device* Device) CONST;
     void BindBuffer(VK_Device* Device, VkBuffer Buffer);
     void BindImage(VK_Device* Device, VkImage Image);
 
@@ -487,6 +490,7 @@ public:
     //Bool METHOD(AllocateBufferPooled)(VK_Allocation* out_allocation);
     Bool METHOD(AllocateImageMemory)(VK_Allocation& out_allocation, VkImage in_image, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment = 1);
     Bool METHOD(AllocateBufferMemory)(VK_Allocation& out_allocation, VkBuffer in_buffer, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment = 1);
+    Bool METHOD(FreeAllocation)(VK_Allocation& allocation);
     //Bool METHOD(AllocateDedicatedImageMemory)(VK_Allocation* out_allocation);
     //Bool METHOD(AllocateUniformBuffer)(VK_Allocation* out_allocation);
 	void RegisterSubresourceAllocator(VK_MemoryResourceFragmentAllocator* SresourceAllocator);
@@ -494,7 +498,7 @@ public:
 	void ReleaseSubresourceAllocator(VK_MemoryResourceFragmentAllocator* SubresourceAllocator);
     VK_DeviceMemoryManager* METHOD(GetDeviceMemoryManager)();
 protected:
-
+	VK_MemoryResourceFragmentAllocator* METHOD(GetSubresourceAllocator)(const UInt32 allocator_index);
 private:
 #pragma endregion 
 
