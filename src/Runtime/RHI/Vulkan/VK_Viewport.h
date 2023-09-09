@@ -10,7 +10,7 @@
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
-	MYRENDERER_BEGIN_NAMESPACE(RHI)
+MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 class VulkanRHI;
@@ -22,7 +22,7 @@ struct VK_TextureView;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Viewport,public Viewport)
 #pragma region METHOD
 public:
-	VK_Viewport(VulkanRHI* InRHI, VK_Device* InDevice, void* InWindowHandle, UInt32 InSizeX, UInt32 InSizeY, Bool bInIsFullscreen, ENUM_TEXTURE_FORMAT in_pixel_format);
+	VK_Viewport(VulkanRHI* in_rhi, VK_Device* in_device, void* in_window_handle, UInt32 in_size_x, UInt32 in_size_y, Bool in_is_full_screen, ENUM_TEXTURE_FORMAT in_pixel_format);
 	VIRTUAL ~VK_Viewport()DEFAULT;
 protected:
 	void METHOD(CreateSwapChain)(VK_SwapChainRecreateInfo* recreate_info=nullptr);
