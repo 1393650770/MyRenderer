@@ -16,10 +16,14 @@ MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 #define VK_MEMORY_JOIN_FREELIST_ON_THE_FLY	(VK_MEMORY_KEEP_FREELIST_SORTED && 1)
 #define VK_MEMORY_KEEP_FREELIST_SORTED_CATCHBUGS			0 // debugging
 
+enum
+{
+	VK_NUM_FRAMES_TO_WAIT_BEFORE_RELEASING_TO_OS = 3,
+};
+
 UInt32 g_vulkan_budget_percentage_scale = 100;
 Int g_vulkan_use_buffer_binning = 0;
-
-static VkMemoryPropertyFlags GetMemoryPropertyFlags(ENUM_VulkanAllocationFlags alloc_flags, bool is_has_unified_memory)
+static VkMemoryPropertyFlags GetMemoryPropertyFlags(ENUM_VulkanAllocationFlags alloc_flags, Bool is_has_unified_memory)
 {
 	VkMemoryPropertyFlags mem_flags = 0;
 
@@ -146,6 +150,18 @@ Bool VK_DeviceMemoryAllocation::CheckIsMapped() CONST
 	return mapped_pointer!=nullptr;
 }
 
+void VK_DeviceMemoryManager::Destroy()
+{
+	TrimMemory(true);
+	for (Int index = 0; index < memory_heaps.size(); ++index)
+	{
+		CHECK_WITH_LOG(memory_heaps[index].allocations.size(),
+			"RHI Info: Found %d unfree allocation !", memory_heaps[index].allocations.size())
+	}
+	num_allocations = 0;
+}
+
+
 VK_DeviceMemoryManager::VK_DeviceMemoryManager(VK_Device* in_device):device(in_device)
 {
     VkPhysicalDeviceMemoryProperties2 properties2;
@@ -205,10 +221,11 @@ VK_DeviceMemoryManager::VK_DeviceMemoryManager(VK_Device* in_device):device(in_d
 
 VK_DeviceMemoryManager::~VK_DeviceMemoryManager()
 {
+	Destroy();
 }
 
 VK_DeviceMemoryAllocation* VK_DeviceMemoryManager::Alloc(VkDeviceSize allocation_size, UInt32 memory_type_index,
-    void* dedicated_allocate_info, float priority, bool is_external)
+    void* dedicated_allocate_info, float priority, Bool is_external)
 {
     if (dedicated_allocate_info==nullptr)
     {
@@ -289,19 +306,7 @@ void VK_DeviceMemoryManager::Free(VK_DeviceMemoryAllocation*& allocation)
     MemoryBlock::FreeBlock free_block = {allocation, g_frame_number_render_thread};
     block.allocations.push_back(free_block);
     
-    
-    --num_allocations;
-
-    UInt32 HeapIndex = memory_properties.memoryTypes[allocation->property.memory_type_index].heapIndex;
-
-    memory_heaps[HeapIndex].used_size -= allocation->size;
-    auto it= std::find(memory_heaps[HeapIndex].allocations.begin(),memory_heaps[HeapIndex].allocations.end(),allocation);
-    if(it!=memory_heaps[HeapIndex].allocations.end())
-        memory_heaps[HeapIndex].allocations.erase(it);
-    allocation->property.is_freed_by_system = true;
-
-    delete allocation;
-    allocation = nullptr;
+	FreeInternal(allocation);
 }
 
 
@@ -356,6 +361,120 @@ VkResult VK_DeviceMemoryManager::GetMemoryTypeFromPropertiesExcluding(UInt32 typ
 		type_bits >>= 1;
 	}
 	return VK_ERROR_FEATURE_NOT_PRESENT;
+}
+
+void VK_DeviceMemoryManager::FreeInternal(VK_DeviceMemoryAllocation*& allocation)
+{
+	vkFreeMemory(device->GetDevice(),allocation->GetMemory(),VULKAN_CPU_ALLOCATOR);
+	--num_allocations;
+
+	UInt32 HeapIndex = memory_properties.memoryTypes[allocation->property.memory_type_index].heapIndex;
+
+	memory_heaps[HeapIndex].used_size -= allocation->size;
+	auto it = std::find(memory_heaps[HeapIndex].allocations.begin(), memory_heaps[HeapIndex].allocations.end(), allocation);
+	if (it != memory_heaps[HeapIndex].allocations.end())
+		memory_heaps[HeapIndex].allocations.erase(it);
+	allocation->property.is_freed_by_system = true;
+
+	delete allocation;
+	allocation = nullptr;
+}
+
+void VK_DeviceMemoryManager::TrimMemory(Bool is_full_trim)
+{
+/*
+
+这个函数是Vulkan渲染引擎的设备内存管理器的一个函数，用于在内存不足时释放一些内存。该函数首先对内存块进行遍历，对于每个内存块，它会计算出一个部分释放的阈值，然后遍历该内存块中的每个分配块。如果一个分配块已经被保留超过一个指定的帧数（FrameThresholdFull），或者是要进行全面的内存释放（bFullTrim），那么该分配块将被释放，否则如果该分配块已经被保留超过部分释放的阈值（FrameThresholdPartial），则计数器AbovePartialThreshold将会增加。如果AbovePartialThreshold的数量超过了部分释放的阈值（ThresholdPartial），则会从该内存块中删除一些分配块，直到AbovePartialThreshold的数量等于部分释放的阈值，以释放一些内存。在释放一个分配块时，该函数将减少相应内存类型的计数器以及总内存计数器。该函数实现了在内存不足时释放内存的功能，并且考虑了内存块的大小和保留时间等因素，以优化内存释放的效率和性能。
+*/
+    //blocks are always freed after being reserved for FrameThresholdFull frames.
+	CONST UInt32 frame_threshold_full = 100;
+	// After being held for FrameThresholdPartial frames, only LargeThresholdPartial/SmallThresholdPartial pages are kept reserved
+	// SmallPageSize defines when Large/Small is used.
+	CONST UInt32 frame_threshold_partial = 10;
+	CONST UInt32 large_threshold_partial = 5;
+	CONST UInt32 small_threshold_partial = 10;
+	CONST UInt64 small_page_size = (8llu << 20);
+
+	UInt32 frame = g_frame_number_render_thread;
+	for (auto& pair : memory_block_map)
+	{
+		MemoryBlock& block = pair.second;
+		const UInt32 threshold_partial = block.key.block_size <= small_page_size ? small_threshold_partial : large_threshold_partial;
+
+		UInt32 above_partial_threshold = 0;
+		Int index = 0;
+		while (index < block.allocations.size())
+		{
+			MemoryBlock::FreeBlock& free_block = block.allocations[index];
+			if (free_block.frame_freed + frame_threshold_full < frame || is_full_trim)
+			{
+				VkDeviceSize allocation_size = free_block.allocation->GetSize();
+
+				FreeInternal(free_block.allocation);
+				auto it = block.allocations.begin()+ index;
+				block.allocations.erase(it);
+				continue;
+			}
+			else if (free_block.frame_freed + frame_threshold_partial < frame)
+			{
+				above_partial_threshold++;
+			}
+			index++;
+		}
+		if (above_partial_threshold > threshold_partial)
+		{
+			UInt32 blocks_to_free = above_partial_threshold - threshold_partial;
+			index = 0;
+			while (index < block.allocations.size() && blocks_to_free > 0)
+			{
+				MemoryBlock::FreeBlock& free_block = block.allocations[index];
+				if (free_block.frame_freed + frame_threshold_partial < frame)
+				{
+					VkDeviceSize allocation_size = free_block.allocation->GetSize();
+
+					FreeInternal(free_block.allocation);
+					auto it = block.allocations.begin() + index;
+					block.allocations.erase(it);
+					blocks_to_free--;
+					continue;
+				}
+				else
+				{
+					index++;
+				}
+			}
+		}
+	}
+
+	if (is_full_trim)
+	{
+		for (UInt32 index = 0; index < memory_properties.memoryHeapCount; ++index)
+		{
+			if (memory_heaps[index].allocations.size() > 0)
+			{
+				for (auto& alloc : memory_heaps[index].allocations)
+				{
+					FreeInternal(alloc);
+				}
+			}
+		}
+	}
+	else
+	{
+		for (UInt32 index = 0; index < memory_properties.memoryHeapCount; ++index)
+		{
+			if (memory_heaps[index].allocations.size() > 0)
+			{
+				for (auto& alloc : memory_heaps[index].allocations)
+				{
+					if (alloc->property.is_freed_by_system == false)
+					{
+						FreeInternal(alloc);
+					}
+				}
+			}
+		}
+	}
 }
 
 VK_MemoryManager::VK_MemoryManager(VK_Device* in_device):device_memory_manager(in_device->GetDeviceMemoryManager()),device(in_device)
@@ -431,8 +550,8 @@ VK_MemoryManager::VK_MemoryManager(VK_Device* in_device):device_memory_manager(i
 				auto& page_size_buckets = resource_heaps[index]->page_size_buckets;
 
 /*#if PLATFORM_ANDROID
-				FVulkanPageSizeBucket BucketImage = { UINT64_MAX, (uint32)ANDROID_MAX_HEAP_IMAGE_PAGE_SIZE, FVulkanPageSizeBucket::BUCKET_MASK_IMAGE };
-				FVulkanPageSizeBucket BucketBuffer = { UINT64_MAX, (uint32)ANDROID_MAX_HEAP_BUFFER_PAGE_SIZE, FVulkanPageSizeBucket::BUCKET_MASK_BUFFER };
+				FVulkanPageSizeBucket BucketImage = { UINT64_MAX, (UInt32)ANDROID_MAX_HEAP_IMAGE_PAGE_SIZE, FVulkanPageSizeBucket::BUCKET_MASK_IMAGE };
+				FVulkanPageSizeBucket BucketBuffer = { UINT64_MAX, (UInt32)ANDROID_MAX_HEAP_BUFFER_PAGE_SIZE, FVulkanPageSizeBucket::BUCKET_MASK_BUFFER };
 				PageSizeBuckets.Add(BucketImage);
 				PageSizeBuckets.Add(BucketBuffer);
 #else*/
@@ -487,16 +606,16 @@ Bool VK_MemoryManager::AllocateImageMemory(VK_Allocation& out_allocation, VkImag
 	}
 
 	// For now, translate all the flags into a call to the legacy AllocateImageMemory() function
-	const VkMemoryPropertyFlags memory_property_flags = GetMemoryPropertyFlags(in_alloc_flags, device_memory_manager->GetIsSupportUnifiedMemory());
-	const bool is_external = EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::External);
-	const bool is_force_separate_allocation = EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::Dedicated);
+	CONST VkMemoryPropertyFlags memory_property_flags = GetMemoryPropertyFlags(in_alloc_flags, device_memory_manager->GetIsSupportUnifiedMemory());
+	CONST Bool is_external = EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::External);
+	CONST Bool is_force_separate_allocation = EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::Dedicated);
 
 	//AllocateImageMemory
 	{
 		VkMemoryPropertyFlags use_memory_property_flags = memory_property_flags;
 		UInt32 type_index = 0;
 		VkResult result = device_memory_manager->GetMemoryTypeFromProperties(memory_requirements.memoryRequirements.memoryTypeBits, use_memory_property_flags, &type_index);
-		bool is_mapped = VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+		Bool is_mapped = VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 		if ((result != VK_SUCCESS) || !resource_heaps[type_index])
 		{
 			if (VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_HOST_CACHED_BIT))
@@ -512,7 +631,7 @@ Bool VK_MemoryManager::AllocateImageMemory(VK_Allocation& out_allocation, VkImag
 			}
 		}
 
-		const bool is_force_separate_allocation = is_external || VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
+		CONST Bool is_force_separate_allocation = is_external || VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
 		if (!resource_heaps[type_index]->AllocateResource(out_allocation, nullptr, ENUM_VK_HeapAllocationType::Image, memory_requirements.memoryRequirements.size, memory_requirements.memoryRequirements.alignment, is_mapped, is_force_separate_allocation, ENUM_VK_AllocationMetaType::EVulkanAllocationMetaImageOther, is_external))
 		{
 
@@ -553,16 +672,16 @@ Bool VK_MemoryManager::AllocateBufferMemory(VK_Allocation& out_allocation, VkBuf
 	}
 
 	// For now, translate all the flags into a call to the legacy AllocateBufferMemory() function
-	const VkMemoryPropertyFlags memory_property_flags = GetMemoryPropertyFlags(in_alloc_flags, device_memory_manager->GetIsSupportUnifiedMemory());
-	const bool is_external = EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::External);
-	const bool is_force_separate_allocation = EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::Dedicated);
+	CONST VkMemoryPropertyFlags memory_property_flags = GetMemoryPropertyFlags(in_alloc_flags, device_memory_manager->GetIsSupportUnifiedMemory());
+	CONST Bool is_external = EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::External);
+	CONST Bool is_force_separate_allocation = EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::Dedicated);
 
     //AllocateBufferMemory
     {
         VkMemoryPropertyFlags use_memory_property_flags = memory_property_flags;
 		UInt32 type_index = 0;
 		VkResult result = device_memory_manager->GetMemoryTypeFromProperties(memory_requirements.memoryRequirements.memoryTypeBits, use_memory_property_flags, &type_index);
-		bool is_mapped = VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+		Bool is_mapped = VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 		if ((result != VK_SUCCESS) || !resource_heaps[type_index])
 		{
 			if (VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_HOST_CACHED_BIT))
@@ -626,7 +745,7 @@ Bool VK_MemoryManager::AllocateBufferMemory(VK_Allocation& out_allocation, VkBuf
 	{
 		if (!EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::NoError))
 		{
-			const bool IsHostMemory = EnumHasAnyFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::HostVisible | ENUM_VulkanAllocationFlags::HostCached);
+			CONST Bool IsHostMemory = EnumHasAnyFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::HostVisible | ENUM_VulkanAllocationFlags::HostCached);
 			//HandleOOM(false, IsHostMemory ? VK_ERROR_OUT_OF_HOST_MEMORY : VK_ERROR_OUT_OF_DEVICE_MEMORY, MemoryRequirements.memoryRequirements.size);
 		}
 	}
@@ -642,10 +761,26 @@ VK_MemoryResourceHeap::VK_MemoryResourceHeap(VK_MemoryManager* in_owner, UInt32 
 
 VK_MemoryResourceHeap::~VK_MemoryResourceHeap()
 {
-
+	auto delete_pages_func = [&](Vector<VK_MemoryResourceFragmentAllocator*>& used_pages)->Bool
+		{
+			bool is_leak = false;
+			for (Int index = used_pages.size() - 1; index >= 0; --index)
+			{
+				VK_MemoryResourceFragmentAllocator* page = used_pages[index];
+				is_leak |= !page->MergeFreeBlocks();
+				owner->GetDeviceMemoryManager()->Free(page->memory_allocation);
+				delete page;
+			}
+			used_pages.clear();
+			return is_leak;
+		};
+	for (Vector<VK_MemoryResourceFragmentAllocator*>& pages : active_pages)
+	{
+		delete_pages_func(pages);
+	}
 }
 
-bool MetaTypeCanEvict(ENUM_VK_AllocationMetaType meta_type)
+Bool MetaTypeCanEvict(ENUM_VK_AllocationMetaType meta_type)
 {
 	switch (meta_type)
 	{
@@ -730,7 +865,7 @@ Bool VK_MemoryResourceHeap::AllocateResource(VK_Allocation& out_allocation, VK_E
 	peak_page_size = std::max(peak_page_size, allocation_size);
 
 
-	bool bOk = Page->TryAllocate(out_allocation, allocation_owner, size, alignment, meta_type);
+	Bool bOk = Page->TryAllocate(out_allocation, allocation_owner, size, alignment, meta_type);
     return bOk;
 }
 
@@ -838,7 +973,7 @@ UInt8 VK_MemoryResourceFragmentAllocator::GetSubresourceAllcatorFlags()
 
 void VK_MemoryResourceFragmentAllocator::Free(VK_Allocation& allocation)
 {
-	bool bTryFree = false;
+	Bool bTryFree = false;
 
 	{
 		free_calls++;
@@ -846,7 +981,7 @@ void VK_MemoryResourceFragmentAllocator::Free(VK_Allocation& allocation)
         UInt32 allocation_size;
 		{
 			VK_AllocationInternalInfo& data = internal_data[allocation.allocation_index];
-			bool is_was_discarded = data.state == VK_AllocationInternalInfo::ENUM_VK_AllocationState::EFREEDISCARDED;
+			Bool is_was_discarded = data.state == VK_AllocationInternalInfo::ENUM_VK_AllocationState::EFREEDISCARDED;
 			CHECK_WITH_LOG(!(data.state == VK_AllocationInternalInfo::ENUM_VK_AllocationState::EALLOCATED || data.state == VK_AllocationInternalInfo::ENUM_VK_AllocationState::EFREEPENDING || data.state == VK_AllocationInternalInfo::ENUM_VK_AllocationState::EFREEDISCARDED),
                 "RHI Error : failed to free vk_allocation because data.state error!");
 			allocation_offset = data.allocation_offset;
@@ -899,8 +1034,8 @@ void VK_MemoryManager::ReleaseSubresourceAllocator(VK_MemoryResourceFragmentAllo
 	}
 	else
 	{
-		VK_MemoryResourceHeap* Heap = resource_type_heaps[subresource_allocator->memory_type_index];
-		Heap->FreePage(subresource_allocator);
+		VK_MemoryResourceHeap* heap = resource_type_heaps[subresource_allocator->memory_type_index];
+		heap->FreePage(subresource_allocator);
 	}
 }
 
@@ -910,14 +1045,124 @@ Bool VK_MemoryManager::FreeAllocation(VK_Allocation& allocation)
 	GetSubresourceAllocator(index)->Free(allocation);
 }
 
-VK_MemoryResourceFragmentAllocator* VK_MemoryManager::GetSubresourceAllocator(const UInt32 allocator_index)
+VK_MemoryResourceFragmentAllocator* VK_MemoryManager::GetSubresourceAllocator(CONST UInt32 allocator_index)
 {
 	return all_buffer_allocations[allocator_index];
 }
 
+void VK_MemoryManager::RegisterSubresourceAllocator(VK_MemoryResourceFragmentAllocator* subresource_allocator)
+{
+	if (all_buffer_allocations_index != -1)
+	{
+		CONST UInt32 index = all_buffer_allocations_index;
+		subresource_allocator->allocator_index = index;
+		all_buffer_allocations[index] = subresource_allocator;
+	}
+	else
+	{
+		subresource_allocator->allocator_index = all_buffer_allocations.size();
+		all_buffer_allocations.push_back(subresource_allocator);
+	}
+}
+
+void VK_MemoryManager::UnregisterSubresourceAllocator(VK_MemoryResourceFragmentAllocator* subresource_allocator)
+{
+	CONST UInt32 index = subresource_allocator->allocator_index;
+	all_buffer_allocations[index] = nullptr;
+	all_buffer_allocations_index = index;
+}
+
+void VK_MemoryManager::Destroy()
+{
+	DestroyResourceAllocations();
+	for (VK_MemoryResourceHeap* heap : resource_type_heaps)
+	{
+		delete heap;
+	}
+	resource_type_heaps.clear();
+}
+
+void VK_MemoryManager::DestroyResourceAllocations()
+{
+	ReleaseFreedResources(true);
+
+	for (auto& used_allocations : used_buffer_allocations)
+	{
+		for (Int index = used_allocations.size() - 1; index >= 0; --index)
+		{
+			VK_MemoryResourceFragmentAllocator* buffer_allocation = used_allocations[index];
+			CHECK_WITH_LOG(!buffer_allocation->MergeFreeBlocks(),
+				"RHI Error : Suballocation(s) for Buffer were not all released !")
+
+			buffer_allocation->Destroy(device);
+			GetDeviceMemoryManager()->Free(buffer_allocation->memory_allocation);
+			delete buffer_allocation;
+		}
+		used_allocations.clear();
+	}
+
+	for (auto& free_allocations : free_buffer_allocations)
+	{
+		for (Int index = 0; index < free_allocations.size(); ++index)
+		{
+			VK_MemoryResourceFragmentAllocator* buffer_allocation = free_allocations[index];
+			buffer_allocation->Destroy(device);
+			GetDeviceMemoryManager()->Free(buffer_allocation->memory_allocation);
+			delete buffer_allocation;
+		}
+		free_allocations.clear();
+	}
+}
+
+void VK_MemoryManager::ReleaseFreedResources(Bool is_immediately)
+{
+	Vector<VK_MemoryResourceFragmentAllocator*> buffer_allocations_to_release;
+	{
+		for (auto& free_allocations : free_buffer_allocations)
+		{
+			for (Int index = 0; index < free_allocations.size(); ++index)
+			{
+				VK_MemoryResourceFragmentAllocator* buffer_allocation = free_allocations[index];
+				if (is_immediately || buffer_allocation->frame_freed + VK_NUM_FRAMES_TO_WAIT_BEFORE_RELEASING_TO_OS < g_frame_number_render_thread)
+				{
+					buffer_allocations_to_release.push_back(buffer_allocation);
+					auto it = free_allocations.begin() + index;
+					free_allocations.erase(it);
+				}
+			}
+		}
+	}
+
+	for (Int index = 0; index < buffer_allocations_to_release.size(); ++index)
+	{
+		VK_MemoryResourceFragmentAllocator* buffer_allocation = buffer_allocations_to_release[index];
+
+		buffer_allocation->Destroy(device);
+
+		VK_MemoryResourceHeap* heap = resource_type_heaps[buffer_allocation->memory_type_index];
+		heap->ReleasePage(buffer_allocation);
+	}
+
+	device_memory_manager->TrimMemory(is_immediately);
+}
+
+VK_MemoryManager::~VK_MemoryManager()
+{
+	Destroy();
+}
+
 VK_MemoryResourceFragmentAllocator::~VK_MemoryResourceFragmentAllocator()
 {
-
+	if (!MergeFreeBlocks())
+	{
+		UInt32 leak_count = 0;
+		for (VK_AllocationInternalInfo& data : internal_data)
+		{
+			CHECK_WITH_LOG(data.state == VK_AllocationInternalInfo::ENUM_VK_AllocationState::EALLOCATED,
+				"RHI WARNING :VK_MemoryResourceFragmentAllocator::~VK_MemoryResourceFragmentAllocator dont release ! ")
+			leak_count++;
+		}
+	}
 }
 
 Int VK_MemoryResourceFragmentAllocator::AllocateInternalData()
@@ -952,6 +1197,11 @@ void VK_MemoryResourceFragmentAllocator::FreeInternalData(Int index)
 
 void VK_MemoryResourceFragmentAllocator::Destroy(VK_Device* device)
 {
+	if (buffer)
+	{
+		vkDestroyBuffer(device->GetDevice(), buffer, VULKAN_CPU_ALLOCATOR);
+		buffer = 0;
+	}
 
 }
 
@@ -990,6 +1240,21 @@ VK_MemoryResourceFragmentAllocator::VK_MemoryResourceFragmentAllocator(ENUM_VK_A
 	free_list.push_back(FullRange);
 }
 
+void* VK_MemoryResourceFragmentAllocator::GetMapPointer()
+{
+	return memory_allocation->GetMappedPointer();
+}
+
+UInt32 VK_MemoryResourceFragmentAllocator::GetAlignment() CONST
+{
+	return alignment;
+}
+
+VK_DeviceMemoryAllocation* VK_MemoryResourceFragmentAllocator::GetMemoryAllocation()
+{
+	return memory_allocation;
+}
+
 void VK_AllocationInternalInfo::Init(CONST VK_Allocation& alloc, VK_Evictable* in_allocation_owner, UInt32 in_allocation_offset, UInt32 in_allocation_size, UInt32 in_alignment)
 {
 	CHECK_WITH_LOG(state != ENUM_VK_AllocationState::EUNUSED,"RHI Error: failed to create allocation internal info !")
@@ -1004,14 +1269,93 @@ void VK_AllocationInternalInfo::Init(CONST VK_Allocation& alloc, VK_Evictable* i
 	alignment = in_alignment;
 }
 
-void VK_Allocation::Init(ENUM_VK_AllocationType Type, ENUM_VK_AllocationMetaType MetaType, UInt64 Handle, UInt32 InSize, UInt32 AlignedOffset, UInt32 AllocatorIndex, UInt32 AllocationIndex, UInt32 BufferId)
+void VK_Allocation::Init(ENUM_VK_AllocationType in_type, ENUM_VK_AllocationMetaType in_meta_type, UInt64 in_handle, UInt32 in_size, UInt32 in_aligned_offset, UInt32 in_allocator_index, UInt32 in_allocation_index, UInt32 in_buffer_id)
 {
+	SetType(in_type);
+	meta_type = in_meta_type;
+	vulkan_handle = in_handle;
+	size = in_size;
+	offset = in_aligned_offset;
+	allocator_index = in_allocator_index;
+	allocation_index = in_allocation_index;
+	handle_id = in_buffer_id;
+	is_has_owner_ship = 1;
+}
+
+void VK_Allocation::Free(VK_Device& device)
+{
+	if(HasAllocation())
+	{
+		device.GetMemoryManager()->FreeAllocation(*this);
+	}
 
 }
 
-void VK_Allocation::Free(VK_Device& Device)
+void VK_Allocation::Swap(VK_Allocation& other)
 {
+	std::swap(*this, other);
+}
 
+void VK_Allocation::Reference(CONST VK_Allocation& other)
+{
+     memcpy(this, &other, sizeof(VK_Allocation));
+	 is_has_owner_ship=0;
+}
+
+Bool VK_Allocation::HasAllocation()
+{
+	return type != (UInt8)ENUM_VK_AllocationType::EVulkanAllocationEmpty && is_has_owner_ship;
+}
+
+void VK_Allocation::SetOwnerShipFalse()
+{
+	is_has_owner_ship = 0;
+}
+
+void VK_Allocation::SetOwnerShipTrue()
+{
+	is_has_owner_ship = 1;
+}
+
+Bool VK_Allocation::IsValid() CONST
+{
+	return size != 0;
+}
+
+VkBuffer VK_Allocation::GetBufferHandle() CONST
+{
+	return (VkBuffer)vulkan_handle;
+}
+
+UInt32 VK_Allocation::GetBufferAlignment(VK_Device* device) CONST
+{
+	VK_MemoryResourceFragmentAllocator* allocator = GetSubresourceAllocator(device);
+	return allocator->GetAlignment();
+}
+
+VkDeviceMemory VK_Allocation::GetDeviceMemoryHandle(VK_Device* device) CONST
+{
+	VK_MemoryResourceFragmentAllocator* allocator = GetSubresourceAllocator(device);
+	return allocator->GetMemoryAllocation()->GetMemory();
+}
+
+void VK_Allocation::BindBuffer(VK_Device* device, VkBuffer buffer)
+{
+	VkDeviceMemory memory = GetDeviceMemoryHandle(device);
+	VkResult result = vkBindBufferMemory(device->GetDevice(), buffer, memory, offset);
+	CHECK_WITH_LOG(result != VK_SUCCESS, "RHI Error: failed to bind buffer memory !")
+}
+
+void VK_Allocation::BindImage(VK_Device* device, VkImage image)
+{
+	VkDeviceMemory memory = GetDeviceMemoryHandle(device);
+	VkResult result = vkBindImageMemory(device->GetDevice(), image, memory, offset);
+	CHECK_WITH_LOG(result != VK_SUCCESS, "RHI Error: failed to bind image memory !")
+}
+
+VK_Allocation::VK_Allocation()
+{
+	SetType( ENUM_VK_AllocationType::EVulkanAllocationEmpty);
 }
 
 Int VK_Section::Add(Vector<VK_Section>& ranges, CONST VK_Section& item)

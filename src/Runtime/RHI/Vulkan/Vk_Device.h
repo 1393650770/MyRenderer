@@ -11,12 +11,14 @@
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
-	MYRENDERER_BEGIN_NAMESPACE(RHI)
+MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 class VK_Queue;
 class VK_FenceManager;
 class VK_DeviceMemoryManager;
+class VK_MemoryManager;
+
 MYRENDERER_BEGIN_STRUCT(OptionalVulkanDeviceExtensions)
 union
 {
@@ -80,7 +82,7 @@ OptionalVulkanDeviceExtensions()
 	Packed = 0;
 }
 
-inline bool METHOD(HasGPUCrashDumpExtensions)() const
+inline Bool METHOD(HasGPUCrashDumpExtensions)() CONST
 {
 	return HasAMDBufferMarker || HasNVDiagnosticCheckpoints;
 }
@@ -93,7 +95,7 @@ std::optional<uint32_t> graphicsFamily;
 //std::optional<uint32_t> presentFamily;
 std::optional<uint32_t> transferFamily;
 std::optional<uint32_t> computeFamily;
-bool isComplete() {
+Bool isComplete() {
 	return graphicsFamily.has_value() &&  computeFamily.has_value();
 }
 MYRENDERER_END_CLASS
@@ -106,19 +108,20 @@ private:
 	QueueFamilyIndices METHOD(FindQueueFamilies)(VkPhysicalDevice device);
 	void METHOD(CreateQueue)(QueueFamilyIndices family_indice);
 protected:
-	void METHOD(CreateDevice)(bool enableValidationLayers, Vector<CONST Char*> deviceExtensions, Vector<CONST Char*> validationLayers);
-	static void METHOD(GetDeviceExtensionsAndLayers)(VkPhysicalDevice Gpu, UInt32 VendorId, Vector<CONST Char*>& OutDeviceExtensions, Vector<CONST Char*>& OutDeviceLayers, Vector<String>& OutAllDeviceExtensions, Vector<String>& OutAllDeviceLayers, bool& bOutDebugMarkers);
-	
+	void METHOD(CreateDevice)(Bool enable_validation_layers, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers);
+	static void METHOD(GetDeviceExtensionsAndLayers)(VkPhysicalDevice Gpu, UInt32 VendorId, Vector<CONST Char*>& OutDeviceExtensions, Vector<CONST Char*>& OutDeviceLayers, Vector<String>& OutAllDeviceExtensions, Vector<String>& OutAllDeviceLayers, Bool& bOutDebugMarkers);
+	void METHOD(Destroy)();
 public:
 	VK_Device(VulkanRHI* in_vulkan_rhi, VkPhysicalDevice in_gpu);
 	VIRTUAL ~VK_Device();
 
-	void METHOD(Init)(int device_index, bool enableValidationLayers, Vector<CONST Char*> deviceExtensions, Vector<CONST Char*> validationLayers);
+	void METHOD(Init)(Int device_index, Bool enable_validation_layers, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers);
 
 	VkDevice METHOD(GetDevice)();
 	VkPhysicalDevice METHOD(GetGpu)();
 	VK_FenceManager* METHOD(GetFenceManager)();
 	VK_DeviceMemoryManager* METHOD(GetDeviceMemoryManager)();
+	VK_MemoryManager* METHOD(GetMemoryManager)();
 	CONST OptionalVulkanDeviceExtensions& METHOD(GetOptionalExtensions)() CONST;
 	void METHOD(CreatePresentQueue)(VkSurfaceKHR surface);
 	CONST VkPhysicalDeviceLimits&  METHOD(GetLimits)() CONST;
@@ -141,6 +144,7 @@ protected:
 
 	VK_FenceManager* fence_manager= nullptr;
 	VK_DeviceMemoryManager* device_memory_manager=nullptr;
+	VK_MemoryManager* memory_manager = nullptr;
 public:
 
 

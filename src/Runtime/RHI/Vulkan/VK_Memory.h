@@ -110,11 +110,11 @@ MYRENDERER_END_STRUCT
 MYRENDERER_BEGIN_STRUCT(MemoryBlockKey)
     UInt32 memory_type_index=0;
     VkDeviceSize block_size=0;
-    bool operator==(const MemoryBlockKey& other) const
+    Bool operator==(CONST MemoryBlockKey& other) CONST
     {
         return memory_type_index == other.memory_type_index&& block_size == other.block_size;
     }
-    size_t operator()(const MemoryBlockKey & p) const{
+    size_t operator()(CONST MemoryBlockKey & p) CONST{
         return HashCombine(std::hash<UInt32>()(p.block_size) , std::hash<UInt32>()(p.memory_type_index));
     }
 MYRENDERER_END_STRUCT
@@ -145,7 +145,6 @@ friend  VK_DeviceMemoryManager;
 public:
     VK_DeviceMemoryAllocation();
     VIRTUAL ~VK_DeviceMemoryAllocation() DEFAULT;
-
     void* METHOD(Map)(VkDeviceSize in_size,VkDeviceSize offset);
     void METHOD(UnMap)();
     VkDeviceMemory METHOD(GetMemory)();
@@ -194,22 +193,34 @@ MYRENDERER_END_CLASS
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_DeviceMemoryManager,public RenderResource)
 
+friend class VK_MemoryManager;
+
 #pragma region METHOD
 public: 
-    VK_DeviceMemoryManager(VK_Device* in_device);
-    VIRTUAL~VK_DeviceMemoryManager() OVERRIDE;
-
-    VK_DeviceMemoryAllocation* METHOD(Alloc)(VkDeviceSize allocation_size, UInt32 memory_type_index, void* dedicated_allocate_info, float priority, bool is_external);
+    VK_DeviceMemoryManager(VK_Device * in_device);
+    VIRTUAL ~VK_DeviceMemoryManager();
+    void METHOD(Destroy)();
+    VK_DeviceMemoryAllocation* METHOD(Alloc)(VkDeviceSize allocation_size, UInt32 memory_type_index, void* dedicated_allocate_info, float priority, Bool is_external);
 
     void METHOD(Free)(VK_DeviceMemoryAllocation*& allocation);
     CONST UInt32 METHOD(GetMemoryTypeNum)() CONST;
     UInt32 METHOD(GetHeapIndex)(UInt32 memory_type_index);
     CONST VkPhysicalDeviceMemoryProperties& METHOD(GetMemoryProperties)() CONST;
     VkResult METHOD(GetMemoryTypeFromProperties)(UInt32 type_bits, VkMemoryPropertyFlags properties, UInt32* out_type_index);
-    VkResult METHOD(GetMemoryTypeFromPropertiesExcluding)(UInt32 TypeBits, VkMemoryPropertyFlags Properties, UInt32 ExcludeTypeIndex, UInt32* OutTypeIndex);
+    VkResult METHOD(GetMemoryTypeFromPropertiesExcluding)(UInt32 type_bits, VkMemoryPropertyFlags properties, UInt32 exclude_type_index, UInt32* out_type_index);
     Bool METHOD(GetIsSupportUnifiedMemory)() CONST;
 protected:
-    
+    /// <summary>
+    /// 具体的释放内存
+    /// </summary>
+    void METHOD(FreeInternal)(VK_DeviceMemoryAllocation*& allocation);
+
+    /// <summary>
+    /// 按帧数定时清除内存(先统计零散的块数，再按帧数超过一定数量再全部清楚)
+    /// </summary>
+    /// <param name=""></param>
+    /// <returns></returns>
+    void METHOD(TrimMemory)(Bool is_full_trim);
 private:
 
 #pragma endregion
@@ -316,15 +327,16 @@ friend class VK_MemoryResourceHeap;
 
 #pragma region METHOD
 public:
-	VK_MemoryResourceFragmentAllocator(ENUM_VK_AllocationType InType, VK_MemoryManager* InOwner, UInt8 InSubResourceAllocatorFlags, VK_DeviceMemoryAllocation* InDeviceMemoryAllocation,
-		UInt32 InMemoryTypeIndex, UInt32 BufferId = 0xffffffff);
+	VK_MemoryResourceFragmentAllocator(ENUM_VK_AllocationType in_type, VK_MemoryManager* in_owner, UInt8 in_subresource_allocator_flags, VK_DeviceMemoryAllocation* in_device_memory_allocation, UInt32 in_memory_type_index, UInt32 buffer_id = 0xffffffff);
     VIRTUAL ~VK_MemoryResourceFragmentAllocator();
 
     Bool METHOD(TryAllocate)(VK_Allocation& out_allocation, VK_Evictable* owner, UInt32 in_size, UInt32 in_alignment, ENUM_VK_AllocationMetaType in_meta_type);
     void METHOD(Free)(VK_Allocation& allocation);
     void METHOD(Destroy)(VK_Device* device);
     UInt8 METHOD(GetSubresourceAllcatorFlags)();
-
+    UInt32 METHOD(GetAlignment)() CONST;
+    void* METHOD(GetMapPointer)();
+    VK_DeviceMemoryAllocation* METHOD(GetMemoryAllocation)() ;
 protected:
     Int METHOD(AllocateInternalData)();
     void METHOD(FreeInternalData)(Int index);
@@ -376,11 +388,11 @@ friend class VK_MemoryResourceFragmentAllocator;
 
 #pragma region METHOD
 public:
-    VK_MemoryResourceHeap(VK_MemoryManager* in_owner, UInt32 InMemoryTypeIndex, UInt32 InOverridePageSize = 0);
+    VK_MemoryResourceHeap(VK_MemoryManager* in_owner, UInt32 in_memory_type_index, UInt32 in_override_page_size = 0);
     VIRTUAL ~VK_MemoryResourceHeap();
 
-	void FreePage(VK_MemoryResourceFragmentAllocator* InPage);
-	void ReleasePage(VK_MemoryResourceFragmentAllocator* InPage);
+	void METHOD(FreePage)(VK_MemoryResourceFragmentAllocator* InPage);
+	void METHOD(ReleasePage)(VK_MemoryResourceFragmentAllocator* InPage);
 
     UInt32 METHOD(GetPageSizeBucket)(VK_VulkanPageSizeBucket& out_bucket,ENUM_VK_HeapAllocationType type, UInt32 allocation_size,Bool is_force_single_allocation);
 protected:
@@ -421,17 +433,16 @@ MYRENDERER_END_CLASS
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Allocation,public RenderResource)
 #pragma region METHOD
 public:
-    VK_Allocation() DEFAULT;
+    VK_Allocation();
     VIRTUAL ~VK_Allocation() DEFAULT;
-    void METHOD(Init)(ENUM_VK_AllocationType Type, ENUM_VK_AllocationMetaType MetaType, UInt64 Handle, UInt32 InSize, UInt32 AlignedOffset, UInt32 AllocatorIndex, UInt32 AllocationIndex, UInt32 BufferId);
-    void METHOD(Free)(VK_Device& Device);
-    void Swap(VK_Allocation& Other);
-    void Reference(CONST VK_Allocation& Other); //point to other, but don't take ownership
-    bool HasAllocation();
-
-    void Disown(); //disown & own should be used if ownership is transferred.
-    void Own();
-    bool IsValid() CONST;
+    void METHOD(Init)(ENUM_VK_AllocationType in_type, ENUM_VK_AllocationMetaType in_meta_type, UInt64 in_handle, UInt32 in_size, UInt32 in_aligned_offset, UInt32 in_allocator_index, UInt32 in_allocation_index, UInt32 in_buffer_id);
+    void METHOD(Free)(VK_Device& device);
+    void METHOD(Swap)(VK_Allocation& other);
+    void METHOD(Reference)(CONST VK_Allocation& other); //point to other, but don't take ownership
+    Bool METHOD(HasAllocation)();
+    void METHOD(SetOwnerShipTrue)(); //disown & own should be used if ownership is transferred.
+    void METHOD(SetOwnerShipFalse)(); //disown & own should be used if ownership is transferred.
+    Bool METHOD(IsValid)() CONST;
 
     inline ENUM_VK_AllocationType METHOD(GetType)() CONST
     {
@@ -442,15 +453,15 @@ public:
 	    type = (UInt8)in_type;
     }
 
-    void* METHOD(GetMappedPointer)(VK_Device* Device);
-    void METHOD(FlushMappedMemory)(VK_Device* Device);
-    void METHOD(InvalidateMappedMemory)(VK_Device* Device);
-    VkBuffer GetBufferHandle() CONST;
-    UInt32 GetBufferAlignment(VK_Device* Device) CONST;
-    VkDeviceMemory GetDeviceMemoryHandle(VK_Device* Device) CONST;
-    VK_MemoryResourceFragmentAllocator* METHOD(GetSubresourceAllocator)(VK_Device* Device) CONST;
-    void BindBuffer(VK_Device* Device, VkBuffer Buffer);
-    void BindImage(VK_Device* Device, VkImage Image);
+    void* METHOD(GetMappedPointer)(VK_Device* device);
+    void METHOD(FlushMappedMemory)(VK_Device* device);
+    void METHOD(InvalidateMappedMemory)(VK_Device* device);
+    VkBuffer METHOD(GetBufferHandle)() CONST;
+    UInt32 METHOD(GetBufferAlignment)(VK_Device* device) CONST;
+    VkDeviceMemory METHOD(GetDeviceMemoryHandle)(VK_Device* device) CONST;
+    VK_MemoryResourceFragmentAllocator* METHOD(GetSubresourceAllocator)(VK_Device* device) CONST;
+    void METHOD(BindBuffer)(VK_Device* device, VkBuffer buffer);
+    void METHOD(BindImage)(VK_Device* device, VkImage image);
 
 protected:
 
@@ -480,25 +491,29 @@ MYRENDERER_END_CLASS
 
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_MemoryManager,public RenderResource)
+
 friend class VK_MemoryResourceHeap;
 
 #pragma region METHOD
 public:
     VK_MemoryManager(VK_Device* in_device);
-    VIRTUAL ~VK_MemoryManager() DEFAULT;
+    VIRTUAL ~VK_MemoryManager();
 
+    void METHOD(Destroy)();
     //Bool METHOD(AllocateBufferPooled)(VK_Allocation* out_allocation);
     Bool METHOD(AllocateImageMemory)(VK_Allocation& out_allocation, VkImage in_image, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment = 1);
     Bool METHOD(AllocateBufferMemory)(VK_Allocation& out_allocation, VkBuffer in_buffer, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment = 1);
     Bool METHOD(FreeAllocation)(VK_Allocation& allocation);
     //Bool METHOD(AllocateDedicatedImageMemory)(VK_Allocation* out_allocation);
     //Bool METHOD(AllocateUniformBuffer)(VK_Allocation* out_allocation);
-	void RegisterSubresourceAllocator(VK_MemoryResourceFragmentAllocator* SresourceAllocator);
-	void UnregisterSubresourceAllocator(VK_MemoryResourceFragmentAllocator* SubresourceAllocator);
-	void ReleaseSubresourceAllocator(VK_MemoryResourceFragmentAllocator* SubresourceAllocator);
+	void METHOD(RegisterSubresourceAllocator)(VK_MemoryResourceFragmentAllocator* subresource_allocator);
+	void METHOD(UnregisterSubresourceAllocator)(VK_MemoryResourceFragmentAllocator* subresource_allocator);
+	void METHOD(ReleaseSubresourceAllocator)(VK_MemoryResourceFragmentAllocator* subresource_allocator);
     VK_DeviceMemoryManager* METHOD(GetDeviceMemoryManager)();
 protected:
-	VK_MemoryResourceFragmentAllocator* METHOD(GetSubresourceAllocator)(const UInt32 allocator_index);
+	VK_MemoryResourceFragmentAllocator* METHOD(GetSubresourceAllocator)(CONST UInt32 allocator_index);
+    void METHOD(DestroyResourceAllocations)();
+    void METHOD(ReleaseFreedResources)(Bool is_immediately);
 private:
 #pragma endregion 
 
@@ -577,7 +592,7 @@ protected:
 	Vector<VK_MemoryResourceFragmentAllocator*> used_buffer_allocations[(Int)EPoolSizes::SizesCount + 1];
     Vector<VK_MemoryResourceFragmentAllocator*> free_buffer_allocations[(Int)EPoolSizes::SizesCount + 1];
     Vector<VK_MemoryResourceFragmentAllocator*> all_buffer_allocations;
-
+    Int all_buffer_allocations_index=0;
 	UInt64 pending_evict_bytes = 0;
 	Bool is_evicting = false;
     Bool is_want_eviction = false;

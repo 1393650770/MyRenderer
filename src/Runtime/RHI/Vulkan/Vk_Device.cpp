@@ -4,6 +4,8 @@
 
 #include "VK_Fence.h"
 #include "VK_Queue.h"
+#include "VK_Memory.h"
+#include "VK_Define.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -48,7 +50,7 @@ QueueFamilyIndices VK_Device::FindQueueFamilies(VkPhysicalDevice device)
 	return indices;
 }
 
-void VK_Device::CreateDevice(bool enable_validation_layers, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers)
+void VK_Device::CreateDevice(Bool enable_validation_layers, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers)
 {
 	QueueFamilyIndices indices = FindQueueFamilies(gpu);
 
@@ -96,7 +98,7 @@ void VK_Device::CreateDevice(bool enable_validation_layers, Vector<CONST Char*> 
 
 
 
-void VK_Device::GetDeviceExtensionsAndLayers(VkPhysicalDevice Gpu, UInt32 VendorId, Vector<CONST Char*>& OutDeviceExtensions, Vector<CONST Char*>& OutDeviceLayers, Vector<String>& OutAllDeviceExtensions, Vector<String>& OutAllDeviceLayers, bool& bOutDebugMarkers)
+void VK_Device::GetDeviceExtensionsAndLayers(VkPhysicalDevice Gpu, UInt32 VendorId, Vector<CONST Char*>& OutDeviceExtensions, Vector<CONST Char*>& OutDeviceLayers, Vector<String>& OutAllDeviceExtensions, Vector<String>& OutAllDeviceLayers, Bool& bOutDebugMarkers)
 {
 
 
@@ -112,6 +114,8 @@ void VK_Device::Init(Int device_index,Bool enable_validation_layers, Vector<CONS
 {
 	CreateDevice(enable_validation_layers, std::move(device_extensions), std::move(validation_layers));
 
+	device_memory_manager=new VK_DeviceMemoryManager(this);
+	memory_manager=new VK_MemoryManager(this);
 	fence_manager=new VK_FenceManager(this);
 }
 
@@ -133,6 +137,11 @@ VK_FenceManager* VK_Device::GetFenceManager()
 VK_DeviceMemoryManager* VK_Device::GetDeviceMemoryManager()
 {
 	return device_memory_manager;
+}
+
+VK_MemoryManager* VK_Device::GetMemoryManager()
+{
+	return memory_manager;
 }
 
 const OptionalVulkanDeviceExtensions& VK_Device::GetOptionalExtensions() const
@@ -169,7 +178,11 @@ const VkPhysicalDeviceLimits& VK_Device::GetLimits() const
 
 VK_Device::~VK_Device()
 {
-
+	if(device)
+	{ 
+		Destroy();
+		device=VK_NULL_HANDLE;
+	}
 }
 
 VK_Device::VK_Device(VulkanRHI* in_vulkan_rhi, VkPhysicalDevice in_gpu):
@@ -178,6 +191,50 @@ VK_Device::VK_Device(VulkanRHI* in_vulkan_rhi, VkPhysicalDevice in_gpu):
 {
 	vkGetPhysicalDeviceProperties(gpu,&gpu_props);
 	vendor_id=gpu_props.vendorID;
+}
+
+void VK_Device::Destroy()
+{
+	if (graph_queue)
+	{
+		delete graph_queue;
+		graph_queue=nullptr;
+	}
+	if (compute_queue)
+	{
+		delete compute_queue;
+		compute_queue=nullptr;
+	}
+	if (transfer_queue)
+	{
+		delete transfer_queue;
+		transfer_queue=nullptr;
+	}
+	if (present_queue)
+	{
+		delete present_queue;
+		present_queue=nullptr;
+	}
+	if (fence_manager)
+	{
+		delete fence_manager;
+		fence_manager=nullptr;
+	}
+	if (device_memory_manager)
+	{
+		delete device_memory_manager;
+		device_memory_manager=nullptr;
+	}
+	if (memory_manager)
+	{
+		delete memory_manager;
+		memory_manager=nullptr;
+	}
+	if (device)
+	{
+		vkDestroyDevice(device, VULKAN_CPU_ALLOCATOR);
+		device=VK_NULL_HANDLE;
+	}	
 }
 
 MYRENDERER_END_NAMESPACE
