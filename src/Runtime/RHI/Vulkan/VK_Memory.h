@@ -336,6 +336,8 @@ public:
     UInt8 METHOD(GetSubresourceAllcatorFlags)();
     UInt32 METHOD(GetAlignment)() CONST;
     void* METHOD(GetMapPointer)();
+    void METHOD(FlushMappedMemory)(UInt32 in_size, UInt32 offset);
+    void METHOD(InvalidateMappedMemory)(UInt32 in_size, UInt32 offset);
     VK_DeviceMemoryAllocation* METHOD(GetMemoryAllocation)() ;
 protected:
     Int METHOD(AllocateInternalData)();
@@ -493,6 +495,8 @@ MYRENDERER_END_CLASS
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_MemoryManager,public RenderResource)
 
 friend class VK_MemoryResourceHeap;
+friend class VK_Allocation;
+
 
 #pragma region METHOD
 public:

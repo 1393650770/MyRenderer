@@ -319,8 +319,8 @@ void MXRender::EditorUI::initialize_resource()
 {
 	content_icon_texture = std::make_shared<VK_Texture>(ENUM_TEXTURE_TYPE::ENUM_TYPE_2D, "Resource/Editor/Icon/FileIcon.png");
 	directory_icon_texture = std::make_shared<VK_Texture>(ENUM_TEXTURE_TYPE::ENUM_TYPE_2D, "Resource/Editor/Icon/DirectoryIcon.png");
-	content_icon_ds = ImGui_ImplVulkan_AddTexture(content_icon_texture->textureSampler, content_icon_texture->textureImageView, content_icon_texture->textureImageLayout);
-	directory_icon_ds = ImGui_ImplVulkan_AddTexture(directory_icon_texture->textureSampler, directory_icon_texture->textureImageView, directory_icon_texture->textureImageLayout);
+	content_icon_ds = ImGui_ImplVulkan_AddTexture(content_icon_texture->texture_sampler, content_icon_texture->texture_image_view, content_icon_texture->texture_image_layout);
+	directory_icon_ds = ImGui_ImplVulkan_AddTexture(directory_icon_texture->texture_sampler, directory_icon_texture->texture_image_view, directory_icon_texture->texture_image_layout);
 }
 
 void MXRender::EditorUI::pre_render()

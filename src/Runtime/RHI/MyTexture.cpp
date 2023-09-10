@@ -18,6 +18,16 @@ TextureDesc Texture::GetTextureDesc() const
     return texture_desc;
 }
 
+void Texture::UpdateTextureData(CONST TextureDataPayload& texture_data_payload)
+{
+
+}
+
+
+TextureDataPayload::TextureDataPayload(CONST TextureDataPayload& other)
+{
+    *this = other;
+}
 
 MYRENDERER_END_NAMESPACE
 

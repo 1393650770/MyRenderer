@@ -1255,6 +1255,16 @@ VK_DeviceMemoryAllocation* VK_MemoryResourceFragmentAllocator::GetMemoryAllocati
 	return memory_allocation;
 }
 
+void VK_MemoryResourceFragmentAllocator::FlushMappedMemory(UInt32 in_size, UInt32 offset)
+{
+	memory_allocation->FlushMappedMemory(in_size,offset);
+}
+
+void VK_MemoryResourceFragmentAllocator::InvalidateMappedMemory(UInt32 in_size, UInt32 offset)
+{
+	memory_allocation->InvalidateMappedMemory(in_size, offset);
+}
+
 void VK_AllocationInternalInfo::Init(CONST VK_Allocation& alloc, VK_Evictable* in_allocation_owner, UInt32 in_allocation_offset, UInt32 in_allocation_size, UInt32 in_alignment)
 {
 	CHECK_WITH_LOG(state != ENUM_VK_AllocationState::EUNUSED,"RHI Error: failed to create allocation internal info !")
@@ -1356,6 +1366,44 @@ void VK_Allocation::BindImage(VK_Device* device, VkImage image)
 VK_Allocation::VK_Allocation()
 {
 	SetType( ENUM_VK_AllocationType::EVulkanAllocationEmpty);
+}
+
+void* VK_Allocation::GetMappedPointer(VK_Device* device)
+{
+	VK_MemoryResourceFragmentAllocator* allocator = GetSubresourceAllocator(device);
+	return (UInt8*)(allocator->GetMapPointer()) + offset;
+}
+
+void VK_Allocation::InvalidateMappedMemory(VK_Device* device)
+{
+	VK_MemoryResourceFragmentAllocator* allocator = GetSubresourceAllocator(device);
+	allocator->InvalidateMappedMemory(size,offset);
+}
+
+void VK_Allocation::FlushMappedMemory(VK_Device* device)
+{
+	VK_MemoryResourceFragmentAllocator* allocator = GetSubresourceAllocator(device);
+	allocator->FlushMappedMemory(offset, size);
+}
+
+VK_MemoryResourceFragmentAllocator* VK_Allocation::GetSubresourceAllocator(VK_Device* device) CONST
+{
+	switch ((ENUM_VK_AllocationType)type)
+	{
+	case ENUM_VK_AllocationType::EVulkanAllocationEmpty:
+		return nullptr;
+		break;
+	case ENUM_VK_AllocationType::EVulkanAllocationBuffer :
+	case ENUM_VK_AllocationType::EVulkanAllocationImage:
+	case ENUM_VK_AllocationType::EVulkanAllocationImageDedicated:
+	case ENUM_VK_AllocationType::EVulkanAllocationPooledBuffer:
+		return device->GetMemoryManager()->GetSubresourceAllocator(allocator_index);
+		break;
+	default:
+		CHECK_WITH_LOG(true, "RHI Error: failed to get subresource allocator !")
+		break;
+	}
+	return nullptr;
 }
 
 Int VK_Section::Add(Vector<VK_Section>& ranges, CONST VK_Section& item)

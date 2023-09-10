@@ -2,10 +2,8 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 
-
-Buffer::Buffer(const BufferDesc in_buffer_desc):buffer_desc(in_buffer_desc)
+Buffer::Buffer(const BufferDesc& in_buffer_desc) :buffer_desc(in_buffer_desc)
 {
-	
 }
 
 void* Buffer::Map()

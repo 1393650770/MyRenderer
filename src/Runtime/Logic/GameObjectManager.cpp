@@ -206,25 +206,25 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 		info.parameters = nullptr;
 		info.textures.clear();
 		SampledTexture tex;
-		tex.view = base_color_texture->textureImageView;
-		tex.sampler = base_color_texture->textureSampler;
+		tex.view = base_color_texture->texture_image_view;
+		tex.sampler = base_color_texture->texture_sampler;
 		info.textures.push_back(tex);
-		tex.view = normal_texture->textureImageView;
-		tex.sampler = normal_texture->textureSampler;
+		tex.view = normal_texture->texture_image_view;
+		tex.sampler = normal_texture->texture_sampler;
 		info.textures.push_back(tex);
-		tex.view = aorm_texture->textureImageView;
-		tex.sampler = aorm_texture->textureSampler;
+		tex.view = aorm_texture->texture_image_view;
+		tex.sampler = aorm_texture->texture_sampler;
 		info.textures.push_back(tex);
-		tex.view = cubemap_texture->textureImageView;
-		tex.sampler = cubemap_texture->textureSampler;
+		tex.view = cubemap_texture->texture_image_view;
+		tex.sampler = cubemap_texture->texture_sampler;
 		tex.texture_type= ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP;
 		info.textures.push_back(tex);
-		tex.view = cubemap_irr_texture->textureImageView;
-		tex.sampler = cubemap_irr_texture->textureSampler;
+		tex.view = cubemap_irr_texture->texture_image_view;
+		tex.sampler = cubemap_irr_texture->texture_sampler;
 		tex.texture_type = ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP;
 		info.textures.push_back(tex);
-		tex.view = lut_texture->textureImageView;
-		tex.sampler = lut_texture->textureSampler;
+		tex.view = lut_texture->texture_image_view;
+		tex.sampler = lut_texture->texture_sampler;
 		tex.texture_type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
 		info.textures.push_back(tex);
 
@@ -252,8 +252,8 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 		info.parameters = nullptr;
 		info.textures.clear();
 		SampledTexture tex;
-		tex.view = base_color_texture->textureImageView;
-		tex.sampler = base_color_texture->textureSampler;
+		tex.view = base_color_texture->texture_image_view;
+		tex.sampler = base_color_texture->texture_sampler;
 		info.textures.push_back(tex);
 		
 
@@ -284,8 +284,8 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 			info.parameters = nullptr;
 			info.textures.clear();
 			SampledTexture tex;
-			tex.view = texture->textureImageView;
-			tex.sampler = texture->textureSampler;
+			tex.view = texture->texture_image_view;
+			tex.sampler = texture->texture_sampler;
 			info.textures.push_back(tex);
 			info.baseTemplate = Singleton<DefaultSetting>::get_instance().material_system->create_template_name("mesh");
 
@@ -314,8 +314,8 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 			info.parameters = nullptr;
 			info.textures.clear();
 			SampledTexture tex;
-			tex.view = texture->textureImageView;
-			tex.sampler = texture->textureSampler;
+			tex.view = texture->texture_image_view;
+			tex.sampler = texture->texture_sampler;
 			info.textures.push_back(tex);
 			info.baseTemplate = Singleton<DefaultSetting>::get_instance().material_system->create_template_name("default_transparency");
 

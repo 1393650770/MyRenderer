@@ -107,7 +107,13 @@ namespace MXRender
         static uint32_t Find_MemoryType(std::weak_ptr< VK_Device> Device, uint32_t TypeFilter, VkMemoryPropertyFlags Properties);
         static VkSampleCountFlagBits Get_SampleCountFlagBits_FromInt(unsigned num);
         static VkImageLayout Translate_Texture_usage_type_To_Vulkan(const ENUM_TEXTURE_USAGE_TYPE& usage_type );
+		static VkImageUsageFlagBits Translate_Texture_usage_type_To_VulkanUsageFlagsBits(const ENUM_TEXTURE_USAGE_TYPE& usage_type);
         static VkImageType Translate_Texture_type_To_Vulkan(const ENUM_TEXTURE_TYPE& type);
+		static VkFormat Translate_Texture_Format_To_Vulkan(const ENUM_TEXTURE_FORMAT& format);
+		static VkImageViewType Translate_Texture_type_To_VulkanImageViewType(const ENUM_TEXTURE_TYPE& type);
+		static VkImageAspectFlags Translate_Texture_type_To_VulkanImageAspectFlags(const ENUM_TEXTURE_TYPE& type);
+		static VkImageCreateFlags Translate_Texture_type_To_VulkanCreateFlags(const ENUM_TEXTURE_TYPE& type);
+		static VkSampleCountFlagBits Translate_Texture_SampleCount_To_Vulkan(const UInt8& sample_count);
         static VkFormat Translate_API_DataTypeEnum_To_Vulkan(ENUM_RENDER_DATA_TYPE data_type);
 		static VkShaderStageFlagBits Translate_API_ShaderTypeEnum_To_Vulkan(ENUM_SHADER_STAGE shader_type);
 		static void ClearImageColor(std::weak_ptr< VK_GraphicsContext> context, 

@@ -30,7 +30,7 @@ MYRENDERER_END_STRUCT
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Buffer,  public RenderResource)
 #pragma region METHOD
 public:
-	Buffer(const BufferDesc in_buffer_desc) ;
+	Buffer(const BufferDesc& in_buffer_desc) ;
 	VIRTUAL ~Buffer() DEFAULT;
 
 	VIRTUAL void* METHOD(Map)();

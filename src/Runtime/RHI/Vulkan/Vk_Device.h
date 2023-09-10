@@ -6,7 +6,7 @@
 #include "../../Core/ConstDefine.h"
 #include "../RenderRource.h"
 #include "VK_RenderRHI.h"
-
+#include "VK_Memory.h"
 
 
 

@@ -273,8 +273,8 @@ namespace MXRender
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = texture->textureImageView;
-		imageInfo.sampler = texture->textureSampler;
+		imageInfo.imageView = texture->texture_image_view;
+		imageInfo.sampler = texture->texture_sampler;
 
 		std::vector< VkWriteDescriptorSet> descriptorWrite(3);
 		descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

@@ -504,25 +504,68 @@ namespace MXRender
 	{
         switch (usage_type)
         {
-        case  ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_COLOR_ATTACHMENT:
-            return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            break;
-        case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_PRESENT_SWAPCHAIN:
-            return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            break;
-        default:
-            return VK_IMAGE_LAYOUT_UNDEFINED;
-            break;
+		case  ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_COLOR_ATTACHMENT:
+			return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			break;
+		case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_PRESENT_SWAPCHAIN:
+			return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			break;
+		default:
+			return VK_IMAGE_LAYOUT_UNDEFINED;
+			break;
         }
 	}
 
-    VkImageType VK_Utils::Translate_Texture_type_To_Vulkan(const ENUM_TEXTURE_TYPE& type)
+	VkImageUsageFlagBits VK_Utils::Translate_Texture_usage_type_To_VulkanUsageFlagsBits(const ENUM_TEXTURE_USAGE_TYPE& usage_type)
+	{
+		VkImageUsageFlags usage_flags = 0;
+		for (int i = 0; i < 32; i++)
+		{
+			if ((UInt32)(usage_type) & (1 << i))
+			{
+				ENUM_TEXTURE_USAGE_TYPE temp_usage_type = (ENUM_TEXTURE_USAGE_TYPE)(((UInt32)(usage_type) & (1 << i)));
+				switch (temp_usage_type)
+				{
+				case  ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_COLOR_ATTACHMENT:
+					usage_flags = usage_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					break;
+				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_PRESENT_SWAPCHAIN:
+					usage_flags = usage_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					break;
+				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT:
+					usage_flags = usage_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					break;
+				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT_READ_ONLY:
+					usage_flags = usage_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					break;
+				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT_WRITE_ONLY:
+					usage_flags = usage_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+					break;
+				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE:
+					usage_flags = usage_flags | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					break;
+				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_COPY:
+					usage_flags = usage_flags | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					break;
+				default:
+					usage_flags = usage_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					CHECK_WITH_LOG(true, "RHI Error: usage type error");
+					break;
+				}
+			}
+		}
+
+		return usage_flags;
+	}
+
+	VkImageType VK_Utils::Translate_Texture_type_To_Vulkan(const ENUM_TEXTURE_TYPE& type)
 	{
         switch (type)
         {
 		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D:
 		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_MULTISAMPLE:
 		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_DEPTH:
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP:
 		{
             return VK_IMAGE_TYPE_2D;
 			break;
@@ -531,6 +574,445 @@ namespace MXRender
             return VK_IMAGE_TYPE_MAX_ENUM;
             break;
         }
+	}
+
+	VkFormat VK_Utils::Translate_Texture_Format_To_Vulkan(const ENUM_TEXTURE_FORMAT& format) 
+	{
+		VkFormat vulkan_image_format = VK_FORMAT_UNDEFINED;
+		switch (format)
+		{
+		case ENUM_TEXTURE_FORMAT::RGBA8S:
+		{
+			vulkan_image_format = VK_FORMAT_R8G8B8A8_SRGB;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGBA8:
+		{
+			vulkan_image_format = VK_FORMAT_R8G8B8A8_UNORM;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGBA16F:
+		{
+			vulkan_image_format = VK_FORMAT_R16G16B16A16_SFLOAT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGBA32F:
+		{
+			vulkan_image_format = VK_FORMAT_R32G32B32A32_SFLOAT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::R32F:
+		{
+			vulkan_image_format = VK_FORMAT_R32_SFLOAT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::R16F:
+		{
+			vulkan_image_format = VK_FORMAT_R16_SFLOAT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::R8:
+		{
+			vulkan_image_format = VK_FORMAT_R8_UNORM;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::R8S:
+		{
+			vulkan_image_format = VK_FORMAT_R8_SRGB;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RG8:
+		{
+			vulkan_image_format = VK_FORMAT_R8G8_UNORM;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RG8S:
+		{
+			vulkan_image_format = VK_FORMAT_R8G8_SRGB;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RG16F:
+		{
+			vulkan_image_format = VK_FORMAT_R16G16_SFLOAT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RG32F:
+		{
+			vulkan_image_format = VK_FORMAT_R32G32_SFLOAT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RG8I:
+		{
+			vulkan_image_format = VK_FORMAT_R8G8_SINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RG8U:
+		{
+			vulkan_image_format = VK_FORMAT_R8G8_UINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RG16I:
+		{
+			vulkan_image_format = VK_FORMAT_R16G16_SINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RG16U:
+		{
+			vulkan_image_format = VK_FORMAT_R16G16_UINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RG32I:
+		{
+			vulkan_image_format = VK_FORMAT_R32G32_SINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RG32U:
+		{
+			vulkan_image_format = VK_FORMAT_R32G32_UINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGB8:
+		{
+			vulkan_image_format = VK_FORMAT_R8G8B8_UNORM;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGB8S:
+		{
+			vulkan_image_format = VK_FORMAT_R8G8B8_SRGB;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGB16F:
+		{
+			vulkan_image_format = VK_FORMAT_R16G16B16_SFLOAT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGB32F:
+		{
+			vulkan_image_format = VK_FORMAT_R32G32B32_SFLOAT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGB8I:
+		{
+			vulkan_image_format = VK_FORMAT_R8G8B8_SINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGB8U:
+		{
+			vulkan_image_format = VK_FORMAT_R8G8B8_UINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGB16I:
+		{
+			vulkan_image_format = VK_FORMAT_R16G16B16_SINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGB16U:
+		{
+			vulkan_image_format = VK_FORMAT_R16G16B16_UINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGB32I:
+		{
+			vulkan_image_format = VK_FORMAT_R32G32B32_SINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGB32U:
+		{
+			vulkan_image_format = VK_FORMAT_R32G32B32_UINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGBA8I:
+		{
+			vulkan_image_format = VK_FORMAT_R8G8B8A8_SINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGBA8U:
+		{
+			vulkan_image_format = VK_FORMAT_R8G8B8A8_UINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGBA16I:
+		{
+			vulkan_image_format = VK_FORMAT_R16G16B16A16_SINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGBA16U:
+		{
+			vulkan_image_format = VK_FORMAT_R16G16B16A16_UINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGBA32I:
+		{
+			vulkan_image_format = VK_FORMAT_R32G32B32A32_SINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGBA32U:
+		{
+			vulkan_image_format = VK_FORMAT_R32G32B32A32_UINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::D16:
+		{
+			vulkan_image_format = VK_FORMAT_D16_UNORM;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::D24:
+		{
+			vulkan_image_format = VK_FORMAT_X8_D24_UNORM_PACK32;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::D32:
+		{
+			vulkan_image_format = VK_FORMAT_D32_SFLOAT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::D32F:
+		{
+			vulkan_image_format = VK_FORMAT_D32_SFLOAT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::D24S8:
+		{
+			vulkan_image_format = VK_FORMAT_D24_UNORM_S8_UINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::D32FS8:
+		{
+			vulkan_image_format = VK_FORMAT_D32_SFLOAT_S8_UINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::BC1:
+		{
+			vulkan_image_format = VK_FORMAT_BC1_RGB_UNORM_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::BC1A:
+		{
+			vulkan_image_format = VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::BC2:
+		{
+			vulkan_image_format = VK_FORMAT_BC2_UNORM_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::BC3:
+		{
+			vulkan_image_format = VK_FORMAT_BC3_UNORM_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::BC4:
+		{
+			vulkan_image_format = VK_FORMAT_BC4_UNORM_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::BC5:
+		{
+			vulkan_image_format = VK_FORMAT_BC5_UNORM_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::BC6H:
+		{
+			vulkan_image_format = VK_FORMAT_BC6H_UFLOAT_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::BC7:
+		{
+			vulkan_image_format = VK_FORMAT_BC7_UNORM_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::ETC2:
+		{
+			vulkan_image_format = VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::ETC2A:
+		{
+			vulkan_image_format = VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::ETC2A1:
+		{
+			vulkan_image_format = VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK;
+			break;
+		}
+		default:
+		{
+			CHECK_WITH_LOG(true,"RHI Error : invalid texture_format !")
+			break;
+		}
+		}
+		return vulkan_image_format;
+	}
+
+	VkImageViewType VK_Utils::Translate_Texture_type_To_VulkanImageViewType(const ENUM_TEXTURE_TYPE& type)
+	{
+		VkImageViewType vulkan_image_view_type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+		switch (type)
+		{
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D:
+		{
+			vulkan_image_view_type = VK_IMAGE_VIEW_TYPE_2D;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_MULTISAMPLE:
+		{
+			vulkan_image_view_type = VK_IMAGE_VIEW_TYPE_2D;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_DEPTH:
+		{
+			vulkan_image_view_type = VK_IMAGE_VIEW_TYPE_2D;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP:
+		{
+			vulkan_image_view_type = VK_IMAGE_VIEW_TYPE_CUBE;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_ARRAY:
+		{
+			vulkan_image_view_type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_3D:
+		{
+			vulkan_image_view_type = VK_IMAGE_VIEW_TYPE_3D;
+			break;
+		}
+		default:
+		{
+			CHECK_WITH_LOG(true, "RHI Error : invalid image view type !")
+			break;
+		}
+		}
+		return vulkan_image_view_type;
+	}
+
+	VkImageAspectFlags VK_Utils::Translate_Texture_type_To_VulkanImageAspectFlags(const ENUM_TEXTURE_TYPE& type)
+	{
+		VkImageAspectFlags vulkan_image_aspect_flags = 0;
+		switch (type)
+		{
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D:
+		{
+			vulkan_image_aspect_flags = VK_IMAGE_ASPECT_COLOR_BIT;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_MULTISAMPLE:
+		{
+			vulkan_image_aspect_flags = VK_IMAGE_ASPECT_COLOR_BIT;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_DEPTH:
+		{
+			vulkan_image_aspect_flags = VK_IMAGE_ASPECT_DEPTH_BIT;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP:
+		{
+			vulkan_image_aspect_flags = VK_IMAGE_ASPECT_COLOR_BIT;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_ARRAY:
+		{
+			vulkan_image_aspect_flags = VK_IMAGE_ASPECT_COLOR_BIT;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_3D:
+		{
+			vulkan_image_aspect_flags = VK_IMAGE_ASPECT_COLOR_BIT;
+			break;
+		}
+		default:
+		{
+			CHECK_WITH_LOG(true, "RHI Error : invalid image view type !")
+			break;
+		}
+		}
+		return vulkan_image_aspect_flags;
+	}
+
+	VkImageCreateFlags VK_Utils::Translate_Texture_type_To_VulkanCreateFlags(const ENUM_TEXTURE_TYPE& type)
+	{
+		VkImageCreateFlags vulkan_image_create_flags = 0;
+		switch (type)
+		{
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D:
+		{
+			vulkan_image_create_flags = 0;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_MULTISAMPLE:
+		{
+			vulkan_image_create_flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_DEPTH:
+		{
+			vulkan_image_create_flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP:
+		{
+			vulkan_image_create_flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_ARRAY:
+		{
+			vulkan_image_create_flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+			break;
+		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_3D:
+		{
+			vulkan_image_create_flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+			break;
+		}
+		default:
+		{
+			CHECK_WITH_LOG(true, "RHI Error : invalid texture_type !")
+			break;
+		}
+		}
+		return vulkan_image_create_flags;
+	}
+
+	VkSampleCountFlagBits VK_Utils::Translate_Texture_SampleCount_To_Vulkan(const UInt8& sample_count)
+	{
+		VkSampleCountFlagBits vulkan_sample_count = VK_SAMPLE_COUNT_1_BIT;
+		if ((sample_count & 64) == 64)
+		{
+			vulkan_sample_count = VK_SAMPLE_COUNT_64_BIT;
+		}
+		else if ((sample_count & 32) == 32)
+		{
+			vulkan_sample_count = VK_SAMPLE_COUNT_32_BIT;
+		}
+		else if ((sample_count & 16) == 16)
+		{
+			vulkan_sample_count = VK_SAMPLE_COUNT_16_BIT;
+		}
+		else if ((sample_count & 8) == 8)
+		{
+			vulkan_sample_count = VK_SAMPLE_COUNT_8_BIT;
+		}
+		else if ((sample_count & 4) == 4)
+		{
+			vulkan_sample_count = VK_SAMPLE_COUNT_4_BIT;
+		}
+		else if ((sample_count & 2) == 2)
+		{
+			vulkan_sample_count = VK_SAMPLE_COUNT_2_BIT;
+		}
+		else if ((sample_count & 1) == 1)
+		{
+			vulkan_sample_count = VK_SAMPLE_COUNT_1_BIT;
+		}
+		else
+		{
+			CHECK_WITH_LOG(true, "RHI Error : invalid sample_count !")
+		}
+		return vulkan_sample_count;
 	}
 
 	VkFormat VK_Utils::Translate_API_DataTypeEnum_To_Vulkan(ENUM_RENDER_DATA_TYPE data_type)

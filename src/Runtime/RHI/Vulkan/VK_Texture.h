@@ -12,7 +12,7 @@
 #include "vulkan/vulkan_core.h"
 #include "gli/format.hpp"
 #include "../../Core/ConstDefine.h"
-
+#include "VK_Device.h"
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -35,53 +35,48 @@ UInt32 viewId=0;
 MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Texture,public Texture)
-    
-    private:
-        ENUM_TEXTURE_TYPE type=ENUM_TEXTURE_TYPE::ENUM_TYPE_NOT_VALID;
-		unsigned id;
-        VkAttachmentDescription attachment_description;
-        VkAttachmentReference attachment_reference;
-        unsigned width,height, texChannels;
-        VkDeviceSize imageSize;
-        void load_dds(ENUM_TEXTURE_TYPE _type, const std::string& texture_path);
-        void load_dds_cubemap(ENUM_TEXTURE_TYPE _type, const std::string& texture_path);
-        void load_dds_2d(ENUM_TEXTURE_TYPE _type, const std::string& texture_path);
-        void load_common_2d(const std::string& texture_path);
-        VkFormat trans_gli_format_to_vulkan(gli::format format);
-		std::string get_file_extension(const std::string& filename) ;
+   
+#pragma region METHOD
+public:
+	virtual ~VK_Texture();
+	VK_Texture(VK_Device& in_device, const TextureDesc& texture_desc);
 
-    public:
-		VkImage textureImage;
-		VkDeviceMemory textureImageMemory;
-		VkImageView textureImageView;
-		VkSampler textureSampler;
-        VkImageLayout textureImageLayout;
-        virtual ~VK_Texture();
-        VK_Texture();
-        VK_Texture(unsigned _id , ENUM_TEXTURE_TYPE _type);
-        VK_Texture(std::vector<std::string>& cubemap_texture);
-        VK_Texture(ENUM_TEXTURE_TYPE _type, const std::string& texture_path);
-        VK_Texture(ENUM_TEXTURE_TYPE _type, unsigned width, unsigned height, unsigned level, unsigned internalformat, unsigned dataformat, ENUM_TEXTURE_USAGE_TYPE usage_type= ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_NOT_VALID);
+	static void METHOD(GenerateImageCreateInfo)(VkImageCreateInfo& image_create_info, VK_Device& in_device, const TextureDesc& desc);
+	static void METHOD(GenerateViewCreateInfo)(VkImageViewCreateInfo& view_create_info, VK_Device& in_device, const TextureDesc& desc, VkImage& texture_image);
 
+	void METHOD(UpdateTextureData)(CONST TextureDataPayload& texture_data_payload) OVERRIDE;
 
+protected:
+	void load_dds(ENUM_TEXTURE_TYPE _type, const std::string& texture_path);
+	void load_dds_cubemap(ENUM_TEXTURE_TYPE _type, const std::string& texture_path);
+	void load_dds_2d(ENUM_TEXTURE_TYPE _type, const std::string& texture_path);
+	void load_common_2d(const std::string& texture_path);
+	VkFormat trans_gli_format_to_vulkan(gli::format format);
+	std::string get_file_extension(const std::string& filename);
 
-        VK_Texture(std::string texture_path);
+private:
 
-        unsigned get_type() const;
+#pragma endregion
 
-        void unbind();
+#pragma region MEMBER
+public:
 
-        void bind();
+protected:
+	VK_Device* device;
+	VkDeviceSize imageSize;
 
-        unsigned get_id() const;
+	VkImage texture_image;
+	VkImageView texture_image_view;
+	VkSampler texture_sampler;
 
-        void free() ;
+	VkImageLayout texture_image_layout;
 
-        bool is_valid() const;
+	VK_Allocation allocation;
+private:
 
-        VkAttachmentDescription& get_attachment_description();
-        VkAttachmentReference& get_attachment_reference();
+#pragma endregion
 MYRENDERER_END_CLASS
+
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
