@@ -21,9 +21,11 @@ public:
 	VIRTUAL void* METHOD(Map)() OVERRIDE;
 	VIRTUAL void METHOD(Unmap)() OVERRIDE;
 
+	void Destroy();
+
 	static void METHOD(GenerateBufferCreateInfo)(VkBufferCreateInfo& buffer_create_info, const BufferDesc& desc);
 protected:
-
+	void AllocateMemory();
 private:
 
 #pragma endregion

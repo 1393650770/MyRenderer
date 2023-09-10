@@ -45,9 +45,9 @@ private:
 
 #pragma region MEMBER
 public:
-	BufferDesc buffer_desc;
-protected:
 
+protected:
+	BufferDesc buffer_desc;
 private:
 #pragma endregion
 

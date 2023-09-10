@@ -1,4 +1,5 @@
 #include"VK_Buffer.h"
+#include "VK_Define.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -17,7 +18,10 @@ device(&in_device)
 {
 	VkBufferCreateInfo buffer_create_info = {};
 	GenerateBufferCreateInfo(buffer_create_info, in_buffer_desc);
-	vkCreateBuffer(device->GetDevice(), &buffer_create_info, nullptr, &buffer);
+	vkCreateBuffer(device->GetDevice(), &buffer_create_info, VULKAN_CPU_ALLOCATOR, &buffer);
+
+	AllocateMemory();
+
 }
 
 void VK_Buffer::GenerateBufferCreateInfo(VkBufferCreateInfo& buffer_create_info, const BufferDesc& desc)
@@ -27,7 +31,20 @@ void VK_Buffer::GenerateBufferCreateInfo(VkBufferCreateInfo& buffer_create_info,
 	buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 }
 
-VK_BufferManager::VK_BufferManager(VK_Device* in_device) :device(&in_device)
+void VK_Buffer::Destroy()
+{
+
+}
+
+void VK_Buffer::AllocateMemory()
+{
+	switch (buffer_desc.usage)
+	{
+
+	}
+}
+
+VK_BufferManager::VK_BufferManager(VK_Device* in_device) :device(in_device)
 {
 
 }

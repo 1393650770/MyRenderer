@@ -31,8 +31,9 @@ namespace MXRender
 		None=0,
 		Static,
 		Dynamic,
-		
-
+		Index,
+		Vertex,
+		Staging,
 		Count
 	};
 
