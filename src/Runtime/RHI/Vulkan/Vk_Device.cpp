@@ -6,6 +6,7 @@
 #include "VK_Queue.h"
 #include "VK_Memory.h"
 #include "VK_Define.h"
+#include "VK_CommandBuffer.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -15,22 +16,22 @@ QueueFamilyIndices VK_Device::FindQueueFamilies(VkPhysicalDevice device)
 {
 	QueueFamilyIndices indices;
 
-	uint32_t queue_family_count = 0;
+	UInt32 queue_family_count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
 
-	std::vector<VkQueueFamilyProperties> queueFamilies(queue_family_count);
+	Vector<VkQueueFamilyProperties> queueFamilies(queue_family_count);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queueFamilies.data());
 
-	int i = 0;
-	for (const auto& queueFamily : queueFamilies) {
+	Int i = 0;
+	for (CONST auto& queueFamily : queueFamilies) {
 		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-			indices.graphicsFamily = i;
+			indices.graphics_family = i;
 		}
 		if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
-			indices.computeFamily = i;
+			indices.compute_family = i;
 		}
 		if (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) {
-			indices.transferFamily = i;
+			indices.transfer_family = i;
 		}
 
 		//VkBool32 presentSupport = false;
@@ -52,10 +53,10 @@ QueueFamilyIndices VK_Device::FindQueueFamilies(VkPhysicalDevice device)
 
 void VK_Device::CreateDevice(Bool enable_validation_layers, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers)
 {
-	QueueFamilyIndices indices = FindQueueFamilies(gpu);
+	queue_family_indices = FindQueueFamilies(gpu);
 
 	Vector<VkDeviceQueueCreateInfo> queue_create_infos;
-	Set<UInt32> unique_queue_families = { indices.graphicsFamily.value(), indices.computeFamily.value() };
+	Set<UInt32> unique_queue_families = { queue_family_indices.graphics_family.value(), queue_family_indices.compute_family.value() };
 
 	float queuePriority = 1.0f;
 	for (UInt32   queueFamily : unique_queue_families) {
@@ -93,7 +94,7 @@ void VK_Device::CreateDevice(Bool enable_validation_layers, Vector<CONST Char*> 
 	}
 
 	CHECK_WITH_LOG(vkCreateDevice(gpu, &create_info, nullptr, &(device)) != VK_SUCCESS,"RHI Error: failed to create logical device!");
-	CreateQueue(indices);
+	CreateQueue(queue_family_indices);
 }
 
 
@@ -105,8 +106,8 @@ void VK_Device::GetDeviceExtensionsAndLayers(VkPhysicalDevice Gpu, UInt32 Vendor
 }
 void VK_Device::CreateQueue(QueueFamilyIndices family_indice)
 {
-	graph_queue=new VK_Queue(this,family_indice.graphicsFamily.value());
-	compute_queue = new VK_Queue(this, family_indice.computeFamily.value());
+	graph_queue=new VK_Queue(this,family_indice.graphics_family.value());
+	compute_queue = new VK_Queue(this, family_indice.compute_family.value());
 	//present_queue = new VK_Queue(this, family_indice.presentFamily.value());
 }
 
@@ -117,6 +118,7 @@ void VK_Device::Init(Int device_index,Bool enable_validation_layers, Vector<CONS
 	device_memory_manager=new VK_DeviceMemoryManager(this);
 	memory_manager=new VK_MemoryManager(this);
 	fence_manager=new VK_FenceManager(this);
+	command_buffer_manager=new VK_CommandBufferManager(this);
 }
 
 VkDevice VK_Device::GetDevice()
@@ -144,7 +146,7 @@ VK_MemoryManager* VK_Device::GetMemoryManager()
 	return memory_manager;
 }
 
-const OptionalVulkanDeviceExtensions& VK_Device::GetOptionalExtensions() const
+CONST OptionalVulkanDeviceExtensions& VK_Device::GetOptionalExtensions() CONST
 {
 	return extensions;
 }
@@ -171,9 +173,14 @@ void VK_Device::CreatePresentQueue(VkSurfaceKHR surface)
 	}
 }
 
-const VkPhysicalDeviceLimits& VK_Device::GetLimits() const
+CONST VkPhysicalDeviceLimits& VK_Device::GetLimits() CONST
 {
 	return gpu_props.limits;
+}
+
+QueueFamilyIndices VK_Device::GetQueueFamilyIndices() CONST
+{
+	return queue_family_indices;
 }
 
 VK_Device::~VK_Device()
@@ -230,6 +237,12 @@ void VK_Device::Destroy()
 		delete memory_manager;
 		memory_manager=nullptr;
 	}
+	if (command_buffer_manager)
+	{
+		delete command_buffer_manager;
+		command_buffer_manager=nullptr;
+	}
+
 	if (device)
 	{
 		vkDestroyDevice(device, VULKAN_CPU_ALLOCATOR);

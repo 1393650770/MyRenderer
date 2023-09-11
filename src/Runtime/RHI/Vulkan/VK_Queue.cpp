@@ -31,7 +31,7 @@ UInt32 VK_Queue::GetQueueIndex() const
 	return queue_index;
 }
 
-void VK_Queue::Submit(VK_CommandBuffer* command_list, UInt32 num_signal_semaphores, VkSemaphore* signal_semaphores)
+void VK_Queue::Submit(VK_CommandBuffer* command_list, UInt32 num_signal_semaphores, VkSemaphore* signal_semaphores, UInt32 num_wait_semaphores, VkSemaphore* wait_semaphores)
 {
 	const VkCommandBuffer command_buffers[]={command_list->GetCommandBuffer()};
 	VkSubmitInfo submitInfo = {};
@@ -40,7 +40,8 @@ void VK_Queue::Submit(VK_CommandBuffer* command_list, UInt32 num_signal_semaphor
 	submitInfo.pCommandBuffers=command_buffers;
 	submitInfo.signalSemaphoreCount=num_signal_semaphores;
 	submitInfo.pSignalSemaphores=signal_semaphores;
-
+	submitInfo.waitSemaphoreCount= num_wait_semaphores;
+	submitInfo.pWaitSemaphores= wait_semaphores;
 	VK_Fence* fence = command_list->GetFence();
 
 	vkQueueSubmit(queue,1,&submitInfo,fence->GetFence());

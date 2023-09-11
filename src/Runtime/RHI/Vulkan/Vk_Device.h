@@ -8,8 +8,6 @@
 #include "VK_RenderRHI.h"
 #include "VK_Memory.h"
 
-
-
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
@@ -18,7 +16,7 @@ class VK_Queue;
 class VK_FenceManager;
 class VK_DeviceMemoryManager;
 class VK_MemoryManager;
-
+class VK_CommandBufferManager;
 MYRENDERER_BEGIN_STRUCT(OptionalVulkanDeviceExtensions)
 union
 {
@@ -91,12 +89,12 @@ MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_CLASS(QueueFamilyIndices)
 public:
-std::optional<uint32_t> graphicsFamily;
-//std::optional<uint32_t> presentFamily;
-std::optional<uint32_t> transferFamily;
-std::optional<uint32_t> computeFamily;
+std::optional<UInt32> graphics_family;
+//std::optional<UInt32> presentFamily;
+std::optional<UInt32> transfer_family;
+std::optional<UInt32> compute_family;
 Bool isComplete() {
-	return graphicsFamily.has_value() &&  computeFamily.has_value();
+	return graphics_family.has_value() &&  compute_family.has_value();
 }
 MYRENDERER_END_CLASS
 
@@ -125,6 +123,7 @@ public:
 	CONST OptionalVulkanDeviceExtensions& METHOD(GetOptionalExtensions)() CONST;
 	void METHOD(CreatePresentQueue)(VkSurfaceKHR surface);
 	CONST VkPhysicalDeviceLimits&  METHOD(GetLimits)() CONST;
+	QueueFamilyIndices METHOD(GetQueueFamilyIndices)() CONST;
 #pragma endregion
 
 #pragma region MEMBER
@@ -141,10 +140,11 @@ protected:
 	VK_Queue* compute_queue = nullptr;
 	VK_Queue* transfer_queue = nullptr;
 	VK_Queue* present_queue = nullptr;
-
+	QueueFamilyIndices queue_family_indices;
 	VK_FenceManager* fence_manager= nullptr;
 	VK_DeviceMemoryManager* device_memory_manager=nullptr;
 	VK_MemoryManager* memory_manager = nullptr;
+	VK_CommandBufferManager* command_buffer_manager = nullptr;
 public:
 
 

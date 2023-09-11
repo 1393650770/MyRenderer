@@ -34,6 +34,9 @@ namespace MXRender
 		Index,
 		Vertex,
 		Staging,
+		Uniform,
+		Storage,
+		Indirect,
 		Count
 	};
 
@@ -135,7 +138,15 @@ namespace MXRender
 	};
 	ENUM_CLASS_FLAGS(ENUM_TEXTURE_USAGE_TYPE)
 
-
+	enum class ENUM_QUEUE_TYPE :UInt8
+	{
+		NOT_VALID = 0,
+		GRAPHICS,
+		COMPUTE,
+		TRANSFER,
+		PRESENT,
+		COUNT
+	};;
 
 	/// Texture formats:
 	enum class ENUM_TEXTURE_FORMAT

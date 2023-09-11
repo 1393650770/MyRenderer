@@ -31,6 +31,11 @@ VK_FenceManager* VK_Fence::GetOwner() const
 	return owner_fence_manager;
 }
 
+Bool VK_Fence::GetIsSignaled() CONST
+{
+	return state == ENUM_Fence_State::Signaled;
+}
+
 VK_FenceManager::VK_FenceManager(VK_Device* in_device): device(in_device)
 {
 }
@@ -81,7 +86,7 @@ void VK_FenceManager::ResetFence(VK_Fence* fence)
 Bool VK_FenceManager::WaitForFence(VK_Fence* fence, UInt64 time_in_nanoseconds)
 {
 	auto find_result= std::find(using_fences.begin(),using_fences.end(),fence);
-	CHECK_WITH_LOG (find_result!=using_fences.end(),"RHI Error: fence is not in FenceManager !");
+	CHECK_WITH_LOG (find_result==using_fences.end(),"RHI Error: fence is not in FenceManager !");
 	VkResult result =vkWaitForFences(device->GetDevice(), 1, &(fence->fence), true, time_in_nanoseconds);
 	switch (result)
 	{

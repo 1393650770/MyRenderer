@@ -10,7 +10,7 @@ MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_STRUCT(BufferDesc)
 UInt32 size=0;
 UInt32 stride=0;
-ENUM_BUFFER_TYPE usage = ENUM_BUFFER_TYPE::None;
+ENUM_BUFFER_TYPE type = ENUM_BUFFER_TYPE::None;
 
 BufferDesc(const BufferDesc& other)
 {
@@ -21,7 +21,7 @@ BufferDesc& operator=(const BufferDesc& other)
 {
 	size = other.size;
 	stride = other.stride;
-	usage = other.usage;
+	type = other.type;
 	return *this;
 }
 

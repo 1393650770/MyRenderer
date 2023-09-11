@@ -19,11 +19,11 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Fence,public RenderResource)
 
 #pragma region METHOD
 public:
-    VK_Fence(VK_Device* in_device,VK_FenceManager* in_fence_manager, bool is_create_signaled);
+    VK_Fence(VK_Device* in_device,VK_FenceManager* in_fence_manager, Bool is_create_signaled);
     VIRTUAL~VK_Fence();
-    VkFence METHOD(GetFence)() const;
-    VK_FenceManager* METHOD(GetOwner)() const;
-
+    VkFence METHOD(GetFence)() CONST;
+    VK_FenceManager* METHOD(GetOwner)() CONST;
+    Bool METHOD(GetIsSignaled)() CONST;
 protected:
     
 private:
@@ -37,6 +37,13 @@ protected:
     VK_Device* device;
     VK_FenceManager* owner_fence_manager;
     VkFence fence;
+	enum class ENUM_Fence_State : UInt8
+	{
+		NotReady,
+		Signaled,
+	};
+    ENUM_Fence_State state;
+
 private:
 
 #pragma endregion

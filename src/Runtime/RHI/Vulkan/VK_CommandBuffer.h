@@ -6,7 +6,7 @@
 #include "../../Core/ConstDefine.h"
 #include "optick.h"
 #include "../RenderRource.h"
-
+#include "VK_Device.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -24,6 +24,7 @@ public:
 	VIRTUAL ~VK_CommandBufferPool();
 
 	VK_CommandBuffer* METHOD(GetOrCreateCommandBuffer)(Bool is_upload_only);
+	void METHOD(FreeUnusedCommandBuffer)(VK_Queue* queue);
 	void METHOD(Init)(UInt32 queue_family_index);
 	VkCommandPool METHOD(GetPool)() CONST;
 protected:
@@ -49,7 +50,10 @@ private:
 #pragma endregion
 MYRENDERER_END_CLASS
 
+
+
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_CommandBuffer, public RenderResource)
+friend VK_CommandBufferPool;
 #pragma region METHOD
 public:
 	VK_CommandBuffer(VK_Device* in_device, VK_CommandBufferPool* in_command_buffer_pool, Bool in_is_upload_only);
@@ -57,6 +61,7 @@ public:
 
 	VkCommandBuffer METHOD(GetCommandBuffer)() CONST;
 	VK_Fence* METHOD(GetFence)() CONST;
+	Bool METHOD(WaitForFence)(float time_in_seconds_to_wait);
 protected:
 	void METHOD(Allocate)();
 	void METHOD(Free)();
@@ -83,8 +88,11 @@ MYRENDERER_END_CLASS
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_CommandBufferManager, public RenderResource)
 #pragma region METHOD
 public:
-VK_CommandBufferManager();
+
+VK_CommandBufferManager(VK_Device* in_device );
 VIRTUAL ~VK_CommandBufferManager();
+
+VK_CommandBuffer* METHOD(GetOrCreateCommandBuffer)(ENUM_QUEUE_TYPE queue_type);
 
 protected:
 
@@ -96,7 +104,15 @@ private:
 public:
 
 protected:
-
+	VK_Device* device;
+	Vector<VK_CommandBuffer*> graphic_cmd_buffers;
+	Vector<VK_CommandBuffer*> compute_cmd_buffers;
+	Vector<VK_CommandBuffer*> transfer_cmd_buffers;
+	Vector<VK_CommandBuffer*> present_cmd_buffers;
+	Vector<VK_CommandBufferPool> graphic_cmd_pools;
+	Vector<VK_CommandBufferPool> compute_cmd_pools;
+	Vector<VK_CommandBufferPool> transfer_cmd_pools;
+	Vector<VK_CommandBufferPool> present_cmd_pools;
 private:
 
 #pragma endregion

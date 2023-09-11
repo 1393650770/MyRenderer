@@ -21,7 +21,7 @@ public:
 	VK_Queue(VK_Device* in_device,UInt32 in_family_index);
 	VIRTUAL ~VK_Queue();
 
-	void METHOD(Submit)(VK_CommandBuffer* command_list,  UInt32 num_signal_semaphores = 0, VkSemaphore* signal_semaphores = nullptr);
+	void METHOD(Submit)(VK_CommandBuffer* command_list,  UInt32 num_signal_semaphores = 0, VkSemaphore* signal_semaphores = nullptr, UInt32 num_wait_semaphores = 0, VkSemaphore* wait_semaphores = nullptr);
 	UInt32 METHOD(GetFamily)() CONST;
 	UInt32 METHOD(GetQueueIndex)() CONST;
 protected:

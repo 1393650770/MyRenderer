@@ -24,6 +24,7 @@ public:
 	void Destroy();
 
 	static void METHOD(GenerateBufferCreateInfo)(VkBufferCreateInfo& buffer_create_info, const BufferDesc& desc);
+	static ENUM_VulkanAllocationFlags METHOD(TranslateBufferTypeToVulkanAllocationFlags)(const ENUM_BUFFER_TYPE& buffer_usage);
 protected:
 	void AllocateMemory();
 private:

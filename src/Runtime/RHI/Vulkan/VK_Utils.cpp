@@ -499,6 +499,34 @@ namespace MXRender
         }
 
 	}
+	VkBufferUsageFlags VK_Utils::Translate_Buffer_usage_type_To_VulkanUsageFlag(const ENUM_BUFFER_TYPE& usage_type)
+	{
+		switch (usage_type)
+		{
+		case ENUM_BUFFER_TYPE::Index:
+			return VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+			break;
+		case ENUM_BUFFER_TYPE::Uniform:
+			return VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+			break;
+		case ENUM_BUFFER_TYPE::Vertex:
+			return VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+			break;
+		case ENUM_BUFFER_TYPE::Staging:
+			return VK_BUFFER_USAGE_TRANSFER_SRC_BIT ;
+			break;
+		case ENUM_BUFFER_TYPE::Storage:
+			return VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+			break;
+		case ENUM_BUFFER_TYPE::Indirect:
+			return VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+			break;
+		default:
+			CHECK_WITH_LOG(true, "RHI Error: usage type error");
+			return VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		}
+		return VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	}
 
 	VkImageLayout VK_Utils::Translate_Texture_usage_type_To_Vulkan(const ENUM_TEXTURE_USAGE_TYPE& usage_type)
 	{
