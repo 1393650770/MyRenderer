@@ -34,7 +34,7 @@ namespace MXRender
         float m_Weights[MAX_BONE_INFLUENCE];
     };
 
-    struct Texture {
+    struct GLTextureInfo {
         unsigned int id;
         string type;
         string path;
@@ -44,11 +44,11 @@ namespace MXRender
     public:
         vector<Vertex>       vertices;
         vector<unsigned int> indices;
-        vector<Texture>      textures;
+        vector<GLTextureInfo>      textures;
         unsigned int VAO;
 
         GL_Mesh()=default;
-        GL_Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures);
+        GL_Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<GLTextureInfo> textures);
         void DrawArray(GL_Shader* shader, int diffuse, int specular, int emission);
         GL_Mesh(float vertices[]);
 

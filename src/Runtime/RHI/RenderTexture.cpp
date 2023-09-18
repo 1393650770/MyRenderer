@@ -1,4 +1,4 @@
-#include"MyTexture.h"
+#include"RenderTexture.h"
 #include<iostream>
 #include <glad/glad.h>
 MYRENDERER_BEGIN_NAMESPACE(MXRender)

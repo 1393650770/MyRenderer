@@ -1,6 +1,6 @@
 set_arch("x64")
 
-add_requires("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","rttr","lz4","nlohmann_json","gli","optick","boost")
+add_requires("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","rttr","lz4","nlohmann_json","gli","optick","boost","flatbuffers")
 add_requires("imgui v1.88-docking", {configs = {glfw_vulkan = true}})
 add_rules("mode.debug", "mode.release")
 add_rules("plugin.vsxmake.autoupdate")
@@ -56,7 +56,7 @@ target("Runtime")
     --add_headerfiles("src/ThirdParty/imgui/backends/*.h")
     --add_files("src/ThirdParty/imgui/backends/*.cpp")
     --]]
-    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr","lz4","nlohmann_json","gli","optick","boost")
+    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr","lz4","nlohmann_json","gli","optick","boost","flatbuffers")
     
 
 

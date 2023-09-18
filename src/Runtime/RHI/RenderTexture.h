@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef _My_TEXTURE_
-#define _My_TEXTURE_
+#ifndef _RENDER_TEXTURE_
+#define _RENDER_TEXTURE_
 
 #include "../Core/ConstDefine.h"
 #include "RenderEnum.h"
