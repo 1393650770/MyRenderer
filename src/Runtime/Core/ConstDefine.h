@@ -9,6 +9,7 @@
 #include <string>
 #include <queue>
 #include <stack>
+#include <array>
 #include <stdexcept>
 #include <boost/stacktrace.hpp>
 
@@ -120,6 +121,9 @@ using Queue =std::queue<T>;
 
 template <typename T>
 using Stack = std::stack<T>;
+
+template <class T, size_t Size>
+using Array = std::array<T, Size>;
 
 #define DLLEXPORT __declspec(dllexport)
 #define DLLIMPORT __declspec(dllimport)

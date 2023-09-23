@@ -8,7 +8,7 @@
 #include <vector>
 #include <string>
 
-#include "../MyTexture.h"
+#include "../RenderTexture.h"
 #include "vulkan/vulkan_core.h"
 #include "gli/format.hpp"
 #include "../../Core/ConstDefine.h"

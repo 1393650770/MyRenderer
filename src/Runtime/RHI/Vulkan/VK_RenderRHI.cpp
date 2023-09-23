@@ -29,7 +29,7 @@ void VulkanRHI::Init(RenderFactory* render_factory)
 	Bool enable_render_debug = vulkan_render_factory->enable_render_debug;
 	CreateInstance(enable_render_debug);
 	InitializeDebugmessenger(enable_render_debug);
-	CreateDevice();
+	CreateDevice(enable_render_debug);
 }
 
 void VulkanRHI::PostInit()

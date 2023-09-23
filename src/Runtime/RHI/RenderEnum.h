@@ -1,4 +1,5 @@
 #pragma once
+#include "../Core/ConstDefine.h"
 #ifndef _RENDER_ENUM_
 #define _RENDER_ENUM_
 
@@ -40,7 +41,7 @@ namespace MXRender
 		Count
 	};
 
-	enum  ENUM_SHADER_STAGE
+	enum ENUM_SHADER_STAGE
 	{
 		Shader_Vertex = 0,
 		Shader_Pixel = 1,
@@ -272,14 +273,14 @@ namespace MXRender
         ENUM_TYPE_DYNAMIC_COLOR,
     };
 
-    enum class ENUM_PASS_TYPE 
+    enum class ENUM_PASS_TYPE : UInt8
     {
         ENUM_TYPE_INVALID=0,
         ENUM_PASS_COLOR,
         ENUM_PASS_DEPTH,
     };
 
-	enum class ENUM_STENCIL_FUNCTION
+	enum class ENUM_STENCIL_FUNCTION : UInt8
 	{
 		ENUM_NONE = 0,
 		ENUM_ALWAYS,
@@ -292,7 +293,7 @@ namespace MXRender
 		ENUM_COUNT
 	};
 
-	enum class ENUM_STENCIL_OPERATIOON
+	enum class ENUM_STENCIL_OPERATIOON : UInt8
 	{
 		ENUM_NONE = 0,
 		ENUM_KEEP,
@@ -302,7 +303,7 @@ namespace MXRender
 		ENUM_COUNT
 	};
 
-	enum class ENUM_DEPTH_FUNCTION
+	enum class ENUM_DEPTH_FUNCTION : UInt8
 	{
 		ENUM_NONE=0,
 		ENUM_EQUAL,
@@ -316,7 +317,7 @@ namespace MXRender
 		ENUM_COUNT
 	};
 
-	enum class ENUM_BLEND_EQUATION
+	enum class ENUM_BLEND_EQUATION : UInt8
 	{
 		ENUM_NONE = 0,
 		ENUM_ADD,
@@ -325,8 +326,16 @@ namespace MXRender
 
 		ENUM_COUNT
 	};
+	enum class ENUM_COLOR_MASK : UInt8
+	{
+		Red = 1,
+		Green = 2,
+		Blue = 4,
+		Alpha = 8,
+		All = 0xF
+	};
 
-	enum class ENUM_BLEND_FACTOR
+	enum class ENUM_BLEND_FACTOR : UInt8
 	{
 		ENUM_NONE = 0,
 		ENUM_ZERO,
@@ -341,6 +350,58 @@ namespace MXRender
 		ENUM_ONE_MINUS_DST_ALPHA,
 
 		ENUM_COUNT
+	};
+
+	enum class ENUM_RASTER_FILLMODE : UInt8
+	{
+		Solid,
+		Wireframe,
+
+		// Vulkan names
+		Fill = Solid,
+		Line = Wireframe
+	};
+
+	enum class ENUM_RASTER_CULLMODE : UInt8
+	{
+		Back,
+		Front,
+		None
+	};
+
+	enum class ENUM_PRIMITIVE_TYPE : UInt8
+	{
+		PointList,
+		LineList,
+		TriangleList,
+		TriangleStrip,
+		TriangleFan,
+		TriangleListWithAdjacency,
+		TriangleStripWithAdjacency,
+		PatchList
+	};
+
+	enum class ENUM_VERTEX_ATTRIBUTE_FORMAT : UInt8
+	{
+		None,
+		Float,
+		Float2,
+		Float3,
+		Float4,
+		Byte4,
+		Byte4N,
+		UByte4,
+		UByte4N,
+		Short2,
+		Short2N,
+		Short4,
+		Short4N,
+		UShort2,
+		UShort2N,
+		UShort4,
+		UShort4N,
+		UInt10N2,
+		Count
 	};
 
 } // namespace name
