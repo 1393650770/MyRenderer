@@ -18,14 +18,8 @@ namespace MXRender { class MeshBase; }
 
 namespace MXRender
 {
-	struct RenderMeshInfo
-	{
-	public:
-		GraphicsContext* context;
 
-	};
-
-	struct VK_RenderMeshInfo:RenderMeshInfo
+	struct VK_RenderMeshInfo:RenderInfo
 	{
 	public:
 		VK_RenderMeshInfo(VkBuffer& new_vertex_buffer, VkBuffer& new_index_buffer) :
@@ -36,14 +30,8 @@ namespace MXRender
 		VkBuffer& index_buffer;
 	};
 
-	struct BindMeshInfo
-	{
-	public:
-		GraphicsContext* context;
 
-	};
-
-	struct VK_BindMeshInfo :BindMeshInfo
+	struct VK_BindMeshInfo :BindInfo
 	{
 	public:
 		//VK_BindMeshInfo(){};
@@ -81,8 +69,8 @@ namespace MXRender
 		bool get_already_load_mesh() const;
 		void set_already_load_mesh_to_true();
 
-		void render_mesh(RenderMeshInfo* render_mesh_info);
-		void bind_mesh(BindMeshInfo* bind_mesh_info);
+		void render_mesh(RenderInfo* render_mesh_info);
+		void bind_mesh(BindInfo* bind_mesh_info);
 
 		virtual void on_start() override;
 

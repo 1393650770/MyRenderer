@@ -8,6 +8,7 @@
 #include "Object.h"
 #include "Component/TransformComponent.h"
 #include "Component/StaticMeshComponent.h"
+#include "Component/TextComponent.h"
 
 namespace MXRender { class MaterialComponent; }
 

@@ -236,6 +236,8 @@ namespace MXRender
 
 		VK_Shader* copy_one_texture = new  VK_Shader(context->device, "Shader/fullscreen_vert.spv", "Shader/copy_frag.spv");
 
+		VK_Shader* sdf_text_material = new  VK_Shader(context->device, "Shader/font_mesh_vert.spv", "Shader/font_mesh_frag.spv");
+
 		VK_Shader::ReflectionOverrides overrides[] = {
 			{"mvp", VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC}	
 		};
@@ -248,7 +250,7 @@ namespace MXRender
 		gpu_driven_material->reflect_layout(overrides, 1);
 		default_transparency_material->reflect_layout(overrides, 1);
 		copy_one_texture->reflect_layout(nullptr,0);
-
+		sdf_text_material->reflect_layout(overrides, 1);
 		shaders["default_mesh"] = default_color;
 		shaders["pbr_mesh"]=pbr_material;
 		shaders["default_mesh_revert_uv"] = default_color_revert_uv;
@@ -258,7 +260,7 @@ namespace MXRender
 		shaders["gpu_driven_mesh"] = gpu_driven_material;
 		shaders["default_transparency"] = default_transparency_material;
 		shaders["copy_one_texture"]=copy_one_texture;
-
+		shaders["sdf_text_material"] = sdf_text_material;
 		PipelineShaderObject* mesh_pso =  build_pso(context->mesh_pass, mesh_pass_builder, default_color);
 		PipelineShaderObject* pbr_mesh_pso = build_pso(context->mesh_pass, mesh_pass_builder, pbr_material);
 		PipelineShaderObject* mesh_revert_uv_pso = build_pso(context->mesh_pass, mesh_pass_builder, default_color_revert_uv);
@@ -267,7 +269,7 @@ namespace MXRender
 		PipelineShaderObject* pbr_mesh_gpu_driven_pso = build_pso(context->mesh_pass, mesh_pass_builder, pbr_material_gpu_driven);
 		PipelineShaderObject* gpu_driven_mesh_pso = build_pso(context->mesh_pass, mesh_pass_builder, gpu_driven_material);
 		PipelineShaderObject* default_transparency_pso = build_pso(context->mesh_pass, mesh_pass_builder, default_transparency_material);
-
+		PipelineShaderObject* sdf_text_pso = build_pso(context->mesh_pass, mesh_pass_builder, sdf_text_material);
 		psos["mesh_pass"] = mesh_pso;
 		psos["pbr_pass"] = pbr_mesh_pso;
 		psos["mesh_revert_uv_pass"] = mesh_revert_uv_pso;
@@ -276,7 +278,7 @@ namespace MXRender
 		psos["pbr_gpu_driven_pass"] = pbr_mesh_gpu_driven_pso;
 		psos["gpu_driven_pso"] = gpu_driven_mesh_pso;
 		psos["default_transparency_pso"] = default_transparency_pso;
-
+		psos["sdf_text_pso"] = sdf_text_pso;
 		CREATE_COMPUTE_PSO_WITHOUT_OVERRIDE("Shader/depth_reduce_comp.spv",depth_reduce)
 		CREATE_COMPUTE_PSO_WITHOUT_OVERRIDE("Shader/gpu_culling_comp.spv", gpu_culling)
 		CREATE_COMPUTE_PSO_WITHOUT_OVERRIDE("Shader/upload_comp.spv", upload)
@@ -312,6 +314,10 @@ namespace MXRender
 		templateCache["default_transparency"].pass_pso[MeshpassType::Forward] = default_transparency_pso;
 		templateCache["default_transparency"].pass_pso[MeshpassType::Transparency] = nullptr;
 		templateCache["default_transparency"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
+		
+		templateCache["sdf_text"].pass_pso[MeshpassType::Forward] = sdf_text_pso;
+		templateCache["sdf_text"].pass_pso[MeshpassType::Transparency] = nullptr;
+		templateCache["sdf_text"].pass_pso[MeshpassType::DirectionalShadow] = nullptr;
 	}
 
 	void MaterialSystem::destroy()

@@ -1,7 +1,7 @@
 #include"VK_Texture.h"
 #include<iostream>
 #include <glad/glad.h>
-#include"../../../ThirdParty/stb_image/stb_image.h"
+#include"stb_image.h"
 #include "VK_Utils.h"
 #include "../RenderRource.h"
 #include "../RenderUtils.h"
@@ -523,6 +523,12 @@ namespace MXRender
 		{
 			texture_layer_byte_size = texture_data[0]->width * texture_data[0]->height * 4;
 			vulkan_image_format = VK_FORMAT_R8G8B8A8_SRGB;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::R8:
+		{
+			texture_layer_byte_size = texture_data[0]->width * texture_data[0]->height ;
+			vulkan_image_format = VK_FORMAT_R8_SRGB;
 			break;
 		}
 		default:
@@ -1077,6 +1083,134 @@ namespace MXRender
 		vkDestroyImage(device.lock()->device, textureImage, nullptr);
 		vkFreeMemory(device.lock()->device, textureImageMemory, nullptr);
     }
- 
+
+	void VK_Texture::updata(ENUM_TEXTURE_FORMAT format, unsigned width, unsigned height, unsigned level, void* data)
+	{
+
+	}
+
     
+	void VK_Texture::updata(TextureData* texture_data)
+	{
+		std::weak_ptr<VK_Device> device = Singleton<DefaultSetting>::get_instance().context->device;
+		if (device.expired()) return;
+		VkDeviceSize texture_layer_byte_size;
+		VkDeviceSize texture_byte_size;
+		VkFormat     vulkan_image_format;
+		int miplevels = texture_data->mip_levels;
+		unsigned layer_cout = 1;
+		switch (texture_data->format)
+		{
+		case ENUM_TEXTURE_FORMAT::RGBA8S:
+		{
+			texture_layer_byte_size = texture_data->width * texture_data->height * 4;
+			vulkan_image_format = VK_FORMAT_R8G8B8A8_SRGB;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::RGBA8U:
+		{
+			texture_layer_byte_size = texture_data->width * texture_data->height * 4;
+			vulkan_image_format = VK_FORMAT_R8G8B8A8_SRGB;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::R8:
+		{
+			texture_layer_byte_size = texture_data->width * texture_data->height;
+			vulkan_image_format = VK_FORMAT_R8_SRGB;
+			break;
+		}
+		default:
+		{
+			texture_layer_byte_size = VkDeviceSize(-1);
+			throw std::runtime_error("invalid texture_layer_byte_size");
+			break;
+		}
+		}
+		texture_byte_size = texture_layer_byte_size;
+		uint32_t texture_image_width = texture_data->width;
+		uint32_t texture_image_height = texture_data->height;
+		VkImageCreateInfo image_create_info{};
+		image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+
+		image_create_info.imageType = VK_IMAGE_TYPE_2D;
+		image_create_info.extent.width = static_cast<uint32_t>(texture_image_width);
+		image_create_info.extent.height = static_cast<uint32_t>(texture_image_height);
+		image_create_info.extent.depth = 1;
+		image_create_info.mipLevels = miplevels;
+		image_create_info.arrayLayers = layer_cout;
+		image_create_info.format = vulkan_image_format;
+		image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		image_create_info.usage =
+			VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+		image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		if (vkCreateImage(device.lock()->device, &image_create_info, nullptr, &textureImage) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create image!");
+		}
+
+		VkMemoryRequirements memRequirements;
+		vkGetImageMemoryRequirements(device.lock()->device, textureImage, &memRequirements);
+
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = memRequirements.size;
+		allocInfo.memoryTypeIndex = VK_Utils::Find_MemoryType(device, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+		if (vkAllocateMemory(device.lock()->device, &allocInfo, nullptr, &textureImageMemory) != VK_SUCCESS) {
+			throw std::runtime_error("failed to allocate image memory!");
+		}
+
+		vkBindImageMemory(device.lock()->device, textureImage, textureImageMemory, 0);
+
+		VkBuffer       inefficient_staging_buffer;
+		VkDeviceMemory inefficient_staging_buffer_memory;
+		VK_Utils::Create_VKBuffer(device,
+			texture_byte_size,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			inefficient_staging_buffer,
+			inefficient_staging_buffer_memory);
+
+		void* data;
+		vkMapMemory(device.lock()->device, inefficient_staging_buffer_memory, 0, texture_byte_size, 0, &data);
+
+		memcpy((void*)(static_cast<char*>(data)),
+			texture_data->pixels,
+			static_cast<size_t>(texture_layer_byte_size));
+		
+		vkUnmapMemory(device.lock()->device, inefficient_staging_buffer_memory);
+		VK_Utils::Transition_ImageLayout(Singleton<DefaultSetting>::get_instance().context, textureImage,
+			VK_IMAGE_LAYOUT_UNDEFINED,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			layer_cout,
+			miplevels,
+			VK_IMAGE_ASPECT_COLOR_BIT);
+		VK_Utils::Copy_Buffer_To_Image(Singleton<DefaultSetting>::get_instance().context, inefficient_staging_buffer,
+			textureImage,
+			static_cast<uint32_t>(texture_image_width),
+			static_cast<uint32_t>(texture_image_height),
+			layer_cout);
+		VK_Utils::Transition_ImageLayout(Singleton<DefaultSetting>::get_instance().context, textureImage,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			layer_cout,
+			miplevels,
+			VK_IMAGE_ASPECT_COLOR_BIT);
+		vkDestroyBuffer(device.lock()->device, inefficient_staging_buffer, nullptr);
+		vkFreeMemory(device.lock()->device, inefficient_staging_buffer_memory, nullptr);
+
+		textureImageView = VK_Utils::Create_ImageView(device.lock()->device,
+			textureImage,
+			vulkan_image_format,
+			VK_IMAGE_ASPECT_COLOR_BIT,
+			VK_IMAGE_VIEW_TYPE_2D,
+			layer_cout,
+			miplevels);
+
+		textureSampler = VK_Utils::Create_Linear_Sampler(device.lock()->gpu, device.lock()->device);
+		textureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	}
+
 } // namespace MX

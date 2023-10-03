@@ -98,7 +98,7 @@ void MXRender::StaticMeshComponent::set_already_load_mesh_to_true()
 	is_already_load_mesh=true;
 }
 
-void MXRender::StaticMeshComponent::render_mesh(RenderMeshInfo* render_mesh_info)
+void MXRender::StaticMeshComponent::render_mesh(RenderInfo* render_mesh_info)
 {
 	switch (RenderState::render_api_type)
 	{
@@ -123,7 +123,7 @@ void MXRender::StaticMeshComponent::render_mesh(RenderMeshInfo* render_mesh_info
 	}
 }
 
-void MXRender::StaticMeshComponent::bind_mesh(BindMeshInfo* bind_mesh_info)
+void MXRender::StaticMeshComponent::bind_mesh(BindInfo* bind_mesh_info)
 {
 	switch (RenderState::render_api_type)
 	{

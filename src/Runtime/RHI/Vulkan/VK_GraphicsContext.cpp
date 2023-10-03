@@ -12,7 +12,7 @@
 #include "../../Logic/TaskScheduler.h"
 
 #define VMA_IMPLEMENTATION
-#include "../../../ThirdParty/vma/vk_mem_alloc.h"
+#include "vk_mem_alloc.h"
 #include "../MyTexture.h"
 #include "optick.h"
 

@@ -89,6 +89,7 @@ namespace MXRender
 		void register_render_object(GameObject* game_object);
 		void update_object_transform(GameObject* game_object);
 		RenderObject* get_render_object(Handle<RenderObject> objectID);
+		RenderObject* get_text_render_object(Handle<RenderObject> objectID);
 		Material* get_material(Handle<Material> materialID);
 		DrawMesh* get_mesh(Handle<DrawMesh> meshID);
 		void merger_mesh();
@@ -101,13 +102,16 @@ namespace MXRender
 		std::vector<Handle<RenderObject>>& get_dirty_objects();
 		const RenderObject& get_renderable_obj(int index) const;
 		int get_renderables_size() const;
+		const RenderObject& get_text_renderable_obj(int index) const;
+		int get_text_renderables_size() const;
 		void destroy();
 	protected:
 		std::unordered_map<GameObject* , Handle<RenderObject>> renderObjectConvert;
 		std::unordered_map<Material*, Handle<Material>> materialConvert;
 		std::unordered_map<MeshBase*, Handle<DrawMesh>> meshConvert;
 
-		std::vector<RenderObject> renderables;
+		std::vector<RenderObject> mesh_renderables;
+		std::vector<RenderObject> text_renderables;
 		std::vector<DrawMesh> meshes;
 		std::vector<Material*> materials;
 		std::vector<Handle<RenderObject>> dirtyObjects;

@@ -1,6 +1,6 @@
 set_arch("x64")
 
-add_requires("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","rttr","lz4","nlohmann_json","gli","optick")
+add_requires("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","rttr","lz4","nlohmann_json","gli","optick","boost","flatbuffers","msdfgen","spirv-reflect","lodepng")
 add_requires("imgui v1.88-docking", {configs = {glfw_vulkan = true}})
 add_rules("mode.debug", "mode.release")
 add_rules("plugin.vsxmake.autoupdate")
@@ -11,12 +11,15 @@ add_rules("plugin.vsxmake.autoupdate")
 target("Runtime")
     set_kind("static")
     set_languages("c++20")  
-    
+    --add_includedirs("$(projectdir)/ThirdParty")
+    add_linkdirs("$(projectdir)/libs")
+    add_includedirs("$(projectdir)/ThirdParty/include")
+    add_links("freetype")
     --add_headerfiles("src/ThirdParty/spv_reflect/*.h") 
     --add_headerfiles("src/ThirdParty/spv_reflect/include/spirv/unified1/*.h") 
     add_headerfiles("src/**.h")
     add_files("src/**.cpp")
-    add_files("src/**.c")
+    --add_files("src/**.c")
     --[[
     add_files("src/Runtime/Mesh/*.cpp") 
     add_files("src/Runtime/RHI/OpenGL/*.cpp") 
@@ -56,7 +59,7 @@ target("Runtime")
     --add_headerfiles("src/ThirdParty/imgui/backends/*.h")
     --add_files("src/ThirdParty/imgui/backends/*.cpp")
     --]]
-    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr","lz4","nlohmann_json","gli","optick")
+    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr","lz4","nlohmann_json","gli","optick","boost","flatbuffers","msdfgen","spirv-reflect","lodepng")
     
 
 
@@ -79,6 +82,7 @@ target("Renderer")
         os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)")
         os.cp("$(projectdir)/src/Resource", "$(buildir)")
         os.cp("$(projectdir)/src/Setting", "$(buildir)")
+        os.cp("$(projectdir)/libs/", "$(buildir)")
     end)
 
     after_build(
@@ -86,6 +90,7 @@ target("Renderer")
             os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)/windows/x64/debug")
             os.cp("$(projectdir)/src/Resource", "$(buildir)/windows/x64/debug")
             os.cp("$(projectdir)/src/Setting", "$(buildir)/windows/x64/debug")
+            os.cp("$(projectdir)/libs/", "$(buildir)/windows/x64/debug")
         end
     )
 

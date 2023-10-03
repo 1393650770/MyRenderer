@@ -10,6 +10,8 @@
 #include "vulkan/vulkan_core.h"
 #include "gli/format.hpp"
 
+namespace MXRender { class TextureData; }
+
 namespace MXRender
 {
 
@@ -42,8 +44,8 @@ namespace MXRender
         VK_Texture(ENUM_TEXTURE_TYPE _type, const std::string& texture_path);
         VK_Texture(ENUM_TEXTURE_TYPE _type, unsigned width, unsigned height, unsigned level, unsigned internalformat, unsigned dataformat, ENUM_TEXTURE_USAGE_TYPE usage_type= ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_NOT_VALID);
 
-
-
+        void updata(ENUM_TEXTURE_FORMAT format, unsigned width, unsigned height, unsigned level,void* data);
+        void updata(TextureData* texture_data);
         VK_Texture(std::string texture_path);
 
         unsigned get_type() const;

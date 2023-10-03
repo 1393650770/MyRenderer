@@ -22,6 +22,7 @@ namespace MXRender
 		T* get_component(const std::string& component_type_name);
 		template<typename T>
 		const T* get_component_const(const std::string& component_type_name) const;
+		void add_component(ComponentBase* component_type_name);
 		virtual std::string get_name();
 		Object();
 		virtual ~Object();
@@ -55,6 +56,8 @@ namespace MXRender
 		}
 		return nullptr;
 	}
+
+
 #define get_component_const(COMPONENT_TYPE) get_component_const<const COMPONENT_TYPE>(#COMPONENT_TYPE)
 #define get_component(COMPONENT_TYPE) get_component<COMPONENT_TYPE>(#COMPONENT_TYPE)
 }

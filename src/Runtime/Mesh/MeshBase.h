@@ -13,6 +13,8 @@ namespace MXRender { class GraphicsContext; }
 namespace MXRender
 {
     struct SimpleVertex;
+
+
     struct MeshInfo
     {
 
@@ -27,10 +29,10 @@ namespace MXRender
     struct VK_MeshInfo:public MeshInfo
     {
     public:
-		VkBuffer vertex_buffer;
-		VkDeviceMemory vertex_buffer_memory;
-		VkBuffer index_buffer;
-		VkDeviceMemory index_buffer_memory;
+		VkBuffer vertex_buffer=VK_NULL_HANDLE;
+		VkDeviceMemory vertex_buffer_memory = VK_NULL_HANDLE;
+		VkBuffer index_buffer = VK_NULL_HANDLE;
+		VkDeviceMemory index_buffer_memory = VK_NULL_HANDLE;
     };
 
 	struct RenderBounds {
@@ -55,6 +57,8 @@ namespace MXRender
         bool load_asset(const  char* filename);
         virtual void destroy_mesh_info(GraphicsContext* context);
         virtual void init_mesh_info(GraphicsContext* context);
+        virtual void bind(GraphicsContext* context);
+        virtual void render(GraphicsContext* context);
     };
 
 }

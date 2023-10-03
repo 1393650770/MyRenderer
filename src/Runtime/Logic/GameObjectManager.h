@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include "../RHI/Vulkan/VK_Utils.h"
 
+namespace MXRender { class TextBase; }
+
 
 namespace MXRender { class VK_Texture; }
 
@@ -40,6 +42,7 @@ namespace MXRender
 	private:
 		void load_objs();
 	protected:
+		std::unordered_map<std::string, TextBase*> _text_ttfes;
 		std::unordered_map<std::string, MeshBase*> _meshes;
 		std::unordered_map<std::string, CacheTexture> _loadedTextures;
 		std::unordered_map<std::string, assets::PrefabInfo*> _prefabCache;
@@ -56,6 +59,7 @@ namespace MXRender
 		void start_load_prefabs(GraphicsContext* context);
 		void set_overload_material(GraphicsContext* context);
 		void start_load_asset(GraphicsContext* context);
+		const std::unordered_map<std::string, TextBase*>& get_text_cache() const;
 		const std::unordered_map<std::string, MeshBase*>& get_mesh_cache() const;
 		const std::unordered_map<std::string, CacheTexture >& get_texture_cache() const;
 		const std::unordered_map<std::string, assets::PrefabInfo*>& get_prefab_cache() const;

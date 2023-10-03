@@ -7,8 +7,7 @@
 #include"VK_Utils.h"
 
 #include <algorithm>
-#include "../../../ThirdParty/spv_reflect/spirv_reflect.h"
-
+#include <spirv_reflect.h>
 namespace MXRender
 {
 	std::vector<uint32_t> VK_Shader::readFile(const std::string& filename)

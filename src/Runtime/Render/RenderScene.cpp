@@ -9,6 +9,7 @@
 #include "optick.h"
 #include "DefaultSetting.h"
 #include "../Utils/Singleton.h"
+#include "../Mesh/TextBase.h"
 namespace MXRender
 {
 
@@ -60,7 +61,14 @@ namespace MXRender
 		if (renderObjectConvert.find(game_object)!=renderObjectConvert.end())
 		{
 			RenderObject* render_object= get_render_object(renderObjectConvert[game_object]);
-			
+			if(game_object ->get_component(TextComponent)!=nullptr)
+			{
+				render_object = get_text_render_object(renderObjectConvert[game_object]);
+			}
+			if (render_object == nullptr)
+			{
+				return;
+			}
 			render_object->transformMatrix= game_object->get_transform()->get_model_matrix();
 		}
 		OPTICK_POP()
@@ -68,7 +76,12 @@ namespace MXRender
 
 	MXRender::RenderObject* RenderScene::get_render_object(Handle<RenderObject> objectID)
 	{
-		return &renderables[objectID.handle];
+		return &mesh_renderables[objectID.handle];
+	}
+
+	MXRender::RenderObject* RenderScene::get_text_render_object(Handle<RenderObject> objectID)
+	{
+		return &text_renderables[objectID.handle];
 	}
 
 	MXRender::Material* RenderScene::get_material(Handle<Material> materialID)
@@ -140,7 +153,7 @@ namespace MXRender
 	void RenderScene::merger_renderobj()
 	{
 		uint32_t i=0;
-		for (auto& obj : renderables)
+		for (auto& obj : mesh_renderables)
 		{
 			merge_batch[obj.merge_key].push_back(Handle<RenderObject>(i));
 			i++;
@@ -185,12 +198,12 @@ namespace MXRender
 		int dataIndex = 0;
 		if (Singleton<DefaultSetting>::get_instance().is_enable_batch==false)
 		{
-			for (int i = 0; i < renderables.size(); i++) {
+			for (int i = 0; i < mesh_renderables.size(); i++) {
 				target[dataIndex].command.firstInstance = i;//i;
 				target[dataIndex].command.instanceCount = 0;
-				target[dataIndex].command.firstIndex = get_mesh(renderables[i].meshID)->firstIndex;
-				target[dataIndex].command.vertexOffset = get_mesh(renderables[i].meshID)->firstVertex;
-				target[dataIndex].command.indexCount = get_mesh(renderables[i].meshID)->indexCount;
+				target[dataIndex].command.firstIndex = get_mesh(mesh_renderables[i].meshID)->firstIndex;
+				target[dataIndex].command.vertexOffset = get_mesh(mesh_renderables[i].meshID)->firstVertex;
+				target[dataIndex].command.indexCount = get_mesh(mesh_renderables[i].meshID)->indexCount;
 				target[dataIndex].objectID = i;
 				target[dataIndex].batchID = i;
 				dataIndex++;
@@ -222,7 +235,7 @@ namespace MXRender
 		int dataIndex = 0;
 		if (Singleton<DefaultSetting>::get_instance().is_enable_batch==false)
 		{
-			for (int i = 0; i < renderables.size(); i++) {
+			for (int i = 0; i < mesh_renderables.size(); i++) {
 				target[dataIndex].objectID = i;
 				target[dataIndex].batchID = i;
 				dataIndex++;
@@ -250,15 +263,25 @@ namespace MXRender
 
 	const MXRender::RenderObject& RenderScene::get_renderable_obj(int index) const
 	{
-		return renderables[index];
+		return mesh_renderables[index];
 	}
 
 	int RenderScene::get_renderables_size() const
 	{
-		return renderables.size();
+		return mesh_renderables.size();
 	}
 
 	
+	const MXRender::RenderObject& RenderScene::get_text_renderable_obj(int index) const
+	{
+		return text_renderables[index];
+	}
+
+	int RenderScene::get_text_renderables_size() const
+	{
+		return text_renderables.size();
+	}
+
 	void RenderScene::destroy()
 	{
 		if (Singleton<DefaultSetting>::get_instance().is_enable_gpu_driven)
@@ -319,9 +342,9 @@ namespace MXRender
 
 	void RenderScene::register_objects(GameObject* game_object)
 	{
-		if (game_object->get_component(StaticMeshComponent)&& game_object->get_component(StaticMeshComponent)->get_material()!=nullptr)
+		if (game_object->get_component(StaticMeshComponent)&& game_object->get_component(StaticMeshComponent)->get_material()!=nullptr&&game_object->get_component(TextComponent)==nullptr)
 		{
-
+			
 			RenderObject newObj;
 			newObj.bounds = game_object->get_staticmesh()->get_mesh_data()->bounds;
 			newObj.transformMatrix = game_object->get_transform()->get_model_matrix();
@@ -339,15 +362,44 @@ namespace MXRender
 			newObj.merge_key = mathash;
 			
 			Handle<RenderObject> handle;
-			handle.handle = static_cast<uint32_t>(renderables.size());
+			handle.handle = static_cast<uint32_t>(mesh_renderables.size());
 
 
-			renderables.push_back(newObj);
+			mesh_renderables.push_back(newObj);
 
 			renderObjectConvert[game_object] = handle;
 
 			update_object(handle);
 		}		
+		else if (game_object->get_component(StaticMeshComponent) && game_object->get_component(StaticMeshComponent)->get_material() != nullptr && game_object->get_component(TextComponent))
+		{
+			RenderObject newObj;
+			TextComponent* text_component= game_object->get_component(TextComponent);
+			newObj.bounds = text_component->get_text_data()->bounds;
+			newObj.transformMatrix = game_object->get_transform()->get_model_matrix();
+			newObj.materialID = get_material_id(game_object->get_material());
+			newObj.meshID = get_mesh_id(text_component->get_text_data());
+			newObj.updateIndex = (uint32_t)-1;
+			//newObj.customSortKey = object->customSortKey;
+			newObj.passIndices.clear(-1);
+
+			uint64_t pipelinehash = std::hash<uint64_t>()(uint64_t(game_object->get_material()->pass_pso->pass_pso[MeshpassType::Forward]->pipeline));
+			uint64_t sethash = std::hash<uint64_t>()((uint64_t)game_object->get_material()->pass_sets[MeshpassType::Forward]);
+
+			uint32_t mathash = static_cast<uint32_t>(pipelinehash ^ sethash);
+
+			newObj.merge_key = mathash;
+
+			Handle<RenderObject> handle;
+			handle.handle = static_cast<uint32_t>(text_renderables.size());
+
+
+			text_renderables.push_back(newObj);
+
+			renderObjectConvert[game_object] = handle;
+
+			update_object(handle);
+		}
 		for (int i=0;i< game_object->sub_objects.size();i++)
 		{
 			if (game_object->sub_objects[i])

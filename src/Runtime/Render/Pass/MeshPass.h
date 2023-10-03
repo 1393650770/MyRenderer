@@ -83,6 +83,7 @@ namespace MXRender
         void render_mesh(MeshObject* mesh_component, VkDescriptorSet GlobalSet,VkCommandBuffer command_buffer);
 
         void render_mesh(RenderScene* render_scene, RenderObject* render_object,VkDescriptorSet global_set,VkCommandBuffer command_buffer);
+        void render_text(RenderScene* render_scene, RenderObject* render_object, VkDescriptorSet global_set, VkCommandBuffer command_buffer);
         void dispatch_render_mesh(RenderScene* render_scene, unsigned int start_index , unsigned int end_index, VkDescriptorSet GlobalSet);
         void dispatch_gpudriven_render_mesh(RenderScene* render_scene, unsigned int start_index, unsigned int end_index, VkDescriptorSet global_set, VkDescriptorSet object_data_set);
 		std::vector<VkBuffer> uniform_buffers;

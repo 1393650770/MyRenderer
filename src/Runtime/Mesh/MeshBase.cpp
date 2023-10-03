@@ -187,3 +187,13 @@ void MXRender::MeshBase::init_mesh_info(GraphicsContext* context)
 {
 
 }
+
+void MXRender::MeshBase::bind(GraphicsContext* context)
+{
+
+}
+
+void MXRender::MeshBase::render(GraphicsContext* context)
+{
+
+}

@@ -2,13 +2,12 @@
 #include "../RHI/RenderState.h"
 #include "../RHI/RenderEnum.h"
 #include "../RHI/Vulkan/VK_Utils.h"
-#include "../Mesh/MeshBase.h"
 #include "../AssetLoader/prefab_asset.h"
 #include "../RHI/Vulkan/VK_Utils.h"
 #include "../Render/RenderScene.h"
 #include "../Render/Pass/PipelineShaderObject.h"
 #include "../AssetLoader/material_asset.h"
-#include "../RHI/Vulkan/VK_Texture.h"
+#include "../Mesh/TextBase.h"
 #include "../Mesh/VK_Mesh.h"
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
@@ -18,6 +17,8 @@
 #include "TaskScheduler.h"
 #include "optick.h"
 #include <xutility>
+
+
 std::string asset_path(std::string_view path)
 {
 	return "../../../../assets_export/" + std::string(path);
@@ -37,6 +38,7 @@ void MXRender::GameObjectManager::load_objs()
 	object_list.emplace_back("viking_room2", "Resource/Mesh/viking_room.obj");
 
 	_meshes["Resource/Mesh/viking_room.obj"] = object_list.back().get_staticmesh()->get_mesh_data();
+
 	//object_list.emplace_back("viking_room3", "Resource/Mesh/viking_room.obj");
 	//object_list.emplace_back("viking_room4", "Resource/Mesh/viking_room.obj");
 	//object_list.emplace_back("viking_room5", "Resource/Mesh/viking_room.obj");
@@ -50,6 +52,13 @@ void MXRender::GameObjectManager::load_objs()
 	object_list.back().get_staticmesh()->reset_mesh(_meshes["Resource/Mesh/pbr_stone.obj"]);
 	object_list.back().get_transform()->set_scale(glm::vec3(0.005f));
 	object_list.back().get_transform()->set_translation(glm::vec3(-15.005f, 0.0f, 0.0f));
+	object_list.emplace_back("Sdf_Text");
+	std::cout << "vulkan load ttf 0" << std::endl;
+	TextComponent* text_component = new TextComponent("Resource/Text/AlibabaPuHuiTi-3-105-Heavy.ttf");
+	_text_ttfes["Resource/Text/AlibabaPuHuiTi-3-105-Heavy.ttf"] = text_component->get_text_data();
+	object_list.back().add_component(text_component);
+	object_list.back().get_component(TextComponent)->reset_text_content("BCDEFG");
+	object_list.back().get_transform()->set_translation(glm::vec3(-15.005f, 0.0f, -400.0f));
 	OPTICK_POP()
 }
 
@@ -131,8 +140,17 @@ void MXRender::GameObjectManager::destroy_object_list(GraphicsContext* context)
 		for (auto& it : _meshes)
 		{
 			it.second->destroy_mesh_info(context);
+			delete it.second;
+			_meshes[it.first]=nullptr;
 		}
 		_meshes.clear();
+		for (auto& it : _text_ttfes)
+		{
+			it.second->destroy_text_info(context);
+			delete it.second;
+			_text_ttfes[it.first] = nullptr;
+		}
+		_text_ttfes.clear();
 		for (int i=0;i<object_list.size();i++)
 		{
 			object_list[i].get_staticmesh()->get_mesh_data()->destroy_mesh_info(context);
@@ -332,6 +350,27 @@ void MXRender::GameObjectManager::set_overload_material(GraphicsContext* context
 			}
 		}
 	}
+
+	Material* sdf_textMaterial = Singleton<DefaultSetting>::get_instance().material_system->get_material("sdf_text");
+	{
+		if (!sdf_textMaterial)
+		{
+			MaterialData info;
+			info.parameters = nullptr;
+			info.textures.clear();	
+			info.baseTemplate="sdf_text";
+			sdf_textMaterial = Singleton<DefaultSetting>::get_instance().material_system->build_material("sdf_text", info);
+
+			if (!sdf_textMaterial)
+			{
+				std::cout << "Error When building material";
+			}
+			else
+			{
+				object_list[4].set_material(sdf_textMaterial);
+			}
+		}
+	}
 }
 
 void MXRender::GameObjectManager::start_load_asset(GraphicsContext* context)
@@ -343,6 +382,12 @@ void MXRender::GameObjectManager::start_load_asset(GraphicsContext* context)
 
 	
 	//start_load_prefabs(context);
+}
+
+
+const std::unordered_map<std::string, MXRender::TextBase*>& MXRender::GameObjectManager::get_text_cache() const
+{
+	return _text_ttfes;
 }
 
 const std::unordered_map<std::string, MXRender::MeshBase*>& MXRender::GameObjectManager::get_mesh_cache() const

@@ -81,7 +81,7 @@ namespace MXRender
 }
 void MXRender::Window::run(std::shared_ptr<MyRender> render)
 {
-	
+
 	Singleton<DefaultSetting>::get_instance().context->init(this);
 	Singleton<DefaultSetting>::get_instance().material_system->init(Singleton<DefaultSetting>::get_instance().context.get());
 

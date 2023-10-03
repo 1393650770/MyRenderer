@@ -1,6 +1,7 @@
 #include "RenderUtils.h"
 #include "RenderRource.h"
-#include "../../ThirdParty/stb_image/stb_image.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 namespace MXRender
 {
     unsigned RenderUtils::Get_API_DataTypeEnum_To_OS_Size(ENUM_RENDER_DATA_TYPE data_type)

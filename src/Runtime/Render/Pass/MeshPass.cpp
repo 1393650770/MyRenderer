@@ -31,6 +31,7 @@
 #include "../TextureManager.h"
 #include "optick.h"
 #include "../GPUDriven.h"
+#include "../../Mesh/VK_Text.h"
 namespace MXRender
 {
 
@@ -352,14 +353,14 @@ namespace MXRender
 		if (staticmesh&&staticmesh->get_already_load_mesh())
 		{
 
-			BindMeshInfo bind_mesh_info;
+			BindInfo bind_mesh_info;
 
 			bind_mesh_info.context=cur_context.lock().get();
 
 
 			staticmesh->bind_mesh(&bind_mesh_info);
 
-			RenderMeshInfo render_mesh_info;
+			RenderInfo render_mesh_info;
 			render_mesh_info.context= cur_context.lock().get();
 
 
@@ -455,7 +456,71 @@ namespace MXRender
 	}
 
 	
-	void Mesh_RenderPass::dispatch_render_mesh(RenderScene* render_scene,unsigned int start_index, unsigned int end_index, VkDescriptorSet GlobalSet)
+	void Mesh_RenderPass::render_text(RenderScene* render_scene, RenderObject* render_object, VkDescriptorSet global_set, VkCommandBuffer command_buffer)
+	{
+		DrawMesh* mesh = render_scene->get_mesh(render_object->meshID);
+		Material* material = render_scene->get_material(render_object->materialID);
+		if (!material || !mesh)
+		{
+			return;
+		}
+		VK_Text* vk_mesh = dynamic_cast<VK_Text*>(mesh->original);
+		if (!vk_mesh) 
+			return;
+		vk_mesh->init_text_info(cur_context.lock().get());
+		std::string content = vk_mesh->get_content();
+		for (char& it : content)
+		{
+			char key = it;
+			Material* sdf_textMaterial = nullptr;
+			MaterialData info;
+			info.parameters = nullptr;
+			info.textures.clear();
+			info.baseTemplate = "sdf_text";
+			SampledTexture tex;
+			tex.view = vk_mesh->get_text_info().Characters[key].text_texture->textureImageView;
+			tex.sampler = vk_mesh->get_text_info().Characters[key].text_texture->textureSampler;
+			info.textures.push_back(tex);
+			sdf_textMaterial = Singleton<DefaultSetting>::get_instance().material_system->build_material("sdf_text", info);
+			if (!sdf_textMaterial)
+				continue;
+
+			OPTICK_PUSH("Bind")
+			vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sdf_textMaterial->pass_pso->pass_pso[MeshpassType::Forward]->pipeline);
+
+			viewport.width = cur_context.lock()->get_swapchain_extent().width;
+			viewport.height = cur_context.lock()->get_swapchain_extent().height;
+			vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+
+			MVP_Struct ubo{};
+			ubo.model = render_object->transformMatrix;
+			ubo.view = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
+			ubo.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
+			ubo.proj[1][1] *= -1;
+
+			uint32_t offset = cpu_ubo_buffer.push(ubo);
+
+			vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sdf_textMaterial->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 0, 1, &global_set, 1, &offset);
+
+
+			vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sdf_textMaterial->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout, 1, 1, &sdf_textMaterial->pass_sets[MeshpassType::Forward], 0, nullptr);
+
+			vkCmdPushConstants(command_buffer, (sdf_textMaterial->pass_pso->pass_pso[MeshpassType::Forward]->pipeline_layout), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &material->parameters.z);
+
+			VkBuffer vertexBuffers[] = { vk_mesh->get_text_info().MeshInfos[key].vertex_buffer };
+			VkDeviceSize offsets[] = { 0 };
+
+			vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
+
+			vkCmdBindIndexBuffer(command_buffer, vk_mesh->get_text_info().MeshInfos[key].index_buffer, 0, VK_INDEX_TYPE_UINT32);
+			OPTICK_POP()
+			OPTICK_PUSH("Draw")
+			vkCmdDrawIndexed(command_buffer, 6, 1, 0, 0, 0);
+			OPTICK_POP()
+		}
+	}
+
+	void Mesh_RenderPass::dispatch_render_mesh(RenderScene* render_scene, unsigned int start_index, unsigned int end_index, VkDescriptorSet GlobalSet)
 	{
 
 		OPTICK_EVENT();
@@ -930,11 +995,16 @@ namespace MXRender
 		}
 		else
 		{
-			for (int i = 0; i < render_scene->get_renderables_size(); i++)
+			//for (int i = 0; i < render_scene->get_renderables_size(); i++)
+			//{
+			//	auto* render_object=const_cast<RenderObject*>(&(render_scene->get_renderable_obj(i)));
+			//	render_mesh(render_scene,render_object, descriptor_sets[0], cur_context.lock()->get_cur_command_buffer());
+			//	//render_mesh(&(Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables[i]), descriptor_sets[0], cur_context.lock()->get_cur_command_buffer());
+			//}
+			for (int i=0;i<render_scene->get_text_renderables_size();i++)
 			{
-				auto* it=const_cast<RenderObject*>(&(render_scene->get_renderable_obj(i)));
-				render_mesh(render_scene,it, descriptor_sets[0], cur_context.lock()->get_cur_command_buffer());
-				//render_mesh(&(Singleton<DefaultSetting>::get_instance().gameobject_manager->prefab_renderables[i]), descriptor_sets[0], cur_context.lock()->get_cur_command_buffer());
+				auto* render_object = const_cast<RenderObject*>(&(render_scene->get_text_renderable_obj(i)));
+				render_text(render_scene, render_object, descriptor_sets[0], cur_context.lock()->get_cur_command_buffer());
 			}
 		}
 	}

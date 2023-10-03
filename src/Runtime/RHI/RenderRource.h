@@ -24,14 +24,14 @@ namespace MXRender
 		unsigned mip_levels{ 0 };
 		unsigned array_layers{ 0 };
 		void* pixels{ nullptr };
-
+		bool is_free_by_me{ true };
 		ENUM_TEXTURE_FORMAT format{ ENUM_TEXTURE_FORMAT::Unknown };
 		ENUM_TEXTURE_TYPE   type{ ENUM_TEXTURE_TYPE::ENUM_TYPE_NOT_VALID };
 
 		TextureData() = default;
 		~TextureData()
 		{
-			if (pixels)
+			if (is_free_by_me &&pixels)
 			{
 				free(pixels);
 			}

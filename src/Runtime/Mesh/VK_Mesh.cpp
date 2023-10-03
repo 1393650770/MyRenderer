@@ -1,7 +1,6 @@
 #include "VK_Mesh.h"
+
 #include "../RHI/Vulkan/VK_GraphicsContext.h"
-
-
 
 
 MXRender::VK_Mesh::VK_Mesh()

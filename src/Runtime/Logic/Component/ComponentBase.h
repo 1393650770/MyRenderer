@@ -1,9 +1,10 @@
 #pragma once
-#ifndef _COMPONENTBASE_s
+#ifndef _COMPONENTBASE_
 #define _COMPONENTBASE_
 #include <vector>
 #include <string>
 
+namespace MXRender { class GraphicsContext; }
 
 namespace MXRender
 {
@@ -16,6 +17,22 @@ namespace MXRender
 		COUNT
 
 	};
+
+	struct RenderInfo
+	{
+	public:
+		GraphicsContext* context;
+
+	};
+
+
+	struct BindInfo
+	{
+	public:
+		GraphicsContext* context;
+
+	};
+
     class ComponentBase
     {
     private:

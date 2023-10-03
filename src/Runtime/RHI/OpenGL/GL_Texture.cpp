@@ -1,7 +1,7 @@
 #include"GL_Texture.h"
 #include<iostream>
 #include <glad/glad.h>
-#include"../../../ThirdParty/stb_image/stb_image.h"
+#include"stb_image.h"
 namespace MXRender
 {
     GL_Texture::GL_Texture(/* args */)
