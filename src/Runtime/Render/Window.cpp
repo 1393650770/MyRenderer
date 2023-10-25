@@ -18,6 +18,7 @@
 #include "../Logic/GameObjectManager.h"
 #include "../Logic/TaskScheduler.h"
 #include "RenderScene.h"
+#include "../UI/FilterSystem.h"
 
 static void on_window_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -81,6 +82,13 @@ namespace MXRender
 }
 void MXRender::Window::run(std::shared_ptr<MyRender> render)
 {
+	Singleton<FilterSystem>::get_instance().init("aabb");
+	Singleton<FilterSystem>::get_instance().init("111");
+	Singleton<FilterSystem>::get_instance().init("222");
+	Singleton<FilterSystem>::get_instance().search("121 113");
+
+	return;
+
 
 	Singleton<DefaultSetting>::get_instance().context->init(this);
 	Singleton<DefaultSetting>::get_instance().material_system->init(Singleton<DefaultSetting>::get_instance().context.get());

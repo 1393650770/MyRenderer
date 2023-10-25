@@ -101,7 +101,13 @@ namespace MXRender
 		}
 		vmaUnmapMemory(context->_allocator,gpudata_newBuffer._allocation);
 		vmaUnmapMemory(context->_allocator, id_targetBuffer._allocation);
-
+		uint32_t* targetData1;
+		vmaMapMemory(context->_allocator, id_targetBuffer._allocation, (void**)&targetData1);
+		for (int i = 0; i < launchcount; i++)
+		{
+			std::cout << targetData1[i] << std::endl;
+		}
+		vmaUnmapMemory(context->_allocator, id_targetBuffer._allocation);
 		VkDescriptorBufferInfo indexData = id_targetBuffer.get_info();
 
 		VkDescriptorBufferInfo sourceData = gpudata_newBuffer.get_info();

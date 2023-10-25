@@ -30,7 +30,7 @@ void main() {
     float smoothWidth = fwidth(sdf);
     float alpha = smoothstep(0.5f - smoothWidth, 0.5f + smoothWidth, sdf);
     vec3 rgb = vec3(alpha);
-    if(alpha <= 0.0f)
+    if(alpha <= 0.01f)
     {
         discard;
     }
