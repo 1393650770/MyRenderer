@@ -82,12 +82,18 @@ namespace MXRender
 }
 void MXRender::Window::run(std::shared_ptr<MyRender> render)
 {
-	Singleton<FilterSystem>::get_instance().init("aabb");
-	Singleton<FilterSystem>::get_instance().init("111");
-	Singleton<FilterSystem>::get_instance().init("222");
-	Singleton<FilterSystem>::get_instance().search("121 113");
-
-	return;
+	std::vector<std::string> sentences{ "aabb" ,"13|2" ,"8*7" ,"222","111"};
+	for (auto& it : sentences)
+	{
+		Singleton<FilterSystem>::get_instance().insert(it);
+		std::cout << "¹Ø¼ü´Ê£º" << it << std::endl;
+	}
+	std::string test_string = "12568887c111d722faabbccg13";
+	//std::string test_string = "22aabb";
+	std::string ret= Singleton<FilterSystem>::get_instance().replace(test_string,'*');
+	std::cout << "×Ö·û´®£º" << test_string << std::endl;
+	std::cout << "½á¹û£º" << ret << std::endl;
+	//return;
 
 
 	Singleton<DefaultSetting>::get_instance().context->init(this);
