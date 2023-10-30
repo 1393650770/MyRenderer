@@ -198,16 +198,25 @@ namespace MXRender
 			VK_Utils::Destroy_Buffer(context, instanceIdMapBuffer);
 			VK_Utils::Destroy_Buffer(context, instanceBuffer);
 
-			drawIndirectBuffer = VK_Utils::Create_buffer(context, sizeof(GPUIndirectObject) * render_scene->get_renderables_size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
+			if (Singleton<DefaultSetting>::get_instance().is_enable_batch == false)
+			{
+				instanceBuffer = VK_Utils::Create_buffer(context, sizeof(GPUIndirectObject) * render_scene->get_renderables_size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				drawIndirectBuffer = VK_Utils::Create_buffer(context, sizeof(GPUIndirectObject) * render_scene->get_renderables_size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				instanceIdMapBuffer = VK_Utils::Create_buffer(context, sizeof(uint32_t) * render_scene->get_renderables_size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			}
+			else
+			{
+				instanceBuffer = VK_Utils::Create_buffer(context, sizeof(GPUIndirectObject) * render_scene->get_renderables_size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				drawIndirectBuffer = VK_Utils::Create_buffer(context, sizeof(GPUIndirectObject) * render_scene->merge_batch.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				instanceIdMapBuffer = VK_Utils::Create_buffer(context, sizeof(uint32_t) * render_scene->get_renderables_size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			}
 			GPUIndirectObject* indirect = (GPUIndirectObject*)VK_Utils::Map_Buffer(context, drawIndirectBuffer);
 			render_scene->write_object_to_indirectcommand_buffer(indirect);
 			VK_Utils::Unmap_Buffer(context, drawIndirectBuffer);
-			instanceBuffer = VK_Utils::Create_buffer(context, sizeof(GPUIndirectObject) * render_scene->get_renderables_size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 			GPUInstance* instance = (GPUInstance*)VK_Utils::Map_Buffer(context, instanceBuffer);
 			render_scene->write_object_to_instance_buffer(instance);
 			VK_Utils::Unmap_Buffer(context, instanceBuffer);
-			instanceIdMapBuffer = VK_Utils::Create_buffer(context, sizeof(uint32_t) * render_scene->get_renderables_size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
 		}
 
 		VK_GraphicsContext* context = Singleton<DefaultSetting>::get_instance().context.get();

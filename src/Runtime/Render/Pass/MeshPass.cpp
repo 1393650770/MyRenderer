@@ -756,8 +756,8 @@ namespace MXRender
 							vkCmdBindIndexBuffer(command_buffer, render_scene->merged_index_buffer._buffer, 0, VK_INDEX_TYPE_UINT32);
 						}
 
-						vkCmdDrawIndexedIndirect(command_buffer, render_scene->gpu_driven->drawIndirectBuffer._buffer, index * sizeof(GPUIndirectObject), v.size(), sizeof(GPUIndirectObject));
-						index +=v.size();
+						vkCmdDrawIndexedIndirect(command_buffer, render_scene->gpu_driven->drawIndirectBuffer._buffer, index * sizeof(GPUIndirectObject), 1, sizeof(GPUIndirectObject));
+						index ++;
 					}
 					OPTICK_POP()
 				}

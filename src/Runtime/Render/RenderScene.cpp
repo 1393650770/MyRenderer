@@ -198,19 +198,19 @@ namespace MXRender
 		}
 		else
 		{ 
+			uint32_t firstInstanceID = 0;
 			for (auto& [k,v]:merge_batch)
 			{
-				for (auto& i:v)
-				{
-					target[dataIndex].command.firstInstance = dataIndex;//i;
-					target[dataIndex].command.instanceCount = 0;
-					target[dataIndex].command.firstIndex = get_mesh(get_render_object(i)->meshID)->firstIndex;
-					target[dataIndex].command.vertexOffset = get_mesh(get_render_object(i)->meshID)->firstVertex;
-					target[dataIndex].command.indexCount = get_mesh(get_render_object(i)->meshID)->indexCount;
-					target[dataIndex].objectID = i.handle;
-					target[dataIndex].batchID = dataIndex;
-					dataIndex++;
-				}
+				auto& i =v[0];
+				target[dataIndex].command.firstInstance = firstInstanceID;//i;
+				target[dataIndex].command.instanceCount = 0;
+				target[dataIndex].command.firstIndex = get_mesh(get_render_object(i)->meshID)->firstIndex;
+				target[dataIndex].command.vertexOffset = get_mesh(get_render_object(i)->meshID)->firstVertex;
+				target[dataIndex].command.indexCount = get_mesh(get_render_object(i)->meshID)->indexCount;
+				target[dataIndex].objectID = i.handle;
+				target[dataIndex].batchID = dataIndex;
+				dataIndex++;
+				firstInstanceID+=v.size();
 			}
 		}
 		OPTICK_POP()
@@ -230,14 +230,16 @@ namespace MXRender
 		}
 		else
 		{ 
+			int batchIndex = 0;
 			for (auto& [k, v] : merge_batch)
 			{
 				for (auto& i : v)
 				{
 					target[dataIndex].objectID = i.handle;
-					target[dataIndex].batchID = dataIndex;
+					target[dataIndex].batchID = batchIndex;
 					dataIndex++;
 				}
+				batchIndex++;
 			}
 		}
 		OPTICK_POP()
