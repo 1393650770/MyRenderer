@@ -98,7 +98,7 @@ MXRender::MeshBase* MXRender::GameObjectManager::get_mesh(const std::string& nam
 
 MXRender::GameObjectManager::GameObjectManager(GraphicsContext* context)
 {
-	main_camera.set_position(glm::vec3(-1.0f,30.0f,0.0f));
+	main_camera.set_position(glm::vec3(-1.0f,30.0f,187.0f));
 	//main_camera.set_direction(glm::vec3(0.0f, 1.0f, 0.0f));
 	//object_list.emplace_back("Resource/Mesh/viking_room.obj");
 
@@ -151,19 +151,21 @@ void MXRender::GameObjectManager::destroy_object_list(GraphicsContext* context)
 
 void MXRender::GameObjectManager::start_load_prefabs(GraphicsContext* context)
 {
-	int dimHelmets = 15;
+	int dimHelmets =25;
 	int i=0;
 	for (int x = -dimHelmets; x <= dimHelmets; x++) {
 		for (int y = -dimHelmets; y <= dimHelmets; y++) {
+			for (int z = -dimHelmets; z <= dimHelmets; z++) {
+				glm::mat4 translation = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-x * 35, z *35, y * 35));
+				glm::mat4 scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3(10));
+				i++;
+				load_prefab("FlightHelmet" + std::to_string(i), asset_path("FlightHelmet/FlightHelmet.pfb").c_str(), (translation * scale), context);
 
-			glm::mat4 translation = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-x * 3, -(x+y)*3, y * 3));
-			glm::mat4 scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3(10));
-			i++;
-			load_prefab("FlightHelmet"+ std::to_string(i), asset_path("FlightHelmet/FlightHelmet.pfb").c_str(), (translation * scale), context);
+			}
 		}
 	}
 
-	glm::mat4 sponzaMatrix = glm::scale(glm::mat4{ 1.0f }, glm::vec3(3.0f));;
+	glm::mat4 sponzaMatrix = glm::scale(glm::mat4{ 1.0f }, glm::vec3(5.0f));;
 
 	glm::mat4 unrealFixRotation = glm::rotate(glm::radians(-90.f), glm::vec3{ 1,0,0 });
 
@@ -396,16 +398,21 @@ bool MXRender::GameObjectManager::load_prefab(const std::string& name,const char
 
 	assets::PrefabInfo* prefab = _prefabCache[path];
 
-	VkSamplerCreateInfo samplerInfo = VK_Utils::Sampler_Create_Info(VK_FILTER_LINEAR);
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
-
-	VkSampler smoothSampler;
-	vkCreateSampler(vk_context->device->device, &samplerInfo, nullptr, &smoothSampler);
-
-	vk_context->add_on_shutdown_clean_func([=]() {
-		vkDestroySampler(vk_context->device->device,smoothSampler,nullptr);
+	static VkSampler smoothSampler;
+	static VkSamplerCreateInfo samplerInfo;
+	static bool samplerInfoInit = false;
+	if (samplerInfoInit == false)
+	{
+		samplerInfo = VK_Utils::Sampler_Create_Info(VK_FILTER_LINEAR);
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfoInit = true;
+		vkCreateSampler(vk_context->device->device, &samplerInfo, nullptr, &smoothSampler);
+		vk_context->add_on_shutdown_clean_func([=]() {
+			vkDestroySampler(vk_context->device->device, smoothSampler, nullptr);
 		});
+	}
+
 
 	std::unordered_map<uint64_t, glm::mat4> node_worldmats;
 

@@ -534,7 +534,7 @@ namespace MXRender
 				if (i<start_index||i >= end_index || i >= render_scene->merge_batch.size())
 				{
 					i++;
-					draw_index += v.size();
+					draw_index ++;
 					continue;
 				}
 				i++;
@@ -578,9 +578,9 @@ namespace MXRender
 					vkCmdBindIndexBuffer(command_buffer, render_scene->merged_index_buffer._buffer, 0, VK_INDEX_TYPE_UINT32);
 				}
 
-				vkCmdDrawIndexedIndirect(command_buffer, render_scene->gpu_driven->drawIndirectBuffer._buffer, draw_index * sizeof(GPUIndirectObject), v.size(), sizeof(GPUIndirectObject));
+				vkCmdDrawIndexedIndirect(command_buffer, render_scene->gpu_driven->drawIndirectBuffer._buffer, draw_index * sizeof(GPUIndirectObject), 1, sizeof(GPUIndirectObject));
 
-				draw_index += v.size();
+				draw_index++;
 			}
 		}
 		else

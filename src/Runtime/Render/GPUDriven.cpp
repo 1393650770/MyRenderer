@@ -12,7 +12,10 @@
 
 namespace MXRender
 {
-
+	glm::vec4 normalizePlane(glm::vec4 p)
+	{
+		return p / glm::length(glm::vec3(p));
+	}
 	GPUDrivenSystem::GPUDrivenSystem()
 	{
 
@@ -249,24 +252,34 @@ namespace MXRender
 			.bind_buffer(2, &instanceInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
 			.bind_buffer(3, &finalInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
 			.bind_image(4, &depthPyramid, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT)
-			.bind_image(5, &color, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+			//.bind_image(5, &color, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
 			.build(COMPObjectDataSet);
 
 		int launchcount = render_scene->get_renderables_size();
 		DrawCullData cull_data;
 		cull_data.drawCount= launchcount;
 		cull_data.occlusionEnabled= Singleton<DefaultSetting>::get_instance().is_enable_culling;
+		cull_data.cullingEnabled= Singleton<DefaultSetting>::get_instance().is_enable_culling;
 		cull_data.pyramidWidth = static_cast<float>(context->depth_pyramid_width);
 		cull_data.pyramidHeight = static_cast<float>(context->depth_pyramid_height);
 		cull_data.view=Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_view_mat();
 		glm::mat4 projection = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
-		cull_data.proj = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
-		cull_data.proj[1][1] *= -1;
+		projection[1][1] *= -1;
+		cull_data.proj = projection;//Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_projection_mat();
+		glm::mat4 projectionT = transpose(projection);
+
+		glm::vec4 frustumX = normalizePlane(projectionT[3] + projectionT[0]); // x + w < 0
+		glm::vec4 frustumY = normalizePlane(projectionT[3] + projectionT[1]); // y + w < 0
+		cull_data.oct_frustum[0] = frustumX.x;
+		cull_data.oct_frustum[1] = frustumX.z;
+		cull_data.oct_frustum[2] = frustumY.y;
+		cull_data.oct_frustum[3] = frustumY.z;
+		//cull_data.proj[1][1] *= -1;
 		cull_data.P00 = projection[0][0];
 		cull_data.P11 = -projection[1][1];
 		cull_data.znear = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_near_plane();
 		cull_data.zfar = Singleton<DefaultSetting>::get_instance().gameobject_manager->main_camera.get_can_change_far_plane();
-		cull_data.distCull=0;
+		cull_data.distCull=10;
 		cull_data.isFirstFrame=is_first_frame==true? 1 :0;
 
 		VK_Utils::Immediate_Submit(context,

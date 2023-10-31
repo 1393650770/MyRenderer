@@ -80,9 +80,16 @@ layout(set = 0, binding = 3)  buffer InstanceBuffer3{
 
 layout(set = 0,binding = 4) uniform sampler2D depthPyramid;
 
-layout(set = 0,binding = 5, r32f) uniform writeonly image2D outImage;
+//layout(set = 0,binding = 5, r32f) uniform writeonly image2D outImage;
 
 bool IsInClipSpace(vec4 clipSpacePosition)
+{
+	return clipSpacePosition.x >= -clipSpacePosition.w && clipSpacePosition.x <= clipSpacePosition.w&&
+	clipSpacePosition.y >= -clipSpacePosition.w && clipSpacePosition.y <= clipSpacePosition.w&&
+	clipSpacePosition.z >= -clipSpacePosition.w && clipSpacePosition.z <= clipSpacePosition.w;
+}
+
+bool IsInClipSpace(vec3 clipSpacePosition)
 {
 	return clipSpacePosition.x >= -1.0f && clipSpacePosition.x <= 1.0f&&
 	clipSpacePosition.y >= -1.0f && clipSpacePosition.y <= 1.0f&&
@@ -124,8 +131,8 @@ bool occlusionCulling(vec4 c, float r, float znear,uint objectIndex)
 	maxZ=maxZ*0.5f+0.5f;
 	if(minZ>=1.0f)
 		return false;
-	// if (!isInClipSpace)
-    //     return false;
+	if (!isInClipSpace)
+        return false;
 	// minX=minX*0.5f+0.5f;
 	// maxX=maxX*0.5f+0.5f;
 	// minY=minY*0.5f+0.5f;
@@ -156,7 +163,7 @@ bool occlusionCulling(vec4 c, float r, float znear,uint objectIndex)
 			max( textureLod(depthPyramid, vec2(pixelLeftBottom.x,pixelRightTop.y) , mipmapLevel).x,
 			textureLod(depthPyramid, vec2(pixelLeftBottom.y,pixelRightTop.x) , mipmapLevel).x)));
 
-	imageStore(outImage, ivec2((oldLeftBottom+oldRightTop)*0.5f), vec4(depth,mipmapLevel,pixelLeftBottom.x,pixelLeftBottom.y));
+	//imageStore(outImage, ivec2((oldLeftBottom+oldRightTop)*0.5f), vec4(depth,mipmapLevel,pixelLeftBottom.x,pixelLeftBottom.y));
 	return minZ*0.985f <= depth*1.015f;
 }
 
@@ -179,10 +186,9 @@ bool IsVisible(uint objectIndex)
 	bool visible = true;
 
 
-
 	if(cullData.distCull != 0)
 	{// the near/far plane culling uses camera space Z directly
-		visible = visible && center_view_space.z + radius > cullData.znear && center_view_space.z - radius < cullData.zfar;
+		visible = visible && center_proj_space.z + radius > cullData.znear && center_proj_space.z - radius < cullData.zfar;
 	}
 	
 

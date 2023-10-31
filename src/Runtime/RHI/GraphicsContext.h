@@ -20,7 +20,7 @@ namespace MXRender
     public:
 #define NDEBUG
 #ifdef NDEBUG
-		const bool enableValidationLayers = true;
+		const bool enableValidationLayers = false;
 #else
 		const bool enableValidationLayers = true;
 #endif
