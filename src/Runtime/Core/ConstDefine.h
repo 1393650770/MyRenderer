@@ -184,4 +184,18 @@ void EnumRemoveFlags(Enum & Flags, Enum FlagsToRemove)
 	Flags = (Enum)((UnderlyingType)Flags & ~(UnderlyingType)FlagsToRemove);
 }
 
+template <typename T>
+struct TIsIntegral
+{
+	enum { Value = false };
+};
+
+template <typename T>
+FORCEINLINE constexpr T AlignArbitrary(T Val, UInt64 Alignment)
+{
+	static_assert(TIsIntegral<T>::Value || TIsPointer<T>::Value, "AlignArbitrary expects an integer or pointer type");
+
+	return (T)((((UInt64)Val + Alignment - 1) / Alignment) * Alignment);
+}
+
 #endif 

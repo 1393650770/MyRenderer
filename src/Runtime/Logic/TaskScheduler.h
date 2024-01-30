@@ -15,6 +15,7 @@ namespace MXRender
 
 	class ThreadPool;
 
+	//这个可以用原子变量的指针去做无锁化实现
 	template<typename T>
 	class MessageQueue
 	{

@@ -17,6 +17,7 @@ class VK_FenceManager;
 class VK_DeviceMemoryManager;
 class VK_MemoryManager;
 class VK_CommandBufferManager;
+class VK_StagingBufferManager;
 MYRENDERER_BEGIN_STRUCT(OptionalVulkanDeviceExtensions)
 union
 {
@@ -98,6 +99,8 @@ Bool isComplete() {
 }
 MYRENDERER_END_CLASS
 
+
+
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Device , public RenderResource)
 
 #pragma region METHOD
@@ -145,6 +148,7 @@ protected:
 	VK_DeviceMemoryManager* device_memory_manager=nullptr;
 	VK_MemoryManager* memory_manager = nullptr;
 	VK_CommandBufferManager* command_buffer_manager = nullptr;
+	VK_StagingBufferManager* staging_buffer_manager = nullptr;
 public:
 
 

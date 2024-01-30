@@ -3,6 +3,7 @@
 
 #include "VK_Device.h"
 #include "GLFW/glfw3.h"
+#include "VK_Buffer.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -41,6 +42,21 @@ void VulkanRHI::PostInit()
 void VulkanRHI::Shutdown()
 {
 
+}
+
+Buffer* VulkanRHI::CreateBuffer(const BufferDesc& buffer_desc)
+{
+	return new VK_Buffer(device,buffer_desc);
+}
+
+void* VulkanRHI::MapBuffer(Buffer* buffer)
+{
+	return buffer->Map();
+}
+
+void VulkanRHI::UnmapBuffer(Buffer* buffer)
+{
+	return buffer->Unmap();
 }
 
 Bool VulkanRHI::CheckGpuSuitable(VkPhysicalDevice gpu)

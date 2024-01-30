@@ -11,7 +11,7 @@ MYRENDERER_BEGIN_STRUCT(BufferDesc)
 UInt32 size=0;
 UInt32 stride=0;
 ENUM_BUFFER_TYPE type = ENUM_BUFFER_TYPE::None;
-
+BufferDesc() = default;
 BufferDesc(const BufferDesc& other)
 {
 	*this=other;

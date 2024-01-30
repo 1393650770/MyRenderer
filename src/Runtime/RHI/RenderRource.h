@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include "../Core/BaseObject.h"
+#include "../Core/ConstDefine.h"
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -27,8 +28,13 @@ static constexpr UInt32 c_ConstantBufferOffsetSizeAlignment = 256;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderResource,public IObject)
 public:
 	RenderResource() DEFAULT;
-	VIRTUAL~RenderResource() DEFAULT;
+	VIRTUAL ~RenderResource() DEFAULT;
+	VIRTUAL void METHOD(Release)();
+protected:
+	Bool is_valid{ false };
+	UInt32 ref_count{ 1 };
 
+private:
 private:
 
 protected:

@@ -1070,6 +1070,63 @@ void VK_Texture::UpdateTextureData(CONST TextureDataPayload& texture_data_payloa
 		return;
 	}
 
+	//	VkBuffer       inefficient_staging_buffer;
+	//	VkDeviceMemory inefficient_staging_buffer_memory;
+	//	VK_Utils::Create_VKBuffer(device,
+	//		cubemap.size(),
+	//		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+	//		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+	//		inefficient_staging_buffer,
+	//		inefficient_staging_buffer_memory);
+	//
+	//
+	//	void* data;
+	//	vkMapMemory(device.lock()->device, inefficient_staging_buffer_memory, 0, cubemap.size(), 0, &data);
+	//	memcpy(data, cubemap.data(), cubemap.size());
+	//	vkUnmapMemory(device.lock()->device, inefficient_staging_buffer_memory);
+	//	VK_Utils::Transition_ImageLayout(Singleton<DefaultSetting>::get_instance().context, texture_image,
+	//		VK_IMAGE_LAYOUT_UNDEFINED,
+	//		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	//		6,
+	//		cubemap.levels(),
+	//		VK_IMAGE_ASPECT_COLOR_BIT);
+	//
+	//	VkDeviceSize bufferOffset = 0;
+	//	for (uint32_t layer = 0; layer < cubemap.faces(); ++layer)
+	//	{
+	//
+	//		for (uint32_t level = 0; level < cubemap.levels(); ++level)
+	//		{
+	//			VK_Utils::Copy_Buffer_To_Image(Singleton<DefaultSetting>::get_instance().context, inefficient_staging_buffer,
+	//				texture_image,
+	//				static_cast<uint32_t>(cubemap[layer][level].extent().x),
+	//				static_cast<uint32_t>(cubemap[layer][level].extent().y),
+	//				1,
+	//				level,
+	//				layer,
+	//				bufferOffset);
+	//			bufferOffset += cubemap[layer][level].size();
+	//		}
+	//	}
+	//	VK_Utils::Transition_ImageLayout(Singleton<DefaultSetting>::get_instance().context, texture_image,
+	//		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	//		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	//		6,
+	//		cubemap.levels(),
+	//		VK_IMAGE_ASPECT_COLOR_BIT);
+	//	vkDestroyBuffer(device.lock()->device, inefficient_staging_buffer, nullptr);
+	//	vkFreeMemory(device.lock()->device, inefficient_staging_buffer_memory, nullptr);
+	//
+	//	texture_image_view = VK_Utils::Create_ImageView(device.lock()->device,
+	//		texture_image,
+	//		imageCreateInfo.format,
+	//		VK_IMAGE_ASPECT_COLOR_BIT,
+	//		VK_IMAGE_VIEW_TYPE_CUBE,
+	//		6,
+	//		cubemap.levels());
+	//	texture_image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	//
+	//	texture_sampler = VK_Utils::Create_Linear_Sampler(device.lock()->gpu, device.lock()->device);
 
 }
 

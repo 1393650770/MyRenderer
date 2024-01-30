@@ -4,7 +4,7 @@
 #include "../../Core/ConstDefine.h"
 #include "../RenderRHI.h"
 #include "vulkan/vulkan_core.h"
-
+#include "VK_Viewport.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -18,6 +18,8 @@ public:
 MYRENDERER_END_CLASS
 
 
+//RHI is mostly responsible for resource creation
+//Context is responsible for rendering command commit records
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VulkanRHI,public RenderRHI)
 
 #pragma region MATHOD
@@ -35,12 +37,15 @@ public:
 
 
 	VIRTUAL void METHOD(Shutdown)() OVERRIDE FINAL;
+
+
 #pragma endregion
 
 
 #pragma region CREATE_RESOURCE
-	
-
+	VIRTUAL Buffer* METHOD(CreateBuffer)(const BufferDesc& buffer_desc) OVERRIDE FINAL;
+	VIRTUAL void* METHOD(MapBuffer)(Buffer* buffer) OVERRIDE FINAL;
+	VIRTUAL void METHOD(UnmapBuffer)(Buffer* buffer) OVERRIDE FINAL;
 #pragma endregion
 
 
