@@ -13,9 +13,11 @@
 
 
 
+
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
-
+class Texture;
 MYRENDERER_BEGIN_CLASS(RenderFactory)
 public:
 	Int render_api_version=0;
@@ -44,8 +46,6 @@ public:
 	VIRTUAL void* METHOD(MapBuffer)(Buffer* buffer) PURE;
 	VIRTUAL void METHOD(UnmapBuffer)(Buffer* buffer) PURE;
 
-	VIRTUAL Texture* METHOD(CreateTexture)(const TextureDesc& texture_desc) PURE;
-	VIRTUAL void METHOD(UpdateTexture)(Texture* texture, const TextureDesc& texture_desc) PURE;
 
 #pragma endregion
 

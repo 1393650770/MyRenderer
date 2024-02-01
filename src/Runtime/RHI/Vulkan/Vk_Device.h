@@ -100,7 +100,6 @@ Bool isComplete() {
 MYRENDERER_END_CLASS
 
 
-
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Device , public RenderResource)
 
 #pragma region METHOD
@@ -123,6 +122,10 @@ public:
 	VK_FenceManager* METHOD(GetFenceManager)();
 	VK_DeviceMemoryManager* METHOD(GetDeviceMemoryManager)();
 	VK_MemoryManager* METHOD(GetMemoryManager)();
+	VK_StagingBufferManager* METHOD(GetStagingBufferManager)();
+	VK_CommandBufferManager* METHOD(GetCommandBufferManager)();
+
+	VK_Queue* METHOD(GetQueue)(ENUM_QUEUE_TYPE queue_type);
 	CONST OptionalVulkanDeviceExtensions& METHOD(GetOptionalExtensions)() CONST;
 	void METHOD(CreatePresentQueue)(VkSurfaceKHR surface);
 	CONST VkPhysicalDeviceLimits&  METHOD(GetLimits)() CONST;

@@ -1,7 +1,6 @@
 #pragma once
 #ifndef _BUFFER_
 #define _BUFFER_
-#include "../Core/ConstDefine.h"
 #include "RenderEnum.h"
 #include "RenderRource.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)

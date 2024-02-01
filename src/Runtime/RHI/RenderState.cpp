@@ -1,5 +1,5 @@
 #include "RenderState.h"
-#include "OpenGL/GL_State.h"
+
 namespace MXRender
 {
 
@@ -17,7 +17,7 @@ namespace MXRender
 		switch (RenderState::render_api_type)
 		{
 		case ENUM_RENDER_API_TYPE::OpenGL:
-			return std::make_unique<GL_State>();
+			return nullptr;
 			break;
 		default:
 			return nullptr;

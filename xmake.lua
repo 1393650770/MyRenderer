@@ -8,7 +8,7 @@ add_rules("plugin.vsxmake.autoupdate")
 
     
 
-target("Runtime")
+target("Runtime_static")
     set_kind("static")
     set_languages("c++20")  
     
@@ -65,27 +65,27 @@ target("Renderer")
 
     set_kind("binary")  
     set_languages("c++20")  
-    add_deps("Runtime")
+    add_deps("Runtime_static")
 
     add_files("src/*.cpp") 
 
     add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr")
 
     before_build(function (target)
-        os.run("$(projectdir)/src/Runtime/Render/Shader/compile-glslangValidator.bat")
+        --os.run("$(projectdir)/src/Runtime/Render/Shader/compile-glslangValidator.bat")
     end)
 
     after_build(function (target)
-        os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)")
-        os.cp("$(projectdir)/src/Resource", "$(buildir)")
-        os.cp("$(projectdir)/src/Setting", "$(buildir)")
+        --os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)")
+        --os.cp("$(projectdir)/src/Resource", "$(buildir)")
+        --os.cp("$(projectdir)/src/Setting", "$(buildir)")
     end)
 
     after_build(
         function (target)
-            os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)/windows/x64/debug")
-            os.cp("$(projectdir)/src/Resource", "$(buildir)/windows/x64/debug")
-            os.cp("$(projectdir)/src/Setting", "$(buildir)/windows/x64/debug")
+            --os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)/windows/x64/debug")
+            --os.cp("$(projectdir)/src/Resource", "$(buildir)/windows/x64/debug")
+            --os.cp("$(projectdir)/src/Setting", "$(buildir)/windows/x64/debug")
         end
     )
 

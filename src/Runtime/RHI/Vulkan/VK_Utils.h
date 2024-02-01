@@ -61,13 +61,15 @@ namespace MXRender
     private:
        
     public:
-		static void Destroy_Buffer(VK_GraphicsContext* context,AllocatedBufferUntyped& buffer);
+		static VkAccessFlags METHOD(AccessMaskFromImageLayout)(VkImageLayout Layout, bool IsDstMask);
+
+		static void Destroy_Buffer(VK_GraphicsContext* context, AllocatedBufferUntyped& buffer);
 		static void* Map_Buffer(VK_GraphicsContext* context, AllocatedBufferUntyped& buffer);
 		static void Unmap_Buffer(VK_GraphicsContext* context, AllocatedBufferUntyped& buffer);
 		static VkImageViewCreateInfo Imageview_Create_Info(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags);
 		static VkImageCreateInfo Image_Create_Info(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);
 		static void Immediate_Submit(VK_GraphicsContext* context, std::function<void(VkCommandBuffer cmd)>&& function);
-		static AllocatedImage Upload_Image_Mipmapped(VK_GraphicsContext* context,int texWidth, int texHeight, VkFormat image_format, AllocatedBufferUntyped& stagingBuffer, std::vector<MipmapInfo> mips);
+		static AllocatedImage Upload_Image_Mipmapped(VK_GraphicsContext* context, int texWidth, int texHeight, VkFormat image_format, AllocatedBufferUntyped& stagingBuffer, std::vector<MipmapInfo> mips);
 		static bool Load_Image_From_Asset(VK_GraphicsContext* context, const char* filename, AllocatedImage& outImage);
 		static VkSamplerCreateInfo Sampler_Create_Info(VkFilter filters, VkSamplerAddressMode samplerAdressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 		static VkPipelineDepthStencilStateCreateInfo Depth_Stencil_Create_Info(bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp);
@@ -79,8 +81,8 @@ namespace MXRender
 		static VkPipelineVertexInputStateCreateInfo Vertex_Input_State_Create_Info();
 		static VkPipelineLayoutCreateInfo Pipeline_Layout_Create_Info();
 		static uint32_t Hash_Descriptor_Layout_Info(VkDescriptorSetLayoutCreateInfo* info);
-        static void Create_VKBuffer(std::weak_ptr< VK_Device> Device, VkDeviceSize Size, VkBufferUsageFlags Usage, VkMemoryPropertyFlags Properties, VkBuffer& Buffer, VkDeviceMemory& BufferMemory);
-        static AllocatedBufferUntyped Create_buffer(VK_GraphicsContext* context, size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkMemoryPropertyFlags required_flags);
+		//static void Create_VKBuffer(std::weak_ptr< VK_Device> Device, VkDeviceSize Size, VkBufferUsageFlags Usage, VkMemoryPropertyFlags Properties, VkBuffer& Buffer, VkDeviceMemory& BufferMemory);
+		static AllocatedBufferUntyped Create_buffer(VK_GraphicsContext* context, size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkMemoryPropertyFlags required_flags);
 		static void Copy_VKBuffer(std::weak_ptr< VK_GraphicsContext> context, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		static void Copy_VKBuffer(VK_GraphicsContext* context, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		static void           Create_Image(VkPhysicalDevice      physical_device,
@@ -103,23 +105,23 @@ namespace MXRender
 			VkImageViewType    view_type,
 			uint32_t           layout_count,
 			uint32_t           miplevels);
-        
-        static uint32_t Find_MemoryType(std::weak_ptr< VK_Device> Device, uint32_t TypeFilter, VkMemoryPropertyFlags Properties);
-        static VkSampleCountFlagBits Get_SampleCountFlagBits_FromInt(unsigned num);
+
+		//static uint32_t Find_MemoryType(std::weak_ptr< VK_Device> Device, uint32_t TypeFilter, VkMemoryPropertyFlags Properties);
+		static VkSampleCountFlagBits Get_SampleCountFlagBits_FromInt(unsigned num);
 		static VkBufferUsageFlags Translate_Buffer_usage_type_To_VulkanUsageFlag(const ENUM_BUFFER_TYPE& usage_type);
-        static VkImageLayout Translate_Texture_usage_type_To_Vulkan(const ENUM_TEXTURE_USAGE_TYPE& usage_type );
+		static VkImageLayout Translate_Texture_usage_type_To_Vulkan(const ENUM_TEXTURE_USAGE_TYPE& usage_type);
 		static VkImageUsageFlagBits Translate_Texture_usage_type_To_VulkanUsageFlagsBits(const ENUM_TEXTURE_USAGE_TYPE& usage_type);
-        static VkImageType Translate_Texture_type_To_Vulkan(const ENUM_TEXTURE_TYPE& type);
+		static VkImageType Translate_Texture_type_To_Vulkan(const ENUM_TEXTURE_TYPE& type);
 		static VkFormat Translate_Texture_Format_To_Vulkan(const ENUM_TEXTURE_FORMAT& format);
 		static VkImageViewType Translate_Texture_type_To_VulkanImageViewType(const ENUM_TEXTURE_TYPE& type);
 		static VkImageAspectFlags Translate_Texture_type_To_VulkanImageAspectFlags(const ENUM_TEXTURE_TYPE& type);
 		static VkImageCreateFlags Translate_Texture_type_To_VulkanCreateFlags(const ENUM_TEXTURE_TYPE& type);
 		static VkSampleCountFlagBits Translate_Texture_SampleCount_To_Vulkan(const UInt8& sample_count);
-        static VkFormat Translate_API_DataTypeEnum_To_Vulkan(ENUM_RENDER_DATA_TYPE data_type);
+		static VkFormat Translate_API_DataTypeEnum_To_Vulkan(ENUM_RENDER_DATA_TYPE data_type);
 		static VkShaderStageFlagBits Translate_API_ShaderTypeEnum_To_Vulkan(ENUM_SHADER_STAGE shader_type);
-		static void ClearImageColor(std::weak_ptr< VK_GraphicsContext> context, 
-		VkImageLayout      image_layout, 
-		VkImage            image,
+		static void ClearImageColor(std::weak_ptr< VK_GraphicsContext> context,
+			VkImageLayout      image_layout,
+			VkImage            image,
 			VkImageAspectFlags imageAspectflags);
 		static void Transition_ImageLayout(std::weak_ptr< VK_GraphicsContext> context,
 			VkImage            image,
@@ -129,7 +131,7 @@ namespace MXRender
 			uint32_t           miplevels,
 			VkImageAspectFlags aspect_mask_bits);
 		static void Transition_ImageLayout(std::weak_ptr< VK_GraphicsContext> context,
-		VkCommandBuffer commandbuffer,
+			VkCommandBuffer commandbuffer,
 			VkImage            image,
 			VkImageLayout      old_layout,
 			VkImageLayout      new_layout,

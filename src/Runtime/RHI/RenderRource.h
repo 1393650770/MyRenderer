@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 #include "../Core/BaseObject.h"
-#include "../Core/ConstDefine.h"
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)

@@ -1,16 +1,12 @@
 #include "VK_RenderPass.h"
 #include "VK_Viewport.h"
-#include "../../UI/Window_UI.h"
 #include "VK_Utils.h"
 #include "VK_Shader.h"
-#include "../../Render/DefaultSetting.h"
-#include "../../Utils/Singleton.h"
-#include "VK_GraphicsContext.h"
 
 namespace MXRender
 {
 
-
+	/*
 	void VK_RenderPass::initialize(const PassInfo& init_info, PassOtherInfo* other_info)
 	{
 
@@ -183,5 +179,5 @@ namespace MXRender
 			return newPipeline;
 		}
 	}
-
+	*/
 }

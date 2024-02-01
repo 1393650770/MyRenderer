@@ -1,9 +1,7 @@
 #include "RenderPass.h"
 #include"RenderState.h"
-#include "GraphicsContext.h"
+
 #include "Vulkan/VK_Viewport.h"
-#include "../UI/Window_UI.h"
-#include "../Render/RenderScene.h"
 namespace MXRender
 {
     void RenderPass::post_initialize()

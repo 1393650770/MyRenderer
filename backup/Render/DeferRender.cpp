@@ -1,4 +1,5 @@
 #include "DeferRender.h"
+/*
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -123,3 +124,4 @@ void MXRender::DeferRender::init(std::weak_ptr <VK_GraphicsContext> context,GLFW
 	precomputeibl_pass->draw(context.lock().get());
 	precomputeibl_pass->print(context.lock().get());
 }
+*/

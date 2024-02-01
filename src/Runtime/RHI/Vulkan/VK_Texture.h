@@ -43,7 +43,7 @@ public:
 
 	static void METHOD(GenerateImageCreateInfo)(VkImageCreateInfo& image_create_info, VK_Device& in_device, const TextureDesc& desc);
 	static void METHOD(GenerateViewCreateInfo)(VkImageViewCreateInfo& view_create_info, VK_Device& in_device, const TextureDesc& desc, VkImage& texture_image);
-
+	
 	void METHOD(UpdateTextureData)(CONST TextureDataPayload& texture_data_payload) OVERRIDE;
 
 protected:
@@ -72,6 +72,8 @@ protected:
 	VkImageLayout texture_image_layout;
 
 	VK_Allocation allocation;
+
+	VkImageCreateInfo image_create_info;
 private:
 
 #pragma endregion

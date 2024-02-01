@@ -1,13 +1,11 @@
 #pragma once
-#include "../Core/ConstDefine.h"
 #ifndef _RENDER_ENUM_
 #define _RENDER_ENUM_
-
+#include "../Core/ConstDefine.h"
 
 namespace MXRender
 {
 
-	
 	/// Renderer types:
 	enum class ENUM_RENDER_API_TYPE
 	{
@@ -147,7 +145,7 @@ namespace MXRender
 		TRANSFER,
 		PRESENT,
 		COUNT
-	};;
+	};
 
 	/// Texture formats:
 	enum class ENUM_TEXTURE_FORMAT
@@ -404,5 +402,20 @@ namespace MXRender
 		Count
 	};
 
+	enum class ENUM_TEXTURE_COMPONENT_FORMAT : UInt8
+	{
+		None,
+		Float,
+		SNorm,
+		UNorm,
+		UNormSRGB,
+		SInt,
+		UInt,
+		Depth,
+		DepthStencil,
+		Compound,
+		Compressed,
+		Count
+	};
 } // namespace name
 #endif // !_MXRENDER_ENUM_

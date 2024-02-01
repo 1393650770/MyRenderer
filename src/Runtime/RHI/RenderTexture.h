@@ -76,8 +76,23 @@ MYRENDERER_BEGIN_STRUCT(TextureDataPayload)
 	size_t data_size = 0;
 	UInt8 mip_level = 1;
 	UInt8 layer_count = 1;
+	UInt32 width = 0;
+	UInt32 height = 0;
+	UInt32 depth = 1;
 	ENUM_TEXTURE_FORMAT format=ENUM_TEXTURE_FORMAT::None;
 	ENUM_TEXTURE_TYPE type=ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
+	MYRENDERER_BEGIN_STRUCT(MipLevelProperties)
+		UInt32 logic_width = 0;
+		UInt32 logic_height = 0;
+		UInt32 storage_width = 0;
+		UInt32 storage_height = 0;
+		UInt32 depth = 1;
+		UInt32 row_size = 0;
+		UInt32 slice_size = 0;
+		UInt32 mip_size = 0;
+	MYRENDERER_END_STRUCT
+
+	MipLevelProperties METHOD(GetMipLevelProperties)(UInt8 in_mip_level) CONST;
 
 MYRENDERER_END_STRUCT
 
@@ -90,6 +105,18 @@ public:
 	VIRTUAL TextureDesc METHOD(GetTextureDesc)() CONST ; 
 
 	VIRTUAL void METHOD(UpdateTextureData)(CONST TextureDataPayload& texture_data_payload);
+
+	MYRENDERER_BEGIN_STRUCT(TextureFormatAttribs)
+		ENUM_TEXTURE_FORMAT format = ENUM_TEXTURE_FORMAT::None;
+		ENUM_TEXTURE_COMPONENT_FORMAT component_format = ENUM_TEXTURE_COMPONENT_FORMAT::None;
+		UInt8 component_count = 0;
+		UInt8 single_component_byte_size = 0;
+		UInt8 block_width = 0;
+		UInt8 block_height = 0;
+		Bool  is_typeless = false;
+	MYRENDERER_END_STRUCT
+
+	static CONST TextureFormatAttribs& METHOD(GetTextureFormatAttribs)(ENUM_TEXTURE_FORMAT format);
 protected:
 	
 private:

@@ -4,7 +4,6 @@
 #include <vulkan/vulkan_core.h>
 
 #include "../../Core/ConstDefine.h"
-#include "optick.h"
 #include "../RenderRource.h"
 
 

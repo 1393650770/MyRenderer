@@ -1,10 +1,8 @@
 #include"VK_Memory.h"
-
 #include "VK_Define.h"
 #include "VK_Device.h"
 #include "VK_Utils.h"
 #include "../../Core/ConstGlobals.h"
-#include "../../Core/ConstDefine.h"
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -229,7 +227,7 @@ VK_DeviceMemoryAllocation* VK_DeviceMemoryManager::Alloc(VkDeviceSize allocation
 {
     if (dedicated_allocate_info==nullptr)
     {
-        MemoryBlockKey key = {memory_type_index, allocation_size};
+        MemoryBlockKey key(memory_type_index, allocation_size);
         MemoryBlock& block = memory_block_map[key];
         if(block.allocations.size() > 0)
         {
@@ -301,7 +299,7 @@ VK_DeviceMemoryAllocation* VK_DeviceMemoryManager::Alloc(VkDeviceSize allocation
 void VK_DeviceMemoryManager::Free(VK_DeviceMemoryAllocation*& allocation)
 {
     VkDeviceSize allocation_size = allocation->size;
-    MemoryBlockKey key = { allocation->property.memory_type_index, allocation_size };
+    MemoryBlockKey key(allocation->property.memory_type_index, allocation_size );
     MemoryBlock block = memory_block_map[key];
     MemoryBlock::FreeBlock free_block = {allocation, g_frame_number_render_thread};
     block.allocations.push_back(free_block);
@@ -1034,12 +1032,12 @@ void VK_MemoryManager::ReleaseSubresourceAllocator(VK_MemoryResourceFragmentAllo
 	}
 	else
 	{
-		VK_MemoryResourceHeap* heap = resource_type_heaps[subresource_allocator->memory_type_index];
+		VK_MemoryResourceHeap* heap = resource_heaps[subresource_allocator->memory_type_index];
 		heap->FreePage(subresource_allocator);
 	}
 }
 
-Bool VK_MemoryManager::FreeAllocation(VK_Allocation& allocation)
+void VK_MemoryManager::FreeAllocation(VK_Allocation& allocation)
 {
 	CONST UInt32 index = allocation.allocator_index;
 	GetSubresourceAllocator(index)->Free(allocation);
@@ -1075,11 +1073,11 @@ void VK_MemoryManager::UnregisterSubresourceAllocator(VK_MemoryResourceFragmentA
 void VK_MemoryManager::Destroy()
 {
 	DestroyResourceAllocations();
-	for (VK_MemoryResourceHeap* heap : resource_type_heaps)
+	for (VK_MemoryResourceHeap* heap : resource_heaps)
 	{
 		delete heap;
 	}
-	resource_type_heaps.clear();
+	resource_heaps.clear();
 }
 
 void VK_MemoryManager::DestroyResourceAllocations()
@@ -1139,7 +1137,7 @@ void VK_MemoryManager::ReleaseFreedResources(Bool is_immediately)
 
 		buffer_allocation->Destroy(device);
 
-		VK_MemoryResourceHeap* heap = resource_type_heaps[buffer_allocation->memory_type_index];
+		VK_MemoryResourceHeap* heap = resource_heaps[buffer_allocation->memory_type_index];
 		heap->ReleasePage(buffer_allocation);
 	}
 

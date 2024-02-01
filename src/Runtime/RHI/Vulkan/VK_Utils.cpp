@@ -2,9 +2,6 @@
 
 #include "VK_Utils.h"
 
-#include "../MyTexture.h"
-#include "../../AssetLoader/texture_asset.h"
-#include "VK_GraphicsContext.h"
 
 
 
@@ -12,26 +9,112 @@
 
 namespace MXRender
 {
-    uint32_t findMemoryType(VkPhysicalDevice physical_device, uint32_t type_filter, VkMemoryPropertyFlags properties_flag)
-    {
-		VkPhysicalDeviceMemoryProperties physical_device_memory_properties;
-		vkGetPhysicalDeviceMemoryProperties(physical_device, &physical_device_memory_properties);
-		for (uint32_t i = 0; i < physical_device_memory_properties.memoryTypeCount; i++)
-		{
-			if (type_filter & (1 << i) &&
-				(physical_device_memory_properties.memoryTypes[i].propertyFlags & properties_flag) == properties_flag)
-			{
-				return i;
-			}
-		}
-		throw std::runtime_error("findMemoryType");
-    }
-	constexpr uint32_t fnv1a_32(char const* s, std::size_t count)
+
+
+
+	VkAccessFlags VK_Utils::AccessMaskFromImageLayout(VkImageLayout Layout, bool IsDstMask)
 	{
-		return ((count ? fnv1a_32(s, count - 1) : 2166136261u) ^ s[count]) * 16777619u;
+		VkAccessFlags AccessMask = 0;
+		switch (Layout)
+		{
+			// does not support device access. This layout must only be used as the initialLayout member
+			// of VkImageCreateInfo or VkAttachmentDescription, or as the oldLayout in an image transition.
+			// When transitioning out of this layout, the contents of the memory are not guaranteed to be preserved (11.4)
+		case VK_IMAGE_LAYOUT_UNDEFINED:
+			if (IsDstMask)
+			{
+				CHECK_WITH_LOG(true, "The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED. "
+					"This layout must only be used as the initialLayout member of VkImageCreateInfo "
+					"or VkAttachmentDescription, or as the oldLayout in an image transition. (11.4)");
+			}
+			break;
+
+			// supports all types of device access
+		case VK_IMAGE_LAYOUT_GENERAL:
+			// VK_IMAGE_LAYOUT_GENERAL must be used for image load/store operations (13.1.1, 13.2.4)
+			AccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+			break;
+
+			// must only be used as a color or resolve attachment in a VkFramebuffer (11.4)
+		case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+			AccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			break;
+
+			// must only be used as a depth/stencil attachment in a VkFramebuffer (11.4)
+		case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+			AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			break;
+
+			// must only be used as a read-only depth/stencil attachment in a VkFramebuffer and/or as a read-only image in a shader (11.4)
+		case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+			AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+			break;
+
+			// must only be used as a read-only image in a shader (which can be read as a sampled image,
+			// combined image/sampler and/or input attachment) (11.4)
+		case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+			AccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+			break;
+
+			//  must only be used as a source image of a transfer command (11.4)
+		case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+			AccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			break;
+
+			// must only be used as a destination image of a transfer command (11.4)
+		case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+			AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			break;
+
+			// does not support device access. This layout must only be used as the initialLayout member
+			// of VkImageCreateInfo or VkAttachmentDescription, or as the oldLayout in an image transition.
+			// When transitioning out of this layout, the contents of the memory are preserved. (11.4)
+		case VK_IMAGE_LAYOUT_PREINITIALIZED:
+			if (!IsDstMask)
+			{
+				AccessMask = VK_ACCESS_HOST_WRITE_BIT;
+			}
+			else
+			{
+				CHECK_WITH_LOG(true,"The new layout used in a transition must not be VK_IMAGE_LAYOUT_PREINITIALIZED. "
+					"This layout must only be used as the initialLayout member of VkImageCreateInfo "
+					"or VkAttachmentDescription, or as the oldLayout in an image transition. (11.4)");
+			}
+			break;
+
+		case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
+			AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+			break;
+
+		case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:
+			AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+			break;
+
+			// When transitioning the image to VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR or VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+			// there is no need to delay subsequent processing, or perform any visibility operations (as vkQueuePresentKHR
+			// performs automatic visibility operations). To achieve this, the dstAccessMask member of the VkImageMemoryBarrier
+			// should be set to 0, and the dstStageMask parameter should be set to VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT.
+		case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+			AccessMask = 0;
+			break;
+
+		case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
+			AccessMask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+			break;
+
+		case VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT:
+			AccessMask = VK_ACCESS_FRAGMENT_DENSITY_MAP_READ_BIT_EXT;
+			break;
+
+		default:
+			CHECK_WITH_LOG(true, "Unknown image layout");
+			break;
+		}
+
+		return AccessMask;
 	}
 
-
+	/*
 	void VK_Utils::Destroy_Buffer(VK_GraphicsContext* context, AllocatedBufferUntyped& buffer)
 	{
 		context->destroy_allocate_buffer(buffer);
@@ -146,7 +229,7 @@ namespace MXRender
 
 		return true;
 	}
-
+	*/
 	VkSamplerCreateInfo VK_Utils::Sampler_Create_Info(VkFilter filters, VkSamplerAddressMode samplerAdressMode)
 	{
 		VkSamplerCreateInfo info = {};
@@ -281,7 +364,7 @@ namespace MXRender
 		info.pPushConstantRanges = nullptr;
 		return info;
 	}
-
+	/*
 	uint32_t VK_Utils::Hash_Descriptor_Layout_Info(VkDescriptorSetLayoutCreateInfo* info)
 	{
 		std::stringstream ss;
@@ -302,7 +385,7 @@ namespace MXRender
 
 		return fnv1a_32(str.c_str(), str.length());
 	}
-
+	
 	void VK_Utils::Create_VKBuffer(std::weak_ptr<VK_Device> Device, VkDeviceSize Size, VkBufferUsageFlags Usage, VkMemoryPropertyFlags Properties, VkBuffer& Buffer, VkDeviceMemory& BufferMemory)
     {
         if (Device.expired())
@@ -446,7 +529,7 @@ namespace MXRender
 		}
 		return sampler;
 	}
-
+	
 	uint32_t VK_Utils::Find_MemoryType(std::weak_ptr<VK_Device> Device, uint32_t TypeFilter, VkMemoryPropertyFlags Properties)
     {
         if (Device.expired())
@@ -466,6 +549,7 @@ namespace MXRender
 
         throw std::runtime_error("failed to find suitable memory type!");
     }
+	*/
 
 	VkSampleCountFlagBits VK_Utils::Get_SampleCountFlagBits_FromInt(unsigned num)
 	{
@@ -543,7 +627,7 @@ namespace MXRender
 			break;
         }
 	}
-
+	/*
 	VkImageUsageFlagBits VK_Utils::Translate_Texture_usage_type_To_VulkanUsageFlagsBits(const ENUM_TEXTURE_USAGE_TYPE& usage_type)
 	{
 		VkImageUsageFlags usage_flags = 0;
@@ -585,7 +669,7 @@ namespace MXRender
 
 		return usage_flags;
 	}
-
+	*/
 	VkImageType VK_Utils::Translate_Texture_type_To_Vulkan(const ENUM_TEXTURE_TYPE& type)
 	{
         switch (type)
@@ -1111,7 +1195,7 @@ namespace MXRender
 			break;
 		}
 	}
-
+	/*
 	void VK_Utils::ClearImageColor(std::weak_ptr< VK_GraphicsContext> context, VkImageLayout image_layout, VkImage image,
 		VkImageAspectFlags imageAspectflags)
 	{
@@ -1148,7 +1232,7 @@ namespace MXRender
 
 		context.lock()->end_single_time_commands(commandBuffer);
 	}
-
+	*/
 	void CheckAndSetAccessMaskAndStage(VkImageLayout& old_layout, VkImageLayout& new_layout, VkImageMemoryBarrier& barrier, VkPipelineStageFlags& sourceStage, VkPipelineStageFlags& destinationStage)
 	{
 		if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
@@ -1297,7 +1381,7 @@ namespace MXRender
 			throw std::invalid_argument("unsupported layout transition!");
 		}
 	}
-
+	/*
 	void VK_Utils::Transition_ImageLayout(std::weak_ptr< VK_GraphicsContext> context, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout, uint32_t layer_count, uint32_t miplevels, VkImageAspectFlags aspect_mask_bits)
 	{
 		if (context.expired())
@@ -1406,7 +1490,7 @@ namespace MXRender
 		context.lock()->end_single_time_commands(commandBuffer);
 	}
 
-	VkDescriptorBufferInfo AllocatedBufferUntyped::get_info(VkDeviceSize offset /*= 0*/)
+	VkDescriptorBufferInfo AllocatedBufferUntyped::get_info(VkDeviceSize offset)
 	{
 		VkDescriptorBufferInfo info;
 		info.buffer = _buffer;
@@ -1414,6 +1498,7 @@ namespace MXRender
 		info.range = _size;
 		return info;
 	}
+	*/
 
 }
 

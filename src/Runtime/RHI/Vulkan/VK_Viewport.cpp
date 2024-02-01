@@ -17,7 +17,6 @@ VK_Viewport::VK_Viewport(VulkanRHI* in_rhi, VK_Device* in_device, void* in_windo
 
 	//maybe need to make sure the instance is already created.
 
-	
 }
 
 void VK_Viewport::CreateSwapChain(VK_SwapChainRecreateInfo* recreate_info)

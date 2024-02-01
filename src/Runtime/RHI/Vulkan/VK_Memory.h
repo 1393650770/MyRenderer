@@ -3,9 +3,7 @@
 #define _VK_MEMORY_
 
 #include <vulkan/vulkan_core.h>
-
 #include "../../Core/ConstDefine.h"
-#include "optick.h"
 #include "../RenderRource.h"
 #include "../../Core/TypeHash.h"
 
@@ -114,10 +112,45 @@ MYRENDERER_BEGIN_STRUCT(MemoryBlockKey)
     {
         return memory_type_index == other.memory_type_index&& block_size == other.block_size;
     }
-    size_t operator()(CONST MemoryBlockKey & p) CONST{
-        return HashCombine(std::hash<UInt32>()(p.block_size) , std::hash<UInt32>()(p.memory_type_index));
+	size_t operator()(CONST MemoryBlockKey& p) CONST {
+		return HashCombine(std::hash<UInt32>()(p.block_size), std::hash<UInt32>()(p.memory_type_index));
+	}
+
+    Bool operator<(CONST MemoryBlockKey& other) CONST
+	{
+		if (memory_type_index < other.memory_type_index)
+		{
+			return true;
+		}
+		else if (memory_type_index == other.memory_type_index)
+		{
+			return block_size < other.block_size;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+    MemoryBlockKey(CONST MemoryBlockKey& other)
+	{
+		memory_type_index = other.memory_type_index;
+		block_size = other.block_size;
+	}
+	MemoryBlockKey(UInt32 in_memory_type_index, VkDeviceSize in_block_size)
+	{
+		memory_type_index = in_memory_type_index;
+		block_size = in_block_size;
+	}
+    MemoryBlockKey() DEFAULT;
+    MemoryBlockKey& operator=(CONST MemoryBlockKey& other)
+    {
+		memory_type_index = other.memory_type_index;
+		block_size = other.block_size;
+		return *this;
     }
 MYRENDERER_END_STRUCT
+
 
 MYRENDERER_BEGIN_STRUCT(MemoryBlock)
     MemoryBlockKey key;
@@ -139,6 +172,7 @@ public:
 MYRENDERER_END_CLASS
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_DeviceMemoryAllocation,public RenderResource)
+
 friend  VK_DeviceMemoryManager;
 
 #pragma region METHOD
@@ -237,7 +271,7 @@ protected:
     Int primary_heap_index=0;
     Bool is_support_lazily_allocated=false;
     Vector<MemoryHeapInfo> memory_heaps;
-    Map<MemoryBlockKey,MemoryBlock> memory_block_map;
+    Map<MemoryBlockKey,MemoryBlock, MemoryBlockKey> memory_block_map;
 	Bool is_support_unified_memory=false;
     Bool is_support_memory_less=false;
 
@@ -271,6 +305,11 @@ MYRENDERER_BEGIN_STRUCT(VK_Section)
 	    return offset < in.offset;
     }
 
+    Bool operator==(CONST VK_Section& in) CONST
+	{
+	    return offset == in.offset && size == in.size;
+	}
+
     static void METHOD(MergeConsecutiveRanges)(Vector<VK_Section>& ranges);
 
     /** Tries to insert the item so it has index ProposedIndex, but may end up merging it with neighbors */
@@ -297,7 +336,7 @@ MYRENDERER_END_STRUCT
 MYRENDERER_BEGIN_STRUCT(VK_AllocationInternalInfo)
     enum class ENUM_VK_AllocationState :Int
     {
-	    EUNUSED,
+	    EUNUSED =0,
 	    EALLOCATED,
 	    EFREED,
 	    EFREEPENDING,
@@ -507,7 +546,7 @@ public:
     //Bool METHOD(AllocateBufferPooled)(VK_Allocation* out_allocation);
     Bool METHOD(AllocateImageMemory)(VK_Allocation& out_allocation, VkImage in_image, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment = 1);
     Bool METHOD(AllocateBufferMemory)(VK_Allocation& out_allocation, VkBuffer in_buffer, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment = 1);
-    Bool METHOD(FreeAllocation)(VK_Allocation& allocation);
+    void METHOD(FreeAllocation)(VK_Allocation& allocation);
     //Bool METHOD(AllocateDedicatedImageMemory)(VK_Allocation* out_allocation);
     //Bool METHOD(AllocateUniformBuffer)(VK_Allocation* out_allocation);
 	void METHOD(RegisterSubresourceAllocator)(VK_MemoryResourceFragmentAllocator* subresource_allocator);
@@ -526,7 +565,6 @@ public:
 
 protected:
 	VK_DeviceMemoryManager* device_memory_manager;
-	Vector<VK_MemoryResourceHeap*> resource_type_heaps;
 
 	enum
 	{
@@ -601,16 +639,15 @@ protected:
 	Bool is_evicting = false;
     Bool is_want_eviction = false;
 
-    VK_DeviceMemoryManager* device_memory_manager;
+
     VK_Device* device;
     Vector<VK_MemoryResourceHeap*> resource_heaps;
 private:
 #pragma endregion 
 
 MYRENDERER_END_CLASS
+MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE
 
-
-MYRENDERER_END_NAMESPACE
-MYRENDERER_END_NAMESPACE
-MYRENDERER_END_NAMESPACE
 #endif

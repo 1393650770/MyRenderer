@@ -2,6 +2,9 @@
 #include "../../Core/ConstDefine.h"
 #include "VK_Define.h"
 #include "VK_Utils.h"
+#include "VK_Buffer.h"
+#include "VK_CommandBuffer.h"
+#include "VK_Queue.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -174,7 +177,6 @@ void VK_TextureView::Destroy(VK_Device& device)
 VK_Texture::VK_Texture(VK_Device& in_device, const TextureDesc& texture_desc):Texture(texture_desc),
 	device(&in_device)
 {
-	VkImageCreateInfo image_create_info;
 	GenerateImageCreateInfo(image_create_info, in_device, texture_desc);
 
 	CHECK_WITH_LOG(vkCreateImage(in_device.GetDevice(), &image_create_info, VULKAN_CPU_ALLOCATOR, &texture_image) != VK_SUCCESS,
@@ -1070,6 +1072,58 @@ void VK_Texture::UpdateTextureData(CONST TextureDataPayload& texture_data_payloa
 		return;
 	}
 
+	VK_Buffer* staging_buffer = device->GetStagingBufferManager()->GetStagingBuffer(texture_data_payload.data_size);
+	
+	void* data = staging_buffer->Map();
+	memcpy(data, texture_data_payload.data, texture_data_payload.data_size);
+
+	Vector<VkBufferImageCopy> buffer_copy_regions(texture_data_payload.layer_count*texture_data_payload.mip_level);
+	VkDeviceSize buffer_offset = 0;
+	UInt32 index = 0;
+	Texture::TextureFormatAttribs fmt_attribs = Texture::GetTextureFormatAttribs(texture_data_payload.format);
+	for (uint32_t layer = 0; layer < texture_data_payload.layer_count; ++layer)
+	{
+		for (uint32_t level = 0; level < texture_data_payload.mip_level; ++level)
+		{
+			VkBufferImageCopy& buffer_copy_region = buffer_copy_regions[layer*texture_data_payload.mip_level + level];
+			auto mip_info = texture_data_payload.GetMipLevelProperties(level);
+			buffer_copy_region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			buffer_copy_region.imageSubresource.mipLevel = level;
+			buffer_copy_region.imageSubresource.baseArrayLayer = layer;
+			buffer_copy_region.imageSubresource.layerCount = 1;
+			if (texture_data_payload.type == ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP)
+			{
+				buffer_copy_region.imageExtent.width = static_cast<uint32_t>(texture_data_payload.width );
+				buffer_copy_region.imageExtent.height = static_cast<uint32_t>(texture_data_payload.height );
+			}
+			else
+			{
+				buffer_copy_region.imageExtent.width = static_cast<uint32_t>(texture_data_payload.width >> level);
+				buffer_copy_region.imageExtent.height = static_cast<uint32_t>(texture_data_payload.height >> level);
+			}
+			buffer_copy_region.imageExtent.depth = 1;
+			buffer_copy_region.bufferOffset = buffer_offset;
+
+			buffer_offset += mip_info.mip_size;
+		}
+	}
+	
+	VK_CommandBuffer* command_buffer = device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::TRANSFER);
+
+	VkImageSubresourceRange subres_range;
+	subres_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	subres_range.baseArrayLayer = 0;
+	subres_range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+	subres_range.baseMipLevel = 0;
+	subres_range.levelCount = VK_REMAINING_MIP_LEVELS;
+	command_buffer->TrainsitionImageLayout(texture_image, texture_image_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subres_range, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+	command_buffer->MemoryBarrier(VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+	texture_image_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	command_buffer->CopyBufferToImage(staging_buffer->GetBuffer(), texture_image, texture_image_layout, buffer_copy_regions.size(), buffer_copy_regions.data());
+
+	device->GetQueue(ENUM_QUEUE_TYPE::TRANSFER)->Submit(command_buffer);
+
+	device->GetStagingBufferManager()->ReleaseStagingBuffer(staging_buffer, command_buffer);
 	//	VkBuffer       inefficient_staging_buffer;
 	//	VkDeviceMemory inefficient_staging_buffer_memory;
 	//	VK_Utils::Create_VKBuffer(device,

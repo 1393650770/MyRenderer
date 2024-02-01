@@ -146,6 +146,34 @@ VK_MemoryManager* VK_Device::GetMemoryManager()
 	return memory_manager;
 }
 
+VK_StagingBufferManager* VK_Device::GetStagingBufferManager()
+{
+	return staging_buffer_manager;
+}
+
+VK_CommandBufferManager* VK_Device::GetCommandBufferManager()
+{
+	return command_buffer_manager;
+}
+
+VK_Queue* VK_Device::GetQueue(ENUM_QUEUE_TYPE queue_type)
+{
+	switch (queue_type)
+	{
+	case ENUM_QUEUE_TYPE::GRAPHICS:
+		return graph_queue;
+	case ENUM_QUEUE_TYPE::COMPUTE:
+		return compute_queue;
+	case ENUM_QUEUE_TYPE::TRANSFER:
+		return transfer_queue;
+	case ENUM_QUEUE_TYPE::PRESENT:
+		return present_queue;
+	default:
+		return nullptr;
+	}
+	return nullptr;
+}
+
 CONST OptionalVulkanDeviceExtensions& VK_Device::GetOptionalExtensions() CONST
 {
 	return extensions;

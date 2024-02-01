@@ -8,7 +8,7 @@
 
 namespace MXRender
 {
-
+	/*
 	VkDescriptorPool VK_DescriptorPool::create_pool()
 	{
 		const unsigned int LimitMaxUniformBuffers = max_descriptorsets * 2;
@@ -609,7 +609,7 @@ namespace MXRender
 		return result;
 	}
 
-
+	*/
 
 }
 
