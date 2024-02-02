@@ -10,11 +10,11 @@
 #include <sstream>
 #include <iostream>
 
-#include "../RenderEnum.h"
+#include "RHI/RenderEnum.h"
 #include<memory>
 #include<string>
-#include "../RenderPass.h"
-#include "../../Core/ConstDefine.h"
+#include "RHI/RenderPass.h"
+#include "Core/ConstDefine.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)

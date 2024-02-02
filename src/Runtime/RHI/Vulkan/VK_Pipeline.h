@@ -3,8 +3,8 @@
 #define _VK_FENCE_
 #include <vulkan/vulkan_core.h>
 
-#include "../../Core/ConstDefine.h"
-#include "../RenderRource.h"
+#include "Core/ConstDefine.h"
+#include "RHI/RenderRource.h"
 
 
 

@@ -5,7 +5,7 @@
 #include<vulkan/vulkan.h>
 #include"glm/glm.hpp"
 #include"VK_Device.h"
-#include"../RenderEnum.h"
+#include"RHI/RenderEnum.h"
 #include <string>
 #include<vector>
 #include <fstream>
@@ -14,7 +14,7 @@
 #include <memory>
 #include <functional>
 
-#include "../../../ThirdParty/vma/vk_mem_alloc.h"
+#include "vma/vk_mem_alloc.h"
 
 namespace MXRender { class VK_GraphicsContext; }
 

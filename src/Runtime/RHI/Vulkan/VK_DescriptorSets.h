@@ -7,8 +7,8 @@
 #include<memory>
 #include<unordered_map> 
 #include"glm/glm.hpp"
-#include "../RenderEnum.h"
-#include "../Shader.h"
+#include "RHI/RenderEnum.h"
+#include "RHI/Shader.h"
 
 namespace MXRender
 {

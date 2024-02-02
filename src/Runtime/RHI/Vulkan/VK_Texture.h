@@ -3,15 +3,15 @@
 #ifndef _VK_TEXTURE_
 #define _VK_TEXTURE_
 
-#include"../RenderEnum.h"
+#include"RHI/RenderEnum.h"
 
 #include <vector>
 #include <string>
 
-#include "../RenderTexture.h"
+#include "RHI/RenderTexture.h"
 #include "vulkan/vulkan_core.h"
 #include "gli/format.hpp"
-#include "../../Core/ConstDefine.h"
+#include "Core/ConstDefine.h"
 #include "VK_Device.h"
 
 

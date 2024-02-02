@@ -6,8 +6,8 @@
 #include <vulkan/vulkan.h>
 #include <memory>
 #include <vector>
-#include "../RenderEnum.h"
-#include "../RenderRource.h"
+#include "RHI/RenderEnum.h"
+#include "RHI/RenderRource.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)

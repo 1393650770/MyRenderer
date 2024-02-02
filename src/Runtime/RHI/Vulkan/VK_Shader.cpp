@@ -6,7 +6,7 @@
 #include"VK_Utils.h"
 
 #include <algorithm>
-#include "../../../ThirdParty/spv_reflect/spirv_reflect.h"
+#include "spv_reflect/spirv_reflect.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)

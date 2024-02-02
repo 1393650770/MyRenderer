@@ -1,7 +1,7 @@
 #pragma once
 #ifndef _VK_BUFFER_
 #define _VK_BUFFER_
-#include "../Buffer.h"
+#include "RHI/Buffer.h"
 #include "VK_Device.h"
 
 

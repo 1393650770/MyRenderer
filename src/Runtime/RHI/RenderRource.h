@@ -3,11 +3,11 @@
 
 #ifndef _RENDERROURCE_
 #define _RENDERROURCE_
-#include "../RHI/RenderEnum.h"
+#include "RHI/RenderEnum.h"
 #include <cstdint>
 #include <memory>
 #include <string>
-#include "../Core/BaseObject.h"
+#include "Core/BaseObject.h"
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)

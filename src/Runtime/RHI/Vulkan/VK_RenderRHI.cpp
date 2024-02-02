@@ -71,7 +71,7 @@ Bool VulkanRHI::CheckGpuSuitable(VkPhysicalDevice gpu)
 
 	Set<String> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
 
-	for (const auto& extension : availableExtensions) {
+	for (CONST auto& extension : availableExtensions) {
 		requiredExtensions.erase(extension.extensionName);
 	}
 
@@ -117,10 +117,10 @@ void VulkanRHI::CreateDevice(Bool enable_validation_layers)
 Vector<CONST Char*> VulkanRHI::GetRequiredExtensions(Bool enable_validation_layers)
 {
 	uint32_t glfwExtensionCount = 0;
-	const char** glfwExtensions;
+	CONST Char** glfwExtensions;
 	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-	std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+	std::vector<CONST Char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
 	if (enable_validation_layers) {
 		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -136,10 +136,10 @@ Bool VulkanRHI::CheckValidationlayerSupport()
 	Vector<VkLayerProperties> availableLayers(layerCount);
 	vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-	for (const char* layerName : validationLayers) {
-		bool layerFound = false;
+	for (CONST Char* layerName : validationLayers) {
+		Bool layerFound = false;
 
-		for (const auto& layerProperties : availableLayers) {
+		for (CONST auto& layerProperties : availableLayers) {
 			if (strcmp(layerName, layerProperties.layerName) == 0) {
 				layerFound = true;
 				break;
@@ -206,7 +206,8 @@ void VulkanRHI::CreateInstance(Bool enable_validation_layers)
 
 void VulkanRHI::InitializeDebugmessenger(Bool enable_validation_layers)
 {
-	if (!enable_validation_layers) return;
+	if (!enable_validation_layers) 
+		return;
 
 	VkDebugUtilsMessengerCreateInfoEXT create_info;
 	PopulateDebugMessengerCreateInfo(create_info);

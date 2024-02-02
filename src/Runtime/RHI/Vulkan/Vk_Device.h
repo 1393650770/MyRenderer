@@ -3,8 +3,8 @@
 #ifndef _VK_DEVICE_
 #define _VK_DEVICE_
 #include <vulkan/vulkan.h>
-#include "../../Core/ConstDefine.h"
-#include "../RenderRource.h"
+#include "Core/ConstDefine.h"
+#include "RHI/RenderRource.h"
 #include "VK_RenderRHI.h"
 #include "VK_Memory.h"
 

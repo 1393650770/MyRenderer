@@ -1,5 +1,5 @@
 #include"VK_Texture.h"
-#include "../../Core/ConstDefine.h"
+#include "Core/ConstDefine.h"
 #include "VK_Define.h"
 #include "VK_Utils.h"
 #include "VK_Buffer.h"

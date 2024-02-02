@@ -2,7 +2,7 @@
 #include "VK_Define.h"
 #include "VK_Device.h"
 #include "VK_Utils.h"
-#include "../../Core/ConstGlobals.h"
+#include "Core/ConstGlobals.h"
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)

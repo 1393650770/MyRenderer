@@ -3,9 +3,9 @@
 #define _VK_MEMORY_
 
 #include <vulkan/vulkan_core.h>
-#include "../../Core/ConstDefine.h"
-#include "../RenderRource.h"
-#include "../../Core/TypeHash.h"
+#include "Core/ConstDefine.h"
+#include "RHI/RenderRource.h"
+#include "Core/TypeHash.h"
 
 #define VULKAN_MEMORY_LOW_PRIORITY 0.f
 #define VULKAN_MEMORY_MEDIUM_PRIORITY 0.5f

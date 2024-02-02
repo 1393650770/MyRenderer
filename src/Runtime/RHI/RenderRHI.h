@@ -7,13 +7,9 @@
 #include <string>
 #include<vector>
 #include<memory>
-#include "../Core/ConstDefine.h"
+#include "Core/ConstDefine.h"
 #include "RenderRource.h"
 #include "Buffer.h"
-
-
-
-
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -60,10 +56,12 @@ protected:
 
 MYRENDERER_END_CLASS
 
-extern RenderRHI* g_render_rhi;
+extern CORE_API RenderRHI* g_render_rhi;
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
+
+extern CORE_API void RHIInit();
 
 #endif
 

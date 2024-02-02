@@ -1,6 +1,6 @@
 #include "RenderUtils.h"
 #include "RenderRource.h"
-#include "../../ThirdParty/stb_image/stb_image.h"
+#include "stb_image/stb_image.h"
 namespace MXRender
 {
     /*

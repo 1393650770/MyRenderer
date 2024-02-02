@@ -1,8 +1,8 @@
 #pragma once
 #ifndef _VUKANRENDERRHI_
 #define _VUKANRENDERRHI_
-#include "../../Core/ConstDefine.h"
-#include "../RenderRHI.h"
+#include "Core/ConstDefine.h"
+#include "RHI/RenderRHI.h"
 #include "vulkan/vulkan_core.h"
 #include "VK_Viewport.h"
 
@@ -50,17 +50,17 @@ public:
 
 
 private:
-Bool METHOD(CheckGpuSuitable)(VkPhysicalDevice gpu);
+	Bool METHOD(CheckGpuSuitable)(VkPhysicalDevice gpu);
 
-VkPhysicalDevice METHOD(GetGpuFromHarddrive)();
-void METHOD(CreateDevice)(Bool enable_validation_layers);
-void METHOD(CreateInstance)(Bool enable_validation_layers);
-void METHOD(InitializeDebugmessenger)(Bool enable_validation_layers);
+	VkPhysicalDevice METHOD(GetGpuFromHarddrive)();
+	void METHOD(CreateDevice)(Bool enable_validation_layers);
+	void METHOD(CreateInstance)(Bool enable_validation_layers);
+	void METHOD(InitializeDebugmessenger)(Bool enable_validation_layers);
 
-Bool METHOD(CheckValidationlayerSupport)();
-Vector<CONST Char*> METHOD(GetRequiredExtensions)(Bool enable_validation_layers);
-void METHOD(PopulateDebugMessengerCreateInfo)(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
-VkResult METHOD(CreateDebugUtilsMessengerEXT)(VkInstance instance, CONST VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, CONST VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
+	Bool METHOD(CheckValidationlayerSupport)();
+	Vector<CONST Char*> METHOD(GetRequiredExtensions)(Bool enable_validation_layers);
+	void METHOD(PopulateDebugMessengerCreateInfo)(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
+	VkResult METHOD(CreateDebugUtilsMessengerEXT)(VkInstance instance, CONST VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, CONST VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 protected:
 
 #pragma endregion
@@ -78,6 +78,7 @@ protected:
 #pragma endregion
 
 MYRENDERER_END_CLASS
+
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

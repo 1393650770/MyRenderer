@@ -3,7 +3,7 @@
 #define _SHADER_
 
 #include "RenderEnum.h"
-#include "../Core/ConstDefine.h"
+#include "Core/ConstDefine.h"
 #include "RenderRource.h"
 
 

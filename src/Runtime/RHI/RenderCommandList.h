@@ -3,7 +3,7 @@
 
 #ifndef _RENDERCOMMANDLIST_
 #define _RENDERCOMMANDLIST_
-#include "../Core/ConstDefine.h"
+#include "Core/ConstDefine.h"
 #include "RenderRource.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)

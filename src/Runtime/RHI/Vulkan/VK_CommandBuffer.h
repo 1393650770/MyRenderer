@@ -3,8 +3,8 @@
 #define _VK_COMMANDBUFFER_
 #include <vulkan/vulkan_core.h>
 
-#include "../../Core/ConstDefine.h"
-#include "../RenderRource.h"
+#include "Core/ConstDefine.h"
+#include "RHI/RenderRource.h"
 #include "VK_Device.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)

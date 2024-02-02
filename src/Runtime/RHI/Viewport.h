@@ -1,7 +1,7 @@
 #pragma once
 #ifndef _VIEWPORT_
 #define _VIEWPORT_
-#include "../Core/ConstDefine.h"
+#include "Core/ConstDefine.h"
 #include "RenderEnum.h"
 #include "RenderRource.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)

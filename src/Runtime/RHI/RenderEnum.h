@@ -1,7 +1,7 @@
 #pragma once
 #ifndef _RENDER_ENUM_
 #define _RENDER_ENUM_
-#include "../Core/ConstDefine.h"
+#include "Core/ConstDefine.h"
 
 namespace MXRender
 {
