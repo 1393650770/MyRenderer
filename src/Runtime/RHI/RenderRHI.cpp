@@ -1,18 +1,22 @@
 #include "RenderRHI.h"
+#include "Platform/Platform.h"
 
-MYRENDERER_BEGIN_NAMESPACE(MXRender)
-MYRENDERER_BEGIN_NAMESPACE(RHI)
+MXRender::RHI::RenderRHI* g_render_rhi = nullptr;
 
-RenderRHI* g_render_rhi = nullptr;
-
-
-MYRENDERER_END_NAMESPACE
-MYRENDERER_END_NAMESPACE
-
-extern CORE_API void RHIInit()
+void RHIInit()
 {
-	if (MXRender::RHI::g_render_rhi == nullptr)
+	if (g_render_rhi == nullptr)
 	{
-		MXRender::RHI::g_render_rhi = PlatformCreateDynamicRHI();
+		g_render_rhi = PlatformCreateDynamicRHI();
 	}
+}
+
+void RHIShutdown()
+{
+
+}
+
+MXRender::RHI::Viewport* RHICreateViewport(void* window_handle, Int width, Int height, Bool is_full_screen)
+{
+	return g_render_rhi->CreateViewport(window_handle, width, height, is_full_screen);
 }

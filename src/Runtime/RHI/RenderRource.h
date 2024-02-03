@@ -11,6 +11,59 @@
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
+
+MYRENDERER_BEGIN_STRUCT(BufferDesc)
+UInt32 size = 0;
+UInt32 stride = 0;
+ENUM_BUFFER_TYPE type = ENUM_BUFFER_TYPE::None;
+BufferDesc() = default;
+BufferDesc(const BufferDesc& other)
+{
+	*this = other;
+}
+
+BufferDesc& operator=(const BufferDesc& other)
+{
+	size = other.size;
+	stride = other.stride;
+	type = other.type;
+	return *this;
+}
+
+MYRENDERER_END_STRUCT
+
+MYRENDERER_BEGIN_STRUCT(ShaderDesc)
+ShaderDesc() DEFAULT;
+ShaderDesc(ENUM_SHADER_STAGE in_shader_type) : shader_type(in_shader_type) {}
+ENUM_SHADER_STAGE shader_type = ENUM_SHADER_STAGE::Invalid;
+String debug_name;
+String entry_name = "main";
+String shader_name;
+MYRENDERER_END_STRUCT
+
+
+MYRENDERER_BEGIN_STRUCT(ShaderDataPayload)
+ShaderDataPayload() DEFAULT;
+ShaderDataPayload(CONST ShaderDataPayload& other);
+
+ShaderDataPayload& operator=(CONST ShaderDataPayload& other)
+{
+	return *this;
+}
+
+Vector<UInt32> data;
+~ShaderDataPayload()
+{
+	data.clear();
+}
+MYRENDERER_BEGIN_STRUCT(ShaderReflectionOverrides)
+CONST Char* name = nullptr;
+ENUM_BINDING_RESOURCE_TYPE overriden_type = ENUM_BINDING_RESOURCE_TYPE::Invalid;
+MYRENDERER_END_STRUCT
+
+MYRENDERER_END_STRUCT
+
+
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 class Shader;
 
@@ -40,30 +93,6 @@ protected:
 
 MYRENDERER_END_CLASS
 
-MYRENDERER_BEGIN_CLASS(TextureData)
-
-public:
-	UInt32 width{ 0 };
-	UInt32 height{ 0 };
-	UInt32 depth{ 0 };
-	UInt32 mip_levels{ 0 };
-	UInt32 array_layers{ 0 };
-	void* pixels{ nullptr };
-
-	ENUM_TEXTURE_FORMAT format{ ENUM_TEXTURE_FORMAT::Unknown };
-	ENUM_TEXTURE_TYPE   type{ ENUM_TEXTURE_TYPE::ENUM_TYPE_NOT_VALID };
-
-	TextureData() DEFAULT;
-	~TextureData()
-	{
-		if (pixels)
-		{
-			free(pixels);
-			pixels = nullptr;
-		}
-	}
-	Bool is_valid() CONST { return pixels != nullptr; }
-MYRENDERER_END_CLASS
 
 MYRENDERER_BEGIN_CLASS(ShaderData)
 
@@ -76,7 +105,7 @@ public:
 	{
 		spirv.clear();
 	}
-	Bool is_valid() CONST { return spirv.size()>0; }
+	Bool is_valid() CONST { return spirv.size() > 0; }
 MYRENDERER_END_CLASS
 
 

@@ -6,7 +6,6 @@
 #include <memory>
 #include <string>
 
-namespace MXRender { class TextureData; }
 namespace MXRender
 {
     class RenderUtils

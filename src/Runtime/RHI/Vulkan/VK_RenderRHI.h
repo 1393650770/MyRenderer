@@ -1,13 +1,17 @@
 #pragma once
 #ifndef _VUKANRENDERRHI_
 #define _VUKANRENDERRHI_
-#include "Core/ConstDefine.h"
 #include "RHI/RenderRHI.h"
 #include "vulkan/vulkan_core.h"
 #include "VK_Viewport.h"
 
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
+class Viewport;
+class Shader;
+class Buffer;
+
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 class VK_Device;
@@ -38,11 +42,13 @@ public:
 
 	VIRTUAL void METHOD(Shutdown)() OVERRIDE FINAL;
 
-
 #pragma endregion
 
 
 #pragma region CREATE_RESOURCE
+	VIRTUAL Viewport* METHOD(CreateViewport)(void* window_handle, Int width, Int height, Bool is_full_screen) OVERRIDE FINAL;
+	VIRTUAL Shader* CreateShader(CONST ShaderDesc& desc, CONST ShaderDataPayload& data)  OVERRIDE FINAL;
+
 	VIRTUAL Buffer* METHOD(CreateBuffer)(const BufferDesc& buffer_desc) OVERRIDE FINAL;
 	VIRTUAL void* METHOD(MapBuffer)(Buffer* buffer) OVERRIDE FINAL;
 	VIRTUAL void METHOD(UnmapBuffer)(Buffer* buffer) OVERRIDE FINAL;

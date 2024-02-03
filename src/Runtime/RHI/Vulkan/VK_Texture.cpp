@@ -1029,7 +1029,7 @@ void VK_Texture::GenerateImageCreateInfo(VkImageCreateInfo& image_create_info, V
 	VkFormat format = VK_Utils::Translate_Texture_Format_To_Vulkan(desc.format);
 	VkImageCreateFlags flag = VK_Utils::Translate_Texture_type_To_VulkanCreateFlags(desc.type);
 	VkSampleCountFlagBits sample_count = VK_Utils::Translate_Texture_SampleCount_To_Vulkan(desc.samples);
-	VkImageUsageFlagBits usage = VK_Utils::Translate_Texture_usage_type_To_VulkanUsageFlagsBits(desc.usage);
+	VkImageUsageFlags usage = VK_Utils::Translate_Texture_usage_type_To_VulkanUsageFlags(desc.usage);
 	image_create_info.imageType = image_type;
 	image_create_info.extent.width = static_cast<uint32_t>(desc.width);
 	image_create_info.extent.height = static_cast<uint32_t>(desc.height);

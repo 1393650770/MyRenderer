@@ -14,7 +14,6 @@
 #include<memory>
 #include<string>
 #include "RHI/RenderPass.h"
-#include "Core/ConstDefine.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)

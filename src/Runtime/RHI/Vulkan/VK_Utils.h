@@ -110,7 +110,7 @@ namespace MXRender
 		static VkSampleCountFlagBits Get_SampleCountFlagBits_FromInt(unsigned num);
 		static VkBufferUsageFlags Translate_Buffer_usage_type_To_VulkanUsageFlag(const ENUM_BUFFER_TYPE& usage_type);
 		static VkImageLayout Translate_Texture_usage_type_To_Vulkan(const ENUM_TEXTURE_USAGE_TYPE& usage_type);
-		static VkImageUsageFlagBits Translate_Texture_usage_type_To_VulkanUsageFlagsBits(const ENUM_TEXTURE_USAGE_TYPE& usage_type);
+		static VkImageUsageFlags Translate_Texture_usage_type_To_VulkanUsageFlags(const ENUM_TEXTURE_USAGE_TYPE& usage_type);
 		static VkImageType Translate_Texture_type_To_Vulkan(const ENUM_TEXTURE_TYPE& type);
 		static VkFormat Translate_Texture_Format_To_Vulkan(const ENUM_TEXTURE_FORMAT& format);
 		static VkImageViewType Translate_Texture_type_To_VulkanImageViewType(const ENUM_TEXTURE_TYPE& type);

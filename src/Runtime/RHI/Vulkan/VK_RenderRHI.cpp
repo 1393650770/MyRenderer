@@ -4,6 +4,8 @@
 #include "VK_Device.h"
 #include "GLFW/glfw3.h"
 #include "VK_Buffer.h"
+#include "VK_Viewport.h"
+#include "VK_Shader.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -226,6 +228,16 @@ VkResult VulkanRHI::CreateDebugUtilsMessengerEXT(VkInstance instance, CONST VkDe
 	else {
 		return VK_ERROR_EXTENSION_NOT_PRESENT;
 	}
+}
+
+Viewport* VulkanRHI::CreateViewport(void* window_handle, Int width, Int height, Bool is_full_screen)
+{
+	return new VK_Viewport(this, device, window_handle, width, height, is_full_screen,ENUM_TEXTURE_FORMAT::RGB8);
+}
+
+Shader* VulkanRHI::CreateShader(CONST ShaderDesc& desc, CONST ShaderDataPayload& data)
+{
+	return new VK_Shader(device,desc,data);
 }
 
 MYRENDERER_END_NAMESPACE

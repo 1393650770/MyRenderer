@@ -9,25 +9,25 @@ namespace MXRender
 	/// Renderer types:
 	enum class ENUM_RENDER_API_TYPE
 	{
-		None=0,        
-		Agc,          
-		Direct3D9,    
-		Direct3D11,   
-		Direct3D12,   
-		Gnm,          
-		Metal,        
-		Nvn,         
-		OpenGLES,    
-		OpenGL,       
-		Vulkan,      
-		WebGPU,      
+		None = 0,
+		Agc,
+		Direct3D9,
+		Direct3D11,
+		Direct3D12,
+		Gnm,
+		Metal,
+		Nvn,
+		OpenGLES,
+		OpenGL,
+		Vulkan,
+		WebGPU,
 
 		Count
 	};
 
 	enum class ENUM_BUFFER_TYPE
 	{
-		None=0,
+		None = 0,
 		Static,
 		Dynamic,
 		Index,
@@ -61,15 +61,15 @@ namespace MXRender
 
 	enum class ENUM_RENDER_DATA_TYPE
 	{
-		None = 0, 
-		Float, 
+		None = 0,
+		Float,
 		Half,
-		Mat3, 
-		Mat4, 
-		Int, 
+		Mat3,
+		Mat4,
+		Int,
 		Uint8,
 		Uint10,
-		Int16, 
+		Int16,
 		Bool,
 
 		Count
@@ -83,10 +83,10 @@ namespace MXRender
 
 		COUNT
 	};
-	
+
 	struct ENUM_RENDER_ATTRIBUTE_TYPE
 	{
-		enum Enum 
+		enum Enum
 		{
 			None = 0,
 			Position = 1,
@@ -110,7 +110,7 @@ namespace MXRender
 
 			Count = 19,
 		};
-	}; 
+	};
 
 	enum class ENUM_TEXTURE_TYPE
 	{
@@ -124,12 +124,12 @@ namespace MXRender
 		ENUM_TYPE_3D
 	};
 
-	enum class ENUM_TEXTURE_USAGE_TYPE:UInt32
+	enum class ENUM_TEXTURE_USAGE_TYPE :UInt32
 	{
 		ENUM_TYPE_NOT_VALID = 0,
-		ENUM_TYPE_COLOR_ATTACHMENT=1 << 0 ,
-		ENUM_TYPE_PRESENT_SWAPCHAIN=2 << 1,
-		ENUM_TYPE_COPY = 3 <<2,
+		ENUM_TYPE_COLOR_ATTACHMENT = 1 << 0,
+		ENUM_TYPE_PRESENT_SWAPCHAIN = 2 << 1,
+		ENUM_TYPE_COPY = 3 << 2,
 		ENUM_TYPE_SHADERRESOURCE = 4 << 3,
 		ENUM_TYPE_DEPTH_ATTACHMENT = 5 << 4,
 		ENUM_TYPE_DEPTH_ATTACHMENT_READ_ONLY = 6 << 5,
@@ -137,7 +137,7 @@ namespace MXRender
 	};
 	ENUM_CLASS_FLAGS(ENUM_TEXTURE_USAGE_TYPE)
 
-	enum class ENUM_QUEUE_TYPE :UInt8
+		enum class ENUM_QUEUE_TYPE :UInt8
 	{
 		NOT_VALID = 0,
 		GRAPHICS,
@@ -150,36 +150,36 @@ namespace MXRender
 	/// Texture formats:
 	enum class ENUM_TEXTURE_FORMAT
 	{
-		None=0,
-		BC1,    
+		None = 0,
+		BC1,
 		BC1A,
-		BC2,         
-		BC3,          
-		BC4,          
-		BC5,          
-		BC6H,         
-		BC7,          
-		ETC1,        
-		ETC2,        
-		ETC2A,        
-		ETC2A1,      
-		PTC12,        
-		PTC14,        
-		PTC12A,       
-		PTC14A,       
-		PTC22,        
-		PTC24,       
-		ATC,         
-		ATCE,         
-		ATCI,         
-		ASTC4x4,      
-		ASTC5x5,     
-		ASTC6x6,     
-		ASTC8x5,      
-		ASTC8x6,      
-		ASTC10x5,     
+		BC2,
+		BC3,
+		BC4,
+		BC5,
+		BC6H,
+		BC7,
+		ETC1,
+		ETC2,
+		ETC2A,
+		ETC2A1,
+		PTC12,
+		PTC14,
+		PTC12A,
+		PTC14A,
+		PTC22,
+		PTC24,
+		ATC,
+		ATCE,
+		ATCI,
+		ASTC4x4,
+		ASTC5x5,
+		ASTC6x6,
+		ASTC8x5,
+		ASTC8x6,
+		ASTC10x5,
 
-		Unknown,      
+		Unknown,
 
 		R1,
 		A8,
@@ -251,32 +251,32 @@ namespace MXRender
 
 		Count
 	};
-	
-    enum class ENUM_FRAMEBUFFER_TYPE
-    {
-        ENUM_TYPE_INVALID=0,
-        ENUM_TYPE_BASIC,
-        ENUM_TYPE_RGBF1_DEPTH,
-        ENUM_TYPE_RGBF2_DEPTH,
-        ENUM_TYPE_RGBF3_DEPTH,
-        ENUM_TYPE_MSAA,
-        ENUM_TYPE_COLOR,
-        ENUM_TYPE_RED,
-        ENUM_TYPE_COLOR_FLOAT,
-        ENUM_TYPE_DEPTH,
-        ENUM_TYPE_CUBE_DEPTH,
-        ENUM_TYPE_GBUFFER,
-        ENUM_TYPE_RAYTRACING,
-        ENUM_TYPE_RTX,
-        ENUM_TYPE_DYNAMIC_COLOR,
-    };
 
-    enum class ENUM_PASS_TYPE : UInt8
-    {
-        ENUM_TYPE_INVALID=0,
-        ENUM_PASS_COLOR,
-        ENUM_PASS_DEPTH,
-    };
+	enum class ENUM_FRAMEBUFFER_TYPE
+	{
+		ENUM_TYPE_INVALID = 0,
+		ENUM_TYPE_BASIC,
+		ENUM_TYPE_RGBF1_DEPTH,
+		ENUM_TYPE_RGBF2_DEPTH,
+		ENUM_TYPE_RGBF3_DEPTH,
+		ENUM_TYPE_MSAA,
+		ENUM_TYPE_COLOR,
+		ENUM_TYPE_RED,
+		ENUM_TYPE_COLOR_FLOAT,
+		ENUM_TYPE_DEPTH,
+		ENUM_TYPE_CUBE_DEPTH,
+		ENUM_TYPE_GBUFFER,
+		ENUM_TYPE_RAYTRACING,
+		ENUM_TYPE_RTX,
+		ENUM_TYPE_DYNAMIC_COLOR,
+	};
+
+	enum class ENUM_PASS_TYPE : UInt8
+	{
+		ENUM_TYPE_INVALID = 0,
+		ENUM_PASS_COLOR,
+		ENUM_PASS_DEPTH,
+	};
 
 	enum class ENUM_STENCIL_FUNCTION : UInt8
 	{
@@ -303,7 +303,7 @@ namespace MXRender
 
 	enum class ENUM_DEPTH_FUNCTION : UInt8
 	{
-		ENUM_NONE=0,
+		ENUM_NONE = 0,
 		ENUM_EQUAL,
 		ENUM_LEAQUAL,
 		ENUM_LESS,
@@ -415,6 +415,29 @@ namespace MXRender
 		DepthStencil,
 		Compound,
 		Compressed,
+		Count
+	};
+
+	enum class ENUM_TEXTURE_FILTER : UInt8
+	{
+		None = 0,
+		Nearest,
+		Linear,
+		NearestMipmapNearest,
+		LinearMipmapNearest,
+		NearestMipmapLinear,
+		LinearMipmapLinear,
+		Count
+	};
+
+	enum class ENUM_BINDING_RESOURCE_TYPE : UInt8
+	{
+		Invalid = 0,
+		UniformBuffer,
+		StorageBuffer,
+		SampledTexture,
+		StorageTexture,
+		Sampler,
 		Count
 	};
 } // namespace name

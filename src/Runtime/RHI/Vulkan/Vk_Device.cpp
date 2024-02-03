@@ -196,7 +196,7 @@ void VK_Device::CreatePresentQueue(VkSurfaceKHR surface)
 			return present_support;
 		};
 
-		CHECK_WITH_LOG(check_and_create_queue(graph_queue) || check_and_create_queue(compute_queue)||check_and_create_queue(transfer_queue),
+		CHECK_WITH_LOG(!(check_and_create_queue(graph_queue) || check_and_create_queue(compute_queue)||check_and_create_queue(transfer_queue)),
 						"RHI Error: failed to create present queue!")
 	}
 }

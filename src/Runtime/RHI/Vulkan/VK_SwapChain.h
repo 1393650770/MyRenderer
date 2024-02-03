@@ -28,13 +28,13 @@ public:
 		UInt32* in_out_desired_num_back_buffers, Vector<VkImage>& out_images, Int in_lock_to_vsync, VK_SwapChainRecreateInfo* recreate_info);
 	VIRTUAL ~VK_SwapChain();
 
-	void METHOD(destroy)(VK_SwapChainRecreateInfo* RecreateInfo);
+	void METHOD(Destroy)(VK_SwapChainRecreateInfo* RecreateInfo);
 
-	VkFormat METHOD(get_image_format)() CONST;
+	VkFormat METHOD(GetImageFormat)() CONST;
 
-	VkSwapchainKHR& METHOD(get_swapchain)();
-	VkExtent2D METHOD(get_extent2D)() CONST;
-	UInt32 METHOD(get_swap_chain_images_num)() CONST;
+	VkSwapchainKHR& METHOD(GetSwapchain)();
+	VkExtent2D METHOD(GetExtent2D)() CONST;
+	UInt32 METHOD(GetSwapChainImagesNum)() CONST;
 
 #pragma endregion
 

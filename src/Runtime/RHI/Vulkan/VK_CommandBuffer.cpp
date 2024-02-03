@@ -30,7 +30,7 @@ VK_CommandBufferPool::~VK_CommandBufferPool()
 
 VK_CommandBuffer* VK_CommandBufferPool::GetOrCreateCommandBuffer(Bool is_upload_only)
 {
-	for (UInt32 index = free_cmd_buffers.size()-1; index>=0;--index)
+	for (Int index = free_cmd_buffers.size()-1; index>=0;--index)
 	{
 		VK_CommandBuffer* cmd_buffer = free_cmd_buffers[index];
 		if (cmd_buffer->is_upload_only == is_upload_only)

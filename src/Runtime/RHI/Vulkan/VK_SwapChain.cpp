@@ -149,10 +149,10 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 
 VK_SwapChain::~VK_SwapChain()
 {
-	destroy(nullptr);
+	Destroy(nullptr);
 }
 
-void VK_SwapChain::destroy(VK_SwapChainRecreateInfo* RecreateInfo)
+void VK_SwapChain::Destroy(VK_SwapChainRecreateInfo* RecreateInfo)
 {
 
 	bool bRecreate = RecreateInfo != nullptr;
@@ -172,22 +172,22 @@ void VK_SwapChain::destroy(VK_SwapChainRecreateInfo* RecreateInfo)
 	surface = VK_NULL_HANDLE;
 }
 
-VkFormat VK_SwapChain::get_image_format() const
+VkFormat VK_SwapChain::GetImageFormat() const
 {
 	return image_format;
 }
 
-VkSwapchainKHR& VK_SwapChain::get_swapchain()
+VkSwapchainKHR& VK_SwapChain::GetSwapchain()
 {
 	return swapchain;
 }
 
-VkExtent2D VK_SwapChain::get_extent2D() const
+VkExtent2D VK_SwapChain::GetExtent2D() const
 {
 	return image_extent2D;
 }
 
-unsigned int VK_SwapChain::get_swap_chain_images_num() const
+unsigned int VK_SwapChain::GetSwapChainImagesNum() const
 {
 	return num_swap_chain_images;
 }

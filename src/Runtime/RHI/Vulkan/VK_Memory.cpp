@@ -479,7 +479,7 @@ VK_MemoryManager::VK_MemoryManager(VK_Device* in_device):device_memory_manager(i
 {
     CONST UInt32 type_bits = (1<<device_memory_manager->GetMemoryTypeNum())-1;
     CONST VkPhysicalDeviceMemoryProperties& memory_properties = device_memory_manager->GetMemoryProperties();
-    resource_heaps.resize(memory_properties.memoryTypeCount);
+    resource_heaps.resize(memory_properties.memoryTypeCount,nullptr);
 
 	auto GetMemoryTypesFromPropertiesFunc = [memory_properties](UInt32 in_type_bits, VkMemoryPropertyFlags properties, Vector<UInt32>& out_type_indices)
 	{
@@ -525,7 +525,10 @@ VK_MemoryManager::VK_MemoryManager(VK_Device* in_device):device_memory_manager(i
             type_index = host_vis_index;
 		}
         CHECK_WITH_LOG(host_cache_result != VK_SUCCESS&& host_result != VK_SUCCESS,"RHI Error : No Memory Type Found Supporting VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT ! ")
-        auto& page_size_buckets= resource_heaps[type_index]->page_size_buckets;
+		UInt64 heap_size = memory_properties.memoryHeaps[memory_properties.memoryTypes[type_index].heapIndex].size;
+		if(!resource_heaps[type_index])
+			resource_heaps[type_index] = new VK_MemoryResourceHeap(this, type_index, STAGING_HEAP_PAGE_SIZE);
+		auto& page_size_buckets= resource_heaps[type_index]->page_size_buckets;
 		VK_VulkanPageSizeBucket bucket0 = { STAGING_HEAP_PAGE_SIZE, STAGING_HEAP_PAGE_SIZE, VK_VulkanPageSizeBucket::BUCKET_MASK_IMAGE | VK_VulkanPageSizeBucket::BUCKET_MASK_BUFFER };
         VK_VulkanPageSizeBucket bucket1 = { UINT64_MAX, 0, VK_VulkanPageSizeBucket::BUCKET_MASK_IMAGE | VK_VulkanPageSizeBucket::BUCKET_MASK_BUFFER };
         page_size_buckets.push_back(bucket0);
@@ -1570,6 +1573,25 @@ void VK_Section::SanityCheck(Vector<VK_Section>& ranges)
 			("RHI Error: VK_Section::SanityCheck() failed : Array is not sorted!"))
 	}
 #endif
+}
+
+void VK_Section::MergeConsecutiveRanges(Vector<VK_Section>& ranges)
+{
+	if (ranges.size() > 1)
+	{
+		SanityCheck(ranges);
+		for(Int index = ranges.size() - 1; index > 0; --index)
+		{
+			VK_Section& current = ranges[index];
+			VK_Section& pre = ranges[index - 1];
+			if (pre.offset + pre.size == current.offset)
+			{
+				pre.size += current.size;
+				auto it = ranges.begin() + index;
+				ranges.erase(it);
+			}
+		}
+	}
 }
 
 MYRENDERER_END_NAMESPACE

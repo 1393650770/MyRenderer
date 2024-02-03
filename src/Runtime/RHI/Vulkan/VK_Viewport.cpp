@@ -14,7 +14,7 @@ MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 VK_Viewport::VK_Viewport(VulkanRHI* in_rhi, VK_Device* in_device, void* in_window_handle, UInt32 in_size_x, UInt32 in_size_y, Bool in_is_full_screen, ENUM_TEXTURE_FORMAT in_pixel_format): device(in_device), rhi(in_rhi), window_handle(in_window_handle), size_x(in_size_x), size_y(in_size_y), is_full_screen(in_is_full_screen),pixel_format(in_pixel_format)
 {
 	rhi->viewports.push_back(this);
-
+	CreateSwapChain();
 	//maybe need to make sure the instance is already created.
 
 }

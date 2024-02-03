@@ -9,11 +9,14 @@
 #include<memory>
 #include "Core/ConstDefine.h"
 #include "RenderRource.h"
-#include "Buffer.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 class Texture;
+class Viewport;
+class Buffer;
+class Shader;
+
 MYRENDERER_BEGIN_CLASS(RenderFactory)
 public:
 	Int render_api_version=0;
@@ -38,6 +41,8 @@ public:
 
 
 #pragma region CREATE_RESOURCE
+	VIRTUAL Viewport* METHOD(CreateViewport)(void* window_handle, Int width, Int height, Bool is_full_screen) PURE;
+	VIRTUAL Shader* METHOD(CreateShader)(CONST ShaderDesc& desc, CONST ShaderDataPayload& data) PURE;
 	VIRTUAL Buffer* METHOD(CreateBuffer)(const BufferDesc& buffer_desc) PURE;
 	VIRTUAL void* METHOD(MapBuffer)(Buffer* buffer) PURE;
 	VIRTUAL void METHOD(UnmapBuffer)(Buffer* buffer) PURE;
@@ -56,12 +61,16 @@ protected:
 
 MYRENDERER_END_CLASS
 
-extern CORE_API RenderRHI* g_render_rhi;
+
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
+extern CORE_API MXRender::RHI::RenderRHI* g_render_rhi;
 
-extern CORE_API void RHIInit();
+extern CORE_API void METHOD(RHIInit)();
+extern CORE_API void METHOD(RHIShutdown)();
+
+extern CORE_API MXRender::RHI::Viewport* METHOD(RHICreateViewport)(void* window_handle, Int width, Int height, Bool is_full_screen);
 
 #endif
 

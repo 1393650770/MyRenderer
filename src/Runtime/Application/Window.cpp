@@ -1,8 +1,8 @@
 #include "Window.h"
-#include "RHI/Viewport.h"
 #include<iostream>
 #include <memory>
-
+#include "RHI/RenderRHI.h"
+#include "RHI/Viewport.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
 /*
@@ -22,7 +22,7 @@ Window::Window()
 		return;
 	}
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	window = glfwCreateWindow(1920,1080, "MyRender", NULL, NULL);
+	window = glfwCreateWindow(width,height, "MyRender", NULL, NULL);
 	if (!window)
 	{
 		glfwTerminate();
@@ -152,5 +152,14 @@ GLFWwindow* Window::GetWindow() CONST
 {
     return window;
 }
+
+void Window::InitWindow()
+{
+
+	RHIInit();
+	viewport_rhi = RHICreateViewport((void*)window,width,height, is_full_screen);
+
+}
+
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

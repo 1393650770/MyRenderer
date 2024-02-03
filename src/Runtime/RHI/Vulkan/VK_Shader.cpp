@@ -12,7 +12,7 @@ MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
-
+/*
 Vector<UInt32> VK_Shader::read_file(CONST String& file_name)
 {
 	std::ifstream file(file_name, std::ios::ate | std::ios::binary);
@@ -32,9 +32,9 @@ Vector<UInt32> VK_Shader::read_file(CONST String& file_name)
 
 	return buffer;
 }
+*/
 
-
-VkShaderModule VK_Shader::create_shader_module(CONST Vector<UInt32>& code)
+VkShaderModule VK_Shader::CreateShaderModule(CONST Vector<UInt32>& code)
 {
 	VkShaderModuleCreateInfo create_info{};
 	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -52,37 +52,34 @@ VkShaderModule VK_Shader::create_shader_module(CONST Vector<UInt32>& code)
 	return shader_module;
 }
 
-std::tuple<VkDeviceSize, VkBuffer, VkDeviceMemory>& VK_Shader::getUniformTuple(CONST String& name)
+std::tuple<VkDeviceSize, VkBuffer, VkDeviceMemory>& VK_Shader::GetUniformTuple(CONST String& name)
 {
 	return uniform_map[name];
 }
 
 
-VK_Shader::VK_Shader(VK_Device* in_device, Vector<ShaderData>& in_shader_data)
+VK_Shader::VK_Shader(VK_Device* in_device, CONST ShaderDesc& desc, CONST ShaderDataPayload& data) :Shader(desc,data)
 {
 	device = in_device;
 
-	for(auto& shader_data:in_shader_data)
-	{
-		shader_codes[shader_data.stage] =std::move(shader_data.spirv);
-		shader_modules[shader_data.stage] = create_shader_module(shader_codes[shader_data.stage]);
-		shader_data.spirv.clear();
-	}
+
+	shader_codes =data.data;
+	shader_modules = CreateShaderModule(shader_codes);
 	
 }
-
-VkPipelineLayout VK_Shader::get_built_layout()
+/*
+VkPipelineLayout VK_Shader::GetBuiltLayout()
 {
 	return built_layout;
 }
 
-void VK_Shader::fill_stages(Vector<VkPipelineShaderStageCreateInfo>& pipeline_stages)
+void VK_Shader::FillStages(Vector<VkPipelineShaderStageCreateInfo>& pipeline_stages)
 {
 	for (int index = 0; index < ENUM_SHADER_STAGE::NumStages; index++)
 	{
-		if (shader_modules[index] != VK_NULL_HANDLE)
+		if (shader_modules != VK_NULL_HANDLE)
 		{
-			pipeline_stages.push_back(VK_Utils::Pipeline_Shader_Stage_Create_Info(VK_Utils::Translate_API_ShaderTypeEnum_To_Vulkan((ENUM_SHADER_STAGE)index), shader_modules[index]));
+			pipeline_stages.push_back(VK_Utils::Pipeline_Shader_Stage_Create_Info(VK_Utils::Translate_API_ShaderTypeEnum_To_Vulkan((ENUM_SHADER_STAGE)index), shader_modules));
 		}
 	}
 }
@@ -257,18 +254,17 @@ void VK_Shader::build_sets(VkDevice device, VkDescriptorPool descript_pool)
 		throw std::runtime_error("failed to allocate descriptor sets!");
 	}
 }
-
-void VK_Shader::destroy()
+*/
+void VK_Shader::Destroy()
 {
 
-	for (UInt32 i = 0; i < ENUM_SHADER_STAGE::NumStages; i++)
-	{
-		if (shader_modules[i] != VK_NULL_HANDLE)
+
+		if (shader_modules != VK_NULL_HANDLE)
 		{
-			vkDestroyShaderModule(device->GetDevice(), shader_modules[i], nullptr);
-			shader_modules[i]=VK_NULL_HANDLE;
+			vkDestroyShaderModule(device->GetDevice(), shader_modules, nullptr);
+			shader_modules=VK_NULL_HANDLE;
 		}
-	}
+	
 
 	for (UInt32 i = 0; i < set_layouts.size(); i++)
 	{
@@ -286,7 +282,7 @@ void VK_Shader::destroy()
 
 VK_Shader::~VK_Shader()
 {
-	destroy();
+	Destroy();
 		
 }
 

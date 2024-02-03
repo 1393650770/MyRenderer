@@ -12,7 +12,15 @@ Shader::~Shader()
 {
 }
 
+Shader::Shader(CONST ShaderDesc& desc): desc(desc)
+{
 
+}
+
+Shader::Shader(CONST ShaderDesc& desc, CONST ShaderDataPayload& data): desc(desc)
+{
+
+}
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

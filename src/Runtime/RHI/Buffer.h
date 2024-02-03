@@ -6,26 +6,6 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 
-MYRENDERER_BEGIN_STRUCT(BufferDesc)
-UInt32 size=0;
-UInt32 stride=0;
-ENUM_BUFFER_TYPE type = ENUM_BUFFER_TYPE::None;
-BufferDesc() = default;
-BufferDesc(const BufferDesc& other)
-{
-	*this=other;
-}
-
-BufferDesc& operator=(const BufferDesc& other)
-{
-	size = other.size;
-	stride = other.stride;
-	type = other.type;
-	return *this;
-}
-
-MYRENDERER_END_STRUCT
-
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Buffer,  public RenderResource)
 #pragma region METHOD
 public:

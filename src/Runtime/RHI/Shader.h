@@ -10,28 +10,28 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 
-MYRENDERER_BEGIN_STRUCT(ShaderDesc)
-ShaderDesc() DEFAULT;
-ShaderDesc(ENUM_SHADER_STAGE in_shader_type) : shader_type(in_shader_type) {}
-ENUM_SHADER_STAGE shader_type = ENUM_SHADER_STAGE::Invalid;
-String debug_name;
-String entry_name = "main";
-
-MYRENDERER_END_STRUCT
-
-
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Shader, public RenderResource)
 
-private:
-protected:
-    // ≥Ã–ÚID
-    ShaderDesc desc;
+#pragma region METHOD
 public:
-    Shader() DEFAULT;
-    virtual ~Shader();
-    //New api
-    virtual void addUniformName(const std::string& name, uint64_t uniformSize) = 0;
+	Shader() DEFAULT;
+	Shader(CONST ShaderDesc& desc);
+	Shader(CONST ShaderDesc& desc,CONST ShaderDataPayload& data);
+	VIRTUAL ~Shader();
+
+protected:
+private:
+
+#pragma endregion
+
+#pragma region MEMBER
+public:
+protected:
+	ShaderDesc desc;
+private:
+
+#pragma endregion
     
 MYRENDERER_END_CLASS
 

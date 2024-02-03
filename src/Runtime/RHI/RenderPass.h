@@ -14,6 +14,8 @@
 #include<memory>
 #include<string>
 #include "vulkan/vulkan_core.h"
+#include "Core/ConstDefine.h"
+
 
 namespace MXRender { class RenderScene; }
 

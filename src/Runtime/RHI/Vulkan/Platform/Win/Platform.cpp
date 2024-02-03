@@ -4,8 +4,8 @@
 MXRender::RHI::RenderRHI* PlatformCreateDynamicRHI()
 {
 	MXRender::RHI::Vulkan::VulkanRHI* pRHI = new MXRender::RHI::Vulkan::VulkanRHI();
-
-	pRHI->Init();
+	MXRender::RHI::Vulkan::VulkanRenderFactory factory;
+	pRHI->Init(&factory);
 
 	return pRHI;
 }

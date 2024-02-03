@@ -4,6 +4,7 @@
 int main()
 {
 	MXRender::Application::Window window;
+	window.InitWindow();
 	window.Run(nullptr);
 	system("pause");
 

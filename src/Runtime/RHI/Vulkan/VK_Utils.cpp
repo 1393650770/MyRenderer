@@ -364,6 +364,36 @@ namespace MXRender
 		info.pPushConstantRanges = nullptr;
 		return info;
 	}
+	VkSampler VK_Utils::Create_Linear_Sampler(VkPhysicalDevice physical_device, VkDevice device)
+	{
+		VkSampler sampler;
+		VkPhysicalDeviceProperties physical_device_properties{};
+		vkGetPhysicalDeviceProperties(physical_device, &physical_device_properties);
+
+		VkSamplerCreateInfo samplerInfo{};
+
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		samplerInfo.magFilter = VK_FILTER_LINEAR;
+		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.anisotropyEnable = VK_FALSE;
+		samplerInfo.maxAnisotropy = physical_device_properties.limits.maxSamplerAnisotropy; // close :1.0f
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = 8.0f; // todo: m_irradiance_texture_miplevels
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+
+		CHECK_WITH_LOG(!(vkCreateSampler(device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS), "vk create sampler");
+
+		return sampler;
+	}
+
 	/*
 	uint32_t VK_Utils::Hash_Descriptor_Layout_Info(VkDescriptorSetLayoutCreateInfo* info)
 	{
@@ -498,37 +528,6 @@ namespace MXRender
 		return image_view;
 	}
 
-	VkSampler VK_Utils::Create_Linear_Sampler(VkPhysicalDevice physical_device, VkDevice device)
-	{
-		VkSampler sampler;
-		VkPhysicalDeviceProperties physical_device_properties{};
-		vkGetPhysicalDeviceProperties(physical_device, &physical_device_properties);
-
-		VkSamplerCreateInfo samplerInfo{};
-
-		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		samplerInfo.magFilter = VK_FILTER_LINEAR;
-		samplerInfo.minFilter = VK_FILTER_LINEAR;
-		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		samplerInfo.mipLodBias = 0.0f;
-		samplerInfo.anisotropyEnable = VK_FALSE;
-		samplerInfo.maxAnisotropy = physical_device_properties.limits.maxSamplerAnisotropy; // close :1.0f
-		samplerInfo.compareEnable = VK_FALSE;
-		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-		samplerInfo.minLod = 0.0f;
-		samplerInfo.maxLod = 8.0f; // todo: m_irradiance_texture_miplevels
-		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-		samplerInfo.unnormalizedCoordinates = VK_FALSE;
-
-		if (vkCreateSampler(device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS)
-		{
-			throw std::runtime_error("vk create sampler");
-		}
-		return sampler;
-	}
 	
 	uint32_t VK_Utils::Find_MemoryType(std::weak_ptr<VK_Device> Device, uint32_t TypeFilter, VkMemoryPropertyFlags Properties)
     {
@@ -627,49 +626,49 @@ namespace MXRender
 			break;
         }
 	}
-	/*
-	VkImageUsageFlagBits VK_Utils::Translate_Texture_usage_type_To_VulkanUsageFlagsBits(const ENUM_TEXTURE_USAGE_TYPE& usage_type)
+
+	VkImageUsageFlags VK_Utils::Translate_Texture_usage_type_To_VulkanUsageFlags(const ENUM_TEXTURE_USAGE_TYPE& usage_type)
 	{
-		VkImageUsageFlags usage_flags = 0;
-		for (int i = 0; i < 32; i++)
+		VkImageUsageFlags usege_flags = 0;
+		for (Int i = 0; i < 32; i++)
 		{
 			if ((UInt32)(usage_type) & (1 << i))
 			{
-				ENUM_TEXTURE_USAGE_TYPE temp_usage_type = (ENUM_TEXTURE_USAGE_TYPE)(((UInt32)(usage_type) & (1 << i)));
+			ENUM_TEXTURE_USAGE_TYPE temp_usage_type = (ENUM_TEXTURE_USAGE_TYPE)(((UInt32)(usage_type) & (1 << i)));
 				switch (temp_usage_type)
 				{
 				case  ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_COLOR_ATTACHMENT:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					usege_flags = VkImageUsageFlagBits(usege_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 					break;
 				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_PRESENT_SWAPCHAIN:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					usege_flags = usege_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 					break;
 				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					usege_flags = usege_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 					break;
 				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT_READ_ONLY:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					usege_flags = usege_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 					break;
 				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT_WRITE_ONLY:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+					usege_flags = usege_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 					break;
 				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					usege_flags = usege_flags | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 					break;
 				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_COPY:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					usege_flags = usege_flags | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 					break;
 				default:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					usege_flags = usege_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 					CHECK_WITH_LOG(true, "RHI Error: usage type error");
 					break;
 				}
 			}
 		}
-
-		return usage_flags;
+		return usege_flags;
 	}
-	*/
+
+	
 	VkImageType VK_Utils::Translate_Texture_type_To_Vulkan(const ENUM_TEXTURE_TYPE& type)
 	{
         switch (type)

@@ -18,22 +18,19 @@ struct ReflectionOverrides;
 
 #pragma region METHOD
 public:
-	VK_Shader(VK_Device* in_device,Vector<ShaderData>& in_shader_data);
+	VK_Shader(VK_Device* in_device, CONST ShaderDesc& desc, CONST ShaderDataPayload& data);
 
-	VkPipelineLayout METHOD(get_built_layout)();
+	VkPipelineLayout METHOD(GetBuiltLayout)();
 
-	void METHOD(fill_stages)(Vector<VkPipelineShaderStageCreateInfo>& pipeline_stages);
-	void METHOD(reflect_layout)(ReflectionOverrides* overrides, int override_count);
-	void METHOD(build_sets)(VkDevice device, VkDescriptorPool descript_pool);
-	void METHOD(destroy)();
+	void METHOD(Destroy)();
 	VIRTUAL ~VK_Shader();
 
 protected:
 
 private:
-	Vector<UInt32> METHOD(read_file)(CONST String& filename);
-	VkShaderModule METHOD(create_shader_module)(CONST Vector<UInt32>& code);
-	std::tuple<VkDeviceSize, VkBuffer, VkDeviceMemory>& getUniformTuple(CONST String& name);
+	Vector<UInt32> METHOD(ReadFile)(CONST String& filename);
+	VkShaderModule METHOD(CreateShaderModule)(CONST Vector<UInt32>& code);
+	std::tuple<VkDeviceSize, VkBuffer, VkDeviceMemory>& GetUniformTuple(CONST String& name);
 #pragma endregion
 
 
@@ -63,8 +60,8 @@ protected:
 	Array<UInt32, 4> set_hashes;
 	Array<VkDescriptorSet, 4> sets;
 	VkPipelineLayout built_layout = VK_NULL_HANDLE;
-	VkShaderModule shader_modules[ENUM_SHADER_STAGE::NumStages]{ VK_NULL_HANDLE };
-	Vector<UInt32> shader_codes[ENUM_SHADER_STAGE::NumStages];
+	VkShaderModule shader_modules= VK_NULL_HANDLE ;
+	Vector<UInt32> shader_codes;
 
 private:
 #pragma endregion
