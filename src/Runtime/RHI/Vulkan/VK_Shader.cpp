@@ -52,12 +52,6 @@ VkShaderModule VK_Shader::CreateShaderModule(CONST Vector<UInt32>& code)
 	return shader_module;
 }
 
-std::tuple<VkDeviceSize, VkBuffer, VkDeviceMemory>& VK_Shader::GetUniformTuple(CONST String& name)
-{
-	return uniform_map[name];
-}
-
-
 VK_Shader::VK_Shader(VK_Device* in_device, CONST ShaderDesc& desc, CONST ShaderDataPayload& data) :Shader(desc,data)
 {
 	device = in_device;
@@ -65,7 +59,7 @@ VK_Shader::VK_Shader(VK_Device* in_device, CONST ShaderDesc& desc, CONST ShaderD
 
 	shader_codes =data.data;
 	shader_modules = CreateShaderModule(shader_codes);
-	
+	ReflectBindings();
 }
 /*
 VkPipelineLayout VK_Shader::GetBuiltLayout()
@@ -258,26 +252,14 @@ void VK_Shader::build_sets(VkDevice device, VkDescriptorPool descript_pool)
 void VK_Shader::Destroy()
 {
 
-
-		if (shader_modules != VK_NULL_HANDLE)
-		{
-			vkDestroyShaderModule(device->GetDevice(), shader_modules, nullptr);
-			shader_modules=VK_NULL_HANDLE;
-		}
-	
-
-	for (UInt32 i = 0; i < set_layouts.size(); i++)
+	if (shader_modules != VK_NULL_HANDLE)
 	{
-		if (set_layouts[i] != VK_NULL_HANDLE)
-		{
-			vkDestroyDescriptorSetLayout(device->GetDevice(), set_layouts[i], nullptr);
-			set_layouts[i] = VK_NULL_HANDLE;
-		}
+		vkDestroyShaderModule(device->GetDevice(), shader_modules, nullptr);
+		shader_modules = VK_NULL_HANDLE;
 	}
-
-	vkDestroyPipelineLayout(device->GetDevice(), built_layout, nullptr);
-
-
+	//reflect_info.bindings.clear();
+	reflect_info.constant_ranges.clear();
+	reflect_info.setlayouts.clear();
 }
 
 VK_Shader::~VK_Shader()
@@ -286,8 +268,92 @@ VK_Shader::~VK_Shader()
 		
 }
 
+VkShaderModule VK_Shader::GetShaderModule() CONST
+{
+	return shader_modules;
+}
 
+void VK_Shader::ReflectBindings()
+{
+	SpvReflectShaderModule spvmodule;
+	SpvReflectResult result = spvReflectCreateShaderModule(shader_codes.size() * sizeof(UInt32), shader_codes.data(), &spvmodule);
 
+	UInt32 count = 0;
+	result = spvReflectEnumerateDescriptorSets(&spvmodule, &count, NULL);
+	assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+	Vector<SpvReflectDescriptorSet*> sets(count);
+	result = spvReflectEnumerateDescriptorSets(&spvmodule, &count, sets.data());
+	assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+	for (UInt32 i_set = 0; i_set < sets.size(); ++i_set)
+	{
+
+		const SpvReflectDescriptorSet& refl_set = *(sets[i_set]);
+
+		DescriptorSetLayoutData layout = {};
+
+		layout.bindings.resize(refl_set.binding_count);
+		for (uint32_t i_binding = 0; i_binding < refl_set.binding_count; ++i_binding) {
+			const SpvReflectDescriptorBinding& refl_binding = *(refl_set.bindings[i_binding]);
+			VkDescriptorSetLayoutBinding& layout_binding = layout.bindings[i_binding];
+			layout_binding.binding = refl_binding.binding;
+			layout_binding.descriptorType = static_cast<VkDescriptorType>(refl_binding.descriptor_type);
+
+			/*
+			if (layout_binding.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) 
+				layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+			if (layout_binding.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+				layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+			*/
+
+			layout_binding.descriptorCount = 1;
+			for (uint32_t i_dim = 0; i_dim < refl_binding.array.dims_count; ++i_dim) {
+				layout_binding.descriptorCount *= refl_binding.array.dims[i_dim];
+			}
+			layout_binding.stageFlags = static_cast<VkShaderStageFlagBits>(spvmodule.shader_stage);
+
+			/*
+			ReflectedBinding reflected;
+			reflected.binding = layout_binding.binding;
+			reflected.set = refl_set.set;
+			reflected.type = layout_binding.descriptorType;
+
+			reflect_info.bindings[refl_binding.name] = reflected;
+			*/
+		}
+		layout.set_number = refl_set.set;
+		layout.create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layout.create_info.bindingCount = refl_set.binding_count;
+		layout.create_info.pBindings = layout.bindings.data();
+
+		reflect_info.setlayouts.push_back(layout);
+	}
+
+	result = spvReflectEnumeratePushConstantBlocks(&spvmodule, &count, NULL);
+	assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+	std::vector<SpvReflectBlockVariable*> pconstants(count);
+	result = spvReflectEnumeratePushConstantBlocks(&spvmodule, &count, pconstants.data());
+	assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+	for(UInt32 i = 0; i < count; i++)
+	{
+		ReflectedConstantInfo constant_info;
+		VkPushConstantRange pcs{};
+		pcs.offset = pconstants[i]->offset;
+		pcs.size = pconstants[i]->size;
+		pcs.stageFlags = VK_Utils::Translate_ShaderTypeEnum_To_Vulkan(desc.shader_type);
+		constant_info.constant = pcs;
+		constant_info.name = pconstants[i]->name;
+		reflect_info.constant_ranges.push_back(constant_info);
+	}
+}
+
+CONST ReflectedInfo& VK_Shader::GetReflectedInfo() CONST
+{
+	return reflect_info;
+}
 
 
 MYRENDERER_END_NAMESPACE

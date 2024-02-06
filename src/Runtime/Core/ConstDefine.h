@@ -79,6 +79,9 @@
 #define CONST        const
 #define DEFAULT      =default
 #define PURE         = 0
+
+#define DELETE       = delete
+
 #define OVERRIDE      override
 #define FINAL        final
 #define REF          &

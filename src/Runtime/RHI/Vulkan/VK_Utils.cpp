@@ -1126,6 +1126,99 @@ namespace MXRender
 		return vulkan_sample_count;
 	}
 
+	VkAttachmentStoreOp VK_Utils::Translate_AttachmentStore_To_Vulkan(CONST ENUM_RENDERPASS_ATTACHMENT_STORE_OP& store_op)
+	{
+		VkAttachmentStoreOp vulkan_store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		switch (store_op)
+		{
+		case ENUM_RENDERPASS_ATTACHMENT_STORE_OP::Store:
+			vulkan_store_op = VK_ATTACHMENT_STORE_OP_STORE;
+			break;
+		case ENUM_RENDERPASS_ATTACHMENT_STORE_OP::DISCARD:
+			vulkan_store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			break;
+		}
+		return vulkan_store_op;
+
+	}
+
+	VkAttachmentLoadOp VK_Utils::Translate_AttachmentLoad_To_Vulkan(CONST ENUM_RENDERPASS_ATTACHMENT_LOAD_OP& load_op)
+	{
+		VkAttachmentLoadOp vulkan_load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		switch (load_op)
+		{
+		case ENUM_RENDERPASS_ATTACHMENT_LOAD_OP::Load:
+			vulkan_load_op = VK_ATTACHMENT_LOAD_OP_LOAD;
+			break;
+		case ENUM_RENDERPASS_ATTACHMENT_LOAD_OP::Clear:
+			vulkan_load_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			break;
+		case ENUM_RENDERPASS_ATTACHMENT_LOAD_OP::DISCARD:
+			vulkan_load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			break;
+		}
+		return vulkan_load_op;
+	}
+
+	VkImageLayout VK_Utils::Translate_ReourceState_To_Vulkan(CONST ENUM_RESOURCE_STATE& state, bool Is_inside_renderpass , bool frag_density_map_instead_of_shadingrate)
+	{
+		VkImageLayout vulkan_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+		if (state == ENUM_RESOURCE_STATE::Invalid)
+			return vulkan_image_layout;
+		switch (state)
+		{
+		case ENUM_RESOURCE_STATE::Undefined:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+			break;
+		case ENUM_RESOURCE_STATE::VertexBuffer:
+		case ENUM_RESOURCE_STATE::IndexBuffer:
+		case ENUM_RESOURCE_STATE::ConstantBuffer:
+		case ENUM_RESOURCE_STATE::StreamOut:
+		case ENUM_RESOURCE_STATE::IndirectArgument:
+		case ENUM_RESOURCE_STATE::BuildAsRead:
+		case ENUM_RESOURCE_STATE::BuildAsWrite:
+			CHECK_WITH_LOG(true, "RHI Error: Translate_ReourceState_To_Vulkan-- invalid resource state !");
+			break;
+		case ENUM_RESOURCE_STATE::RenderTarget:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::UnorderedAccess:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_GENERAL;
+			break;
+		case ENUM_RESOURCE_STATE::DepthWrite:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::DepthRead:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::ShaderResource:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::CopyDest:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::CopySource:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::ResolveDest:
+			vulkan_image_layout = Is_inside_renderpass? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::ResolveSource:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::Present:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			break;
+		case ENUM_RESOURCE_STATE::Common:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_GENERAL;
+			break;
+		case ENUM_RESOURCE_STATE::ShaderRate:
+			vulkan_image_layout = frag_density_map_instead_of_shadingrate ? VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT : VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+			break;
+		}
+		return vulkan_image_layout;
+	}
+
 	VkFormat VK_Utils::Translate_API_DataTypeEnum_To_Vulkan(ENUM_RENDER_DATA_TYPE data_type)
 	{
 		switch (data_type)
@@ -1158,7 +1251,7 @@ namespace MXRender
 		return VK_FORMAT_UNDEFINED;
 	}
 
-	VkShaderStageFlagBits VK_Utils::Translate_API_ShaderTypeEnum_To_Vulkan(ENUM_SHADER_STAGE shader_type)
+	VkShaderStageFlagBits VK_Utils::Translate_ShaderTypeEnum_To_Vulkan(ENUM_SHADER_STAGE shader_type)
 	{
 		switch (shader_type)
 		{
@@ -1194,6 +1287,261 @@ namespace MXRender
 			break;
 		}
 	}
+
+	VkPrimitiveTopology VK_Utils::Translate_PrimitiveTopology_To_Vulkan(ENUM_PRIMITIVE_TYPE topology)
+	{
+		switch (topology)
+		{
+		case MXRender::ENUM_PRIMITIVE_TYPE::PointList:
+			return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+			break;
+		case MXRender::ENUM_PRIMITIVE_TYPE::LineList:
+			return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+			break;
+		case MXRender::ENUM_PRIMITIVE_TYPE::TriangleList:
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+			break;
+		case MXRender::ENUM_PRIMITIVE_TYPE::TriangleStrip:
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+			break;
+		case MXRender::ENUM_PRIMITIVE_TYPE::TriangleFan:
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+			break;
+		case MXRender::ENUM_PRIMITIVE_TYPE::TriangleListWithAdjacency:
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
+			break;
+		case MXRender::ENUM_PRIMITIVE_TYPE::TriangleStripWithAdjacency:
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
+			break;
+		case MXRender::ENUM_PRIMITIVE_TYPE::PatchList:
+			return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+			break;
+		default:
+			return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+			break;
+		}
+	}
+
+	VkCullModeFlags VK_Utils::Translate_CullMode_To_Vulkan(ENUM_RASTER_CULLMODE polygon_mode)
+	{
+		switch (polygon_mode)
+		{
+		case MXRender::ENUM_RASTER_CULLMODE::None:
+			return VK_CULL_MODE_NONE;
+			break;
+		case MXRender::ENUM_RASTER_CULLMODE::Front:
+			return VK_CULL_MODE_FRONT_BIT;
+			break;
+		case MXRender::ENUM_RASTER_CULLMODE::Back:
+			return VK_CULL_MODE_BACK_BIT;
+			break;
+		default:
+			return VK_CULL_MODE_NONE;
+			break;
+		}
+	}
+
+	VkBlendFactor VK_Utils::Translate_BlendFactor_To_Vulkan(ENUM_BLEND_FACTOR blend_factor)
+	{
+		switch (blend_factor)
+		{
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_ZERO:
+			return VK_BLEND_FACTOR_ZERO;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_ONE:
+			return VK_BLEND_FACTOR_ONE;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_SRC_COLOR:
+			return VK_BLEND_FACTOR_SRC_COLOR;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_ONE_MINUS_SRC_COLOR:
+			return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_DST_COLOR:
+			return VK_BLEND_FACTOR_DST_COLOR;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_ONE_MINUS_DST_COLOR:
+			return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_SRC_ALPHA:
+			return VK_BLEND_FACTOR_SRC_ALPHA;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_ONE_MINUS_SRC_ALPHA:
+			return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_DST_ALPHA:
+			return VK_BLEND_FACTOR_DST_ALPHA;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_ONE_MINUS_DST_ALPHA:
+			return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_CONSTANT_COLOR:
+			return VK_BLEND_FACTOR_CONSTANT_COLOR;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_INV_CONSTANT_COLOR:
+			return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_CONSTANT_ALPHA:
+			return VK_BLEND_FACTOR_CONSTANT_ALPHA;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_INV_CONSTANT_ALPHA:
+			return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::EUNUM_SRC_ALPHA_SATURATE:
+			return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+			break;
+		default:
+			CHECK_WITH_LOG(true, "RHI Error: invalid blend factor !")
+			return VK_BLEND_FACTOR_ZERO;
+			break;
+		}
+	}
+
+	VkBlendOp VK_Utils::Translate_BlendOp_To_Vulkan(ENUM_BLEND_EQUATION blend_op)
+	{
+		switch (blend_op)
+		{
+		case MXRender::ENUM_BLEND_EQUATION::ENUM_ADD:
+			return VK_BLEND_OP_ADD;
+			break;
+		case MXRender::ENUM_BLEND_EQUATION::ENUM_SUB:
+			return VK_BLEND_OP_SUBTRACT;
+			break;
+		case MXRender::ENUM_BLEND_EQUATION::ENUM_REVERSE_SUB:
+			return VK_BLEND_OP_REVERSE_SUBTRACT;
+			break;
+		case MXRender::ENUM_BLEND_EQUATION::ENUM_MIN:
+			return VK_BLEND_OP_MIN;
+			break;
+		case MXRender::ENUM_BLEND_EQUATION::ENUM_MAX:
+			return VK_BLEND_OP_MAX;
+			break;
+		default:
+			CHECK_WITH_LOG(true, "RHI Error: invalid blend equation !")
+			return VK_BLEND_OP_ADD;
+			break;
+		}
+	
+
+	}
+
+	VkCompareOp VK_Utils::Translate_CompareOp_To_Vulkan(ENUM_STENCIL_FUNCTION compare_op)
+	{
+		switch (compare_op)
+		{
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_NEVER:
+			return VK_COMPARE_OP_NEVER;
+			break;
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_LESS:
+			return VK_COMPARE_OP_LESS;
+			break;
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_EQUAL:
+			return VK_COMPARE_OP_EQUAL;
+			break;
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_LESSOREQUAL :
+			return VK_COMPARE_OP_LESS_OR_EQUAL;
+			break;
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_GREATER:
+			return VK_COMPARE_OP_GREATER;
+			break;
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_NOT_EQUAL:
+			return VK_COMPARE_OP_NOT_EQUAL;
+			break;
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_GREATEROREQUAL:
+			return VK_COMPARE_OP_GREATER_OR_EQUAL;
+			break;
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_ALWAYS:
+			return VK_COMPARE_OP_ALWAYS;
+			break;
+		default:
+			CHECK_WITH_LOG(true, "RHI Error: invalid compare op !")
+			return VK_COMPARE_OP_NEVER;
+			break;
+		}
+
+	}
+
+	VkStencilOpState VK_Utils::Translate_StencilOpState_To_Vulkan(StencilOpDesc stencil_op_state)
+	{
+		VkStencilOpState vulkan_stencil_op;
+		vulkan_stencil_op.failOp = Translate_StencilOp_To_Vulkan(stencil_op_state.fail_op);
+		vulkan_stencil_op.passOp = Translate_StencilOp_To_Vulkan(stencil_op_state.pass_op);
+		vulkan_stencil_op.depthFailOp = Translate_StencilOp_To_Vulkan(stencil_op_state.depth_fail_op);
+		vulkan_stencil_op.compareOp = Translate_CompareOp_To_Vulkan(stencil_op_state.func);
+		return vulkan_stencil_op;
+
+	}
+
+	VkStencilOp VK_Utils::Translate_StencilOp_To_Vulkan(ENUM_STENCIL_OPERATIOON stencil_op)
+	{
+switch (stencil_op)
+		{
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_KEEP:
+			return VK_STENCIL_OP_KEEP;
+			break;
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_ZERO:
+			return VK_STENCIL_OP_ZERO;
+			break;
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_REPLACE:
+			return VK_STENCIL_OP_REPLACE;
+			break;
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_INCREMENT_AND_CLAMP:
+			return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+			break;
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_DECREMENT_AND_CLAMP:
+			return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+			break;
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_INVERT:
+			return VK_STENCIL_OP_INVERT;
+			break;
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_INCREMENT_AND_WRAP:
+			return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+			break;
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_DECREMENT_AND_WRAP:
+			return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+			break;
+		default:
+			CHECK_WITH_LOG(true, "RHI Error: invalid stencil op !")
+			return VK_STENCIL_OP_KEEP;
+			break;
+		}
+
+	}
+
+	VkVertexInputRate VK_Utils::Translation_VertexInputRate_To_Vulkan(ENUM_VERTEX_INPUTRATE input_rate)
+	{
+		switch (input_rate)
+		{
+		case MXRender::ENUM_VERTEX_INPUTRATE::PerVertex:
+			return VK_VERTEX_INPUT_RATE_VERTEX;
+			break;
+		case MXRender::ENUM_VERTEX_INPUTRATE::PerInstance:
+			return VK_VERTEX_INPUT_RATE_INSTANCE;
+			break;
+		default:
+			CHECK_WITH_LOG(true,"RHI Error: invalid vertex input rate !")
+			return VK_VERTEX_INPUT_RATE_MAX_ENUM;
+			break;
+		}
+	}
+
+	VkPolygonMode VK_Utils::Translate_FillMode_To_Vulkan(ENUM_RASTER_FILLMODE polygon_mode)
+	{
+		switch (polygon_mode)
+		{
+		case MXRender::ENUM_RASTER_FILLMODE::Line:
+			return VK_POLYGON_MODE_LINE;
+			break;
+		case MXRender::ENUM_RASTER_FILLMODE::Fill:
+			return VK_POLYGON_MODE_FILL;
+			break;
+		default:
+			return VK_POLYGON_MODE_MAX_ENUM;
+			break;
+		}
+
+	}
+
 	/*
 	void VK_Utils::ClearImageColor(std::weak_ptr< VK_GraphicsContext> context, VkImageLayout image_layout, VkImage image,
 		VkImageAspectFlags imageAspectflags)

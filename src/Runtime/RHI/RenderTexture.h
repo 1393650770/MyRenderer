@@ -2,12 +2,7 @@
 
 #ifndef _RENDER_TEXTURE_
 #define _RENDER_TEXTURE_
-
-#include "Core/ConstDefine.h"
-#include "RenderEnum.h"
 #include "RenderRource.h"
-
-#include"GLFW/glfw3.h"
 #include <vector>
 #include <string>
 

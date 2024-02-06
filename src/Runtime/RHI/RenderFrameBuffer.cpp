@@ -1,9 +1,11 @@
-#include "RenderPass.h"
+#include "RenderFrameBuffer.h"
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 
 
-RenderPass::RenderPass(CONST RenderPassDesc& in_desc): desc(in_desc)
+
+FrameBuffer::FrameBuffer(CONST FrameBufferDesc& in_desc):desc(in_desc)
 {
 
 }

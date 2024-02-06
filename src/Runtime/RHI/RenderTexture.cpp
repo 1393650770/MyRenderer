@@ -49,7 +49,8 @@ CONST Texture::TextureFormatAttribs& Texture::GetTextureFormatAttribs(ENUM_TEXTU
 			}
 			else
 			{
-				CHECK_WITH_LOG(true,"Texture format (", int{ format }, ") is out of allowed range [0, ", int{ ENUM_TEXTURE_FORMAT::Count } - 1, "]");
+				String error_msg = "Texture format (" + std::to_string((UInt32)format) + ") is out of allowed range [0, " + std::to_string((UInt32)ENUM_TEXTURE_FORMAT::Count - 1) + "]";
+				CHECK_WITH_LOG(true, error_msg);
 				return format_attribs_map[0];
 			}
 		}

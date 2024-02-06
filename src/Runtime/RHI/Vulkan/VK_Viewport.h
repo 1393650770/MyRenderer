@@ -2,7 +2,7 @@
 
 #ifndef _VK_VIEWPORT_
 #define _VK_VIEWPORT_
-#include "RHI/Viewport.h"
+#include "RHI/RenderViewport.h"
 
 #include "vulkan/vulkan_core.h"
 

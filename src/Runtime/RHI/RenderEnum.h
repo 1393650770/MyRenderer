@@ -137,7 +137,7 @@ namespace MXRender
 	};
 	ENUM_CLASS_FLAGS(ENUM_TEXTURE_USAGE_TYPE)
 
-		enum class ENUM_QUEUE_TYPE :UInt8
+	enum class ENUM_QUEUE_TYPE :UInt8
 	{
 		NOT_VALID = 0,
 		GRAPHICS,
@@ -148,7 +148,7 @@ namespace MXRender
 	};
 
 	/// Texture formats:
-	enum class ENUM_TEXTURE_FORMAT
+	enum class ENUM_TEXTURE_FORMAT: UInt32
 	{
 		None = 0,
 		BC1,
@@ -288,6 +288,9 @@ namespace MXRender
 		ENUM_LEQUAL,
 		ENUM_GREATER,
 		ENUM_EQUAL,
+		ENUM_NOT_EQUAL,
+		ENUM_LESSOREQUAL,
+		ENUM_GREATEROREQUAL,
 		ENUM_COUNT
 	};
 
@@ -295,9 +298,13 @@ namespace MXRender
 	{
 		ENUM_NONE = 0,
 		ENUM_KEEP,
-		ENUM_ADD,
-		ENUM_SUB,
-
+		ENUM_ZERO,
+		ENUM_REPLACE,
+		ENUM_INCREMENT_AND_CLAMP,
+		ENUM_DECREMENT_AND_CLAMP,
+		ENUM_INVERT,
+		ENUM_INCREMENT_AND_WRAP,
+		ENUM_DECREMENT_AND_WRAP,
 		ENUM_COUNT
 	};
 
@@ -321,7 +328,8 @@ namespace MXRender
 		ENUM_ADD,
 		ENUM_SUB,
 		ENUM_REVERSE_SUB,
-
+		ENUM_MIN,
+		ENUM_MAX,
 		ENUM_COUNT
 	};
 	enum class ENUM_COLOR_MASK : UInt8
@@ -346,7 +354,11 @@ namespace MXRender
 		ENUM_ONE_MINUS_DST_COLOR,
 		ENUM_ONE_MINUS_SRC_ALPHA,
 		ENUM_ONE_MINUS_DST_ALPHA,
-
+		EUNUM_SRC_ALPHA_SATURATE,
+		ENUM_CONSTANT_COLOR,
+		ENUM_INV_CONSTANT_COLOR,
+		ENUM_CONSTANT_ALPHA,
+		ENUM_INV_CONSTANT_ALPHA,
 		ENUM_COUNT
 	};
 
@@ -438,7 +450,73 @@ namespace MXRender
 		SampledTexture,
 		StorageTexture,
 		Sampler,
+		UniformBufferDynamic,
+		StorageBufferDynamic,
 		Count
 	};
+
+	enum class ENUM_RENDERPASS_ATTACHMENT_LOAD_OP : UInt8
+	{
+		Load,
+		Clear,
+		DISCARD,
+		Count
+	};
+
+	enum class ENUM_RENDERPASS_ATTACHMENT_STORE_OP : UInt8
+	{
+		Store,
+		DISCARD,
+		Count
+	};
+
+	enum class ENUM_RESOURCE_STATE : UInt64
+	{
+		Invalid = 0,
+		Undefined = 1 << 0,
+		VertexBuffer  = 1<<1,
+		ConstantBuffer=1<<2,
+		IndexBuffer=1<<3,
+		RenderTarget=1<<4,
+		UnorderedAccess=1<<5,
+		DepthWrite=1<<6,
+		DepthRead=1<<7,
+		ShaderResource=1<<8,
+		StreamOut=1<<9,
+		IndirectArgument=1<<10,
+		CopyDest=1<<11,
+		CopySource=1<<12,
+		ResolveDest=1<<13,
+		ResolveSource=1<<14,
+		InputAttachment=1<<15,
+		Present=1<<16,
+		BuildAsRead=1<<17,
+		BuildAsWrite=1<<18,
+		Raytracing=1<<19,
+		Common=1<<20,
+		ShaderRate = 1 << 21,
+		Count = ShaderRate,
+		GenerricRead = VertexBuffer | IndexBuffer | ConstantBuffer | ShaderResource | IndirectArgument | CopySource,
+	};
+	ENUM_CLASS_FLAGS(ENUM_RESOURCE_STATE)
+
+
+	MYRENDERER_BEGIN_STRUCT(StencilOpDesc)
+		ENUM_STENCIL_OPERATIOON fail_op{ ENUM_STENCIL_OPERATIOON::ENUM_KEEP };
+		ENUM_STENCIL_OPERATIOON depth_fail_op{ ENUM_STENCIL_OPERATIOON::ENUM_KEEP };
+		ENUM_STENCIL_OPERATIOON pass_op{ ENUM_STENCIL_OPERATIOON::ENUM_KEEP };
+		ENUM_STENCIL_FUNCTION func{ ENUM_STENCIL_FUNCTION::ENUM_ALWAYS };
+	MYRENDERER_END_STRUCT
+
+
+	enum class ENUM_VERTEX_INPUTRATE : UInt8
+	{
+		None=0,
+		PerVertex,
+		PerInstance,
+		Count
+	};
+
+
 } // namespace name
 #endif // !_MXRENDER_ENUM_

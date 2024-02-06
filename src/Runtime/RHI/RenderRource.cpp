@@ -9,5 +9,10 @@ MYRENDERER_BEGIN_NAMESPACE(RHI)
 		delete this;
 }
 
+UInt64 RenderGraphiPipelineState::GetHash() CONST
+{
+	return 0;
+}
+
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

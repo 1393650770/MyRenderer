@@ -7,6 +7,8 @@
 #include "VK_Memory.h"
 #include "VK_Define.h"
 #include "VK_CommandBuffer.h"
+#include "VK_Buffer.h"
+#include "VK_RenderPass.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -119,6 +121,8 @@ void VK_Device::Init(Int device_index,Bool enable_validation_layers, Vector<CONS
 	memory_manager=new VK_MemoryManager(this);
 	fence_manager=new VK_FenceManager(this);
 	command_buffer_manager=new VK_CommandBufferManager(this);
+	staging_buffer_manager = new VK_StagingBufferManager(this);
+	render_pass_manager = new VK_RenderPassManager(this);
 }
 
 VkDevice VK_Device::GetDevice()
@@ -270,12 +274,27 @@ void VK_Device::Destroy()
 		delete command_buffer_manager;
 		command_buffer_manager=nullptr;
 	}
+	if (staging_buffer_manager)
+	{
+		delete staging_buffer_manager;
+		staging_buffer_manager=nullptr;
+	}
+	if (render_pass_manager)
+	{
+		delete render_pass_manager;
+		render_pass_manager=nullptr;
+	}
 
 	if (device)
 	{
 		vkDestroyDevice(device, VULKAN_CPU_ALLOCATOR);
 		device=VK_NULL_HANDLE;
 	}	
+}
+
+VK_RenderPassManager* VK_Device::GetRenderPassManager()
+{
+	return nullptr;
 }
 
 MYRENDERER_END_NAMESPACE

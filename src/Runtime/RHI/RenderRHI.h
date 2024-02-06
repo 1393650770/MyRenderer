@@ -2,7 +2,6 @@
 
 #ifndef _RENDERRHI_
 #define _RENDERRHI_
-#include"RenderState.h"
 #include"RenderEnum.h"
 #include <string>
 #include<vector>

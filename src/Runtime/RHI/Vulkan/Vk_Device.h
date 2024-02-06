@@ -18,6 +18,7 @@ class VK_DeviceMemoryManager;
 class VK_MemoryManager;
 class VK_CommandBufferManager;
 class VK_StagingBufferManager;
+class VK_RenderPassManager;
 MYRENDERER_BEGIN_STRUCT(OptionalVulkanDeviceExtensions)
 union
 {
@@ -124,6 +125,7 @@ public:
 	VK_MemoryManager* METHOD(GetMemoryManager)();
 	VK_StagingBufferManager* METHOD(GetStagingBufferManager)();
 	VK_CommandBufferManager* METHOD(GetCommandBufferManager)();
+	VK_RenderPassManager* METHOD(GetRenderPassManager)();
 
 	VK_Queue* METHOD(GetQueue)(ENUM_QUEUE_TYPE queue_type);
 	CONST OptionalVulkanDeviceExtensions& METHOD(GetOptionalExtensions)() CONST;
@@ -152,6 +154,7 @@ protected:
 	VK_MemoryManager* memory_manager = nullptr;
 	VK_CommandBufferManager* command_buffer_manager = nullptr;
 	VK_StagingBufferManager* staging_buffer_manager = nullptr;
+	VK_RenderPassManager* render_pass_manager = nullptr;
 public:
 
 

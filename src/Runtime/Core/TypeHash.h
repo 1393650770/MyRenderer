@@ -4,10 +4,11 @@
 #define _TYPEHASH_
 
 #include"ConstDefine.h"
+#include <type_traits>
 
-inline UInt32 METHOD(HashCombine)(UInt32 A ,UInt32 C)
+inline UInt64 METHOD(HashCombine)(UInt64 A , UInt64 C)
 {
-    UInt32 B = 0x9e3779b9;
+    UInt64 B = 0x9e3779b9;
     A += B;
     A -= B; A -= C; A ^= (C>>13);
     B -= C; B -= A; B ^= (A<<8);
@@ -20,4 +21,26 @@ inline UInt32 METHOD(HashCombine)(UInt32 A ,UInt32 C)
     C -= A; C -= B; C ^= (B>>15);
     return C;
 }
+
+template <typename T>
+void HashCombine(UInt64& Seed, CONST T& Val) noexcept
+{
+    Seed ^= std::hash<T>{}(Val)+0x9e3779b9 + (Seed << 6) + (Seed >> 2);
+}
+
+template <typename FirstArgType, typename... RestArgsType>
+inline void METHOD(HashCombine)(UInt64& Seed, CONST FirstArgType& FirstArg, CONST RestArgsType&... RestArgs) noexcept
+{
+	HashCombine(Seed, FirstArg);
+	HashCombine(Seed, RestArgs...); // recursive call using pack expansion syntax
+}
+
+template <typename FirstArgType, typename... RestArgsType>
+UInt64 METHOD(ComputeHash)(CONST FirstArgType& FirstArg, CONST RestArgsType&... RestArgs) noexcept
+{
+    UInt64 Seed = 0;
+	HashCombine(Seed, FirstArg, RestArgs...);
+	return Seed;
+}
+
 #endif 

@@ -10,6 +10,10 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 
+MYRENDERER_BEGIN_STRUCT( ReflectionOverrides) 
+	CONST Char* name;
+	ENUM_BINDING_RESOURCE_TYPE override_type;
+MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Shader, public RenderResource)
 
@@ -20,6 +24,7 @@ public:
 	Shader(CONST ShaderDesc& desc,CONST ShaderDataPayload& data);
 	VIRTUAL ~Shader();
 
+	CONST ShaderDesc& GetDesc() CONST;
 protected:
 private:
 
