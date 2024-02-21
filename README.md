@@ -15,14 +15,17 @@ xmake config -m debug
 xmake
 </pre>
 
+##Feature
+######Tip: maybe still in progress
+ - [x] RHI
+The architecture refers to UE and
+ - [x] Vulkan 
+The implementation refers to UE/ Nvrhi/ DiligentEngine etc
+ - [x] RenderGraph
+Refers to fg
+
 ## To do list
- 
- - [ ] wrap opengl 
- - [ ] wrap light model - pbr 
- - [ ] wrap camera 
- - [ ] wrap light system 
  - [ ] add shadow
- - [ ] add gi
+ - [ ] add raytrace-gi
  - [ ] add Skeletal-Animation
- - [ ] add optix to do real time ray tracing
  - [ ] add particle system

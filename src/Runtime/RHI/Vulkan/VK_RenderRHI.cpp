@@ -7,6 +7,7 @@
 #include "VK_Viewport.h"
 #include "VK_Shader.h"
 #include <iostream>
+#include "VK_Texture.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -50,6 +51,11 @@ void VulkanRHI::Shutdown()
 Buffer* VulkanRHI::CreateBuffer(const BufferDesc& buffer_desc)
 {
 	return new VK_Buffer(device,buffer_desc);
+}
+
+Texture* VulkanRHI::CreateTexture(const TextureDesc& texture_desc)
+{
+	return new VK_Texture(device,texture_desc);
 }
 
 void* VulkanRHI::MapBuffer(Buffer* buffer)

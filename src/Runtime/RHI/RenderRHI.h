@@ -6,7 +6,6 @@
 #include <string>
 #include<vector>
 #include<memory>
-#include "Core/ConstDefine.h"
 #include "RenderRource.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -42,7 +41,8 @@ public:
 #pragma region CREATE_RESOURCE
 	VIRTUAL Viewport* METHOD(CreateViewport)(void* window_handle, Int width, Int height, Bool is_full_screen) PURE;
 	VIRTUAL Shader* METHOD(CreateShader)(CONST ShaderDesc& desc, CONST ShaderDataPayload& data) PURE;
-	VIRTUAL Buffer* METHOD(CreateBuffer)(const BufferDesc& buffer_desc) PURE;
+	VIRTUAL Buffer* METHOD(CreateBuffer)(CONST BufferDesc& buffer_desc) PURE;
+	VIRTUAL Texture* METHOD(CreateTexture)(CONST TextureDesc& texture_desc) PURE;
 	VIRTUAL void* METHOD(MapBuffer)(Buffer* buffer) PURE;
 	VIRTUAL void METHOD(UnmapBuffer)(Buffer* buffer) PURE;
 
@@ -70,6 +70,8 @@ extern CORE_API void METHOD(RHIInit)();
 extern CORE_API void METHOD(RHIShutdown)();
 
 extern CORE_API MXRender::RHI::Viewport* METHOD(RHICreateViewport)(void* window_handle, Int width, Int height, Bool is_full_screen);
+extern CORE_API MXRender::RHI::Texture* METHOD(RHICreateTexture)(CONST MXRender::RHI::TextureDesc& texture_desc);
+extern CORE_API MXRender::RHI::Buffer* METHOD(RHICreateBuffer)(CONST MXRender::RHI::BufferDesc& buffer_desc);
 
 #endif
 

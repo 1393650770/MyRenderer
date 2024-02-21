@@ -174,30 +174,30 @@ void VK_TextureView::Destroy(VK_Device& device)
 
 
 
-VK_Texture::VK_Texture(VK_Device& in_device, const TextureDesc& texture_desc):Texture(texture_desc),
-	device(&in_device)
+VK_Texture::VK_Texture(VK_Device* in_device, const TextureDesc& texture_desc):Texture(texture_desc),
+	device(in_device)
 {
-	GenerateImageCreateInfo(image_create_info, in_device, texture_desc);
+	GenerateImageCreateInfo(image_create_info, *in_device, texture_desc);
 
-	CHECK_WITH_LOG(vkCreateImage(in_device.GetDevice(), &image_create_info, VULKAN_CPU_ALLOCATOR, &texture_image) != VK_SUCCESS,
+	CHECK_WITH_LOG(vkCreateImage(in_device->GetDevice(), &image_create_info, VULKAN_CPU_ALLOCATOR, &texture_image) != VK_SUCCESS,
 					"RHI Error: failed to CreateImage !")
 	texture_image_layout = image_create_info.initialLayout;
 
 	const ENUM_VulkanAllocationFlags alloc_flags = ENUM_VulkanAllocationFlags::HostCached | ENUM_VulkanAllocationFlags::AutoBind;
 
-	in_device.GetMemoryManager()->AllocateImageMemory(allocation,texture_image, alloc_flags,0);
+	in_device->GetMemoryManager()->AllocateImageMemory(allocation,texture_image, alloc_flags,0);
 
-	allocation.BindImage(&in_device,texture_image);
+	allocation.BindImage(in_device,texture_image);
 
 	VkImageViewCreateInfo image_view_create_info;
-	GenerateViewCreateInfo(image_view_create_info, in_device, texture_desc,texture_image);
+	GenerateViewCreateInfo(image_view_create_info, *in_device, texture_desc,texture_image);
 
-	CHECK_WITH_LOG(vkCreateImageView(in_device.GetDevice(), &image_view_create_info, VULKAN_CPU_ALLOCATOR, &texture_image_view) != VK_SUCCESS,
+	CHECK_WITH_LOG(vkCreateImageView(in_device->GetDevice(), &image_view_create_info, VULKAN_CPU_ALLOCATOR, &texture_image_view) != VK_SUCCESS,
 		"RHI Error: failed to CreateImageView !")
 
 	texture_image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-	texture_sampler = VK_Utils::Create_Linear_Sampler(in_device.GetGpu(), in_device.GetDevice());
+	texture_sampler = VK_Utils::Create_Linear_Sampler(in_device->GetGpu(), in_device->GetDevice());
 }
 
  //void VK_Texture::load_dds(ENUM_TEXTURE_TYPE _type, const std::string& texture_path)

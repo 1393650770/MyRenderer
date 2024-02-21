@@ -62,9 +62,11 @@
 
 #define MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Name, ...) class Name : __VA_ARGS__ \
                                                 {
-#define MYRENDERER_END_CLASS };
+#define MYRENDERER_END_CLASS  };
 
 #define MYRENDERER_END_STRUCT };
+
+#define MYRENDERER_TEMPLATE_HEAD(...)  template<__VA_ARGS__>
 
 #define MYRENDERER_VALUE(x) = x
 

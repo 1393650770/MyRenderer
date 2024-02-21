@@ -48,8 +48,8 @@ public:
 #pragma region CREATE_RESOURCE
 	VIRTUAL Viewport* METHOD(CreateViewport)(void* window_handle, Int width, Int height, Bool is_full_screen) OVERRIDE FINAL;
 	VIRTUAL Shader* CreateShader(CONST ShaderDesc& desc, CONST ShaderDataPayload& data)  OVERRIDE FINAL;
-
 	VIRTUAL Buffer* METHOD(CreateBuffer)(const BufferDesc& buffer_desc) OVERRIDE FINAL;
+	VIRTUAL Texture* METHOD(CreateTexture)(CONST TextureDesc& texture_desc) OVERRIDE FINAL;
 	VIRTUAL void* METHOD(MapBuffer)(Buffer* buffer) OVERRIDE FINAL;
 	VIRTUAL void METHOD(UnmapBuffer)(Buffer* buffer) OVERRIDE FINAL;
 #pragma endregion
