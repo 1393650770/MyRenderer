@@ -90,7 +90,7 @@
 #define METHOD(Name) MYRENDERER_CALL_TYPE Name
 
 #define STATIC_CAST(Pointer,Type) (static_cast<Type*>(Pointer))
-#define DYNAMIC_CAST(Pointer,Type) (dynamic_cast<Type*>(Pointer))
+#define DYNAMIC_CAST(Pointer,Type) (dynamic_cast<Type>(Pointer))
 #define REINTERPRET_CAST(Pointer,Type) (reinterpret_cast<Type*>(Pointer))
 
 using UInt8 = std::uint8_t;

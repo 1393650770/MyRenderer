@@ -2,7 +2,6 @@
 #ifndef _RENDERGRAPHRESOURCE_
 #define _RENDERGRAPHRESOURCE_
 #include "RenderGraphResourceImplementation.h"
-#include "Core/ConstDefine.h"
 #include <variant>
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Render)
@@ -15,6 +14,11 @@ MYRENDERER_BEGIN_CLASS(RenderGraphResourceBase)
 #pragma region MATHOD
 
 public:
+	explicit RenderGraphResourceBase(CONST String& name, CONST RenderGraphPassBase* creator) : name(name), create_pass(creator), ref_count(0)
+	{
+		static UInt32 static_id = 0;
+		id = static_id++;
+	}
 	RenderGraphResourceBase() DEFAULT;
 	VIRTUAL ~RenderGraphResourceBase() DEFAULT;
 	RenderGraphResourceBase(RenderGraphResourceBase&& temp) DEFAULT;
@@ -66,12 +70,12 @@ public:
 	{
 		// Transient (normal) constructor.
 	}
-	explicit RenderGraphResource(CONST String& name, CONST description_type& description, actual_type* actual = nullptr)
-		: RenderGraphResourceBase(name, nullptr), description(description), actual(actual)
+	explicit RenderGraphResource(CONST String& name, CONST description_type& in_description, actual_type* in_actual = nullptr)
+		: RenderGraphResourceBase(name, nullptr), description(in_description), actual(in_actual)
 	{
 		// Retained (import) constructor.
-		if (!actual) 
-			actual = Realize<description_type, actual_type>(description);
+		if (!in_actual)
+			actual = RealizeResource<description_type, actual_type>(in_description);
 	}
 	RenderGraphResource(CONST RenderGraphResource& that) DELETE;
 	RenderGraphResource(RenderGraphResource&& temp) DEFAULT;
@@ -92,7 +96,7 @@ protected:
 	{
 		if (GetIsTransient())
 		{
-			std::get<std::unique_ptr<actual_type>>(actual) = Realize<description_type, actual_type>(description);
+			std::get<std::unique_ptr<actual_type>>(actual) = RealizeResource<description_type, actual_type>(description);
 		}
 	}
 	VIRTUAL void METHOD(Derealize)() override

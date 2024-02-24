@@ -5,7 +5,6 @@
 #include <vulkan/vulkan_core.h>
 #include "Core/ConstDefine.h"
 #include "RHI/RenderRource.h"
-#include "Core/TypeHash.h"
 
 #define VULKAN_MEMORY_LOW_PRIORITY 0.f
 #define VULKAN_MEMORY_MEDIUM_PRIORITY 0.5f
@@ -108,47 +107,15 @@ MYRENDERER_END_STRUCT
 MYRENDERER_BEGIN_STRUCT(MemoryBlockKey)
     UInt32 memory_type_index=0;
     VkDeviceSize block_size=0;
-    Bool operator==(CONST MemoryBlockKey& other) CONST
-    {
-        return memory_type_index == other.memory_type_index&& block_size == other.block_size;
-    }
-	size_t operator()(CONST MemoryBlockKey& p) CONST {
-		return HashCombine(std::hash<UInt32>()(p.block_size), std::hash<UInt32>()(p.memory_type_index));
-	}
+    Bool operator==(CONST MemoryBlockKey& other) CONST;
+    size_t operator()(CONST MemoryBlockKey& p) CONST;
 
-    Bool operator<(CONST MemoryBlockKey& other) CONST
-	{
-		if (memory_type_index < other.memory_type_index)
-		{
-			return true;
-		}
-		else if (memory_type_index == other.memory_type_index)
-		{
-			return block_size < other.block_size;
-		}
-		else
-		{
-			return false;
-		}
-	}
+    Bool operator<(CONST MemoryBlockKey& other) CONST;
 
-    MemoryBlockKey(CONST MemoryBlockKey& other)
-	{
-		memory_type_index = other.memory_type_index;
-		block_size = other.block_size;
-	}
-	MemoryBlockKey(UInt32 in_memory_type_index, VkDeviceSize in_block_size)
-	{
-		memory_type_index = in_memory_type_index;
-		block_size = in_block_size;
-	}
+    MemoryBlockKey(CONST MemoryBlockKey& other);
+    MemoryBlockKey(UInt32 in_memory_type_index, VkDeviceSize in_block_size);
     MemoryBlockKey() DEFAULT;
-    MemoryBlockKey& operator=(CONST MemoryBlockKey& other)
-    {
-		memory_type_index = other.memory_type_index;
-		block_size = other.block_size;
-		return *this;
-    }
+    MemoryBlockKey& operator=(CONST MemoryBlockKey& other);
 MYRENDERER_END_STRUCT
 
 
@@ -634,7 +601,7 @@ protected:
 	Vector<VK_MemoryResourceFragmentAllocator*> used_buffer_allocations[(Int)EPoolSizes::SizesCount + 1];
     Vector<VK_MemoryResourceFragmentAllocator*> free_buffer_allocations[(Int)EPoolSizes::SizesCount + 1];
     Vector<VK_MemoryResourceFragmentAllocator*> all_buffer_allocations;
-    Int all_buffer_allocations_index=0;
+    Int all_buffer_allocations_index=-1;
 	UInt64 pending_evict_bytes = 0;
 	Bool is_evicting = false;
     Bool is_want_eviction = false;

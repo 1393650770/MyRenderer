@@ -16,9 +16,9 @@ MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
+class RenderInterface;
 MYRENDERER_BEGIN_NAMESPACE(Application)
 
-class MyRender;
 
 MYRENDERER_BEGIN_CLASS(Window)
 #pragma region METHOD
@@ -26,9 +26,9 @@ MYRENDERER_BEGIN_CLASS(Window)
 		Window();
 		VIRTUAL ~Window();
 		void METHOD(InitWindow)();
-		void METHOD(Run)(MyRender* render);
+		void METHOD(Run)(RenderInterface* render);
 		GLFWwindow* METHOD(GetWindow)() CONST;
-
+		MXRender::RHI::Viewport* METHOD(GetViewport)() CONST;
 	protected:
 	public:
 #pragma endregion

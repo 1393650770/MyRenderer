@@ -9,7 +9,7 @@ MYRENDERER_BEGIN_NAMESPACE(RHI)
 		delete this;
 }
 
-UInt64 RenderGraphiPipelineState::GetHash() CONST
+UInt64 RenderGraphiPipelineStateDesc::GetHash() CONST
 {
 	return 0;
 }

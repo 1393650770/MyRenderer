@@ -12,13 +12,14 @@
 #include "VK_Device.h"
 #include "VK_Platform.h"
 #include "vulkan/vulkan_core.h"
+#include "VK_Utils.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
-VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* in_window_handle, ENUM_TEXTURE_FORMAT& in_out_pixel_format, Int width, Int height, Bool is_full_screen,
-	UInt32* in_out_desired_num_back_buffers, Vector<VkImage>& out_images, Int in_lock_to_vsync, VK_SwapChainRecreateInfo* recreate_info) :
+VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* in_window_handle, CONST ENUM_TEXTURE_FORMAT& in_format, Int width, Int height, Bool is_full_screen,
+	UInt32* in_out_desired_num_back_buffers, VkFormat& out_pixel_format, Vector<VkImage>& out_images, Int in_lock_to_vsync, VK_SwapChainRecreateInfo* recreate_info) :
 	swapchain(VK_NULL_HANDLE)
 	, device(in_device)
 	, surface(VK_NULL_HANDLE)
@@ -45,7 +46,7 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 		VK_Platform::CreateSurface(window_handle,instance,&surface);
 	}
 
-	unsigned int num_formats;
+	UInt32 num_formats=0;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetGpu(), surface, &num_formats, nullptr);
 	if (num_formats <= 0)
 	{
@@ -56,8 +57,9 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 
 	VkColorSpaceKHR requested_colorspace = Formats[0].colorSpace;
 	VkSurfaceFormatKHR cur_format = Formats[0];
+	VkFormat needed_format = VK_Utils::Translate_Texture_Format_To_Vulkan(in_format);
 	for (const auto& Format : Formats) {
-		if (Format.format == VK_FORMAT_B8G8R8A8_SRGB && Format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+		if (Format.format == needed_format && Format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 			cur_format = Format;
 			requested_colorspace = Format.colorSpace;
 			break;
@@ -139,7 +141,7 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 
 	image_format = cur_format.format;
 	image_extent2D = swapchain_info.imageExtent;
-
+	out_pixel_format = image_format;
 	if(surface)
 	{
 		device->CreatePresentQueue(surface);

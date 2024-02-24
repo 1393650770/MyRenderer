@@ -56,6 +56,32 @@ target("Renderer")
     )
 
 
+target("RendererSample-HelloTriangle")
+    set_kind("binary")  
+    set_languages("c++20")  
+    add_deps("Runtime_static")
 
-
+    add_files("src/Sample/1-HelloTriangle/HelloTriangle.cpp") 
+    add_includedirs("src/Runtime")
+    add_includedirs("src/ThirdParty")
     
+    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","boost","rttr")
+
+    before_build(function (target)
+        --os.run("$(projectdir)/src/Runtime/Render/Shader/compile-glslangValidator.bat")
+    end)
+
+    after_build(function (target)
+        --os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)")
+        --os.cp("$(projectdir)/src/Resource", "$(buildir)")
+        --os.cp("$(projectdir)/src/Setting", "$(buildir)")
+    end)
+
+    after_build(
+        function (target)
+            --os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)/windows/x64/debug")
+            --os.cp("$(projectdir)/src/Resource", "$(buildir)/windows/x64/debug")
+            --os.cp("$(projectdir)/src/Setting", "$(buildir)/windows/x64/debug")
+        end
+    )
+

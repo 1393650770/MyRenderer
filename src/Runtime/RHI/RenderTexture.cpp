@@ -9,12 +9,12 @@ TextureDesc::TextureDesc(const TextureDesc& other)
     *this= other;
 }
 
-Texture::Texture(const TextureDesc in_texture_desc):texture_desc(in_texture_desc)
+Texture::Texture(const TextureDesc& in_texture_desc):texture_desc(in_texture_desc)
 {
     
 }
 
-TextureDesc Texture::GetTextureDesc() const
+TextureDesc Texture::GetTextureDesc() CONST
 {
     return texture_desc;
 }

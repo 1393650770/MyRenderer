@@ -4,7 +4,7 @@ MYRENDERER_BEGIN_NAMESPACE(RHI)
 
 
 
-RenderPipelineState::RenderPipelineState(CONST RenderGraphiPipelineState& in_desc):
+RenderPipelineState::RenderPipelineState(CONST RenderGraphiPipelineStateDesc& in_desc):
 	desc(in_desc)
 {
 }

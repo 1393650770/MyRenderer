@@ -2,10 +2,7 @@
 #ifndef _VK_COMMANDBUFFER_
 #define _VK_COMMANDBUFFER_
 #include <vulkan/vulkan_core.h>
-
-#include "Core/ConstDefine.h"
-#include "RHI/RenderRource.h"
-#include "VK_Device.h"
+#include "RHI/RenderCommandList.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -16,6 +13,7 @@ class VK_CommandBuffer;
 class VK_CommandBufferPool;
 class VK_CommandBufferManager;
 class VK_Fence;
+class VK_Queue;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_CommandBufferPool,public RenderResource)
 #pragma region METHOD
 public:
@@ -51,7 +49,7 @@ MYRENDERER_END_CLASS
 
 
 
-MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_CommandBuffer, public RenderResource)
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_CommandBuffer, public CommandList)
 friend VK_CommandBufferPool;
 #pragma region METHOD
 public:
@@ -88,7 +86,10 @@ public:
 		state_cache.framebuffer_width = 0;
 	}
 
-
+	__forceinline  VIRTUAL void METHOD(Begin)() OVERRIDE FINAL;
+	__forceinline  VIRTUAL void METHOD(End)() OVERRIDE FINAL;
+	__forceinline VIRTUAL void METHOD(SetPipeline)(RenderPipelineState* pipeline_state) OVERRIDE FINAL;
+	__forceinline VIRTUAL void METHOD(SetRenderTarget)(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, CONST Vector<ClearValue>& clear_values, Bool has_dsv_clear_value) OVERRIDE FINAL;
 protected:
 	void METHOD(Allocate)();
 	void METHOD(Free)();
@@ -131,7 +132,7 @@ protected:
 	StateCache state_cache;
 
 	MYRENDERER_BEGIN_STRUCT(PipelineBarrier)
-	
+	public:
 		VkPipelineStageFlags memory_src_stages = 0;
 		VkPipelineStageFlags memory_dst_stages = 0;
 		VkAccessFlags        memory_src_access = 0;
@@ -147,6 +148,10 @@ protected:
 	PipelineBarrier pipeline_barrier;
 
 	Vector<VkImageMemoryBarrier> image_barriers;
+
+	VkRenderPass current_active_renderpass=VK_NULL_HANDLE;
+	VkFramebuffer current_active_framebuffer=VK_NULL_HANDLE;
+
 private:
 
 #pragma endregion

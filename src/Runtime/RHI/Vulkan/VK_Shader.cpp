@@ -57,7 +57,7 @@ VK_Shader::VK_Shader(VK_Device* in_device, CONST ShaderDesc& desc, CONST ShaderD
 	device = in_device;
 
 
-	shader_codes =data.data;
+	shader_codes = data.data;
 	shader_modules = CreateShaderModule(shader_codes);
 	ReflectBindings();
 }

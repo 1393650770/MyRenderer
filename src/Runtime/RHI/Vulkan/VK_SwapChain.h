@@ -6,7 +6,6 @@
 #include <vulkan/vulkan.h>
 #include <memory>
 #include <vector>
-#include "RHI/RenderEnum.h"
 #include "RHI/RenderRource.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -24,8 +23,8 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_SwapChain,public RenderResource)
 
 #pragma region METHOD
 public:
-	VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* in_window_handle, ENUM_TEXTURE_FORMAT& in_out_pixel_format, Int width, Int height, Bool is_full_screen,
-		UInt32* in_out_desired_num_back_buffers, Vector<VkImage>& out_images, Int in_lock_to_vsync, VK_SwapChainRecreateInfo* recreate_info);
+	VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* in_window_handle,CONST ENUM_TEXTURE_FORMAT& in_format, Int width, Int height, Bool is_full_screen,
+		UInt32* in_out_desired_num_back_buffers, VkFormat& out_pixel_format, Vector<VkImage>& out_images, Int in_lock_to_vsync, VK_SwapChainRecreateInfo* recreate_info);
 	VIRTUAL ~VK_SwapChain();
 
 	void METHOD(Destroy)(VK_SwapChainRecreateInfo* RecreateInfo);

@@ -15,7 +15,8 @@ class Buffer;
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 class VK_Device;
-
+class VK_Viewport;
+class VK_CommandBuffer;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VulkanRenderFactory,public RenderFactory)
 public:
 	
@@ -50,10 +51,18 @@ public:
 	VIRTUAL Shader* CreateShader(CONST ShaderDesc& desc, CONST ShaderDataPayload& data)  OVERRIDE FINAL;
 	VIRTUAL Buffer* METHOD(CreateBuffer)(const BufferDesc& buffer_desc) OVERRIDE FINAL;
 	VIRTUAL Texture* METHOD(CreateTexture)(CONST TextureDesc& texture_desc) OVERRIDE FINAL;
+	VIRTUAL RenderPipelineState* METHOD(CreateRenderPipelineState)(CONST RenderGraphiPipelineStateDesc& desc) OVERRIDE FINAL;
+	VIRTUAL RenderPass* METHOD(CreateRenderPass)(CONST RenderPassDesc& desc) OVERRIDE FINAL;
+	VIRTUAL FrameBuffer* METHOD(CreateFrameBuffer)(CONST FrameBufferDesc& desc) OVERRIDE FINAL;
+
 	VIRTUAL void* METHOD(MapBuffer)(Buffer* buffer) OVERRIDE FINAL;
 	VIRTUAL void METHOD(UnmapBuffer)(Buffer* buffer) OVERRIDE FINAL;
 #pragma endregion
 
+#pragma region DRAW
+	VIRTUAL	CommandList* METHOD(GetImmediateCommandList)() OVERRIDE FINAL;
+	VIRTUAL void METHOD(SubmitCommandList)(CommandList* command_list) OVERRIDE FINAL;
+#pragma endregion
 
 private:
 	Bool METHOD(CheckGpuSuitable)(VkPhysicalDevice gpu);
@@ -79,7 +88,8 @@ protected:
 	VkDebugUtilsMessengerEXT debug_messenger;
 	VK_Device* device=nullptr;
 	Vector<VK_Viewport*> viewports;
-
+	VK_CommandBuffer* immediate_command_buffer=nullptr;
+	Vector<VK_CommandBuffer*> defered_command_buffers;
 	friend class VK_Viewport;
 #pragma endregion
 

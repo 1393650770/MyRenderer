@@ -42,16 +42,6 @@ public:
 
 MYRENDERER_END_STRUCT
 
-MYRENDERER_BEGIN_STRUCT(ShaderDesc)
-public:
-	ShaderDesc() DEFAULT;
-	ShaderDesc(ENUM_SHADER_STAGE in_shader_type) : shader_type(in_shader_type) {}
-	ENUM_SHADER_STAGE shader_type = ENUM_SHADER_STAGE::Invalid;
-	String debug_name;
-	String entry_name = "main";
-	String shader_name;
-MYRENDERER_END_STRUCT
-
 
 MYRENDERER_BEGIN_STRUCT(ShaderDataPayload)
 public:
@@ -75,14 +65,25 @@ public:
 
 MYRENDERER_END_STRUCT
 
+MYRENDERER_BEGIN_STRUCT(ShaderDesc)
+public:
+	ShaderDesc() DEFAULT;
+	ShaderDesc(ENUM_SHADER_STAGE in_shader_type) : shader_type(in_shader_type) {}
+	ENUM_SHADER_STAGE shader_type = ENUM_SHADER_STAGE::Invalid;
+	String debug_name;
+	String entry_name = "main";
+	String shader_name;
+
+MYRENDERER_END_STRUCT
+
 
 MYRENDERER_BEGIN_STRUCT(FrameBufferDesc)
 	UInt32 width = 0;
 	UInt32 height = 0;
 	UInt8 layer = 1;
-	RenderPass* render_pass= nullptr;
 	//last element is the depth stencil attachment
 	Vector<RHI::Texture*> render_targets;
+	RHI::Texture* depth_stencil_view = nullptr;
 MYRENDERER_END_STRUCT
 
 
@@ -161,6 +162,12 @@ public:
 	size_t dataOffset;
 MYRENDERER_END_STRUCT
 
+union ClearValue
+{
+	Float32 color[4];
+	Float32 ds_value[2];
+};
+
 MYRENDERER_BEGIN_STRUCT(TextureDesc)
 public:
 	TextureDesc() DEFAULT;
@@ -183,7 +190,7 @@ public:
 
 	UInt32 width = 0;
 	UInt32 height = 0;
-	UInt8 mip_level = 0;
+	UInt8 mip_level = 1;
 	UInt8 layer_count = 1;
 	ENUM_TEXTURE_FORMAT format = ENUM_TEXTURE_FORMAT::None;
 	ENUM_TEXTURE_TYPE type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
@@ -191,13 +198,11 @@ public:
 	UInt16 depth = 1;
 	UInt8 samples = 1;
 
-	union ClearValue
-	{
-		Float32 color[4];
-		Float32 ds_value[2];
-	} clear_value;
+	ClearValue clear_value;
 
 MYRENDERER_END_STRUCT
+
+
 
 MYRENDERER_BEGIN_STRUCT(TextureDataPayload)
 public:
@@ -277,15 +282,15 @@ MYRENDERER_BEGIN_STRUCT(BlenderState)
 
 	MYRENDERER_END_STRUCT
 
-	Array<RenderTarget, g_max_render_targets> render_targets;
+	Vector<RenderTarget> render_targets;
 	Bool enable_alpha_to_coverage = false;
 
 	constexpr Bool operator == (CONST BlenderState& rhs) CONST
 	{
-		if (enable_alpha_to_coverage != rhs.enable_alpha_to_coverage)
+		if (enable_alpha_to_coverage != rhs.enable_alpha_to_coverage || render_targets.size()!= rhs.render_targets.size())
 			return false;
 
-		for (UInt32 i = 0; i < g_max_render_targets; ++i)
+		for (UInt32 i = 0; i < render_targets.size(); ++i)
 		{
 			if (render_targets[i] != rhs.render_targets[i])
 			{
@@ -302,21 +307,39 @@ MYRENDERER_BEGIN_STRUCT(BlenderState)
 MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_STRUCT(DepthStencilState)
-DepthStencilState()DEFAULT;
-~DepthStencilState()DEFAULT;
+public:
+	DepthStencilState()DEFAULT;
+	~DepthStencilState()DEFAULT;
 	
-Bool depth_test_enable{ true };
-Bool depth_write_enable{ true };
-ENUM_STENCIL_FUNCTION depth_func{ ENUM_STENCIL_FUNCTION::ENUM_ALWAYS };
-Bool stencil_test_enable{ false };
-UInt8 stencil_read_mask{ 0xFF };
-UInt8 stencil_write_mask{ 0xFF };
-UInt8 stencil_ref{ 0 };
-StencilOpDesc front_face_stencil{};
-StencilOpDesc back_face_stencil{};
-Bool depth_bounds_test_enable{ false };
-Float32 min_depth_bounds { 0.0f };
-Float32 max_depth_bounds { 0.0f };
+	Bool depth_test_enable{ true };
+	Bool depth_write_enable{ true };
+	ENUM_STENCIL_FUNCTION depth_func{ ENUM_STENCIL_FUNCTION::ENUM_ALWAYS };
+	Bool stencil_test_enable{ false };
+	UInt8 stencil_read_mask{ 0xFF };
+	UInt8 stencil_write_mask{ 0xFF };
+	UInt8 stencil_ref{ 0 };
+	StencilOpDesc front_face_stencil{};
+	StencilOpDesc back_face_stencil{};
+	Bool depth_bounds_test_enable{ false };
+	Float32 min_depth_bounds { 0.0f };
+	Float32 max_depth_bounds { 0.0f };
+
+	constexpr Bool operator == (CONST DepthStencilState& rhs) CONST
+	{
+		return depth_test_enable == rhs.depth_test_enable &&
+			depth_write_enable == rhs.depth_write_enable &&
+			depth_func == rhs.depth_func &&
+			stencil_test_enable == rhs.stencil_test_enable &&
+			stencil_read_mask == rhs.stencil_read_mask &&
+			stencil_write_mask == rhs.stencil_write_mask &&
+			stencil_ref == rhs.stencil_ref &&
+			front_face_stencil == rhs.front_face_stencil &&
+			back_face_stencil == rhs.back_face_stencil &&
+			depth_bounds_test_enable == rhs.depth_bounds_test_enable &&
+			min_depth_bounds == rhs.min_depth_bounds &&
+			max_depth_bounds == rhs.max_depth_bounds;
+	};
+
 MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_STRUCT(RasterizerState)
@@ -405,20 +428,21 @@ public:
 
 MYRENDERER_END_STRUCT
 
-MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderGraphiPipelineState,public RenderResource)
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderGraphiPipelineStateDesc,public RenderResource)
 public:
-	RenderGraphiPipelineState() DEFAULT;
-	VIRTUAL~RenderGraphiPipelineState() DEFAULT;
+	RenderGraphiPipelineStateDesc() DEFAULT;
+	VIRTUAL ~RenderGraphiPipelineStateDesc() DEFAULT;
 
 	Shader* shaders[ENUM_SHADER_STAGE::NumStages]{nullptr};
 	ENUM_PRIMITIVE_TYPE primitive_topology{ ENUM_PRIMITIVE_TYPE::TriangleList };
-	BlenderState* blend_state;
-	DepthStencilState* depth_stencil_state;
-	RasterizerState* raster_state;
+	BlenderState blend_state;
+	DepthStencilState depth_stencil_state;
+	RasterizerState raster_state;
 	Vector<VertexInputLayout> vertex_input_layout;
-	RenderPass* render_pass{ nullptr };
+	Vector<RHI::Texture*> render_targets;
+	RHI::Texture* depth_stencil_view = nullptr;
 
-	constexpr Bool operator == (CONST RenderGraphiPipelineState& rhs) CONST
+	constexpr Bool operator == (CONST RenderGraphiPipelineStateDesc& rhs) CONST
 	{
 		for (UInt32 i = 0; i < ENUM_SHADER_STAGE::NumStages; ++i)
 		{
@@ -439,7 +463,7 @@ public:
 			raster_state == rhs.raster_state;
 	};
 
-	constexpr Bool operator != (CONST RenderGraphiPipelineState& rhs) CONST
+	constexpr Bool operator != (CONST RenderGraphiPipelineStateDesc& rhs) CONST
 	{
 		return !(*this == rhs);
 	};
@@ -459,6 +483,36 @@ public:
 
 	UInt64 GetHash() CONST;
 MYRENDERER_END_CLASS
+
+
+MYRENDERER_BEGIN_STRUCT(RenderPassCacheKey)
+	public:
+		RenderPassCacheKey() {}
+		RenderPassCacheKey(UInt8 in_num_render_targets, CONST ENUM_TEXTURE_FORMAT* in_render_target_formats, ENUM_TEXTURE_FORMAT in_depth_stencil_format, UInt8 in_sample_count, Bool in_is_enable_vrs, Bool in_is_read_only_dsv);
+
+		Bool operator == (CONST RenderPassCacheKey& rhs) CONST
+		{
+			return GetHash() == rhs.GetHash() &&
+				num_render_targets == rhs.num_render_targets &&
+				depth_stencil_format == rhs.depth_stencil_format &&
+				sample_count == rhs.sample_count &&
+				is_enable_vrs == rhs.is_enable_vrs &&
+				is_read_only_dsv == rhs.is_read_only_dsv &&
+				memcmp(render_target_formats, rhs.render_target_formats, sizeof(render_target_formats)) == 0;
+		}
+		UInt64 METHOD(GetHash)() CONST;
+
+		UInt32 num_render_targets = 0;
+		UInt32 sample_count = 1;
+		Bool is_enable_vrs = false;
+		Bool is_read_only_dsv = false;
+		ENUM_TEXTURE_FORMAT depth_stencil_format = ENUM_TEXTURE_FORMAT::None;
+		ENUM_TEXTURE_FORMAT render_target_formats[MYRENDER_MAX_RENDER_TARGETS] = { ENUM_TEXTURE_FORMAT::None };
+	private:
+		mutable UInt64 hash = 0;
+MYRENDERER_END_STRUCT
+
+
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

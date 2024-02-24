@@ -35,7 +35,7 @@ public:
 protected:
     VK_Device* device;
     VK_FenceManager* owner_fence_manager;
-    VkFence fence;
+    VkFence fence = VK_NULL_HANDLE;
 	enum class ENUM_Fence_State : UInt8
 	{
 		NotReady,

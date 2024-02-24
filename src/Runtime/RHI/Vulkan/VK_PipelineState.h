@@ -13,11 +13,13 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_PipelineState, public RenderPipelineState)
 #pragma region METHOD
 public:
 	VK_PipelineState() DEFAULT;
-	VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipelineState& in_desc, VkPipelineCache pipeline_cache,CONST VK_RenderPass* render_pass);
+	VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipelineStateDesc& in_desc, VkPipelineCache pipeline_cache,CONST VK_RenderPass* render_pass);
 	VIRTUAL ~VK_PipelineState();
 
+	VkPipeline METHOD(GetPipeline)() CONST;
+
 protected:
-	VkPipelineLayout METHOD(CreatePipelineLayout)(CONST RenderGraphiPipelineState& in_desc);
+	VkPipelineLayout METHOD(CreatePipelineLayout)(CONST RenderGraphiPipelineStateDesc& in_desc);
 private:
 
 #pragma endregion
@@ -43,7 +45,7 @@ public:
 
 	VkPipelineCache METHOD(GetPipelineCache)() CONST;
 
-	VK_PipelineState* METHOD(GetPipelineState)(CONST RenderGraphiPipelineState& in_desc, CONST VK_RenderPass* render_pass);
+	VK_PipelineState* METHOD(GetPipelineState)(CONST RenderGraphiPipelineStateDesc& in_desc, CONST VK_RenderPass* render_pass);
 protected:
 
 private:

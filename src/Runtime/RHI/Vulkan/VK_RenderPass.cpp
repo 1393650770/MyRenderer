@@ -191,6 +191,26 @@ VK_RenderPassManager::~VK_RenderPassManager()
 
 }
 
+VK_RenderPass* VK_RenderPassManager::GetRenderPass(CONST RenderPassDesc& desc)
+{
+	RenderPassCacheKey key(desc.attachments.size() - 1, nullptr, desc.attachments[desc.attachments.size() - 1].format, desc.attachments[0].sample_count, false, false);
+	for (UInt8 rt = 0; rt < desc.attachments.size() - 1; ++rt)
+	{
+		key.render_target_formats[rt] = desc.attachments[rt].format;
+	}
+	auto it = render_pass_cache.find(key);
+	if (it != render_pass_cache.end())
+	{
+		return it->second;
+	}
+	else
+	{
+		VK_RenderPass* new_pass = new VK_RenderPass(device, desc);
+		render_pass_cache[key] = new_pass;
+		return new_pass;
+	}
+}
+
 VK_RenderPass* VK_RenderPassManager::GetRenderPass(CONST RenderPassCacheKey& key)
 {
 	auto it = render_pass_cache.find(key);
@@ -209,7 +229,7 @@ VK_RenderPass* VK_RenderPassManager::GetRenderPass(CONST RenderPassCacheKey& key
 			desc.attachments[rt].sample_count = key.sample_count;
 			desc.attachments[rt].load_op = ENUM_RENDERPASS_ATTACHMENT_LOAD_OP::Load;
 			desc.attachments[rt].store_op = ENUM_RENDERPASS_ATTACHMENT_STORE_OP::Store;
-			desc.attachments[rt].initial_state = ENUM_RESOURCE_STATE::Undefined;
+			desc.attachments[rt].initial_state = ENUM_RESOURCE_STATE::RenderTarget;
 			desc.attachments[rt].final_state = ENUM_RESOURCE_STATE::RenderTarget;
 			desc.attachment_refs[rt].attachment_index = rt;
 			desc.attachment_refs[rt].state = ENUM_RESOURCE_STATE::RenderTarget;
@@ -218,10 +238,11 @@ VK_RenderPass* VK_RenderPassManager::GetRenderPass(CONST RenderPassCacheKey& key
 		desc.attachments[key.num_render_targets].sample_count = key.sample_count;
 		desc.attachments[key.num_render_targets].load_op = ENUM_RENDERPASS_ATTACHMENT_LOAD_OP::Load;
 		desc.attachments[key.num_render_targets].store_op = ENUM_RENDERPASS_ATTACHMENT_STORE_OP::Store;
-		desc.attachments[key.num_render_targets].initial_state = ENUM_RESOURCE_STATE::Undefined;
-		desc.attachments[key.num_render_targets].final_state = ENUM_RESOURCE_STATE::DepthWrite;
+		ENUM_RESOURCE_STATE depth_state = key.is_read_only_dsv ? ENUM_RESOURCE_STATE::DepthRead : ENUM_RESOURCE_STATE::DepthWrite;
+		desc.attachments[key.num_render_targets].initial_state = depth_state;
+		desc.attachments[key.num_render_targets].final_state = depth_state;
 		desc.attachment_refs[key.num_render_targets].attachment_index = key.num_render_targets;
-		desc.attachment_refs[key.num_render_targets].state = ENUM_RESOURCE_STATE::DepthWrite;
+		desc.attachment_refs[key.num_render_targets].state = depth_state;
 
 		VK_RenderPass* new_pass = new VK_RenderPass(device, desc);
 		render_pass_cache[key] = new_pass;
@@ -234,16 +255,6 @@ void VK_RenderPassManager::Destroy()
 
 }
 
-VK_RenderPassManager::RenderPassCacheKey::RenderPassCacheKey(UInt8 in_num_render_targets, const ENUM_TEXTURE_FORMAT* in_render_target_formats, ENUM_TEXTURE_FORMAT in_depth_stencil_format, UInt8 in_sample_count, Bool in_is_enable_vrs, Bool in_is_read_only_dsv):
-num_render_targets(in_num_render_targets),
-sample_count(in_sample_count),
-is_enable_vrs(in_is_enable_vrs),
-is_read_only_dsv(in_is_read_only_dsv),
-depth_stencil_format(in_depth_stencil_format)
-{
-	for (UInt8 rt = 0; rt < num_render_targets; ++rt)
-		render_target_formats[rt] = in_render_target_formats[rt];
-}
 
 VK_RenderPass::VK_RenderPass(VK_Device* in_device, CONST RenderPassDesc& in_desc) : RenderPass(in_desc), device(in_device)
 {
@@ -278,22 +289,22 @@ VK_RenderPass::VK_RenderPass(VK_Device* in_device, CONST RenderPassDesc& in_desc
 	subpass.colorAttachmentCount = attachment_ref.size()-1;	
 	subpass.pColorAttachments = attachment_ref.data();
 	subpass.pDepthStencilAttachment = &attachment_ref[attachment_ref.size()-1];
-
+	/*
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependency.dstSubpass = 0;
 	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	dependency.srcAccessMask = 0;
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
+	*/
 	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	render_pass_info.attachmentCount = attachment.size();
 	render_pass_info.pAttachments = attachment.data();
 	render_pass_info.subpassCount = 1;
 	render_pass_info.pSubpasses = &subpass;
-	render_pass_info.dependencyCount = 1;
-	render_pass_info.pDependencies = &dependency;
-
+	render_pass_info.dependencyCount = 0;
+	render_pass_info.pDependencies = nullptr;
+	render_pass_info.pNext = nullptr;
 	CHECK_WITH_LOG(vkCreateRenderPass(device->GetDevice(), &render_pass_info, nullptr, &render_pass) != VK_SUCCESS, "RHI Error:Failed to create render pass");
 
 }

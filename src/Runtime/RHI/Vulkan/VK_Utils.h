@@ -115,6 +115,7 @@ namespace MXRender
 		static VkImageUsageFlags Translate_Texture_usage_type_To_VulkanUsageFlags(CONST ENUM_TEXTURE_USAGE_TYPE& usage_type);
 		static VkImageType Translate_Texture_type_To_Vulkan(CONST ENUM_TEXTURE_TYPE& type);
 		static VkFormat Translate_Texture_Format_To_Vulkan(CONST ENUM_TEXTURE_FORMAT& format);
+		static ENUM_TEXTURE_FORMAT Translate_Vulkan_Texture_Format_To_Common(CONST VkFormat& format);
 		static VkImageViewType Translate_Texture_type_To_VulkanImageViewType(CONST ENUM_TEXTURE_TYPE& type);
 		static VkImageAspectFlags Translate_Texture_type_To_VulkanImageAspectFlags(CONST ENUM_TEXTURE_TYPE& type);
 		static VkImageCreateFlags Translate_Texture_type_To_VulkanCreateFlags(CONST ENUM_TEXTURE_TYPE& type);

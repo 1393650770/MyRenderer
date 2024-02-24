@@ -3,7 +3,14 @@
 #define _RENDERGRAPHPASS_
 #include "Core/ConstDefine.h"
 #include <functional>
+
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
+
+MYRENDERER_BEGIN_NAMESPACE(RHI)
+class CommandList;
+MYRENDERER_END_NAMESPACE
+
 MYRENDERER_BEGIN_NAMESPACE(Render)
 
 class RenderGraphPassBuilder;
@@ -63,8 +70,17 @@ using data_type = data_type_;
 public:
 	explicit RenderGraphPass(
 		CONST String& name,
-		CONST std::function<void(data_type&, RenderGraphPassBuilder&)>& in_setup,
-		CONST std::function<void(CONST data_type&)>& in_execute) : RenderGraphPassBase(name), setup(in_setup), execute(in_execute)
+		CONST std::function<void(data_type&, RenderGraphPassBuilder&, MXRender::RHI::CommandList*)>& in_setup,
+		CONST std::function<void(CONST data_type&, MXRender::RHI::CommandList*)>& in_execute) : RenderGraphPassBase(name), setup(in_setup), execute(in_execute)
+	{
+
+	}
+	explicit RenderGraphPass(
+		CONST String& name,
+		RenderGraph* in_rendergraph,
+		MXRender::RHI::CommandList* in_cmd_list,
+		CONST std::function<void(data_type&, RenderGraphPassBuilder&, MXRender::RHI::CommandList*)>& in_setup,
+		CONST std::function<void(CONST data_type&, MXRender::RHI::CommandList*)>& in_execute) : RenderGraphPassBase(name), render_graph(in_rendergraph), cmd_list(in_cmd_list), setup(in_setup), execute(in_execute)
 	{
 
 	}
@@ -81,11 +97,11 @@ public:
 protected:
 	void SetUp(RenderGraphPassBuilder& builder)       override
 	{
-		setup(data, builder);
+		setup(data, builder,cmd_list);
 	}
 	void Execute() override
 	{
-		execute(data);
+		execute(data,cmd_list);
 	}
 private:
 
@@ -96,9 +112,11 @@ private:
 public:
 
 protected:
+	RenderGraph* render_graph;
+	MXRender::RHI::CommandList* cmd_list;
 	data_type                                                         data;
-	CONST std::function<void(data_type&, RenderGraphPassBuilder&)>	  setup;
-	CONST std::function<void(CONST data_type&)>                       execute;
+	CONST std::function<void(data_type&, RenderGraphPassBuilder& , MXRender::RHI::CommandList*)>	  setup;
+	CONST std::function<void(CONST data_type&, MXRender::RHI::CommandList*)>                       execute;
 private:
 #pragma endregion
 

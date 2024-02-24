@@ -8,6 +8,14 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 
+MYRENDERER_BEGIN_STRUCT(RenderPassCacheKeyHash)
+public:
+	UInt64 operator()(CONST RenderPassCacheKey& key) CONST
+	{
+		return key.GetHash();
+	}
+MYRENDERER_END_STRUCT
+
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderPass, public RenderResource)
 
 #pragma region METHOD
@@ -22,6 +30,7 @@ private:
 #pragma region MEMBER
 public:
 protected:
+
 	RenderPassDesc desc;
 private:
 

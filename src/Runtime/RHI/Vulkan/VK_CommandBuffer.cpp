@@ -3,6 +3,10 @@
 #include "VK_Fence.h"
 #include "VK_Utils.h"
 #include "VK_Define.h"
+#include "VK_PipelineState.h"
+#include "VK_RenderPass.h"
+#include "VK_Texture.h"
+#include "VK_FrameBuffer.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -49,6 +53,7 @@ VK_CommandBuffer* VK_CommandBufferPool::GetOrCreateCommandBuffer(Bool is_upload_
 void VK_CommandBufferPool::Init(UInt32 queue_family_index)
 {
 	VkCommandPoolCreateInfo command_pool_create_info;
+	command_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	command_pool_create_info.queueFamilyIndex = queue_family_index;
 	command_pool_create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 	CHECK_WITH_LOG(vkCreateCommandPool(device->GetDevice(), &command_pool_create_info, VULKAN_CPU_ALLOCATOR, &command_pool) != VK_SUCCESS, "RHI Error: Create CommandPool Error");
@@ -267,6 +272,76 @@ void VK_CommandBuffer::CopyBufferToImage(VkBuffer buffer, VkImage image, VkImage
 	}
 	FlushBarriers();
 	vkCmdCopyBufferToImage(command_buffer, buffer, image, imageLayout, region_count, region);
+	
+}
+
+void VK_CommandBuffer::Begin()
+{
+
+	VkCommandBufferBeginInfo begin_info{};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	CHECK_WITH_LOG(vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS, "RHI Error : fail to begion commandbuffer ");
+	
+}
+
+void VK_CommandBuffer::End()
+{
+
+	FlushBarriers();
+	CHECK_WITH_LOG(vkEndCommandBuffer(command_buffer) != VK_SUCCESS, "RHI Error : fail to end commandbuffer ");
+	
+}
+
+void VK_CommandBuffer::SetPipeline(RenderPipelineState* pipeline_state)
+{
+	CHECK(pipeline_state == nullptr);
+	VkPipeline graphics_pipeline = ((VK_PipelineState*)pipeline_state)->GetPipeline();
+	if (state_cache.graphics_pipeline != graphics_pipeline)
+	{
+		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+		state_cache.graphics_pipeline = graphics_pipeline;
+	}
+}
+void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, CONST Vector<ClearValue>& clear_values, Bool has_dsv_clear_value)
+{
+	Bool need_begin_render_pass = false;
+	Vector<ENUM_TEXTURE_FORMAT> rtv_formats;
+	for (auto& rtv : render_targets)
+	{
+		rtv_formats.push_back(rtv->GetTextureDesc().format);
+	}
+	RenderPassCacheKey renderpass_key(render_targets.size(), rtv_formats.data(), depth_stencil->GetTextureDesc().format, depth_stencil->GetTextureDesc().samples, false, false);
+	VK_RenderPass* renderpass = device->GetRenderPassManager()->GetRenderPass(renderpass_key);
+	if (current_active_renderpass != renderpass->GetRenderPass())
+	{
+		current_active_renderpass = renderpass->GetRenderPass();
+		need_begin_render_pass = true;
+	}
+
+	FramebufferCacheKey framebuffer_key;
+	framebuffer_key.render_targets = render_targets;
+	framebuffer_key.depth_stencil = depth_stencil;
+	framebuffer_key.render_pass = current_active_renderpass;
+
+	VK_FrameBuffer* framebuffer = device->GetFrameBufferManager()->GetFramebuffer(framebuffer_key, render_targets[0]->GetTextureDesc().width, render_targets[0]->GetTextureDesc().height, 1);
+	if (current_active_framebuffer != framebuffer->GetFramebuffer())
+	{
+		current_active_framebuffer = framebuffer->GetFramebuffer();
+		need_begin_render_pass = true;
+	}
+	if (need_begin_render_pass)
+	{
+	    Vector<VkClearValue> vk_clear_values;
+		for (UInt32 i = 0;i< clear_values.size()-1;++i)
+		{
+			vk_clear_values.push_back( { clear_values[i].color[0], clear_values[i].color[1], clear_values[i].color[2], clear_values[i].color[3] });
+		}
+		if (has_dsv_clear_value&& clear_values.size() - 1>0)
+		{
+			vk_clear_values.push_back( { clear_values[clear_values.size() - 1].ds_value[0], clear_values[clear_values.size() - 1].ds_value[1]});
+		}
+		BeginRenderPass( current_active_renderpass, current_active_framebuffer, render_targets[0]->GetTextureDesc().width, render_targets[0]->GetTextureDesc().height, vk_clear_values.size(),vk_clear_values.data());
+	}
 }
 
 VK_CommandBufferManager::~VK_CommandBufferManager()

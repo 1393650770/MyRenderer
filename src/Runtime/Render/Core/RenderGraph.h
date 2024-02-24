@@ -33,11 +33,25 @@ public:
 
 		return static_cast<RenderGraphPass<data_type>*>(render_task);
 	}
+
 	template<typename description_type, typename actual_type>
-	RenderGraphResource<description_type, actual_type>* AddRetainedResource(const std::string& name, const description_type& description, actual_type* actual = nullptr)
+	RenderGraphResource<description_type, actual_type>* METHOD(AddRetainedResource)(const std::string& name, const description_type& description, actual_type* actual = nullptr)
 	{
 		resources.emplace_back(std::make_unique<RenderGraphResource<description_type, actual_type>>(name, description, actual));
 		return static_cast<RenderGraphResource<description_type, actual_type>*>(resources.back().get());
+	}
+
+	template<typename description_type, typename actual_type>
+	RenderGraphResource<description_type, actual_type>* METHOD( GetRetainedResource)(const std::string& name)
+	{
+		for (auto& resource : resources)
+		{
+			if (resource->GetName() == name)
+			{
+				return static_cast<RenderGraphResource<description_type, actual_type>*>(resource.get());
+			}
+		}
+		return nullptr;
 	}
 
 	//A directed acyclic graph is constructed to find the resource reference relationship

@@ -13,7 +13,12 @@ VK_PipelineState::~VK_PipelineState()
 
 }
 
-VK_PipelineState::VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipelineState& in_desc, VkPipelineCache pipeline_cache, CONST VK_RenderPass* render_pass): RenderPipelineState(in_desc),device(in_device)
+VkPipeline VK_PipelineState::GetPipeline() CONST
+{
+	return pipeline;
+}
+
+VK_PipelineState::VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipelineStateDesc& in_desc, VkPipelineCache pipeline_cache, CONST VK_RenderPass* render_pass): RenderPipelineState(in_desc),device(in_device)
 {
 	Vector<VkPipelineShaderStageCreateInfo> shader_stages;
 	for (auto& shader : desc.shaders)
@@ -69,27 +74,27 @@ VK_PipelineState::VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipel
 
 	VkPipelineRasterizationStateCreateInfo rasterization_state = {};
 	rasterization_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	rasterization_state.polygonMode = VK_Utils::Translate_FillMode_To_Vulkan(desc.raster_state->fill_mode);
-	rasterization_state.cullMode = VK_Utils::Translate_CullMode_To_Vulkan(desc.raster_state->cull_mode);
-	rasterization_state.frontFace = desc.raster_state->front_counter_clockwise? VK_FRONT_FACE_COUNTER_CLOCKWISE: VK_FRONT_FACE_CLOCKWISE;
-	rasterization_state.depthBiasEnable = desc.raster_state->depth_bias? VK_TRUE: VK_FALSE;
-	rasterization_state.depthBiasConstantFactor = desc.raster_state->depth_bias;
-	rasterization_state.depthBiasClamp = desc.raster_state->depth_bias_clamp;
-	rasterization_state.depthBiasSlopeFactor = desc.raster_state->depth_bias_slope_scaled;
+	rasterization_state.polygonMode = VK_Utils::Translate_FillMode_To_Vulkan(desc.raster_state.fill_mode);
+	rasterization_state.cullMode = VK_Utils::Translate_CullMode_To_Vulkan(desc.raster_state.cull_mode);
+	rasterization_state.frontFace = desc.raster_state.front_counter_clockwise? VK_FRONT_FACE_COUNTER_CLOCKWISE: VK_FRONT_FACE_CLOCKWISE;
+	rasterization_state.depthBiasEnable = desc.raster_state.depth_bias? VK_TRUE: VK_FALSE;
+	rasterization_state.depthBiasConstantFactor = desc.raster_state.depth_bias;
+	rasterization_state.depthBiasClamp = desc.raster_state.depth_bias_clamp;
+	rasterization_state.depthBiasSlopeFactor = desc.raster_state.depth_bias_slope_scaled;
 	rasterization_state.lineWidth = 1.0f;
 	
 	Vector< VkPipelineColorBlendAttachmentState> color_blend_attachment_state ;
-	color_blend_attachment_state.resize(desc.blend_state->render_targets.size());
+	color_blend_attachment_state.resize(desc.blend_state.render_targets.size());
 	for(UINT i = 0; i < color_blend_attachment_state.size(); i++)
 	{
 		color_blend_attachment_state[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-		color_blend_attachment_state[i].blendEnable = desc.blend_state->render_targets[i].blend_enable? VK_TRUE: VK_FALSE;
-		color_blend_attachment_state[i].srcColorBlendFactor = VK_Utils::Translate_BlendFactor_To_Vulkan(desc.blend_state->render_targets[i].src_color);
-		color_blend_attachment_state[i].dstColorBlendFactor = VK_Utils::Translate_BlendFactor_To_Vulkan(desc.blend_state->render_targets[i].dst_color);
-		color_blend_attachment_state[i].colorBlendOp = VK_Utils::Translate_BlendOp_To_Vulkan(desc.blend_state->render_targets[i].op_color);
-		color_blend_attachment_state[i].srcAlphaBlendFactor = VK_Utils::Translate_BlendFactor_To_Vulkan(desc.blend_state->render_targets[i].src_alpha);
-		color_blend_attachment_state[i].dstAlphaBlendFactor = VK_Utils::Translate_BlendFactor_To_Vulkan(desc.blend_state->render_targets[i].src_alpha);
-		color_blend_attachment_state[i].alphaBlendOp = VK_Utils::Translate_BlendOp_To_Vulkan(desc.blend_state->render_targets[i].op_alpha);
+		color_blend_attachment_state[i].blendEnable = desc.blend_state.render_targets[i].blend_enable? VK_TRUE: VK_FALSE;
+		color_blend_attachment_state[i].srcColorBlendFactor = VK_Utils::Translate_BlendFactor_To_Vulkan(desc.blend_state.render_targets[i].src_color);
+		color_blend_attachment_state[i].dstColorBlendFactor = VK_Utils::Translate_BlendFactor_To_Vulkan(desc.blend_state.render_targets[i].dst_color);
+		color_blend_attachment_state[i].colorBlendOp = VK_Utils::Translate_BlendOp_To_Vulkan(desc.blend_state.render_targets[i].op_color);
+		color_blend_attachment_state[i].srcAlphaBlendFactor = VK_Utils::Translate_BlendFactor_To_Vulkan(desc.blend_state.render_targets[i].src_alpha);
+		color_blend_attachment_state[i].dstAlphaBlendFactor = VK_Utils::Translate_BlendFactor_To_Vulkan(desc.blend_state.render_targets[i].src_alpha);
+		color_blend_attachment_state[i].alphaBlendOp = VK_Utils::Translate_BlendOp_To_Vulkan(desc.blend_state.render_targets[i].op_alpha);
 	}
 
 
@@ -100,23 +105,23 @@ VK_PipelineState::VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipel
 
 	VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {};
 	depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depth_stencil_state.depthTestEnable = desc.depth_stencil_state->depth_test_enable;
-	depth_stencil_state.depthWriteEnable = desc.depth_stencil_state->depth_write_enable;
-	depth_stencil_state.depthCompareOp = VK_Utils::Translate_CompareOp_To_Vulkan(desc.depth_stencil_state->depth_func);
-	depth_stencil_state.stencilTestEnable = desc.depth_stencil_state->stencil_test_enable;
-	VkStencilOpState front = VK_Utils::Translate_StencilOpState_To_Vulkan(desc.depth_stencil_state->front_face_stencil);
-	front.compareMask = desc.depth_stencil_state->stencil_read_mask;
-	front.writeMask = desc.depth_stencil_state->stencil_write_mask;
-	front.reference = desc.depth_stencil_state->stencil_ref;
+	depth_stencil_state.depthTestEnable = desc.depth_stencil_state.depth_test_enable;
+	depth_stencil_state.depthWriteEnable = desc.depth_stencil_state.depth_write_enable;
+	depth_stencil_state.depthCompareOp = VK_Utils::Translate_CompareOp_To_Vulkan(desc.depth_stencil_state.depth_func);
+	depth_stencil_state.stencilTestEnable = desc.depth_stencil_state.stencil_test_enable;
+	VkStencilOpState front = VK_Utils::Translate_StencilOpState_To_Vulkan(desc.depth_stencil_state.front_face_stencil);
+	front.compareMask = desc.depth_stencil_state.stencil_read_mask;
+	front.writeMask = desc.depth_stencil_state.stencil_write_mask;
+	front.reference = desc.depth_stencil_state.stencil_ref;
 	depth_stencil_state.front = front;
-	VkStencilOpState back = VK_Utils::Translate_StencilOpState_To_Vulkan(desc.depth_stencil_state->back_face_stencil);
-	back.compareMask = desc.depth_stencil_state->stencil_read_mask;
-	back.writeMask = desc.depth_stencil_state->stencil_write_mask;
-	back.reference = desc.depth_stencil_state->stencil_ref;
+	VkStencilOpState back = VK_Utils::Translate_StencilOpState_To_Vulkan(desc.depth_stencil_state.back_face_stencil);
+	back.compareMask = desc.depth_stencil_state.stencil_read_mask;
+	back.writeMask = desc.depth_stencil_state.stencil_write_mask;
+	back.reference = desc.depth_stencil_state.stencil_ref;
 	depth_stencil_state.back = back;
-	depth_stencil_state.depthBoundsTestEnable= desc.depth_stencil_state->depth_bounds_test_enable;
-	depth_stencil_state.minDepthBounds = desc.depth_stencil_state->min_depth_bounds;
-	depth_stencil_state.maxDepthBounds = desc.depth_stencil_state->max_depth_bounds;
+	depth_stencil_state.depthBoundsTestEnable= desc.depth_stencil_state.depth_bounds_test_enable;
+	depth_stencil_state.minDepthBounds = desc.depth_stencil_state.min_depth_bounds;
+	depth_stencil_state.maxDepthBounds = desc.depth_stencil_state.max_depth_bounds;
 
 	VkPipelineViewportStateCreateInfo viewport_state = {};
 	viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -125,8 +130,8 @@ VK_PipelineState::VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipel
 
 	VkPipelineMultisampleStateCreateInfo multisample_state = {};
 	multisample_state.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisample_state.rasterizationSamples = VK_Utils::Get_SampleCountFlagBits_FromInt(desc.raster_state->sample_count) ;
-	multisample_state.alphaToCoverageEnable = desc.blend_state->enable_alpha_to_coverage;
+	multisample_state.rasterizationSamples = VK_Utils::Get_SampleCountFlagBits_FromInt(desc.raster_state.sample_count) ;
+	multisample_state.alphaToCoverageEnable = desc.blend_state.enable_alpha_to_coverage;
 
 	Vector<VkDynamicState> dynamic_state_enables {
 		VK_DYNAMIC_STATE_VIEWPORT,
@@ -153,12 +158,12 @@ VK_PipelineState::VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipel
 	pipeline_info.renderPass = render_pass->GetRenderPass();
 	pipeline_info.subpass = 0;
 	pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
-
+	pipeline_info.pNext = nullptr;
 	CHECK_WITH_LOG( vkCreateGraphicsPipelines(device->GetDevice(), pipeline_cache, 1, &pipeline_info, nullptr, &pipeline) != VK_SUCCESS,"RHI Error: Failed to create pipeline");
 }
 
 
-VkPipelineLayout VK_PipelineState::CreatePipelineLayout(CONST RenderGraphiPipelineState& in_desc)
+VkPipelineLayout VK_PipelineState::CreatePipelineLayout(CONST RenderGraphiPipelineStateDesc& in_desc)
 {
 	if(pipeline_layout != VK_NULL_HANDLE)
 	{
@@ -268,7 +273,7 @@ VkPipelineLayout VK_PipelineState::CreatePipelineLayout(CONST RenderGraphiPipeli
 	return pipeline_layout;
 }
 
-VK_PipelineStateManager::VK_PipelineStateManager(VK_Device* in_device)
+VK_PipelineStateManager::VK_PipelineStateManager(VK_Device* in_device):device(in_device)
 {
 	VkPipelineCacheCreateInfo pipeline_cache_info = {};
 	pipeline_cache_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
@@ -288,7 +293,7 @@ VkPipelineCache VK_PipelineStateManager::GetPipelineCache() CONST
 	return pipeline_cache;
 }
 
-VK_PipelineState* VK_PipelineStateManager::GetPipelineState(CONST RenderGraphiPipelineState& in_desc, CONST VK_RenderPass* render_pass)
+VK_PipelineState* VK_PipelineStateManager::GetPipelineState(CONST RenderGraphiPipelineStateDesc& in_desc, CONST VK_RenderPass* render_pass)
 {
 	UInt64 hash = HashCombine(in_desc.GetHash(), std::hash< CONST VK_RenderPass*>{}(render_pass));
 	auto it = pipeline_states_map.find(hash);
@@ -298,7 +303,7 @@ VK_PipelineState* VK_PipelineStateManager::GetPipelineState(CONST RenderGraphiPi
 	}
 	else
 	{
-		VK_PipelineState* pipeline_state = new VK_PipelineState(device, in_desc, pipeline_cache, (VK_RenderPass*)in_desc.render_pass);
+		VK_PipelineState* pipeline_state = new VK_PipelineState(device, in_desc, pipeline_cache, render_pass);
 		pipeline_states_map[hash] = pipeline_state;
 		return pipeline_state;
 	}

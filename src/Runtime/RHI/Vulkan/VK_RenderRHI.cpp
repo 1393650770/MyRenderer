@@ -8,6 +8,11 @@
 #include "VK_Shader.h"
 #include <iostream>
 #include "VK_Texture.h"
+#include "VK_RenderPass.h"
+#include "VK_FrameBuffer.h"
+#include "VK_PipelineState.h"
+#include "VK_CommandBuffer.h"
+#include "VK_Queue.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -35,6 +40,8 @@ void VulkanRHI::Init(RenderFactory* render_factory)
 	CreateInstance(enable_render_debug);
 	InitializeDebugmessenger(enable_render_debug);
 	CreateDevice(enable_render_debug);
+
+	immediate_command_buffer = device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::GRAPHICS);
 }
 
 void VulkanRHI::PostInit()
@@ -56,6 +63,31 @@ Buffer* VulkanRHI::CreateBuffer(const BufferDesc& buffer_desc)
 Texture* VulkanRHI::CreateTexture(const TextureDesc& texture_desc)
 {
 	return new VK_Texture(device,texture_desc);
+}
+
+RenderPipelineState* VulkanRHI::CreateRenderPipelineState(CONST RenderGraphiPipelineStateDesc& desc)
+{
+	Vector<ENUM_TEXTURE_FORMAT> rtv_formats;
+	for (auto& rtv : desc.render_targets)
+	{
+		rtv_formats.push_back(rtv->GetTextureDesc().format);
+	}
+	RenderPassCacheKey key(desc.render_targets.size(), rtv_formats.data(), desc.depth_stencil_view->GetTextureDesc().format, desc.depth_stencil_view->GetTextureDesc().samples, false, false);
+	return device->GetPipelineStateManager()->GetPipelineState(desc, device->GetRenderPassManager()->GetRenderPass(key));
+}
+RenderPass* VulkanRHI::CreateRenderPass(CONST RenderPassDesc& desc)
+{
+	return device->GetRenderPassManager()->GetRenderPass(desc);
+}
+FrameBuffer* VulkanRHI::CreateFrameBuffer(CONST FrameBufferDesc& desc)
+{
+	Vector<ENUM_TEXTURE_FORMAT> rtv_formats;
+	for (auto& rtv : desc.render_targets)
+	{
+		rtv_formats.push_back(rtv->GetTextureDesc().format);
+	}
+	RenderPassCacheKey key(desc.render_targets.size(), rtv_formats.data(), desc.depth_stencil_view->GetTextureDesc().format, desc.depth_stencil_view->GetTextureDesc().samples, false, false);
+	return new VK_FrameBuffer(device,desc, device->GetRenderPassManager()->GetRenderPass(key)->GetRenderPass());
 }
 
 void* VulkanRHI::MapBuffer(Buffer* buffer)
@@ -239,12 +271,22 @@ VkResult VulkanRHI::CreateDebugUtilsMessengerEXT(VkInstance instance, CONST VkDe
 
 Viewport* VulkanRHI::CreateViewport(void* window_handle, Int width, Int height, Bool is_full_screen)
 {
-	return new VK_Viewport(this, device, window_handle, width, height, is_full_screen,ENUM_TEXTURE_FORMAT::RGB8);
+	return new VK_Viewport(this, device, window_handle, width, height, is_full_screen,ENUM_TEXTURE_FORMAT::BGRA8);
 }
 
 Shader* VulkanRHI::CreateShader(CONST ShaderDesc& desc, CONST ShaderDataPayload& data)
 {
 	return new VK_Shader(device,desc,data);
+}
+
+CommandList* VulkanRHI::GetImmediateCommandList()
+{
+	return immediate_command_buffer;
+}
+
+void VulkanRHI::SubmitCommandList(CommandList* command_list)
+{
+	device->GetQueue(ENUM_QUEUE_TYPE::GRAPHICS)->Submit(STATIC_CAST(command_list,VK_CommandBuffer));
 }
 
 MYRENDERER_END_NAMESPACE

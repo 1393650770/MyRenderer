@@ -9,6 +9,8 @@
 #include "VK_CommandBuffer.h"
 #include "VK_Buffer.h"
 #include "VK_RenderPass.h"
+#include "VK_PipelineState.h"
+#include "VK_FrameBuffer.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -123,6 +125,8 @@ void VK_Device::Init(Int device_index,Bool enable_validation_layers, Vector<CONS
 	command_buffer_manager=new VK_CommandBufferManager(this);
 	staging_buffer_manager = new VK_StagingBufferManager(this);
 	render_pass_manager = new VK_RenderPassManager(this);
+	pipeline_state_manager = new VK_PipelineStateManager(this);
+	frame_buffer_manager = new VK_FrameBufferManager(this);
 }
 
 VkDevice VK_Device::GetDevice()
@@ -284,7 +288,16 @@ void VK_Device::Destroy()
 		delete render_pass_manager;
 		render_pass_manager=nullptr;
 	}
-
+	if (pipeline_state_manager)
+	{
+		delete pipeline_state_manager;
+		pipeline_state_manager=nullptr;
+	}
+	if (frame_buffer_manager)
+	{
+		delete frame_buffer_manager;
+		frame_buffer_manager=nullptr;
+	}
 	if (device)
 	{
 		vkDestroyDevice(device, VULKAN_CPU_ALLOCATOR);
@@ -294,7 +307,17 @@ void VK_Device::Destroy()
 
 VK_RenderPassManager* VK_Device::GetRenderPassManager()
 {
-	return nullptr;
+	return render_pass_manager;
+}
+
+VK_PipelineStateManager* VK_Device::GetPipelineStateManager()
+{
+	return pipeline_state_manager;
+}
+
+VK_FrameBufferManager* VK_Device::GetFrameBufferManager()
+{
+	return frame_buffer_manager;
 }
 
 MYRENDERER_END_NAMESPACE

@@ -11,7 +11,7 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderPipelineState, public RenderResource)
 #pragma region METHOD
 public:
 	RenderPipelineState() DEFAULT;
-	RenderPipelineState(CONST RenderGraphiPipelineState& in_desc);
+	RenderPipelineState(CONST RenderGraphiPipelineStateDesc& in_desc);
 	VIRTUAL ~RenderPipelineState();
 
 protected:
@@ -22,7 +22,7 @@ private:
 #pragma region MEMBER
 public:
 protected:
-	RenderGraphiPipelineState desc;
+	RenderGraphiPipelineStateDesc desc;
 private:
 
 #pragma endregion
