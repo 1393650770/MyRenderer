@@ -34,7 +34,12 @@ public:
 	VkSwapchainKHR& METHOD(GetSwapchain)();
 	VkExtent2D METHOD(GetExtent2D)() CONST;
 	UInt32 METHOD(GetSwapChainImagesNum)() CONST;
+	VkSurfaceKHR METHOD(GetSurface)() CONST;
 
+	VkResult METHOD(PresentInternal)(VkQueue present_queue, VkSemaphore wait_semaphore, CONST UInt32& image_index, Bool is_lock_to_vsync);
+	Bool METHOD(TryGetNextImageIndex)(VkSemaphore& semaphore, UInt32& out_image_index);
+protected:
+	void METHOD(CreateSyncObjects)();
 #pragma endregion
 
 
@@ -52,28 +57,32 @@ protected:
 	VkSurfaceKHR surface;
 	void* window_handle;
 
-	int current_image_index;
-	int semaphore_index;
-	int num_present_calls;
-	int num_acquire_calls;
-	int internal_width = 0;
-	int internal_height = 0;
-	bool b_internal_fullscreen = false;
+	Int current_image_index;
+	Int semaphore_index;
+	Int num_present_calls;
+	Int num_acquire_calls;
+	Int internal_width = 0;
+	Int internal_height = 0;
+	Bool b_internal_fullscreen = false;
 
-	int RT_pacing_sample_count = 0;
+	Int RT_pacing_sample_count = 0;
 
-	double rt_pacing_previous_frameCPUtime = 0;
-	double rt_pacing_sampled_deltatimeMS = 0;
+	Float64 rt_pacing_previous_frameCPUtime = 0;
+	Float64 rt_pacing_sampled_deltatimeMS = 0;
 
-	double next_present_target_time = 0;
+	Float64 next_present_target_time = 0;
 
 	VkInstance instance;
 
-	int lock_to_vsync;
+	Int lock_to_vsync;
 
-	int present_ID = 0;
-	unsigned int num_swap_chain_images;
+	Int present_ID = 0;
+	UInt32 num_swap_chain_images;
 
+	static UInt8 CONST   max_frames_in_flight{ 3 };
+	VkSemaphore          image_available_for_render_semaphore[max_frames_in_flight];
+	VkSemaphore          image_finished_for_presentation_semaphore[max_frames_in_flight];
+	UInt8                current_frame_in_flight = 0;
 #pragma endregion
 
 

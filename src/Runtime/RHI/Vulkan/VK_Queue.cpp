@@ -31,9 +31,17 @@ UInt32 VK_Queue::GetQueueIndex() CONST
 	return queue_index;
 }
 
+VkQueue VK_Queue::GetQueue() CONST
+{
+	return queue;
+}
+
 void VK_Queue::Submit(VK_CommandBuffer* command_list, UInt32 num_signal_semaphores, VkSemaphore* signal_semaphores, UInt32 num_wait_semaphores, VkSemaphore* wait_semaphores)
 {
+	command_list->End();
 	CONST VkCommandBuffer command_buffers[]={command_list->GetCommandBuffer()};
+	VkFence fence = command_list->GetFence()->GetFence();
+
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount=1;
@@ -42,11 +50,12 @@ void VK_Queue::Submit(VK_CommandBuffer* command_list, UInt32 num_signal_semaphor
 	submitInfo.pSignalSemaphores=signal_semaphores;
 	submitInfo.waitSemaphoreCount= num_wait_semaphores;
 	submitInfo.pWaitSemaphores= wait_semaphores;
-	VK_Fence* fence = command_list->GetFence();
-	VkFence vk_fence = fence->GetFence();
-	vkResetFences(device->GetDevice(), 1, &vk_fence);
-	vkQueueSubmit(queue,1,&submitInfo, vk_fence);
-	vkWaitForFences(device->GetDevice(), 1, &vk_fence, VK_TRUE, UINT64_MAX);
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	submitInfo.pWaitDstStageMask = waitStages;
+	vkQueueSubmit(queue,1,&submitInfo, fence);
+	command_list->command_state = VK_CommandBuffer::EState::Submitted;
+	vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
+	vkResetFences(device->GetDevice(), 1, &fence);
 }
 
 

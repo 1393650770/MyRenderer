@@ -13,6 +13,7 @@
 #include "VK_Platform.h"
 #include "vulkan/vulkan_core.h"
 #include "VK_Utils.h"
+#include "VK_Define.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -35,6 +36,8 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 	{
 		surface = recreate_info->surface;
 		recreate_info->surface = VK_NULL_HANDLE;
+		vkDestroySwapchainKHR(device->GetDevice(), recreate_info->swapchain, VULKAN_CPU_ALLOCATOR);
+		recreate_info->swapchain = VK_NULL_HANDLE;
 	}
 	else if (recreate_info != nullptr)
 	{
@@ -78,7 +81,8 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 	{
 		pre_transform = surf_properties.currentTransform;
 	}
-
+	width = std::max(surf_properties.minImageExtent.width, std::min(surf_properties.maxImageExtent.width, (UInt32)width));
+	height = std::max(surf_properties.minImageExtent.height, std::min(surf_properties.maxImageExtent.height, (UInt32)height));
 
 	VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
 	UInt32 num_found_present_modes = 0;
@@ -105,7 +109,11 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 	}
 
 
-	unsigned int desired_num_buffers = surf_properties.maxImageCount > 0 ? (*in_out_desired_num_back_buffers < surf_properties.minImageCount ? surf_properties.minImageCount : *in_out_desired_num_back_buffers < surf_properties.maxImageCount ? *in_out_desired_num_back_buffers : surf_properties.maxImageCount) : *in_out_desired_num_back_buffers;
+	UInt32 desired_num_buffers = surf_properties.maxImageCount > 0 ? 
+		(*in_out_desired_num_back_buffers < surf_properties.minImageCount ? 
+			surf_properties.minImageCount : 
+			(*in_out_desired_num_back_buffers < surf_properties.maxImageCount ? *in_out_desired_num_back_buffers : surf_properties.maxImageCount)) 
+		: *in_out_desired_num_back_buffers;
 	VkSwapchainCreateInfoKHR swapchain_info;
 	swapchain_info.surface = surface;
 	swapchain_info.minImageCount = desired_num_buffers;
@@ -146,6 +154,7 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 	{
 		device->CreatePresentQueue(surface);
 	}
+	CreateSyncObjects();
 }
 
 
@@ -189,9 +198,68 @@ VkExtent2D VK_SwapChain::GetExtent2D() const
 	return image_extent2D;
 }
 
-unsigned int VK_SwapChain::GetSwapChainImagesNum() const
+UInt32 VK_SwapChain::GetSwapChainImagesNum() const
 {
 	return num_swap_chain_images;
+}
+
+VkSurfaceKHR VK_SwapChain::GetSurface() const
+{
+	return surface;
+}
+
+void VK_SwapChain::CreateSyncObjects()
+{
+	VkSemaphoreCreateInfo semaphoreInfo{};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreInfo.pNext= nullptr;
+	VkFenceCreateInfo fenceInfo{};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+	fenceInfo.pNext = nullptr;
+	for (Int i = 0; i < max_frames_in_flight; i++) 
+	{
+		CHECK_WITH_LOG (vkCreateSemaphore(device->GetDevice(), &semaphoreInfo, nullptr, &image_available_for_render_semaphore[i]) != VK_SUCCESS ||
+			vkCreateSemaphore(device->GetDevice(), &semaphoreInfo, nullptr, &image_finished_for_presentation_semaphore[i]) != VK_SUCCESS ,
+			"RHI Error: failed to create synchronization objects for a frame!")
+	}
+	
+}
+
+Bool VK_SwapChain::TryGetNextImageIndex(VkSemaphore& out_semaphore, UInt32& out_image_index)
+{
+	VkResult result = vkAcquireNextImageKHR(device->GetDevice(), swapchain, UINT64_MAX, image_available_for_render_semaphore[current_frame_in_flight], VK_NULL_HANDLE, &out_image_index);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		return false;
+	}
+	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+	{
+		CHECK_WITH_LOG(true, "RHI Error: failed to acquire swap chain image!");
+	}
+	out_semaphore = image_available_for_render_semaphore[current_frame_in_flight];
+	return true;
+}
+
+VkResult VK_SwapChain::PresentInternal(VkQueue present_queue, VkSemaphore wait_semaphore, CONST UInt32& image_index, Bool is_lock_to_vsync)
+{
+	VkResult result = VK_SUCCESS;
+	VkPresentInfoKHR present_info = {};
+	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	present_info.pNext = nullptr;
+	present_info.swapchainCount = 1;
+	present_info.pSwapchains = &swapchain;
+	present_info.pImageIndices = &image_index;
+	present_info.pResults = nullptr;
+	present_info.waitSemaphoreCount = 1;
+	present_info.pWaitSemaphores = &wait_semaphore;
+	present_info.pResults = &result;
+	present_info.pNext = nullptr;
+
+	vkQueuePresentKHR(present_queue, &present_info);
+
+	current_frame_in_flight = (current_frame_in_flight + 1) % max_frames_in_flight;
+	return result;
 }
 
 MYRENDERER_END_NAMESPACE

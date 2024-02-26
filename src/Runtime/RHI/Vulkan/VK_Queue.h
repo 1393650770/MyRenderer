@@ -22,6 +22,7 @@ public:
 	void METHOD(Submit)(VK_CommandBuffer* command_list,  UInt32 num_signal_semaphores = 0, VkSemaphore* signal_semaphores = nullptr, UInt32 num_wait_semaphores = 0, VkSemaphore* wait_semaphores = nullptr);
 	UInt32 METHOD(GetFamily)() CONST;
 	UInt32 METHOD(GetQueueIndex)() CONST;
+	VkQueue METHOD(GetQueue)() CONST;
 protected:
 
 private:

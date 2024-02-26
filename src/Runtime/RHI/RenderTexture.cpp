@@ -19,6 +19,11 @@ TextureDesc Texture::GetTextureDesc() CONST
     return texture_desc;
 }
 
+void Texture::SetResourceState(CONST ENUM_RESOURCE_STATE& in_state)
+{
+	texture_desc.resource_state = in_state;
+}
+
 void Texture::UpdateTextureData(CONST TextureDataPayload& texture_data_payload)
 {
 
@@ -39,12 +44,16 @@ CONST Texture::TextureFormatAttribs& Texture::GetTextureFormatAttribs(ENUM_TEXTU
 			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::RGBA32U, 4, 4, ENUM_TEXTURE_COMPONENT_FORMAT::UInt, false, 1, 1)
 			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::RGBA16U, 2, 4, ENUM_TEXTURE_COMPONENT_FORMAT::UInt, false, 1, 1)
 			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::R32U, 4, 1, ENUM_TEXTURE_COMPONENT_FORMAT::UInt, false, 1, 1)
+			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::D32, 4, 1, ENUM_TEXTURE_COMPONENT_FORMAT::Depth, false, 1, 1)
+			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::D32FS8, 4, 2, ENUM_TEXTURE_COMPONENT_FORMAT::DepthStencil, false, 1, 1)
+			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::BGRA8, 1, 4, ENUM_TEXTURE_COMPONENT_FORMAT::SNorm, false,1,1)	
 		}
 	CONST TextureFormatAttribs& operator[](ENUM_TEXTURE_FORMAT format) CONST
 		{
 			if (format >= ENUM_TEXTURE_FORMAT::None && format < ENUM_TEXTURE_FORMAT::Count)
 			{
 				const auto& Attribs = format_attribs_map[(UInt32)format];
+				CHECK_WITH_LOG(Attribs.component_format == ENUM_TEXTURE_COMPONENT_FORMAT::None, "Texture format attribs map is not initialized correctly")
 				return Attribs;
 			}
 			else

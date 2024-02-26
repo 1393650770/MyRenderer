@@ -147,6 +147,15 @@ namespace MXRender
 		COUNT
 	};
 
+	enum class ENUM_SHADER_RESOURCE_BINDING_POINT_TYPE :UInt8
+	{
+		Invalid = 0,
+		Graphics,
+		Compute,
+		Raytracing,
+		Count
+	};
+
 	/// Texture formats:
 	enum class ENUM_TEXTURE_FORMAT: UInt32
 	{

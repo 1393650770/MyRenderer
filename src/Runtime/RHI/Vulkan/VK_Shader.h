@@ -40,6 +40,35 @@ ReflectedInfo(CONST ReflectedInfo& in_reflect) :
 	 setlayouts(in_reflect.setlayouts), constant_ranges(in_reflect.constant_ranges) {}
 MYRENDERER_END_STRUCT
 
+
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_ShaderResourceBinding,public ShaderResourceBinding)
+
+#pragma region METHOD
+public:
+	VK_ShaderResourceBinding() DEFAULT;
+
+	VIRTUAL ~VK_ShaderResourceBinding();
+
+protected:
+private:
+
+#pragma endregion
+
+#pragma region MEMBER
+public:
+protected:
+	VkPipelineLayout                          layout;
+	UInt32                                    first_set;
+	UInt32                                    descriptor_set_count;
+	CONST VkDescriptorSet*					  descriptor_sets;
+	UInt32                                    dynamic_offset_count;
+	CONST UInt32*							  dynamic_offsets;
+private:
+
+#pragma endregion
+
+	MYRENDERER_END_CLASS
+
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Shader, public Shader)
 
 

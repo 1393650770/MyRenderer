@@ -394,161 +394,6 @@ namespace MXRender
 		return sampler;
 	}
 
-	/*
-	uint32_t VK_Utils::Hash_Descriptor_Layout_Info(VkDescriptorSetLayoutCreateInfo* info)
-	{
-		std::stringstream ss;
-
-		ss << info->flags;
-		ss << info->bindingCount;
-
-		for (auto i = 0u; i < info->bindingCount; i++) {
-			const VkDescriptorSetLayoutBinding& binding = info->pBindings[i];
-
-			ss << binding.binding;
-			ss << binding.descriptorCount;
-			ss << binding.descriptorType;
-			ss << binding.stageFlags;
-		}
-
-		auto str = ss.str();
-
-		return fnv1a_32(str.c_str(), str.length());
-	}
-	
-	void VK_Utils::Create_VKBuffer(std::weak_ptr<VK_Device> Device, VkDeviceSize Size, VkBufferUsageFlags Usage, VkMemoryPropertyFlags Properties, VkBuffer& Buffer, VkDeviceMemory& BufferMemory)
-    {
-        if (Device.expired())
-        {
-            return ;
-        }
-        std::shared_ptr<VK_Device> DeviceSharedPtr=Device.lock();
-        VkBufferCreateInfo bufferInfo{};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = Size;
-        bufferInfo.usage = Usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        if (vkCreateBuffer(DeviceSharedPtr->device, &bufferInfo, nullptr, &Buffer) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create buffer!");
-        }
-
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(DeviceSharedPtr->device, Buffer, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = Find_MemoryType(Device,memRequirements.memoryTypeBits, Properties);
-
-        if (vkAllocateMemory(DeviceSharedPtr->device, &allocInfo, nullptr, &BufferMemory) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate buffer memory!");
-        }
-
-        vkBindBufferMemory(DeviceSharedPtr->device, Buffer, BufferMemory, 0);
-    }
-
-	MXRender::AllocatedBufferUntyped VK_Utils::Create_buffer(VK_GraphicsContext* context,size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkMemoryPropertyFlags required_flags)
-	{
-		return context->create_allocate_buffer(allocSize,usage,memoryUsage,required_flags);
-	}
-
-	void VK_Utils::Copy_VKBuffer(std::weak_ptr< VK_GraphicsContext> context, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
-	{
-		context.lock()->copy_buffer(srcBuffer,dstBuffer, size);
-	}
-
-
-
-	void VK_Utils::Copy_VKBuffer(VK_GraphicsContext* context, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
-	{
-		context->copy_buffer(srcBuffer, dstBuffer, size);
-	}
-
-	void VK_Utils::Create_Image(VkPhysicalDevice physical_device, VkDevice device, uint32_t image_width, uint32_t image_height, VkFormat format, VkImageTiling image_tiling, VkImageUsageFlags image_usage_flags, VkMemoryPropertyFlags memory_property_flags, VkImage& image, VkDeviceMemory& memory, VkImageCreateFlags image_create_flags, uint32_t array_layers, uint32_t miplevels)
-	{
-		VkImageCreateInfo image_create_info{};
-		image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		image_create_info.flags = image_create_flags;
-		image_create_info.imageType = VK_IMAGE_TYPE_2D;
-		image_create_info.extent.width = image_width;
-		image_create_info.extent.height = image_height;
-		image_create_info.extent.depth = 1;
-		image_create_info.mipLevels = miplevels;
-		image_create_info.arrayLayers = array_layers;
-		image_create_info.format = format;
-		image_create_info.tiling = image_tiling;
-		image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		image_create_info.usage = image_usage_flags;
-		image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
-		image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-		if (vkCreateImage(device, &image_create_info, nullptr, &image) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create image!");
-		}
-
-		VkMemoryRequirements memRequirements;
-		vkGetImageMemoryRequirements(device, image, &memRequirements);
-
-		VkMemoryAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex =
-			findMemoryType(physical_device, memRequirements.memoryTypeBits, memory_property_flags);
-
-		if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to allocate image memory!");
-		}
-
-		vkBindImageMemory(device, image, memory, 0);
-	}
-
-	VkImageView VK_Utils::Create_ImageView(VkDevice device, VkImage& image, VkFormat format, VkImageAspectFlags image_aspect_flags, VkImageViewType view_type, uint32_t layout_count, uint32_t miplevels)
-	{
-		VkImageViewCreateInfo image_view_create_info{};
-		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		image_view_create_info.image = image;
-		image_view_create_info.viewType = view_type;
-		image_view_create_info.format = format;
-		image_view_create_info.subresourceRange.aspectMask = image_aspect_flags;
-		image_view_create_info.subresourceRange.baseMipLevel = 0;
-		image_view_create_info.subresourceRange.levelCount = miplevels;
-		image_view_create_info.subresourceRange.baseArrayLayer = 0;
-		image_view_create_info.subresourceRange.layerCount = layout_count;
-
-		VkImageView image_view;
-		if (vkCreateImageView(device, &image_view_create_info, nullptr, &image_view) != VK_SUCCESS)
-		{
-			return image_view;
-			// todo
-		}
-
-		return image_view;
-	}
-
-	
-	uint32_t VK_Utils::Find_MemoryType(std::weak_ptr<VK_Device> Device, uint32_t TypeFilter, VkMemoryPropertyFlags Properties)
-    {
-        if (Device.expired())
-        {
-            return -1;
-        }
-        std::shared_ptr<VK_Device> DeviceSharedPtr = Device.lock();
-
-        VkPhysicalDeviceMemoryProperties MemProperties;
-        vkGetPhysicalDeviceMemoryProperties(DeviceSharedPtr->gpu, &MemProperties);
-
-        for (uint32_t i = 0; i < MemProperties.memoryTypeCount; i++) {
-            if ((TypeFilter & (1 << i)) && (MemProperties.memoryTypes[i].propertyFlags & Properties) == Properties) {
-                return i;
-            }
-        }
-
-        throw std::runtime_error("failed to find suitable memory type!");
-    }
-	*/
 
 	VkSampleCountFlagBits VK_Utils::Get_SampleCountFlagBits_FromInt(unsigned num)
 	{
@@ -1344,7 +1189,7 @@ namespace MXRender
 		return vulkan_load_op;
 	}
 
-	VkImageLayout VK_Utils::Translate_ReourceState_To_Vulkan(CONST ENUM_RESOURCE_STATE& state, bool Is_inside_renderpass , bool frag_density_map_instead_of_shadingrate)
+	VkImageLayout VK_Utils::Translate_ReourceState_To_VulkanImageLayout(CONST ENUM_RESOURCE_STATE& state, bool Is_inside_renderpass , bool frag_density_map_instead_of_shadingrate)
 	{
 		VkImageLayout vulkan_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		if (state == ENUM_RESOURCE_STATE::Invalid)
@@ -1401,6 +1246,93 @@ namespace MXRender
 			break;
 		}
 		return vulkan_image_layout;
+	}
+
+	VkPipelineStageFlags VK_Utils::Translate_ReourceState_To_VulkanPipelineStage(CONST ENUM_RESOURCE_STATE& state)
+	{
+		VkPipelineStageFlags vulkan_pipeline_stage = 0;
+		switch (state)
+		{
+		case ENUM_RESOURCE_STATE::Undefined:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::VertexBuffer:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::IndexBuffer:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::ConstantBuffer:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT | VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::StreamOut:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::IndirectArgument:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::BuildAsRead:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+			break;
+		case ENUM_RESOURCE_STATE::BuildAsWrite:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+			break;
+		case ENUM_RESOURCE_STATE::RenderTarget:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::UnorderedAccess:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::DepthWrite:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::DepthRead:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::ShaderResource:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT | VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::CopyDest:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::CopySource:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::ResolveDest:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::ResolveSource:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::Present:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::Common:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::ShaderRate:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+			break;
+		case ENUM_RESOURCE_STATE::Invalid:
+			break;
+		default:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM;
+			CHECK_WITH_LOG(true, "RHI Error: Translate_ReourceState_To_VulkanPipelineStage-- invalid resource state !");
+			break;
+		}
+		return vulkan_pipeline_stage;
+	}
+
+	Bool VK_Utils::Check_ResourceState_Has_WriteAccess(ENUM_RESOURCE_STATE state)
+	{
+		constexpr ENUM_RESOURCE_STATE write_access_states =
+			ENUM_RESOURCE_STATE::RenderTarget |
+			ENUM_RESOURCE_STATE::UnorderedAccess |
+			ENUM_RESOURCE_STATE::CopyDest |
+			ENUM_RESOURCE_STATE::ResolveDest |
+			ENUM_RESOURCE_STATE::BuildAsWrite;
+
+		return (state & write_access_states) == (ENUM_RESOURCE_STATE)1;
 	}
 
 	VkFormat VK_Utils::Translate_API_DataTypeEnum_To_Vulkan(ENUM_RENDER_DATA_TYPE data_type)
@@ -1726,44 +1658,7 @@ switch (stencil_op)
 
 	}
 
-	/*
-	void VK_Utils::ClearImageColor(std::weak_ptr< VK_GraphicsContext> context, VkImageLayout image_layout, VkImage image,
-		VkImageAspectFlags imageAspectflags)
-	{
-		if (context.expired())
-		{
-			return;
-		}
 
-		VkCommandBuffer commandBuffer = context.lock()->begin_single_time_commands();
-
-		VkClearColorValue clearColor;
-		clearColor.float32[0] = 0.0f; // 红色分量
-		clearColor.float32[1] = 0.0f; // 绿色分量
-		clearColor.float32[2] = 0.0f; // 蓝色分量
-		clearColor.float32[3] = 1.0f; // alpha 分量
-
-		// 定义清除的范围
-		VkImageSubresourceRange range;
-		range.aspectMask = imageAspectflags;
-		range.baseMipLevel = 0;
-		range.levelCount = 1;
-		range.baseArrayLayer = 0;
-		range.layerCount = 1;
-
-		// 使用 vkCmdClearColorImage 函数
-		vkCmdClearColorImage(
-			commandBuffer,          // 命令缓冲区
-			image,                  // 要清除的图像
-			image_layout,// 图像布局
-			&clearColor,            // 清除颜色
-			1,                      // 范围数组的长度
-			&range                  // 清除范围
-		);
-
-		context.lock()->end_single_time_commands(commandBuffer);
-	}
-	*/
 	void CheckAndSetAccessMaskAndStage(VkImageLayout& old_layout, VkImageLayout& new_layout, VkImageMemoryBarrier& barrier, VkPipelineStageFlags& sourceStage, VkPipelineStageFlags& destinationStage)
 	{
 		if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
@@ -1912,124 +1807,6 @@ switch (stencil_op)
 			throw std::invalid_argument("unsupported layout transition!");
 		}
 	}
-	/*
-	void VK_Utils::Transition_ImageLayout(std::weak_ptr< VK_GraphicsContext> context, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout, uint32_t layer_count, uint32_t miplevels, VkImageAspectFlags aspect_mask_bits)
-	{
-		if (context.expired())
-		{
-			return ;
-		}
-
-		VkCommandBuffer commandBuffer = context.lock()->begin_single_time_commands();
-
-		VkImageMemoryBarrier barrier{};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.oldLayout = old_layout;
-		barrier.newLayout = new_layout;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = image;
-		barrier.subresourceRange.aspectMask = aspect_mask_bits;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = miplevels;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = layer_count;
-
-		VkPipelineStageFlags sourceStage;
-		VkPipelineStageFlags destinationStage;
-
-		CheckAndSetAccessMaskAndStage(old_layout,new_layout,barrier,sourceStage,destinationStage);
-
-		vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-		context.lock()->end_single_time_commands(commandBuffer);
-	}
-
-	void VK_Utils::Transition_ImageLayout(std::weak_ptr< VK_GraphicsContext> context, VkCommandBuffer commandbuffer, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout, uint32_t layer_count, uint32_t miplevels, VkImageAspectFlags aspect_mask_bits)
-	{
-		if (context.expired())
-		{
-			return;
-		}
-
-		VkImageMemoryBarrier barrier{};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.oldLayout = old_layout;
-		barrier.newLayout = new_layout;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = image;
-		barrier.subresourceRange.aspectMask = aspect_mask_bits;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = miplevels;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = layer_count;
-
-		VkPipelineStageFlags sourceStage;
-		VkPipelineStageFlags destinationStage;
-
-		CheckAndSetAccessMaskAndStage(old_layout, new_layout, barrier, sourceStage, destinationStage);
-
-		vkCmdPipelineBarrier(commandbuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-	}
-
-	void VK_Utils::Copy_Buffer_To_Image(std::weak_ptr< VK_GraphicsContext> context, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layer_count)
-	{
-		if (context.expired())
-		{
-			return;
-		}
-
-		VkCommandBuffer commandBuffer = context.lock()->begin_single_time_commands();
-		VkBufferImageCopy region{};
-		region.bufferOffset = 0;
-		region.bufferRowLength = 0;
-		region.bufferImageHeight = 0;
-		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.imageSubresource.mipLevel = 0;
-		region.imageSubresource.baseArrayLayer = 0;
-		region.imageSubresource.layerCount = layer_count;
-		region.imageOffset = { 0, 0, 0 };
-		region.imageExtent = { width, height, 1 };
-
-		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-		context.lock()->end_single_time_commands(commandBuffer);
-	}
-
-
-
-	void VK_Utils::Copy_Buffer_To_Image(std::weak_ptr< VK_GraphicsContext> context, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layer_count, uint32_t level, uint32_t baseArrayLayer, uint32_t bufferOffset)
-	{
-		if (context.expired())
-		{
-			return;
-		}
-
-		VkCommandBuffer commandBuffer = context.lock()->begin_single_time_commands();
-		VkBufferImageCopy region{};
-		region.bufferOffset = bufferOffset;
-		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.imageSubresource.mipLevel = level;
-		region.imageSubresource.baseArrayLayer = baseArrayLayer;
-		region.imageSubresource.layerCount = layer_count;
-		region.imageExtent = { width, height, 1 };
-
-		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-		context.lock()->end_single_time_commands(commandBuffer);
-	}
-
-	VkDescriptorBufferInfo AllocatedBufferUntyped::get_info(VkDeviceSize offset)
-	{
-		VkDescriptorBufferInfo info;
-		info.buffer = _buffer;
-		info.offset = offset;
-		info.range = _size;
-		return info;
-	}
-	*/
 
 }
 

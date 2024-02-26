@@ -7,6 +7,7 @@
 #include "VK_RenderPass.h"
 #include "VK_Texture.h"
 #include "VK_FrameBuffer.h"
+#include "Core/ConstDefine.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -59,21 +60,37 @@ void VK_CommandBufferPool::Init(UInt32 queue_family_index)
 	CHECK_WITH_LOG(vkCreateCommandPool(device->GetDevice(), &command_pool_create_info, VULKAN_CPU_ALLOCATOR, &command_pool) != VK_SUCCESS, "RHI Error: Create CommandPool Error");
 }
 
-void VK_CommandBufferPool::FreeUnusedCommandBuffer(VK_Queue* queue)
+void VK_CommandBufferPool::FreeUnusedCommandBuffers(VK_Queue* queue)
 {
-	for (UInt32 index = cmd_buffers.size() - 1; index >= 0; --index)
+	for (Int index = cmd_buffers.size() - 1; index >= 0; --index)
 	{
 		VK_CommandBuffer* cmd_buffer = cmd_buffers[index];
-		if (cmd_buffer->GetFence()->GetIsSignaled())
+		if ( cmd_buffer->GetFence()->GetIsSignaled())
 		{
 			cmd_buffer->Free();
 			free_cmd_buffers.push_back(cmd_buffer);
 			cmd_buffers.erase(cmd_buffers.begin() + index);
+			return;
 		}
 	}
 }
 
-VkCommandPool VK_CommandBufferPool::GetPool() const
+void VK_CommandBufferPool::FreeUnusedCommandBuffer(VK_CommandBuffer* target)
+{
+	for (Int index = cmd_buffers.size() - 1; index >= 0; --index)
+	{
+		VK_CommandBuffer* cmd_buffer = cmd_buffers[index];
+		if (target == cmd_buffer && cmd_buffer->GetFence()->GetIsSignaled())
+		{
+			cmd_buffer->Free();
+			free_cmd_buffers.push_back(cmd_buffer);
+			cmd_buffers.erase(cmd_buffers.begin() + index);
+			return;
+		}
+	}
+}
+
+VkCommandPool VK_CommandBufferPool::GetPool() CONST
 {
 	return command_pool;
 }
@@ -99,7 +116,7 @@ VkCommandBuffer VK_CommandBuffer::GetCommandBuffer() CONST
 	return command_buffer;
 }
 
-VK_Fence* VK_CommandBuffer::GetFence() const
+VK_Fence* VK_CommandBuffer::GetFence() CONST
 {
 	return fence;
 }
@@ -123,6 +140,70 @@ void VK_CommandBuffer::Free()
 	
 }
 
+void VK_CommandBuffer::TransitionTextureState(Texture* texture, CONST ENUM_RESOURCE_STATE& required_state)
+{
+	if (texture->GetTextureDesc().resource_state != required_state)
+	{
+		ENUM_RESOURCE_STATE old_state = texture->GetTextureDesc().resource_state;
+		VkImageSubresourceRange subres_range;
+		subres_range.aspectMask = 0;
+		subres_range.baseArrayLayer = 0;
+		subres_range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+		subres_range.baseMipLevel = 0;
+		subres_range.levelCount = VK_REMAINING_MIP_LEVELS;
+		if (subres_range.aspectMask == 0)
+		{
+			CONST auto& tex_desc = texture->GetTextureDesc();
+			CONST auto& fmt_attribs = texture->GetTextureFormatAttribs(tex_desc.format);
+			if (fmt_attribs.component_format == ENUM_TEXTURE_COMPONENT_FORMAT::Depth)
+				subres_range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+			else if (fmt_attribs.component_format == ENUM_TEXTURE_COMPONENT_FORMAT::DepthStencil)
+			{
+				// If image has a depth / stencil format with both depth and stencil components, then the
+				// aspectMask member of subresourceRange must include both VK_IMAGE_ASPECT_DEPTH_BIT and
+				// VK_IMAGE_ASPECT_STENCIL_BIT 
+				subres_range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+			}
+			else
+				subres_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		}
+		// Always add barrier after writes.
+		CONST Bool after_write = VK_Utils::Check_ResourceState_Has_WriteAccess(old_state);
+
+		CONST auto  old_layout = VK_Utils::Translate_ReourceState_To_VulkanImageLayout(old_state,command_state==EState::IsInsideRenderPass);
+		CONST auto  new_layout = VK_Utils::Translate_ReourceState_To_VulkanImageLayout(required_state, command_state == EState::IsInsideRenderPass);
+		CONST auto  old_stages  =  VK_Utils::Translate_ReourceState_To_VulkanPipelineStage(old_state);
+		CONST auto  new_stages  =  VK_Utils::Translate_ReourceState_To_VulkanPipelineStage(required_state);
+
+		if (((old_state & required_state) != required_state) || old_layout != new_layout || after_write)
+		{
+			VK_Texture* vk_texture = STATIC_CAST( texture, VK_Texture);
+			TrainsitionImageLayout(vk_texture->GetImage(), old_layout, new_layout, subres_range, old_stages, new_stages);
+			texture->SetResourceState(required_state);
+		}
+	}
+
+}
+
+void VK_CommandBuffer::TransitionRenderTargets(CONST Vector<Texture*>& render_targets, Texture* depth_stencil)
+{
+	if (render_targets.empty() && depth_stencil == nullptr)
+	{
+		return;
+	}
+	if (!render_targets.empty())
+	{
+		for (auto& rtv : render_targets)
+		{
+			TransitionTextureState(rtv, ENUM_RESOURCE_STATE::RenderTarget);
+		}
+	}
+	if (depth_stencil != nullptr)
+	{
+		TransitionTextureState(depth_stencil, ENUM_RESOURCE_STATE::DepthWrite);
+	}
+}
+
 VK_CommandBuffer::VK_CommandBuffer(VK_Device* in_device, VK_CommandBufferPool* in_command_buffer_pool, Bool in_is_upload_only):
 		device(in_device),
 		owner_pool(in_command_buffer_pool),
@@ -130,6 +211,7 @@ VK_CommandBuffer::VK_CommandBuffer(VK_Device* in_device, VK_CommandBufferPool* i
 {
 	Allocate();
 	fence=device->GetFenceManager()->GetOrCreateFence();
+	command_state = EState::ReadyForBegin;
 }
 
 UInt64 VK_CommandBuffer::GetFenceSignaledCounter() CONST
@@ -161,24 +243,24 @@ void VK_CommandBuffer::TrainsitionImageLayout(VkImage image, VkImageLayout old_l
 	// Check overlapping subresources
 	for (size_t i = 0; i < image_barriers.size(); ++i)
 	{
-		const auto& ImgBarrier = image_barriers[i];
+		CONST auto& ImgBarrier = image_barriers[i];
 		if (ImgBarrier.image != image)
 			continue;
 
-		const auto& other_range = ImgBarrier.subresourceRange;
+		CONST auto& other_range = ImgBarrier.subresourceRange;
 
-		const auto start_layer0 = subresource_range.baseArrayLayer;
-		const auto end_layer0 = subresource_range.layerCount != VK_REMAINING_ARRAY_LAYERS ? (subresource_range.baseArrayLayer + subresource_range.layerCount) : ~0u;
-		const auto start_layer1 = other_range.baseArrayLayer;
-		const auto end_layer1 = other_range.layerCount != VK_REMAINING_ARRAY_LAYERS ? (other_range.baseArrayLayer + other_range.layerCount) : ~0u;
+		CONST auto start_layer0 = subresource_range.baseArrayLayer;
+		CONST auto end_layer0 = subresource_range.layerCount != VK_REMAINING_ARRAY_LAYERS ? (subresource_range.baseArrayLayer + subresource_range.layerCount) : ~0u;
+		CONST auto start_layer1 = other_range.baseArrayLayer;
+		CONST auto end_layer1 = other_range.layerCount != VK_REMAINING_ARRAY_LAYERS ? (other_range.baseArrayLayer + other_range.layerCount) : ~0u;
 
-		const auto start_mip0 = subresource_range.baseMipLevel;
-		const auto end_mip0 = subresource_range.levelCount != VK_REMAINING_MIP_LEVELS ? (subresource_range.baseMipLevel + subresource_range.levelCount) : ~0u;
-		const auto start_mip1 = other_range.baseMipLevel;
-		const auto end_mip1 = other_range.levelCount != VK_REMAINING_MIP_LEVELS ? (other_range.baseMipLevel + other_range.levelCount) : ~0u;
+		CONST auto start_mip0 = subresource_range.baseMipLevel;
+		CONST auto end_mip0 = subresource_range.levelCount != VK_REMAINING_MIP_LEVELS ? (subresource_range.baseMipLevel + subresource_range.levelCount) : ~0u;
+		CONST auto start_mip1 = other_range.baseMipLevel;
+		CONST auto end_mip1 = other_range.levelCount != VK_REMAINING_MIP_LEVELS ? (other_range.baseMipLevel + other_range.levelCount) : ~0u;
 
-		const auto is_slices_overlap = CheckLineSectionOverlap<true>(start_layer0, end_layer0, start_layer1, end_layer1);
-		const auto is_mips_overlap = CheckLineSectionOverlap<true>(start_mip0, end_mip0, start_mip1, end_mip1);
+		CONST auto is_slices_overlap = CheckLineSectionOverlap<true>(start_layer0, end_layer0, start_layer1, end_layer1);
+		CONST auto is_mips_overlap = CheckLineSectionOverlap<true>(start_mip0, end_mip0, start_mip1, end_mip1);
 
 		// If the range overlaps with any of the existing barriers, we need to
 		// flush them.
@@ -208,13 +290,13 @@ void VK_CommandBuffer::TrainsitionImageLayout(VkImage image, VkImageLayout old_l
 
 void VK_CommandBuffer::FlushBarriers()
 {
-	if(pipeline_barrier.memory_src_stages==0&&pipeline_barrier.memory_dst_stages==0&&image_barriers.empty())
-	{
-		return;
-	}
 	if (state_cache.render_pass != VK_NULL_HANDLE)
 	{
 		EndRenderPass();
+	}
+	if(pipeline_barrier.memory_src_stages==0&&pipeline_barrier.memory_dst_stages==0&&image_barriers.empty())
+	{
+		return;
 	}
 	VkMemoryBarrier vk_mem_barrier{};
 	vk_mem_barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
@@ -222,12 +304,12 @@ void VK_CommandBuffer::FlushBarriers()
 	vk_mem_barrier.srcAccessMask = pipeline_barrier.memory_src_access & pipeline_barrier.supported_access_mask;
 	vk_mem_barrier.dstAccessMask = pipeline_barrier.memory_dst_access & pipeline_barrier.supported_access_mask;
 
-	const bool HasMemoryBarrier =
+	CONST bool HasMemoryBarrier =
 		pipeline_barrier.memory_src_stages != 0 && pipeline_barrier.memory_dst_stages != 0 &&
 		pipeline_barrier.memory_src_access != 0 && pipeline_barrier.memory_dst_access != 0;
 
-	const VkPipelineStageFlags SrcStages = (pipeline_barrier.image_src_stages | pipeline_barrier.memory_src_stages) & pipeline_barrier.supported_stages_mask;
-	const VkPipelineStageFlags DstStages = (pipeline_barrier.image_dst_stages | pipeline_barrier.memory_dst_stages) & pipeline_barrier.supported_stages_mask;
+	CONST VkPipelineStageFlags SrcStages = (pipeline_barrier.image_src_stages | pipeline_barrier.memory_src_stages) & pipeline_barrier.supported_stages_mask;
+	CONST VkPipelineStageFlags DstStages = (pipeline_barrier.image_dst_stages | pipeline_barrier.memory_dst_stages) & pipeline_barrier.supported_stages_mask;
 
 	vkCmdPipelineBarrier(command_buffer,
 		SrcStages,
@@ -275,22 +357,6 @@ void VK_CommandBuffer::CopyBufferToImage(VkBuffer buffer, VkImage image, VkImage
 	
 }
 
-void VK_CommandBuffer::Begin()
-{
-
-	VkCommandBufferBeginInfo begin_info{};
-	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	CHECK_WITH_LOG(vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS, "RHI Error : fail to begion commandbuffer ");
-	
-}
-
-void VK_CommandBuffer::End()
-{
-
-	FlushBarriers();
-	CHECK_WITH_LOG(vkEndCommandBuffer(command_buffer) != VK_SUCCESS, "RHI Error : fail to end commandbuffer ");
-	
-}
 
 void VK_CommandBuffer::SetPipeline(RenderPipelineState* pipeline_state)
 {
@@ -304,44 +370,55 @@ void VK_CommandBuffer::SetPipeline(RenderPipelineState* pipeline_state)
 }
 void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, CONST Vector<ClearValue>& clear_values, Bool has_dsv_clear_value)
 {
-	Bool need_begin_render_pass = false;
+	CHECK_WITH_LOG(command_state < EState::IsInsideBegin, "RHI Error: SetRenderTarget must be called between Begin and End");
 	Vector<ENUM_TEXTURE_FORMAT> rtv_formats;
 	for (auto& rtv : render_targets)
 	{
 		rtv_formats.push_back(rtv->GetTextureDesc().format);
 	}
 	RenderPassCacheKey renderpass_key(render_targets.size(), rtv_formats.data(), depth_stencil->GetTextureDesc().format, depth_stencil->GetTextureDesc().samples, false, false);
-	VK_RenderPass* renderpass = device->GetRenderPassManager()->GetRenderPass(renderpass_key);
-	if (current_active_renderpass != renderpass->GetRenderPass())
-	{
-		current_active_renderpass = renderpass->GetRenderPass();
-		need_begin_render_pass = true;
-	}
+	VK_RenderPass* vk_renderpass = device->GetRenderPassManager()->GetRenderPass(renderpass_key);
+
+	VkRenderPass render_pass = vk_renderpass->GetRenderPass();
 
 	FramebufferCacheKey framebuffer_key;
 	framebuffer_key.render_targets = render_targets;
 	framebuffer_key.depth_stencil = depth_stencil;
-	framebuffer_key.render_pass = current_active_renderpass;
+	framebuffer_key.render_pass = render_pass;
 
-	VK_FrameBuffer* framebuffer = device->GetFrameBufferManager()->GetFramebuffer(framebuffer_key, render_targets[0]->GetTextureDesc().width, render_targets[0]->GetTextureDesc().height, 1);
-	if (current_active_framebuffer != framebuffer->GetFramebuffer())
+	VK_FrameBuffer* vk_framebuffer = device->GetFrameBufferManager()->GetFramebuffer(framebuffer_key, render_targets[0]->GetTextureDesc().width, render_targets[0]->GetTextureDesc().height, 1);
+
+	VkFramebuffer framebuffer = vk_framebuffer->GetFramebuffer();
+	
+	TransitionRenderTargets(render_targets,depth_stencil);
+
+	Vector<VkClearValue> vk_clear_values;
+	for (UInt32 i = 0;i< clear_values.size()-1;++i)
 	{
-		current_active_framebuffer = framebuffer->GetFramebuffer();
-		need_begin_render_pass = true;
+		vk_clear_values.push_back( { clear_values[i].color[0], clear_values[i].color[1], clear_values[i].color[2], clear_values[i].color[3] });
 	}
-	if (need_begin_render_pass)
+	if (has_dsv_clear_value&& clear_values.size() - 1>0)
 	{
-	    Vector<VkClearValue> vk_clear_values;
-		for (UInt32 i = 0;i< clear_values.size()-1;++i)
-		{
-			vk_clear_values.push_back( { clear_values[i].color[0], clear_values[i].color[1], clear_values[i].color[2], clear_values[i].color[3] });
-		}
-		if (has_dsv_clear_value&& clear_values.size() - 1>0)
-		{
-			vk_clear_values.push_back( { clear_values[clear_values.size() - 1].ds_value[0], clear_values[clear_values.size() - 1].ds_value[1]});
-		}
-		BeginRenderPass( current_active_renderpass, current_active_framebuffer, render_targets[0]->GetTextureDesc().width, render_targets[0]->GetTextureDesc().height, vk_clear_values.size(),vk_clear_values.data());
+		vk_clear_values.push_back( { clear_values[clear_values.size() - 1].ds_value[0], clear_values[clear_values.size() - 1].ds_value[1]});
 	}
+	BeginRenderPass(render_pass, framebuffer, render_targets[0]->GetTextureDesc().width, render_targets[0]->GetTextureDesc().height, vk_clear_values.size(),vk_clear_values.data());
+	float width = static_cast<float>(render_targets[0]->GetTextureDesc().width) , height = static_cast<float>(render_targets[0]->GetTextureDesc().height);
+	VkViewport viewport{};
+	viewport.x = 0.0f; viewport.y = 0.0f;
+	viewport.width = width;
+	viewport.height = height;
+	viewport.minDepth = 0.0f; viewport.maxDepth = 1.0f;
+	vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+	VkRect2D scissor{};
+	scissor.offset = { 0, 0 };
+	scissor.extent = { static_cast<UInt32>(width), static_cast<UInt32>(height) };
+	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+	
+}
+
+void VK_CommandBuffer::Draw(CONST DrawAttribute& draw_attr)
+{
+	vkCmdDraw(command_buffer, draw_attr.vertexCount, draw_attr.instanceCount, draw_attr.firstVertex, draw_attr.firstInstance);
 }
 
 VK_CommandBufferManager::~VK_CommandBufferManager()
@@ -375,16 +452,16 @@ VK_CommandBufferManager::VK_CommandBufferManager(VK_Device* in_device):device(in
 
 }
 
-VK_CommandBuffer* VK_CommandBufferManager::GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE queue_type)
+VK_CommandBuffer* VK_CommandBufferManager::GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE queue_type,Bool is_upload_only)
 {
 	switch (queue_type)
 	{
 	case ENUM_QUEUE_TYPE::GRAPHICS :
-		return graphic_cmd_pools[0].GetOrCreateCommandBuffer(false);
+		return graphic_cmd_pools[0].GetOrCreateCommandBuffer(is_upload_only);
 	case ENUM_QUEUE_TYPE::COMPUTE:
-		return compute_cmd_pools[0].GetOrCreateCommandBuffer(false);
+		return compute_cmd_pools[0].GetOrCreateCommandBuffer(is_upload_only);
 	case ENUM_QUEUE_TYPE::TRANSFER:
-		return transfer_cmd_pools[0].GetOrCreateCommandBuffer(true);
+		return transfer_cmd_pools[0].GetOrCreateCommandBuffer(is_upload_only);
 	default:
 		return nullptr;
 	}
@@ -392,12 +469,23 @@ VK_CommandBuffer* VK_CommandBufferManager::GetOrCreateCommandBuffer(ENUM_QUEUE_T
 
 void VK_CommandBufferManager::ReleaseCommandBuffer(VK_CommandBuffer* cmd_buffer)
 {
-
+	//cmd_buffer->GetFence()->ResetFence();
+	cmd_buffer->owner_pool->FreeUnusedCommandBuffer(cmd_buffer);
 }
 
 void VK_CommandBufferManager::FreeUnusedCommandBuffer(ENUM_QUEUE_TYPE queue_type)
 {
-
+	switch (queue_type)
+	{
+	case ENUM_QUEUE_TYPE::GRAPHICS:
+		return graphic_cmd_pools[0].FreeUnusedCommandBuffers(nullptr);
+	case ENUM_QUEUE_TYPE::COMPUTE:
+		return compute_cmd_pools[0].FreeUnusedCommandBuffers(nullptr);
+	case ENUM_QUEUE_TYPE::TRANSFER:
+		return transfer_cmd_pools[0].FreeUnusedCommandBuffers(nullptr);
+	default:
+		return ;
+	}
 }
 
 MYRENDERER_END_NAMESPACE

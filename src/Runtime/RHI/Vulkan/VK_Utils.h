@@ -122,7 +122,9 @@ namespace MXRender
 		static VkSampleCountFlagBits Translate_Texture_SampleCount_To_Vulkan(CONST UInt8& sample_count);
 		static VkAttachmentStoreOp Translate_AttachmentStore_To_Vulkan(CONST ENUM_RENDERPASS_ATTACHMENT_STORE_OP& store_op);
 		static VkAttachmentLoadOp Translate_AttachmentLoad_To_Vulkan(CONST ENUM_RENDERPASS_ATTACHMENT_LOAD_OP& load_op);
-		static VkImageLayout Translate_ReourceState_To_Vulkan(CONST ENUM_RESOURCE_STATE& state, bool IsInsideRenderPass = false, bool FragDensityMapInsteadOfShadingRate = false);
+		static VkImageLayout Translate_ReourceState_To_VulkanImageLayout(CONST ENUM_RESOURCE_STATE& state, bool IsInsideRenderPass = false, bool FragDensityMapInsteadOfShadingRate = false);
+		static VkPipelineStageFlags Translate_ReourceState_To_VulkanPipelineStage(CONST ENUM_RESOURCE_STATE& state);
+		static Bool Check_ResourceState_Has_WriteAccess(ENUM_RESOURCE_STATE state);
 		static VkFormat Translate_API_DataTypeEnum_To_Vulkan(ENUM_RENDER_DATA_TYPE data_type);
 		static VkShaderStageFlagBits Translate_ShaderTypeEnum_To_Vulkan(ENUM_SHADER_STAGE shader_type);
 		static VkPrimitiveTopology Translate_PrimitiveTopology_To_Vulkan(ENUM_PRIMITIVE_TYPE topology);

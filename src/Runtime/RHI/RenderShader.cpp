@@ -23,5 +23,10 @@ CONST ShaderDesc& Shader::GetDesc() CONST
 	return desc;
 }
 
+ShaderResourceBinding::~ShaderResourceBinding()
+{
+
+}
+
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

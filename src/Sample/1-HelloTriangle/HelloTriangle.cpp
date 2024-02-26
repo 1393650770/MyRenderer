@@ -72,8 +72,7 @@ void RenderTest::BeginRender()
 
 	struct TestData
 	{
-		Vector<Texture*> rtvs;
-		Texture* dsv;
+	    Viewport* viewport;
 		RenderPipelineState* pipeline_state;
 		Texture* output;
 	};
@@ -101,32 +100,40 @@ void RenderTest::BeginRender()
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] =vs_shader;
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Pixel] = ps_shader;
 		pipeline_state_desc.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
-		data.rtvs = this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV();
-		data.dsv = this->GetWindow()->GetViewport()->GetCurrentBackBufferDSV();
-		pipeline_state_desc.render_targets = data.rtvs;
-		pipeline_state_desc.depth_stencil_view = data.dsv;
+		Vector<Texture*> rtvs;
+		Texture* dsv;
+		rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
+		dsv = this->GetWindow()->GetViewport()->GetCurrentBackBufferDSV();
+		pipeline_state_desc.render_targets = rtvs;
+		pipeline_state_desc.depth_stencil_view = dsv;
 		pipeline_state_desc.raster_state.sample_count = 1;
-		pipeline_state_desc.blend_state.render_targets.resize(data.rtvs.size());
+		pipeline_state_desc.blend_state.render_targets.resize(rtvs.size());
 
 		data.pipeline_state = RHICreateRenderPipelineState(pipeline_state_desc);
 		
 	},
 	[=](CONST TestData& data, CommandList* in_cmd_list)
 	{
-		in_cmd_list->Begin();
 
 		Vector<ClearValue> clear_values;
-		for (auto rtv : data.rtvs)
+		Vector<Texture*> rtvs;
+		Texture* dsv;
+		rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
+		dsv = this->GetWindow()->GetViewport()->GetCurrentBackBufferDSV();
+		for (auto rtv : rtvs)
 		{
 			clear_values.push_back(rtv->GetTextureDesc().clear_value);
 		}
-		if(data.dsv)
-			clear_values.push_back(data.dsv->GetTextureDesc().clear_value);
-		in_cmd_list->SetRenderTarget(data.rtvs, data.dsv, clear_values, data.dsv != nullptr);
+		if(dsv)
+			clear_values.push_back(dsv->GetTextureDesc().clear_value);
+		in_cmd_list->SetRenderTarget(rtvs, dsv, clear_values, dsv != nullptr);
 		in_cmd_list->SetPipeline(data.pipeline_state);
+		DrawAttribute draw_attr;
+		draw_attr.vertexCount = 3;
+		draw_attr.instanceCount = 1;
+		in_cmd_list->Draw(draw_attr);
 
-		in_cmd_list->End();
-		//in_cmd_list->Draw(3, 1, 0, 0);
+		//
 	});
 
 	graph.Compile();
@@ -145,7 +152,7 @@ void RenderTest::BeginFrame()
 void RenderTest::OnFrame()
 {
 	graph.Execute();
-	RHISubmitCommandList(RHIGetImmediateCommandList());
+	//RHISubmitCommandList(RHIGetImmediateCommandList());
 }
 
 void RenderTest::EndFrame()

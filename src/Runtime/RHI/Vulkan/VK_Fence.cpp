@@ -14,7 +14,9 @@ VK_Fence::VK_Fence(VK_Device* in_device, VK_FenceManager* in_fence_manager, bool
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 	CHECK_WITH_LOG(vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &fence) != VK_SUCCESS,
-	"RHI Error: failed to create a fence!")
+		"RHI Error: failed to create a fence!")
+
+	ResetFence();
 }
 
 VK_Fence::~VK_Fence()
@@ -34,6 +36,11 @@ VK_FenceManager* VK_Fence::GetOwner() const
 Bool VK_Fence::GetIsSignaled() CONST
 {
 	return state == ENUM_Fence_State::Signaled;
+}
+void VK_Fence::ResetFence()
+{
+	owner_fence_manager->ResetFence(this);
+	state = ENUM_Fence_State::Signaled;
 }
 
 VK_FenceManager::VK_FenceManager(VK_Device* in_device): device(in_device)

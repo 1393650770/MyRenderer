@@ -4,16 +4,9 @@
 #include "RHI/RenderRHI.h"
 #include "RHI/RenderViewport.h"
 #include "Render/RenderInterface.h"
+#include "RHI/RenderCommandList.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
-/*
-static void on_window_size_callback(GLFWwindow* window, int width, int height)
-{
-	Singleton<MXRender::DefaultSetting>::get_instance().height = height;
-	Singleton<MXRender::DefaultSetting>::get_instance().width = width;
-};
-*/
-
 
 Window::Window()
 {
@@ -33,7 +26,6 @@ Window::Window()
 
 	//glfwSetWindowSizeCallback(window, on_window_size_callback);
 
-
  }
 
 Window::~Window()
@@ -52,9 +44,14 @@ void Window::Run(RenderInterface* render)
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 		glfwPollEvents();
+		MXRender::RHI::CommandList* cmd_list = RHIGetImmediateCommandList();
+
 		render->BeginFrame();
 		render->OnFrame();
 		render->EndFrame();
+		
+		viewport->Present(cmd_list, true, true);
+
         glfwSwapBuffers(window);
     }
 	render->EndRender();
@@ -69,13 +66,13 @@ void Window::InitWindow()
 {
 
 	RHIInit();
-	viewport_rhi = RHICreateViewport((void*)window,width,height, is_full_screen);
+	viewport = RHICreateViewport((void*)window,width,height, is_full_screen);
 
 }
 
 MXRender::RHI::Viewport* Window::GetViewport() CONST
 {
-	return viewport_rhi;
+	return viewport;
 }
 
 MYRENDERER_END_NAMESPACE

@@ -275,14 +275,14 @@ VK_RenderPass::VK_RenderPass(VK_Device* in_device, CONST RenderPassDesc& in_desc
 		attachment[i].storeOp = VK_Utils::Translate_AttachmentStore_To_Vulkan(desc.attachments[i].store_op);
 		attachment[i].stencilLoadOp = VK_Utils::Translate_AttachmentLoad_To_Vulkan(desc.attachments[i].stencil_load_op);
 		attachment[i].stencilStoreOp = VK_Utils::Translate_AttachmentStore_To_Vulkan(desc.attachments[i].stencil_store_op);
-		attachment[i].initialLayout = VK_Utils::Translate_ReourceState_To_Vulkan(desc.attachments[i].initial_state,true);
-		attachment[i].finalLayout = VK_Utils::Translate_ReourceState_To_Vulkan(desc.attachments[i].final_state, true);
+		attachment[i].initialLayout = VK_Utils::Translate_ReourceState_To_VulkanImageLayout(desc.attachments[i].initial_state,true);
+		attachment[i].finalLayout = VK_Utils::Translate_ReourceState_To_VulkanImageLayout(desc.attachments[i].final_state, true);
 	}
 
 	for(UInt32 i = 0; i < desc.attachment_refs.size(); ++i)
 	{
 		attachment_ref[i].attachment = desc.attachment_refs[i].attachment_index;
-		attachment_ref[i].layout = VK_Utils::Translate_ReourceState_To_Vulkan(desc.attachment_refs[i].state, true);
+		attachment_ref[i].layout = VK_Utils::Translate_ReourceState_To_VulkanImageLayout(desc.attachment_refs[i].state, true);
 	}
 
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;

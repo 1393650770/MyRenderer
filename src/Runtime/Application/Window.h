@@ -41,7 +41,7 @@ MYRENDERER_BEGIN_CLASS(Window)
 		Float32 lastFrame = 0.0f;
 		UInt32 width = 1600, height = 1000;
 		Bool is_full_screen = false;
-		MXRender::RHI::Viewport* viewport_rhi =nullptr;
+		MXRender::RHI::Viewport* viewport =nullptr;
 	private:
 
 #pragma endregion

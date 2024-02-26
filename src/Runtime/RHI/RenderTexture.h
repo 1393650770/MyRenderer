@@ -32,6 +32,8 @@ public:
 	MYRENDERER_END_STRUCT
 
 	static CONST TextureFormatAttribs& METHOD(GetTextureFormatAttribs)(ENUM_TEXTURE_FORMAT format);
+
+	void METHOD(SetResourceState)(CONST ENUM_RESOURCE_STATE& state);
 protected:
 	
 private:

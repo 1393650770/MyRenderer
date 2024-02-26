@@ -185,6 +185,7 @@ public:
 		samples = other.samples;
 		clear_value = other.clear_value;
 		usage = other.usage;
+		resource_state = other.resource_state;
 		return *this;
 	}
 
@@ -195,6 +196,7 @@ public:
 	ENUM_TEXTURE_FORMAT format = ENUM_TEXTURE_FORMAT::None;
 	ENUM_TEXTURE_TYPE type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
 	ENUM_TEXTURE_USAGE_TYPE usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_NOT_VALID;
+	ENUM_RESOURCE_STATE  resource_state = ENUM_RESOURCE_STATE::Undefined;
 	UInt16 depth = 1;
 	UInt8 samples = 1;
 

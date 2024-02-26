@@ -171,11 +171,11 @@ VK_Queue* VK_Device::GetQueue(ENUM_QUEUE_TYPE queue_type)
 	case ENUM_QUEUE_TYPE::GRAPHICS:
 		return graph_queue;
 	case ENUM_QUEUE_TYPE::COMPUTE:
-		return compute_queue;
+		return compute_queue == nullptr? graph_queue : compute_queue;
 	case ENUM_QUEUE_TYPE::TRANSFER:
-		return transfer_queue;
+		return transfer_queue==nullptr? graph_queue : transfer_queue;
 	case ENUM_QUEUE_TYPE::PRESENT:
-		return present_queue;
+		return present_queue == nullptr ? graph_queue : present_queue;
 	default:
 		return nullptr;
 	}

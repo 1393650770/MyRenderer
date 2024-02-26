@@ -356,6 +356,11 @@ CONST ReflectedInfo& VK_Shader::GetReflectedInfo() CONST
 }
 
 
+VK_ShaderResourceBinding::~VK_ShaderResourceBinding()
+{
+
+}
+
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

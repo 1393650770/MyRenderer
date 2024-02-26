@@ -281,6 +281,7 @@ Shader* VulkanRHI::CreateShader(CONST ShaderDesc& desc, CONST ShaderDataPayload&
 
 CommandList* VulkanRHI::GetImmediateCommandList()
 {
+	immediate_command_buffer->Begin();
 	return immediate_command_buffer;
 }
 
