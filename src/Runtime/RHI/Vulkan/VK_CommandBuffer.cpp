@@ -8,6 +8,7 @@
 #include "VK_Texture.h"
 #include "VK_FrameBuffer.h"
 #include "Core/ConstDefine.h"
+#include "VK_Shader.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -57,6 +58,7 @@ void VK_CommandBufferPool::Init(UInt32 queue_family_index)
 	command_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	command_pool_create_info.queueFamilyIndex = queue_family_index;
 	command_pool_create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	command_pool_create_info.pNext = nullptr;
 	CHECK_WITH_LOG(vkCreateCommandPool(device->GetDevice(), &command_pool_create_info, VULKAN_CPU_ALLOCATOR, &command_pool) != VK_SUCCESS, "RHI Error: Create CommandPool Error");
 }
 
@@ -226,10 +228,10 @@ Bool VK_CommandBuffer::WaitForFence(float time_in_seconds_to_wait)
 
 void VK_CommandBuffer::TrainsitionImageLayout(VkImage image, VkImageLayout old_layout, VkImageLayout new_layout,CONST VkImageSubresourceRange& subresource_range, VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask)
 {
-	if (state_cache.render_pass != VK_NULL_HANDLE)
-	{
-		EndRenderPass();
-	}
+	//if (state_cache.render_pass != VK_NULL_HANDLE)
+	//{
+	//	EndRenderPass();
+	//}
 
 	if (old_layout == new_layout)
 	{
@@ -358,14 +360,16 @@ void VK_CommandBuffer::CopyBufferToImage(VkBuffer buffer, VkImage image, VkImage
 }
 
 
-void VK_CommandBuffer::SetPipeline(RenderPipelineState* pipeline_state)
+void VK_CommandBuffer::SetGraphicsPipeline(RenderPipelineState* pipeline_state)
 {
 	CHECK(pipeline_state == nullptr);
-	VkPipeline graphics_pipeline = ((VK_PipelineState*)pipeline_state)->GetPipeline();
+	VK_PipelineState * vk_pipeline_state = STATIC_CAST(pipeline_state, VK_PipelineState);
+	VkPipeline graphics_pipeline = vk_pipeline_state->GetPipeline();
+	VkPipelineLayout pipeline_layout = vk_pipeline_state->GetPipelineLayout();
 	if (state_cache.graphics_pipeline != graphics_pipeline)
 	{
-		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
 		state_cache.graphics_pipeline = graphics_pipeline;
+		state_cache.pipeline_layout = pipeline_layout;
 	}
 }
 void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, CONST Vector<ClearValue>& clear_values, Bool has_dsv_clear_value)
@@ -402,22 +406,40 @@ void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, T
 		vk_clear_values.push_back( { clear_values[clear_values.size() - 1].ds_value[0], clear_values[clear_values.size() - 1].ds_value[1]});
 	}
 	BeginRenderPass(render_pass, framebuffer, render_targets[0]->GetTextureDesc().width, render_targets[0]->GetTextureDesc().height, vk_clear_values.size(),vk_clear_values.data());
-	float width = static_cast<float>(render_targets[0]->GetTextureDesc().width) , height = static_cast<float>(render_targets[0]->GetTextureDesc().height);
-	VkViewport viewport{};
-	viewport.x = 0.0f; viewport.y = 0.0f;
-	viewport.width = width;
-	viewport.height = height;
-	viewport.minDepth = 0.0f; viewport.maxDepth = 1.0f;
-	vkCmdSetViewport(command_buffer, 0, 1, &viewport);
-	VkRect2D scissor{};
-	scissor.offset = { 0, 0 };
-	scissor.extent = { static_cast<UInt32>(width), static_cast<UInt32>(height) };
-	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
-	
+
+}
+
+void VK_CommandBuffer::SetShaderResourceBinding(ShaderResourceBinding* srb)
+{
+	CHECK(srb == nullptr);
+	VK_ShaderResourceBinding* vk_srb = STATIC_CAST(srb, VK_ShaderResourceBinding);
+	CONST VkDescriptorSet* descriptor_sets = vk_srb->GetDescriptorSets();
+	for (UInt32 i = 0; i < MYRENDER_MAX_BINDING_SET_NUM; ++i)
+	{
+		if ( descriptor_sets[i] != VK_NULL_HANDLE)
+		{
+			state_cache.descriptor_sets = &(descriptor_sets[i]);
+			break;
+		}
+	}
 }
 
 void VK_CommandBuffer::Draw(CONST DrawAttribute& draw_attr)
 {
+	
+	VkViewport viewport{};
+	viewport.x = 0.0f; viewport.y = 0.0f;
+	viewport.width = state_cache.framebuffer_width;
+	viewport.height = state_cache.framebuffer_height;
+	viewport.minDepth = 0.0f; viewport.maxDepth = 1.0f;
+	vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+	VkRect2D scissor{};
+	scissor.offset = { 0, 0 };
+	scissor.extent = { static_cast<UInt32>(state_cache.framebuffer_width), static_cast<UInt32>(state_cache.framebuffer_height) };
+	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.graphics_pipeline);
+	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+	if(state_cache.descriptor_sets != nullptr)
+		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.pipeline_layout, 0, MYRENDER_MAX_BINDING_SET_NUM, state_cache.descriptor_sets, 0, nullptr);
 	vkCmdDraw(command_buffer, draw_attr.vertexCount, draw_attr.instanceCount, draw_attr.firstVertex, draw_attr.firstInstance);
 }
 

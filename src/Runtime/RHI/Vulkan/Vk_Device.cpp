@@ -11,6 +11,7 @@
 #include "VK_RenderPass.h"
 #include "VK_PipelineState.h"
 #include "VK_FrameBuffer.h"
+#include "VK_DescriptorSets.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -127,6 +128,7 @@ void VK_Device::Init(Int device_index,Bool enable_validation_layers, Vector<CONS
 	render_pass_manager = new VK_RenderPassManager(this);
 	pipeline_state_manager = new VK_PipelineStateManager(this);
 	frame_buffer_manager = new VK_FrameBufferManager(this);
+	descriptset_allocator = new VK_DescriptsetAllocator(this, gpu_props.limits.maxDescriptorSetSamplers);
 }
 
 VkDevice VK_Device::GetDevice()
@@ -298,6 +300,11 @@ void VK_Device::Destroy()
 		delete frame_buffer_manager;
 		frame_buffer_manager=nullptr;
 	}
+	if (descriptset_allocator)
+	{
+		delete descriptset_allocator;
+		descriptset_allocator=nullptr;
+	}
 	if (device)
 	{
 		vkDestroyDevice(device, VULKAN_CPU_ALLOCATOR);
@@ -318,6 +325,11 @@ VK_PipelineStateManager* VK_Device::GetPipelineStateManager()
 VK_FrameBufferManager* VK_Device::GetFrameBufferManager()
 {
 	return frame_buffer_manager;
+}
+
+VK_DescriptsetAllocator* VK_Device::GetDescriptsetAllocator()
+{
+	return descriptset_allocator;
 }
 
 MYRENDERER_END_NAMESPACE

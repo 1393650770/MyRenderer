@@ -3,12 +3,15 @@
 #define _VK_RENDERPIPELINESTATE_
 #include "RHI/RenderPipelineState.h"
 #include "vulkan/vulkan_core.h"
+#include "VK_Define.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
+class ShaderResourceBinding;
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 class VK_Device;
 class VK_RenderPass;
+struct ReflectedBinding;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_PipelineState, public RenderPipelineState)
 #pragma region METHOD
 public:
@@ -17,7 +20,8 @@ public:
 	VIRTUAL ~VK_PipelineState();
 
 	VkPipeline METHOD(GetPipeline)() CONST;
-
+	VkPipelineLayout METHOD(GetPipelineLayout)() CONST;
+	VIRTUAL void CreateShaderResourceBinding(ShaderResourceBinding*& out_srb, Bool init_static_resource = false) OVERRIDE FINAL;
 protected:
 	VkPipelineLayout METHOD(CreatePipelineLayout)(CONST RenderGraphiPipelineStateDesc& in_desc);
 private:
@@ -29,8 +33,9 @@ public:
 protected:
 	VkPipeline pipeline = VK_NULL_HANDLE;
 	VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
-	Array<VkDescriptorSetLayout, 4> descriptorset_layouts{ VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE };
+	Array<VkDescriptorSetLayout, MYRENDER_MAX_BINDING_SET_NUM> descriptorset_layouts{ VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE };
 	VK_Device* device;
+	Map<String, ReflectedBinding> compacted_bindings;
 private:
 
 #pragma endregion

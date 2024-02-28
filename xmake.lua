@@ -1,17 +1,29 @@
-set_arch("x64")
-
 add_requires("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","rttr","lz4","nlohmann_json","gli","optick","boost","flatbuffers")
 add_requires("imgui v1.88-docking", {configs = {glfw_vulkan = true}})
-add_rules("mode.debug", "mode.release")
+add_rules("mode.debug", "mode.release", "mode.releasedbg")
 add_rules("plugin.vsxmake.autoupdate")
 
+rule("module")
+    on_load(function (target)
+        if is_mode("debug") then
+            target:set("kind", "static")
+        elseif is_mode("release", "releasedbg") then
+            target:set("kind", "shared")
+            if is_plat("windows") then
+                import("core.project.rule")
+                local rule = rule.rule("utils.symbols.export_all")
+                target:rule_add(rule)
+                target:extraconf_set("rules", "utils.symbols.export_all", {export_classes = true})
+            end
+        else
+            assert(false, "Unknown build kind")
+        end
+    end)
+rule_end()
 
-    
 
-target("Runtime_static")
-    set_kind("static")
+function CommonLibrarySetting()
     set_languages("c++20")  
-    
     add_headerfiles("src/Runtime/**.h")
     add_files("src/Runtime/**.cpp")
     add_headerfiles("src/ThirdParty/**.h")
@@ -19,69 +31,64 @@ target("Runtime_static")
     add_files("src/ThirdParty/**.c")
     add_includedirs("src/Runtime")
     add_includedirs("src/ThirdParty")
-    
     add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr","lz4","nlohmann_json","gli","optick","boost","flatbuffers")
+end
+
+target("Runtime")
+    add_rules("module")
+    CommonLibrarySetting()
+
+
+function CompileShader(target)
+    os.run("$(projectdir)/resource/Shader/compile-glslangValidator.bat")
+end
+
+function MoveResource(target)
+    local root_taget_path = "$(buildir)"
+    if is_plat("windows") then
+        root_taget_path = root_taget_path .. "/windows"
+    end
+    if is_arch("x64") then
+        root_taget_path = root_taget_path .. "/x64"
+    end
+    if is_mode("release") then
+        root_taget_path = root_taget_path .. "/release"
+    elseif is_mode("debug") then
+        root_taget_path = root_taget_path .. "/debug"
+    elseif is_mode("releasedbg") then
+        root_taget_path = root_taget_path .. "/releasedbg"
+    end
+    local root_taget_shader_path = root_taget_path .. "/Shader"
+    local root_taget_lib_path = root_taget_path
+    os.cp("$(projectdir)/resource/Shader", root_taget_shader_path)
+    os.cp("$(projectdir)/libs/*", root_taget_lib_path)
     
+end
 
-
-
-target("Renderer")
-
+function CommonProjectSetting()
     set_kind("binary")  
     set_languages("c++20")  
-    add_deps("Runtime_static")
-
-    add_files("src/RendererApp.cpp") 
+    add_deps("Runtime")
     add_includedirs("src/Runtime")
     add_includedirs("src/ThirdParty")
-    
     add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","boost","rttr")
+end
 
-    before_build(function (target)
-        --os.run("$(projectdir)/src/Runtime/Render/Shader/compile-glslangValidator.bat")
-    end)
-
-    after_build(function (target)
-        --os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)")
-        --os.cp("$(projectdir)/src/Resource", "$(buildir)")
-        --os.cp("$(projectdir)/src/Setting", "$(buildir)")
-    end)
-
-    after_build(
-        function (target)
-            --os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)/windows/x64/debug")
-            --os.cp("$(projectdir)/src/Resource", "$(buildir)/windows/x64/debug")
-            --os.cp("$(projectdir)/src/Setting", "$(buildir)/windows/x64/debug")
-        end
-    )
+target("Renderer")
+    CommonProjectSetting()
+    add_files("src/RendererApp.cpp") 
+    before_build(CompileShader)
+    before_build(MoveResource)
 
 
 target("RendererSample-HelloTriangle")
-    set_kind("binary")  
-    set_languages("c++20")  
-    add_deps("Runtime_static")
+    CommonProjectSetting()
+    add_files("src/Sample/1-HelloTriangle/HelloTriangle.cpp")
+    before_build(CompileShader)
+    before_build(MoveResource)
 
-    add_files("src/Sample/1-HelloTriangle/HelloTriangle.cpp") 
-    add_includedirs("src/Runtime")
-    add_includedirs("src/ThirdParty")
-    
-    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","boost","rttr")
-
-    before_build(function (target)
-        --os.run("$(projectdir)/src/Runtime/Render/Shader/compile-glslangValidator.bat")
-    end)
-
-    after_build(function (target)
-        --os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)")
-        --os.cp("$(projectdir)/src/Resource", "$(buildir)")
-        --os.cp("$(projectdir)/src/Setting", "$(buildir)")
-    end)
-
-    after_build(
-        function (target)
-            --os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)/windows/x64/debug")
-            --os.cp("$(projectdir)/src/Resource", "$(buildir)/windows/x64/debug")
-            --os.cp("$(projectdir)/src/Setting", "$(buildir)/windows/x64/debug")
-        end
-    )
-
+target("RendererSample-Texture")
+    CommonProjectSetting()
+    add_files("src/Sample/2-Texture/Texture.cpp")
+    before_build(CompileShader)
+    before_build(MoveResource)

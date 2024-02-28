@@ -4,6 +4,7 @@
 #define _VK_SHADER_
 #include "RHI/RenderShader.h"
 #include "VK_Device.h"
+#include "VK_Define.h"
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -13,14 +14,14 @@ MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 class VK_Device;
 
 MYRENDERER_BEGIN_STRUCT(DescriptorSetLayoutData)
-UInt32 set_number;
+UInt8 set_number;
 VkDescriptorSetLayoutCreateInfo create_info;
 Vector<VkDescriptorSetLayoutBinding> bindings;
 MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_STRUCT(ReflectedBinding)
-UInt32 set;
-UInt32 binding;
+UInt8 set;
+UInt8 binding;
 VkDescriptorType type;
 MYRENDERER_END_STRUCT
 
@@ -30,7 +31,7 @@ VkPushConstantRange constant;
 MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_STRUCT(ReflectedInfo)
-//Map<String, ReflectedBinding> bindings;
+Map<String, ReflectedBinding> bindings;
 Vector<DescriptorSetLayoutData> setlayouts;
 Vector<ReflectedConstantInfo> constant_ranges;
 ReflectedInfo() DEFAULT;
@@ -41,15 +42,16 @@ ReflectedInfo(CONST ReflectedInfo& in_reflect) :
 MYRENDERER_END_STRUCT
 
 
-MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_ShaderResourceBinding,public ShaderResourceBinding)
-
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_ShaderResourceBinding, public ShaderResourceBinding)
+friend class VK_PipelineState;
 #pragma region METHOD
 public:
-	VK_ShaderResourceBinding() DEFAULT;
+	VK_ShaderResourceBinding(Map<String, ReflectedBinding>& in_bindings) ;
 
 	VIRTUAL ~VK_ShaderResourceBinding();
-
+	CONST VkDescriptorSet* METHOD(GetDescriptorSets)() CONST;
 protected:
+
 private:
 
 #pragma endregion
@@ -57,17 +59,13 @@ private:
 #pragma region MEMBER
 public:
 protected:
-	VkPipelineLayout                          layout;
-	UInt32                                    first_set;
-	UInt32                                    descriptor_set_count;
-	CONST VkDescriptorSet*					  descriptor_sets;
-	UInt32                                    dynamic_offset_count;
-	CONST UInt32*							  dynamic_offsets;
+	Array<VkDescriptorSet, MYRENDER_MAX_BINDING_SET_NUM> descriptorset{ VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE };
+	Map<String, ReflectedBinding>& bindings;
 private:
 
 #pragma endregion
 
-	MYRENDERER_END_CLASS
+MYRENDERER_END_CLASS
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Shader, public Shader)
 

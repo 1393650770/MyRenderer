@@ -10,153 +10,77 @@
 #include "RHI/RenderEnum.h"
 #include "RHI/RenderShader.h"
 
-namespace MXRender
-{
-    class VK_Device; 
-    class VK_DescriptorPool;
-    class VK_DescriptorSetLayout;
+
+MYRENDERER_BEGIN_NAMESPACE(MXRender)
+MYRENDERER_BEGIN_NAMESPACE(RHI)
+MYRENDERER_BEGIN_NAMESPACE(Vulkan)
+class VK_Device;
+class VK_DescriptorPoolManager;
+class VK_DescriptorSetLayout;
 
 
-	
 
-    class VK_DescriptorPool
-    {
-    private:
-        VkDescriptorPool create_pool();
-        VkDescriptorPool grab_pool();
-    protected:
-        std::weak_ptr<VK_Device> device;
-        std::unordered_map<VkDescriptorPool,std::vector<VkDescriptorSet>> already_create_set;
-        const unsigned int max_descriptorsets=0;
-        VkDescriptorPool descriptor_pool=VK_NULL_HANDLE;
-		std::vector<VkDescriptorPool> used_pools;
-		std::vector<VkDescriptorPool> free_pools;
-    public:
-        
-        VK_DescriptorPool(std::shared_ptr<VK_Device> InDevice, unsigned int InMaxDescriptorSets);
-        
-        virtual ~VK_DescriptorPool();
+MYRENDERER_BEGIN_CLASS(VK_DescriptorPoolManager)
+#pragma region METHOD
+public:
 
-        std::weak_ptr<VK_Device> get_device() const;
-        unsigned int get_max_descriptorsets() const;
-        const VkDescriptorPool& get_descriptor_pool();
-        bool allocate_descriptorset(VkDescriptorSetLayout Layout, VkDescriptorSet& OutSet);
-        bool allocate_descriptorsets(const VkDescriptorSetAllocateInfo& InDescriptorSetAllocateInfo, VkDescriptorSet& OutSets);
-        void reset_descript_pool(VkDescriptorPoolResetFlags flags);
-    };
+    VK_DescriptorPoolManager(VK_Device* in_device, UInt32 in_max_descriptorsets);
 
-    
+	VIRTUAL ~VK_DescriptorPoolManager();
 
-    class VK_DescriptorSetLayout
-    {
-    private:
-    protected:
-        const unsigned int max_bindings;
-        std::weak_ptr<VK_Device> device;
-        VkDescriptorSetLayout descriptorset_layout;
-        std::vector< VkDescriptorSetLayoutBinding > layout_binding_array;
-    public:
-        VK_DescriptorSetLayout(std::shared_ptr<VK_Device> InDevice, unsigned int InMaxBindings=10);
+    UInt32 METHOD(GetMaxDescriptorsets)() CONST;
+	CONST VkDescriptorPool& METHOD(GetDescriptorPool)();
+	Bool METHOD(AllocateDescriptorset)(VkDescriptorSetLayout layout, VkDescriptorSet& out_set);
+    Bool METHOD(AllocateDescriptorsets)(CONST VkDescriptorSetAllocateInfo& in_descriptorset_allocate_info, VkDescriptorSet& out_sets);
+	void METHOD(ResetDescriptPool)(VkDescriptorPoolResetFlags flags);
+protected:
+	VkDescriptorPool METHOD(CreatePool)();
+	VkDescriptorPool METHOD(GrabPool)();
+private:
 
-        virtual ~VK_DescriptorSetLayout();
+#pragma endregion
 
-        void add_bindingdescriptor(unsigned int DescriptorSetIndex, const VkDescriptorSetLayoutBinding& BindingDescriptor);
-        bool compile();
-        VkDescriptorSetLayout& get_descriptorset_layout();
-        std::weak_ptr<VK_Device> get_device() const;
-    };
+#pragma region MEMBER
+public:
+protected:
+	VK_Device* device;
+	Map<VkDescriptorPool, Vector<VkDescriptorSet>> already_create_set;
+	UInt32 max_descriptorsets = 0;
+	VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
+	Vector<VkDescriptorPool> used_pools;
+	Vector<VkDescriptorPool> free_pools;
 
-    class VK_VulkanLayout
-    {
-    private:
-    protected:
-        std::weak_ptr<VK_Device> device;
-        std::vector < VK_DescriptorSetLayout> descriptorset_layout_array;
-        VkPipelineLayout PipelineLayout;
-    public:
-        VK_VulkanLayout( std::shared_ptr<VK_Device> InDevice,unsigned int InDescriptorSetLayoutNum =0);
-        virtual ~VK_VulkanLayout();
-        bool compile();
-        std::vector<VkDescriptorSetLayout> get_descriptorset_layout_data();
-        VK_DescriptorSetLayout& get_descriptorset_layout_by_index(unsigned int Index);
-    };
+private:
+#pragma endregion
+MYRENDERER_END_CLASS
+
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_DescriptsetAllocator,public VK_DescriptorPoolManager)
+#pragma region METHOD
+public:
+
+    VK_DescriptsetAllocator(VK_Device* in_device, UInt32 in_max_descriptorsets);
+
+	VIRTUAL ~VK_DescriptsetAllocator();
+
+
+protected:
+
+private:
+
+#pragma endregion
+
+#pragma region MEMBER
+public:
+protected:
+
+private:
+#pragma endregion
+MYRENDERER_END_CLASS
 
 
 
 
-
-    class VK_DescriptorSets
-    {
-    private:
-    protected:
-        std::weak_ptr<VK_Device> device;
-        VkDescriptorSet descriptorset;
-    public:
-        VK_DescriptorSets(std::shared_ptr<VK_Device> InDevice);
-        virtual ~VK_DescriptorSets();
-
-        bool update_descriptorsets(const std::string& SetKey, const std::vector<VkDescriptorSetLayout>& SetsLayout,
-            std::vector<VkWriteDescriptorSet>& DSWriters, VkDescriptorSet& OutSets);
- 
-    };
-
-	class DescriptorLayoutCache 
-    {
-	public:
-		void init(VkDevice newDevice);
-		void cleanup();
-
-		VkDescriptorSetLayout create_descriptor_layout(VkDescriptorSetLayoutCreateInfo* info);
-
-		struct DescriptorLayoutInfo 
-        {
-
-			std::vector<VkDescriptorSetLayoutBinding> bindings;
-
-			bool operator==(const DescriptorLayoutInfo& other) const;
-
-			size_t hash() const;
-		};
-
-
-
-	private:
-
-		struct DescriptorLayoutHash
-		{
-
-			std::size_t operator()(const DescriptorLayoutInfo& k) const
-			{
-				return k.hash();
-			}
-		};
-
-		std::unordered_map<DescriptorLayoutInfo, VkDescriptorSetLayout, DescriptorLayoutHash> layoutCache;
-		VkDevice device;
-	};
-
-
-	class DescriptorBuilder 
-    {
-	public:
-
-		static DescriptorBuilder begin(DescriptorLayoutCache* cache,VK_DescriptorPool* allocator);
-
-		DescriptorBuilder& bind_buffer(uint32_t binding, VkDescriptorBufferInfo* bufferInfo, VkDescriptorType type, VkShaderStageFlags stageFlags);
-
-		DescriptorBuilder& bind_image(uint32_t binding, VkDescriptorImageInfo* imageInfo, VkDescriptorType type, VkShaderStageFlags stageFlags);
-
-		bool build(VkDescriptorSet& set, VkDescriptorSetLayout& layout);
-		bool build(VkDescriptorSet& set);
-        std::unordered_map<int,VkDescriptorImageInfo> image_infos;
-	private:
-        
-		std::vector<VkWriteDescriptorSet> writes;
-		std::vector<VkDescriptorSetLayoutBinding> bindings;
-
-		DescriptorLayoutCache* cache;
-		VK_DescriptorPool* alloc;
-	};
-
-}
+MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE
 #endif //_VK_DESCRIPTORSETS_

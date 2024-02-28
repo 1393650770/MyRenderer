@@ -106,6 +106,8 @@ public:
 			state_cache.framebuffer = in_frame_buffer;
 			state_cache.framebuffer_width = in_framebuffer_width;
 			state_cache.framebuffer_height = in_framebuffer_height;
+			state_cache.clear_values = (VkClearValue*)in_clear_values;
+			state_cache.clear_value_count = in_clear_value_count;
 			command_state = EState::IsInsideRenderPass;
 		}
 	}
@@ -143,8 +145,9 @@ public:
 			command_state = EState::NeedReset;
 		}
 	}
-	__forceinline VIRTUAL void METHOD(SetPipeline)(RenderPipelineState* pipeline_state) OVERRIDE FINAL;
+	__forceinline VIRTUAL void METHOD(SetGraphicsPipeline)(RenderPipelineState* pipeline_state) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(SetRenderTarget)(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, CONST Vector<ClearValue>& clear_values, Bool has_dsv_clear_value) OVERRIDE FINAL;
+	__forceinline VIRTUAL void METHOD(SetShaderResourceBinding)(ShaderResourceBinding* srb) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(Draw)(CONST DrawAttribute& draw_attr) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(TransitionTextureState)(Texture* texture, CONST ENUM_RESOURCE_STATE& required_state) OVERRIDE FINAL;
 protected:
@@ -165,6 +168,8 @@ public:
 		VkPipeline    graphics_pipeline = VK_NULL_HANDLE;
 		VkPipeline    compute_pipeline = VK_NULL_HANDLE;
 		VkPipeline    raytracing_pipeline = VK_NULL_HANDLE;
+		VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+		CONST VkDescriptorSet* descriptor_sets = nullptr;
 		VkBuffer      index_buffer = VK_NULL_HANDLE;
 		VkDeviceSize  index_buffer_offset = 0;
 		VkIndexType   index_type = VK_INDEX_TYPE_MAX_ENUM;
@@ -172,6 +177,8 @@ public:
 		UInt32      framebuffer_height = 0;
 		UInt32      inside_pass_queries = 0;
 		UInt32      outside_pass_queries = 0;
+		VkClearValue* clear_values = nullptr;
+		UInt32      clear_value_count = 0;
 	MYRENDERER_END_STRUCT
 
 

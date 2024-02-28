@@ -4,6 +4,8 @@
 #include "RHI/RenderTexture.h"
 #include "VK_RenderPass.h"
 #include "Core/TypeHash.h"
+#include "VK_Shader.h"
+#include "VK_DescriptorSets.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
@@ -16,6 +18,11 @@ VK_PipelineState::~VK_PipelineState()
 VkPipeline VK_PipelineState::GetPipeline() CONST
 {
 	return pipeline;
+}
+
+VkPipelineLayout VK_PipelineState::GetPipelineLayout() CONST
+{
+	return pipeline_layout;
 }
 
 VK_PipelineState::VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipelineStateDesc& in_desc, VkPipelineCache pipeline_cache, CONST VK_RenderPass* render_pass): RenderPipelineState(in_desc),device(in_device)
@@ -170,9 +177,10 @@ VkPipelineLayout VK_PipelineState::CreatePipelineLayout(CONST RenderGraphiPipeli
 		return pipeline_layout;
 	}
 
-	Array<DescriptorSetLayoutData, 4> merged_layouts;
+	Array<DescriptorSetLayoutData, MYRENDER_MAX_BINDING_SET_NUM> merged_layouts;
 
-	for (UInt32 i = 0; i < 4; i++) {
+	for (UInt32 i = 0; i < MYRENDER_MAX_BINDING_SET_NUM; i++)
+	{
 
 		DescriptorSetLayoutData& ly = merged_layouts[i];
 
@@ -186,8 +194,10 @@ VkPipelineLayout VK_PipelineState::CreatePipelineLayout(CONST RenderGraphiPipeli
 			if (desc.shaders[shader_index])
 			{
 				auto& reflect_info = ((VK_Shader*)desc.shaders[shader_index])->GetReflectedInfo();
-				for (auto& s : reflect_info.setlayouts) {
-					if (s.set_number == i) {
+				for (auto& s : reflect_info.setlayouts) 
+				{
+					if (s.set_number == i) 
+					{
 						for (auto& b : s.bindings)
 						{
 							auto it = binds.find(b.binding);
@@ -196,7 +206,8 @@ VkPipelineLayout VK_PipelineState::CreatePipelineLayout(CONST RenderGraphiPipeli
 								binds[b.binding] = b;
 								//ly.bindings.push_back(b);
 							}
-							else {
+							else 
+							{
 								//merge flags
 								binds[b.binding].stageFlags |= b.stageFlags;
 							}
@@ -222,10 +233,12 @@ VkPipelineLayout VK_PipelineState::CreatePipelineLayout(CONST RenderGraphiPipeli
 		ly.create_info.pNext = 0;
 
 
-		if (ly.create_info.bindingCount > 0) {
+		if (ly.create_info.bindingCount > 0)
+		{
 			CHECK_WITH_LOG( vkCreateDescriptorSetLayout(device->GetDevice(), &ly.create_info, nullptr, &descriptorset_layouts[i])!=VK_SUCCESS, "RHI Error: Failed to create descriptor set layout");
 		}
-		else {
+		else 
+		{
 			descriptorset_layouts[i] = VK_NULL_HANDLE;
 		}
 	}
@@ -256,10 +269,12 @@ VkPipelineLayout VK_PipelineState::CreatePipelineLayout(CONST RenderGraphiPipeli
 	pipeline_layout_info.pPushConstantRanges = constant_ranges.data();
 	pipeline_layout_info.pushConstantRangeCount = (uint32_t)constant_ranges.size();
 
-	std::array<VkDescriptorSetLayout, 4> compacted_layouts;
+	Array<VkDescriptorSetLayout, MYRENDER_MAX_BINDING_SET_NUM> compacted_layouts;
 	int s = 0;
-	for (int i = 0; i < 4; i++) {
-		if (descriptorset_layouts[i] != VK_NULL_HANDLE) {
+	for (int i = 0; i < MYRENDER_MAX_BINDING_SET_NUM; i++)
+	{
+		if (descriptorset_layouts[i] != VK_NULL_HANDLE) 
+		{
 			compacted_layouts[s] = descriptorset_layouts[i];
 			s++;
 		}
@@ -268,9 +283,40 @@ VkPipelineLayout VK_PipelineState::CreatePipelineLayout(CONST RenderGraphiPipeli
 	pipeline_layout_info.setLayoutCount = s;
 	pipeline_layout_info.pSetLayouts = compacted_layouts.data();
 
-
 	CHECK_WITH_LOG( vkCreatePipelineLayout(device->GetDevice(), &pipeline_layout_info, nullptr, &pipeline_layout)!=VK_SUCCESS, "RHI Error: Failed to create pipeline layout");
+	
+	for (UInt32 shader_index = 0; shader_index < ENUM_SHADER_STAGE::NumStages; ++shader_index)
+	{
+		if (desc.shaders[shader_index])
+		{
+			auto& reflect_info = ((VK_Shader*)desc.shaders[shader_index])->GetReflectedInfo();
+			for (auto& s : reflect_info.bindings)
+			{
+				compacted_bindings[s.first] = s.second;
+			}
+		}
+	}
+	
 	return pipeline_layout;
+}
+
+void VK_PipelineState::CreateShaderResourceBinding(ShaderResourceBinding*& out_srb, Bool init_static_resource /*= false*/)
+{
+	if (out_srb == nullptr)
+		out_srb = new VK_ShaderResourceBinding(compacted_bindings);
+	VK_ShaderResourceBinding* vk_srb = STATIC_CAST(out_srb, VK_ShaderResourceBinding);
+	VK_DescriptsetAllocator* allocator = device->GetDescriptsetAllocator();
+	for (UInt32 i = 0; i < 4; i++)
+	{
+		if (descriptorset_layouts[i] != VK_NULL_HANDLE)
+		{
+			allocator->AllocateDescriptorset(descriptorset_layouts[i], vk_srb->descriptorset[i]);
+		}
+		else
+		{
+			vk_srb->descriptorset[i] = VK_NULL_HANDLE;
+		}
+	}
 }
 
 VK_PipelineStateManager::VK_PipelineStateManager(VK_Device* in_device):device(in_device)
