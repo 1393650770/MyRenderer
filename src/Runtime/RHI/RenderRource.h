@@ -52,17 +52,16 @@ public:
 	{
 		return *this;
 	}
-
-	Vector<UInt32> data;
 	~ShaderDataPayload()
 	{
 		data.clear();
 	}
-	MYRENDERER_BEGIN_STRUCT(ShaderReflectionOverrides)
-	CONST Char* name = nullptr;
-	ENUM_BINDING_RESOURCE_TYPE overriden_type = ENUM_BINDING_RESOURCE_TYPE::Invalid;
+	MYRENDERER_BEGIN_STRUCT(ShaderBindingOverrides)
+		String name = "";
+		ENUM_BINDING_RESOURCE_TYPE overriden_type = ENUM_BINDING_RESOURCE_TYPE::Invalid;
 	MYRENDERER_END_STRUCT
-
+	Vector<ShaderBindingOverrides> shader_binding_overrides;
+	Vector<UInt32> data;
 MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_STRUCT(ShaderDesc)
@@ -129,6 +128,9 @@ public:
 	RenderResource() DEFAULT;
 	VIRTUAL ~RenderResource() DEFAULT;
 	VIRTUAL void METHOD(Release)();
+	VIRTUAL void METHOD(AddRef)() ;
+	VIRTUAL void METHOD(Realize)() CONST;  
+	VIRTUAL void METHOD(DeRealize)() CONST;
 protected:
 	Bool is_valid{ false };
 	UInt32 ref_count{ 1 };
@@ -443,7 +445,6 @@ public:
 	Vector<VertexInputLayout> vertex_input_layout;
 	Vector<RHI::Texture*> render_targets;
 	RHI::Texture* depth_stencil_view = nullptr;
-
 	constexpr Bool operator == (CONST RenderGraphiPipelineStateDesc& rhs) CONST
 	{
 		for (UInt32 i = 0; i < ENUM_SHADER_STAGE::NumStages; ++i)

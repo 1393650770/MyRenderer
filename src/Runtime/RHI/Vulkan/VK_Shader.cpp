@@ -7,32 +7,13 @@
 
 #include <algorithm>
 #include "spv_reflect/spirv_reflect.h"
+#include "VK_Buffer.h"
+#include "VK_Texture.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
-/*
-Vector<UInt32> VK_Shader::read_file(CONST String& file_name)
-{
-	std::ifstream file(file_name, std::ios::ate | std::ios::binary);
-
-	if (!file.is_open())
-	{
-		throw std::runtime_error("failed to open file!");
-	}
-
-	UInt32 fileSize = (UInt32)file.tellg();
-	Vector<UInt32> buffer(fileSize / sizeof(UInt32));
-
-	file.seekg(0);
-	file.read((char*)buffer.data(), fileSize);
-
-	file.close();
-
-	return buffer;
-}
-*/
 
 VkShaderModule VK_Shader::CreateShaderModule(CONST Vector<UInt32>& code)
 {
@@ -59,7 +40,7 @@ VK_Shader::VK_Shader(VK_Device* in_device, CONST ShaderDesc& desc, CONST ShaderD
 
 	shader_codes = data.data;
 	shader_modules = CreateShaderModule(shader_codes);
-	ReflectBindings();
+	ReflectBindings(data.shader_binding_overrides);
 }
 
 void VK_Shader::Destroy()
@@ -70,7 +51,7 @@ void VK_Shader::Destroy()
 		vkDestroyShaderModule(device->GetDevice(), shader_modules, nullptr);
 		shader_modules = VK_NULL_HANDLE;
 	}
-	//reflect_info.bindings.clear();
+	reflect_info.bindings.clear();
 	reflect_info.constant_ranges.clear();
 	reflect_info.setlayouts.clear();
 }
@@ -86,7 +67,7 @@ VkShaderModule VK_Shader::GetShaderModule() CONST
 	return shader_modules;
 }
 
-void VK_Shader::ReflectBindings()
+void VK_Shader::ReflectBindings(CONST Vector<ShaderDataPayload::ShaderBindingOverrides>& shader_binding_overrides)
 {
 	SpvReflectShaderModule spvmodule;
 	SpvReflectResult result = spvReflectCreateShaderModule(shader_codes.size() * sizeof(UInt32), shader_codes.data(), &spvmodule);
@@ -125,12 +106,14 @@ void VK_Shader::ReflectBindings()
 				layout_binding.descriptorCount *= refl_binding.array.dims[i_dim];
 			}
 			layout_binding.stageFlags = static_cast<VkShaderStageFlagBits>(spvmodule.shader_stage);
-
-			
-			ReflectedBinding reflected;
-			reflected.binding = layout_binding.binding;
-			reflected.set = refl_set.set;
-			reflected.type = layout_binding.descriptorType;
+			for (auto& s : shader_binding_overrides)
+			{
+				if (strcmp(refl_binding.name,s.name.c_str())==0)
+				{
+					layout_binding.descriptorType = VK_Utils::Translate_BindingResourceType_To_VulkanDescriptorType(s.overriden_type);
+				}
+			}
+			ReflectedBinding reflected(refl_set.set, refl_binding.binding, layout_binding.descriptorType);
 
 			reflect_info.bindings[refl_binding.name] = reflected;
 			
@@ -163,7 +146,7 @@ void VK_Shader::ReflectBindings()
 	}
 }
 
-CONST ReflectedInfo& VK_Shader::GetReflectedInfo() CONST
+ReflectedInfo& VK_Shader::GetReflectedInfo()
 {
 	return reflect_info;
 }
@@ -174,7 +157,7 @@ VK_ShaderResourceBinding::~VK_ShaderResourceBinding()
 
 }
 
-VK_ShaderResourceBinding::VK_ShaderResourceBinding(Map<String, ReflectedBinding>& in_bindings) :bindings(in_bindings)
+VK_ShaderResourceBinding::VK_ShaderResourceBinding(VK_Device* in_device, Map<String, ReflectedBinding>& in_bindings) :device(in_device), bindings(in_bindings)
 {
 }
 
@@ -182,6 +165,64 @@ CONST VkDescriptorSet* VK_ShaderResourceBinding::GetDescriptorSets() CONST
 {
 	return descriptorset.data();
 }
+
+void VK_ShaderResourceBinding::SetResource(CONST String& name, CONST RenderResource* resource)
+{
+	auto it = bindings.find(name);
+	if (it != bindings.end())
+	{
+		VkWriteDescriptorSet descriptor_write{};
+		descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		ReflectedBinding& binding = it->second;
+		descriptor_write.dstSet = descriptorset[binding.set];
+		descriptor_write.dstBinding = binding.binding;
+		descriptor_write.dstArrayElement = 0;
+		descriptor_write.descriptorType = binding.type;
+		descriptor_write.descriptorCount = 1;
+		switch (binding.type)
+		{
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+		{
+			VkDescriptorBufferInfo buffer_info{};
+			buffer_info.buffer = STATIC_CAST(resource, CONST VK_Buffer)->GetBuffer();
+			buffer_info.offset = 0;
+			buffer_info.range = VK_WHOLE_SIZE;
+
+			descriptor_write.pBufferInfo = &buffer_info;
+			break;
+		}
+		case VK_DESCRIPTOR_TYPE_SAMPLER:
+		{
+			VkDescriptorImageInfo image_info{};
+			image_info.sampler = STATIC_CAST(resource, CONST VK_Texture)->GetSampler();
+			descriptor_write.pImageInfo = &image_info;
+			break;
+		}
+		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+		{
+			VkDescriptorImageInfo image_info{};
+			image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			image_info.imageView = STATIC_CAST(resource, CONST VK_Texture)->GetImageView();
+			image_info.sampler = STATIC_CAST(resource, CONST VK_Texture)->GetSampler();
+			descriptor_write.pImageInfo = &image_info;
+			break;
+		}
+		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+		default:
+			CHECK_WITH_LOG(true, "RHI Error : invalid descriptor type to SetResource");
+			break;
+		}
+
+		vkUpdateDescriptorSets(device->GetDevice(), 1, &descriptor_write, 0, nullptr);
+	}
+	CHECK_WITH_LOG(true, "RHI Error : fail to find binding name in shader");
+}
+
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

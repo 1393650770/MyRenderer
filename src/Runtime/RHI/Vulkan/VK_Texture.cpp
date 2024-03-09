@@ -951,6 +951,10 @@ VkImageView VK_Texture::GetImageView() CONST
 {
 	return texture_image_view;
 }
+VkSampler VK_Texture::GetSampler() CONST
+{
+	return texture_sampler;
+}
 
 void VK_Texture::UpdateTextureData(CONST TextureDataPayload& texture_data_payload)
 {

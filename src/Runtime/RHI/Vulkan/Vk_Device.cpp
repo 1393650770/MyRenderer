@@ -128,7 +128,7 @@ void VK_Device::Init(Int device_index,Bool enable_validation_layers, Vector<CONS
 	render_pass_manager = new VK_RenderPassManager(this);
 	pipeline_state_manager = new VK_PipelineStateManager(this);
 	frame_buffer_manager = new VK_FrameBufferManager(this);
-	descriptset_allocator = new VK_DescriptsetAllocator(this, gpu_props.limits.maxDescriptorSetSamplers);
+	descriptset_allocator = new VK_DescriptsetAllocator(this, gpu_props.limits.maxSamplerAllocationCount);
 }
 
 VkDevice VK_Device::GetDevice()

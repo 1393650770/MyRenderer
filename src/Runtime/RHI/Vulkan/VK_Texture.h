@@ -46,6 +46,7 @@ public:
 	void METHOD(UpdateTextureData)(CONST TextureDataPayload& texture_data_payload) OVERRIDE;
 	VkImage METHOD(GetImage)() CONST;
 	VkImageView METHOD(GetImageView)() CONST;
+	VkSampler METHOD(GetSampler)() CONST;
 protected:
 	void load_dds(ENUM_TEXTURE_TYPE _type, CONST std::string& texture_path);
 	void load_dds_cubemap(ENUM_TEXTURE_TYPE _type, CONST std::string& texture_path);

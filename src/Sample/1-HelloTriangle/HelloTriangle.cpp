@@ -109,7 +109,6 @@ void RenderTest::BeginRender()
 	},
 	[=](CONST TestData& data, CommandList* in_cmd_list)
 	{
-
 		Vector<ClearValue> clear_values;
 		Vector<Texture*> rtvs;
 		Texture* dsv;

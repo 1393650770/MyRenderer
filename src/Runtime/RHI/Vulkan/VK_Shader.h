@@ -20,9 +20,10 @@ Vector<VkDescriptorSetLayoutBinding> bindings;
 MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_STRUCT(ReflectedBinding)
-UInt8 set;
-UInt8 binding;
-VkDescriptorType type;
+public:
+	UInt8 set;
+	UInt8 binding;
+	VkDescriptorType type;
 MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_STRUCT(ReflectedConstantInfo)
@@ -46,10 +47,11 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_ShaderResourceBinding, public ShaderResour
 friend class VK_PipelineState;
 #pragma region METHOD
 public:
-	VK_ShaderResourceBinding(Map<String, ReflectedBinding>& in_bindings) ;
+	VK_ShaderResourceBinding(VK_Device* in_device,Map<String, ReflectedBinding>& in_bindings) ;
 
 	VIRTUAL ~VK_ShaderResourceBinding();
 	CONST VkDescriptorSet* METHOD(GetDescriptorSets)() CONST;
+	VIRTUAL void METHOD(SetResource)(CONST String& name, CONST RenderResource* resource) OVERRIDE FINAL;
 protected:
 
 private:
@@ -61,6 +63,7 @@ public:
 protected:
 	Array<VkDescriptorSet, MYRENDER_MAX_BINDING_SET_NUM> descriptorset{ VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE };
 	Map<String, ReflectedBinding>& bindings;
+	VK_Device* device;
 private:
 
 #pragma endregion
@@ -78,11 +81,11 @@ public:
 	VIRTUAL ~VK_Shader();
 	VkPipelineLayout METHOD(GetBuiltLayout)();
 	VkShaderModule METHOD(GetShaderModule)() CONST;
-	CONST ReflectedInfo& METHOD(GetReflectedInfo)()CONST;
+	ReflectedInfo& METHOD(GetReflectedInfo)();
 protected:
 	Vector<UInt32> METHOD(ReadFile)(CONST String& filename);
 	VkShaderModule METHOD(CreateShaderModule)(CONST Vector<UInt32>& code);
-	void METHOD(ReflectBindings)();
+	void METHOD(ReflectBindings)(CONST Vector<ShaderDataPayload::ShaderBindingOverrides>& shader_binding_overrides);
 private:
 
 #pragma endregion

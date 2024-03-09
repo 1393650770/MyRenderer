@@ -1641,6 +1641,37 @@ switch (stencil_op)
 		}
 	}
 
+	VkDescriptorType VK_Utils::Translate_BindingResourceType_To_VulkanDescriptorType(ENUM_BINDING_RESOURCE_TYPE bingding_resource_type)
+	{
+		switch (bingding_resource_type)
+		{
+		case MXRender::ENUM_BINDING_RESOURCE_TYPE::UniformBuffer:
+			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			break;
+		case MXRender::ENUM_BINDING_RESOURCE_TYPE::StorageBuffer:
+			return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			break;
+		case MXRender::ENUM_BINDING_RESOURCE_TYPE::SampledTexture:
+			return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			break;
+		case MXRender::ENUM_BINDING_RESOURCE_TYPE::StorageTexture:
+			return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			break;
+		case MXRender::ENUM_BINDING_RESOURCE_TYPE::Sampler:
+			return VK_DESCRIPTOR_TYPE_SAMPLER;
+			break;
+		case MXRender::ENUM_BINDING_RESOURCE_TYPE::UniformBufferDynamic:
+			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+			break;
+		case MXRender::ENUM_BINDING_RESOURCE_TYPE::StorageBufferDynamic:
+			return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+			break;
+		default:
+			CHECK_WITH_LOG(true, "RHI Error: invalid binding resource type !")
+			break;
+		}
+	}
+
 	VkPolygonMode VK_Utils::Translate_FillMode_To_Vulkan(ENUM_RASTER_FILLMODE polygon_mode)
 	{
 		switch (polygon_mode)

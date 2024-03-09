@@ -70,7 +70,7 @@ MYRENDERER_END_CLASS
 
 void RenderTest::BeginRender()
 {
-	std::cout << "Hello Texture" << std::endl;
+	std::cout << "Hello CubeMap" << std::endl;
 
 	struct TestData
 	{
@@ -79,7 +79,7 @@ void RenderTest::BeginRender()
 	    Viewport* viewport=nullptr;
 		RenderPipelineState* pipeline_state = nullptr;
 		ShaderResourceBinding* srb = nullptr;
-		Texture* output = nullptr;
+		Texture* cube_map =nullptr;
 	};
 	RenderPassDesc renderpass_desc;
 	CommandList* cmd_list = RHIGetImmediateCommandList();
@@ -94,12 +94,12 @@ void RenderTest::BeginRender()
 
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Vertex;
 		shader_desc.shader_name = "TestVS";
-		shader_data.data = ReadShader("Shader/vert.spv");
+		shader_data.data = ReadShader("Shader/skybox.spv");
 		ps_shader = RHICreateShader(shader_desc,shader_data);
 
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Pixel;
 		shader_desc.shader_name = "TestPS";
-		shader_data.data = ReadShader("Shader/frag.spv");
+		shader_data.data = ReadShader("Shader/skybox.spv");
 		vs_shader = RHICreateShader(shader_desc, shader_data);
 
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] =vs_shader;
@@ -117,6 +117,15 @@ void RenderTest::BeginRender()
 		data.pipeline_state = RHICreateRenderPipelineState(pipeline_state_desc);
 		data.pipeline_state->CreateShaderResourceBinding(data.srb);
 		
+		TextureDesc texture_desc;
+		texture_desc.type = ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP;
+		texture_desc.width = 1024;
+		texture_desc.height = 1024;
+		texture_desc.format = ENUM_TEXTURE_FORMAT::RGBA32U;
+		texture_desc.type = ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP;
+		texture_desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
+		texture_desc.resource_state = ENUM_RESOURCE_STATE::ShaderResource;
+		data.cube_map = RHICreateTexture(texture_desc);
 	},
 	[=](CONST TestData& data, CommandList* in_cmd_list)
 	{
@@ -135,8 +144,10 @@ void RenderTest::BeginRender()
 		in_cmd_list->SetRenderTarget(rtvs, dsv, clear_values, dsv != nullptr);
 		in_cmd_list->SetGraphicsPipeline(data.pipeline_state);
 		in_cmd_list->SetShaderResourceBinding(data.srb);
+
+		data.srb->SetResource("cubeMap", this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV());
 		DrawAttribute draw_attr;
-		draw_attr.vertexCount = 3;
+		draw_attr.vertexCount = 36;
 		draw_attr.instanceCount = 1;
 		in_cmd_list->Draw(draw_attr);
 	});
@@ -181,7 +192,6 @@ int main()
 	RenderTest render(&window);
 	window.InitWindow();
 	window.Run(&render);
-	system("pause");
 
 	return 0;
 }

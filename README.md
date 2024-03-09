@@ -16,9 +16,10 @@ xmake
 </pre>
 
 ## Branch
-① Old Shit code is in branch [**batch**] , but it can run
-② Each branch develops one feature and merges into the branch [**main**] 
-③ The updatest one branch now is the branch [**RHI-Recode**]
+① The release version is in the branch [**main**] 
+② Old Shit code is in branch [**batch**] , but it can run
+③ Each branch develops one feature and merges into the branch [**main_dev**] 
+④ The updatest one branch now is the branch [**RHI-Recode**]
 
 ## Feature
 ###### Tip: maybe still in progress

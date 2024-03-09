@@ -23,6 +23,7 @@ public:
 
 	VIRTUAL ~ShaderResourceBinding();
 
+	VIRTUAL void METHOD(SetResource)(CONST String& name, CONST RenderResource* resource) PURE;
 protected:
 private:
 

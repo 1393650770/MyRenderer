@@ -303,7 +303,7 @@ VkPipelineLayout VK_PipelineState::CreatePipelineLayout(CONST RenderGraphiPipeli
 void VK_PipelineState::CreateShaderResourceBinding(ShaderResourceBinding*& out_srb, Bool init_static_resource /*= false*/)
 {
 	if (out_srb == nullptr)
-		out_srb = new VK_ShaderResourceBinding(compacted_bindings);
+		out_srb = new VK_ShaderResourceBinding(device,compacted_bindings);
 	VK_ShaderResourceBinding* vk_srb = STATIC_CAST(out_srb, VK_ShaderResourceBinding);
 	VK_DescriptsetAllocator* allocator = device->GetDescriptsetAllocator();
 	for (UInt32 i = 0; i < 4; i++)
