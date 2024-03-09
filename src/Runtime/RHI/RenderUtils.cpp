@@ -1,8 +1,9 @@
 #include "RenderUtils.h"
 #include "RenderRource.h"
-#include "../../ThirdParty/stb_image/stb_image.h"
+#include "stb_image/stb_image.h"
 namespace MXRender
 {
+    /*
     unsigned RenderUtils::Get_API_DataTypeEnum_To_OS_Size(ENUM_RENDER_DATA_TYPE data_type)
     {
         switch (data_type)
@@ -28,7 +29,7 @@ namespace MXRender
         }
         return 0;
     }
-
+    
 	std::shared_ptr<MXRender::TextureData> RenderUtils::Load_Texture(const std::string& texture_file_path,bool is_srgb)
 	{
 
@@ -36,7 +37,7 @@ namespace MXRender
 		std::shared_ptr<TextureData> texture = std::make_shared<TextureData>();
 
 		int iw, ih, n;
-		texture->pixels = stbi_load(texture_file_path.c_str(), &iw, &ih, &n, 4/*STBI_rgb_alpha*/);
+		texture->pixels = stbi_load(texture_file_path.c_str(), &iw, &ih, &n, 4);
 
 		if (!texture->pixels)
 			return nullptr;
@@ -53,6 +54,6 @@ namespace MXRender
 		return texture;
 	}
         
-	
+    */
 
 }

@@ -2,9 +2,6 @@
 
 #include "VK_Utils.h"
 
-#include "../MyTexture.h"
-#include "../../AssetLoader/texture_asset.h"
-#include "VK_GraphicsContext.h"
 
 
 
@@ -12,26 +9,112 @@
 
 namespace MXRender
 {
-    uint32_t findMemoryType(VkPhysicalDevice physical_device, uint32_t type_filter, VkMemoryPropertyFlags properties_flag)
-    {
-		VkPhysicalDeviceMemoryProperties physical_device_memory_properties;
-		vkGetPhysicalDeviceMemoryProperties(physical_device, &physical_device_memory_properties);
-		for (uint32_t i = 0; i < physical_device_memory_properties.memoryTypeCount; i++)
-		{
-			if (type_filter & (1 << i) &&
-				(physical_device_memory_properties.memoryTypes[i].propertyFlags & properties_flag) == properties_flag)
-			{
-				return i;
-			}
-		}
-		throw std::runtime_error("findMemoryType");
-    }
-	constexpr uint32_t fnv1a_32(char const* s, std::size_t count)
+
+
+
+	VkAccessFlags VK_Utils::AccessMaskFromImageLayout(VkImageLayout Layout, bool IsDstMask)
 	{
-		return ((count ? fnv1a_32(s, count - 1) : 2166136261u) ^ s[count]) * 16777619u;
+		VkAccessFlags AccessMask = 0;
+		switch (Layout)
+		{
+			// does not support device access. This layout must only be used as the initialLayout member
+			// of VkImageCreateInfo or VkAttachmentDescription, or as the oldLayout in an image transition.
+			// When transitioning out of this layout, the contents of the memory are not guaranteed to be preserved (11.4)
+		case VK_IMAGE_LAYOUT_UNDEFINED:
+			if (IsDstMask)
+			{
+				CHECK_WITH_LOG(true, "The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED. "
+					"This layout must only be used as the initialLayout member of VkImageCreateInfo "
+					"or VkAttachmentDescription, or as the oldLayout in an image transition. (11.4)");
+			}
+			break;
+
+			// supports all types of device access
+		case VK_IMAGE_LAYOUT_GENERAL:
+			// VK_IMAGE_LAYOUT_GENERAL must be used for image load/store operations (13.1.1, 13.2.4)
+			AccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+			break;
+
+			// must only be used as a color or resolve attachment in a VkFramebuffer (11.4)
+		case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+			AccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			break;
+
+			// must only be used as a depth/stencil attachment in a VkFramebuffer (11.4)
+		case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+			AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			break;
+
+			// must only be used as a read-only depth/stencil attachment in a VkFramebuffer and/or as a read-only image in a shader (11.4)
+		case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+			AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+			break;
+
+			// must only be used as a read-only image in a shader (which can be read as a sampled image,
+			// combined image/sampler and/or input attachment) (11.4)
+		case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+			AccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+			break;
+
+			//  must only be used as a source image of a transfer command (11.4)
+		case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+			AccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			break;
+
+			// must only be used as a destination image of a transfer command (11.4)
+		case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+			AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			break;
+
+			// does not support device access. This layout must only be used as the initialLayout member
+			// of VkImageCreateInfo or VkAttachmentDescription, or as the oldLayout in an image transition.
+			// When transitioning out of this layout, the contents of the memory are preserved. (11.4)
+		case VK_IMAGE_LAYOUT_PREINITIALIZED:
+			if (!IsDstMask)
+			{
+				AccessMask = VK_ACCESS_HOST_WRITE_BIT;
+			}
+			else
+			{
+				CHECK_WITH_LOG(true,"The new layout used in a transition must not be VK_IMAGE_LAYOUT_PREINITIALIZED. "
+					"This layout must only be used as the initialLayout member of VkImageCreateInfo "
+					"or VkAttachmentDescription, or as the oldLayout in an image transition. (11.4)");
+			}
+			break;
+
+		case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
+			AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+			break;
+
+		case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:
+			AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+			break;
+
+			// When transitioning the image to VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR or VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+			// there is no need to delay subsequent processing, or perform any visibility operations (as vkQueuePresentKHR
+			// performs automatic visibility operations). To achieve this, the dstAccessMask member of the VkImageMemoryBarrier
+			// should be set to 0, and the dstStageMask parameter should be set to VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT.
+		case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+			AccessMask = 0;
+			break;
+
+		case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
+			AccessMask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+			break;
+
+		case VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT:
+			AccessMask = VK_ACCESS_FRAGMENT_DENSITY_MAP_READ_BIT_EXT;
+			break;
+
+		default:
+			CHECK_WITH_LOG(true, "Unknown image layout");
+			break;
+		}
+
+		return AccessMask;
 	}
 
-
+	/*
 	void VK_Utils::Destroy_Buffer(VK_GraphicsContext* context, AllocatedBufferUntyped& buffer)
 	{
 		context->destroy_allocate_buffer(buffer);
@@ -146,7 +229,7 @@ namespace MXRender
 
 		return true;
 	}
-
+	*/
 	VkSamplerCreateInfo VK_Utils::Sampler_Create_Info(VkFilter filters, VkSamplerAddressMode samplerAdressMode)
 	{
 		VkSamplerCreateInfo info = {};
@@ -281,140 +364,6 @@ namespace MXRender
 		info.pPushConstantRanges = nullptr;
 		return info;
 	}
-
-	uint32_t VK_Utils::Hash_Descriptor_Layout_Info(VkDescriptorSetLayoutCreateInfo* info)
-	{
-		std::stringstream ss;
-
-		ss << info->flags;
-		ss << info->bindingCount;
-
-		for (auto i = 0u; i < info->bindingCount; i++) {
-			const VkDescriptorSetLayoutBinding& binding = info->pBindings[i];
-
-			ss << binding.binding;
-			ss << binding.descriptorCount;
-			ss << binding.descriptorType;
-			ss << binding.stageFlags;
-		}
-
-		auto str = ss.str();
-
-		return fnv1a_32(str.c_str(), str.length());
-	}
-
-	void VK_Utils::Create_VKBuffer(std::weak_ptr<VK_Device> Device, VkDeviceSize Size, VkBufferUsageFlags Usage, VkMemoryPropertyFlags Properties, VkBuffer& Buffer, VkDeviceMemory& BufferMemory)
-    {
-        if (Device.expired())
-        {
-            return ;
-        }
-        std::shared_ptr<VK_Device> DeviceSharedPtr=Device.lock();
-        VkBufferCreateInfo bufferInfo{};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = Size;
-        bufferInfo.usage = Usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        if (vkCreateBuffer(DeviceSharedPtr->device, &bufferInfo, nullptr, &Buffer) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create buffer!");
-        }
-
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(DeviceSharedPtr->device, Buffer, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = Find_MemoryType(Device,memRequirements.memoryTypeBits, Properties);
-
-        if (vkAllocateMemory(DeviceSharedPtr->device, &allocInfo, nullptr, &BufferMemory) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate buffer memory!");
-        }
-
-        vkBindBufferMemory(DeviceSharedPtr->device, Buffer, BufferMemory, 0);
-    }
-
-	MXRender::AllocatedBufferUntyped VK_Utils::Create_buffer(VK_GraphicsContext* context,size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkMemoryPropertyFlags required_flags)
-	{
-		return context->create_allocate_buffer(allocSize,usage,memoryUsage,required_flags);
-	}
-
-	void VK_Utils::Copy_VKBuffer(std::weak_ptr< VK_GraphicsContext> context, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
-	{
-		context.lock()->copy_buffer(srcBuffer,dstBuffer, size);
-	}
-
-
-
-	void VK_Utils::Copy_VKBuffer(VK_GraphicsContext* context, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
-	{
-		context->copy_buffer(srcBuffer, dstBuffer, size);
-	}
-
-	void VK_Utils::Create_Image(VkPhysicalDevice physical_device, VkDevice device, uint32_t image_width, uint32_t image_height, VkFormat format, VkImageTiling image_tiling, VkImageUsageFlags image_usage_flags, VkMemoryPropertyFlags memory_property_flags, VkImage& image, VkDeviceMemory& memory, VkImageCreateFlags image_create_flags, uint32_t array_layers, uint32_t miplevels)
-	{
-		VkImageCreateInfo image_create_info{};
-		image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		image_create_info.flags = image_create_flags;
-		image_create_info.imageType = VK_IMAGE_TYPE_2D;
-		image_create_info.extent.width = image_width;
-		image_create_info.extent.height = image_height;
-		image_create_info.extent.depth = 1;
-		image_create_info.mipLevels = miplevels;
-		image_create_info.arrayLayers = array_layers;
-		image_create_info.format = format;
-		image_create_info.tiling = image_tiling;
-		image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		image_create_info.usage = image_usage_flags;
-		image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
-		image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-		if (vkCreateImage(device, &image_create_info, nullptr, &image) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create image!");
-		}
-
-		VkMemoryRequirements memRequirements;
-		vkGetImageMemoryRequirements(device, image, &memRequirements);
-
-		VkMemoryAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex =
-			findMemoryType(physical_device, memRequirements.memoryTypeBits, memory_property_flags);
-
-		if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to allocate image memory!");
-		}
-
-		vkBindImageMemory(device, image, memory, 0);
-	}
-
-	VkImageView VK_Utils::Create_ImageView(VkDevice device, VkImage& image, VkFormat format, VkImageAspectFlags image_aspect_flags, VkImageViewType view_type, uint32_t layout_count, uint32_t miplevels)
-	{
-		VkImageViewCreateInfo image_view_create_info{};
-		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		image_view_create_info.image = image;
-		image_view_create_info.viewType = view_type;
-		image_view_create_info.format = format;
-		image_view_create_info.subresourceRange.aspectMask = image_aspect_flags;
-		image_view_create_info.subresourceRange.baseMipLevel = 0;
-		image_view_create_info.subresourceRange.levelCount = miplevels;
-		image_view_create_info.subresourceRange.baseArrayLayer = 0;
-		image_view_create_info.subresourceRange.layerCount = layout_count;
-
-		VkImageView image_view;
-		if (vkCreateImageView(device, &image_view_create_info, nullptr, &image_view) != VK_SUCCESS)
-		{
-			return image_view;
-			// todo
-		}
-
-		return image_view;
-	}
-
 	VkSampler VK_Utils::Create_Linear_Sampler(VkPhysicalDevice physical_device, VkDevice device)
 	{
 		VkSampler sampler;
@@ -440,32 +389,11 @@ namespace MXRender
 		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;
 
-		if (vkCreateSampler(device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS)
-		{
-			throw std::runtime_error("vk create sampler");
-		}
+		CHECK_WITH_LOG((vkCreateSampler(device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS), "vk create sampler");
+
 		return sampler;
 	}
 
-	uint32_t VK_Utils::Find_MemoryType(std::weak_ptr<VK_Device> Device, uint32_t TypeFilter, VkMemoryPropertyFlags Properties)
-    {
-        if (Device.expired())
-        {
-            return -1;
-        }
-        std::shared_ptr<VK_Device> DeviceSharedPtr = Device.lock();
-
-        VkPhysicalDeviceMemoryProperties MemProperties;
-        vkGetPhysicalDeviceMemoryProperties(DeviceSharedPtr->gpu, &MemProperties);
-
-        for (uint32_t i = 0; i < MemProperties.memoryTypeCount; i++) {
-            if ((TypeFilter & (1 << i)) && (MemProperties.memoryTypes[i].propertyFlags & Properties) == Properties) {
-                return i;
-            }
-        }
-
-        throw std::runtime_error("failed to find suitable memory type!");
-    }
 
 	VkSampleCountFlagBits VK_Utils::Get_SampleCountFlagBits_FromInt(unsigned num)
 	{
@@ -513,7 +441,7 @@ namespace MXRender
 			return VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 			break;
 		case ENUM_BUFFER_TYPE::Staging:
-			return VK_BUFFER_USAGE_TRANSFER_SRC_BIT ;
+			return VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 			break;
 		case ENUM_BUFFER_TYPE::Storage:
 			return VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -544,10 +472,39 @@ namespace MXRender
         }
 	}
 
-	VkImageUsageFlagBits VK_Utils::Translate_Texture_usage_type_To_VulkanUsageFlagsBits(const ENUM_TEXTURE_USAGE_TYPE& usage_type)
+	VkImageUsageFlags VK_Utils::Translate_Texture_usage_type_To_VulkanUsageFlags(const ENUM_TEXTURE_USAGE_TYPE& usage_type)
 	{
-		VkImageUsageFlags usage_flags = 0;
-		for (int i = 0; i < 32; i++)
+		VkImageUsageFlags usege_flags = 0;
+		if (EnumHasAnyFlags(usage_type, ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_COLOR_ATTACHMENT))
+		{
+			usege_flags = usege_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		}
+		if (EnumHasAnyFlags(usage_type, ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_PRESENT_SWAPCHAIN))
+		{
+			usege_flags = usege_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		}
+		if (EnumHasAnyFlags(usage_type, ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT))
+		{
+			usege_flags = usege_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		}
+		if (EnumHasAnyFlags(usage_type, ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT_READ_ONLY))
+		{
+			usege_flags = usege_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		}
+		if (EnumHasAnyFlags(usage_type, ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT_WRITE_ONLY))
+		{
+			usege_flags = usege_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		}
+		if (EnumHasAnyFlags(usage_type, ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE))
+		{
+			usege_flags = usege_flags | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		}
+		if (EnumHasAnyFlags(usage_type, ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_COPY))
+		{
+			usege_flags = usege_flags | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		}
+		return usege_flags;
+		for (Int i = 0; i < 32; i++)
 		{
 			if ((UInt32)(usage_type) & (1 << i))
 			{
@@ -555,37 +512,37 @@ namespace MXRender
 				switch (temp_usage_type)
 				{
 				case  ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_COLOR_ATTACHMENT:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					usege_flags = VkImageUsageFlagBits(usege_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 					break;
 				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_PRESENT_SWAPCHAIN:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					usege_flags = usege_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 					break;
 				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					usege_flags = usege_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 					break;
 				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT_READ_ONLY:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					usege_flags = usege_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 					break;
 				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT_WRITE_ONLY:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+					usege_flags = usege_flags | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 					break;
 				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					usege_flags = usege_flags | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 					break;
 				case ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_COPY:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					usege_flags = usege_flags | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 					break;
 				default:
-					usage_flags = usage_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					usege_flags = usege_flags | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 					CHECK_WITH_LOG(true, "RHI Error: usage type error");
 					break;
 				}
 			}
 		}
-
-		return usage_flags;
+		return usege_flags;
 	}
 
+	
 	VkImageType VK_Utils::Translate_Texture_type_To_Vulkan(const ENUM_TEXTURE_TYPE& type)
 	{
         switch (type)
@@ -864,6 +821,11 @@ namespace MXRender
 			vulkan_image_format = VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK;
 			break;
 		}
+		case ENUM_TEXTURE_FORMAT::BGRA8:
+		{
+			vulkan_image_format = VK_FORMAT_B8G8R8A8_SRGB;
+			break;
+		}
 		default:
 		{
 			CHECK_WITH_LOG(true,"RHI Error : invalid texture_format !")
@@ -871,6 +833,156 @@ namespace MXRender
 		}
 		}
 		return vulkan_image_format;
+	}
+
+	MXRender::ENUM_TEXTURE_FORMAT VK_Utils::Translate_Vulkan_Texture_Format_To_Common(CONST VkFormat& format)
+	{
+		ENUM_TEXTURE_FORMAT texture_format = ENUM_TEXTURE_FORMAT::RGBA8;
+		switch (format)
+		{
+		case VK_FORMAT_R8G8B8A8_SRGB:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RGBA8S;
+			break;
+		}
+		case VK_FORMAT_R8G8B8A8_UNORM:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RGBA8;
+			break;
+		}
+		case VK_FORMAT_R16G16B16A16_SFLOAT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RGBA16F;
+			break;
+		}
+		case VK_FORMAT_R32G32B32A32_SFLOAT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RGBA32F;
+			break;
+		}
+		case VK_FORMAT_R32_SFLOAT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::R32F;
+			break;
+		}
+		case VK_FORMAT_R16_SFLOAT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::R16F;
+			break;
+		}
+		case VK_FORMAT_R8_UNORM:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::R8;
+			break;
+		}
+		case VK_FORMAT_R8_SRGB:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::R8S;
+			break;
+		}
+		case VK_FORMAT_R8G8_UNORM:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RG8;
+			break;
+		}
+		case VK_FORMAT_R8G8_SRGB:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RG8S;
+			break;
+		}
+		case VK_FORMAT_R16G16_SFLOAT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RG16F;
+			break;
+		}
+		case VK_FORMAT_R32G32_SFLOAT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RG32F;
+			break;
+		}
+		case VK_FORMAT_R8G8_SINT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RG8I;
+			break;
+		}
+		case VK_FORMAT_R8G8_UINT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RG8U;
+			break;
+		}
+		case VK_FORMAT_R16G16_SINT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RG16I;
+			break;
+		}
+		case VK_FORMAT_R16G16_UINT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RG16U;
+			break;
+		}
+		case VK_FORMAT_R32G32_SINT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RG32I;
+			break;
+		}
+		case VK_FORMAT_R32G32_UINT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RG32U;
+			break;
+		}
+		case VK_FORMAT_R8G8B8_UNORM:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RGB8;
+			break;
+		}
+		case VK_FORMAT_R8G8B8_SRGB:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RGB8S;
+			break;
+		}
+		case VK_FORMAT_R16G16B16_SFLOAT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RGB16F;
+			break;
+		}
+		case VK_FORMAT_R32G32B32_SFLOAT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RGB32F;
+			break;
+		}
+		case VK_FORMAT_R8G8B8_SINT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RGB8I;
+			break;
+		}
+		case VK_FORMAT_R8G8B8_UINT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RGB8U;
+			break;
+		}
+		case VK_FORMAT_R16G16B16_SINT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RGB16I;
+			break;
+		}
+		case VK_FORMAT_R16G16B16_UINT:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::RGB16U;
+			break;
+		}
+		case VK_FORMAT_B8G8R8A8_SRGB:
+		case VK_FORMAT_B8G8R8A8_UNORM:
+		{
+			texture_format = ENUM_TEXTURE_FORMAT::BGRA8;
+			break;
+		}
+		default:
+		{
+			CHECK_WITH_LOG(true, "RHI Error : invalid vulkan_texture_format !")
+			break;
+		}
+		}
+		return texture_format;
 	}
 
 	VkImageViewType VK_Utils::Translate_Texture_type_To_VulkanImageViewType(const ENUM_TEXTURE_TYPE& type)
@@ -1043,6 +1155,186 @@ namespace MXRender
 		return vulkan_sample_count;
 	}
 
+	VkAttachmentStoreOp VK_Utils::Translate_AttachmentStore_To_Vulkan(CONST ENUM_RENDERPASS_ATTACHMENT_STORE_OP& store_op)
+	{
+		VkAttachmentStoreOp vulkan_store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		switch (store_op)
+		{
+		case ENUM_RENDERPASS_ATTACHMENT_STORE_OP::Store:
+			vulkan_store_op = VK_ATTACHMENT_STORE_OP_STORE;
+			break;
+		case ENUM_RENDERPASS_ATTACHMENT_STORE_OP::DISCARD:
+			vulkan_store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			break;
+		}
+		return vulkan_store_op;
+
+	}
+
+	VkAttachmentLoadOp VK_Utils::Translate_AttachmentLoad_To_Vulkan(CONST ENUM_RENDERPASS_ATTACHMENT_LOAD_OP& load_op)
+	{
+		VkAttachmentLoadOp vulkan_load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		switch (load_op)
+		{
+		case ENUM_RENDERPASS_ATTACHMENT_LOAD_OP::Load:
+			vulkan_load_op = VK_ATTACHMENT_LOAD_OP_LOAD;
+			break;
+		case ENUM_RENDERPASS_ATTACHMENT_LOAD_OP::Clear:
+			vulkan_load_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			break;
+		case ENUM_RENDERPASS_ATTACHMENT_LOAD_OP::DISCARD:
+			vulkan_load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			break;
+		}
+		return vulkan_load_op;
+	}
+
+	VkImageLayout VK_Utils::Translate_ReourceState_To_VulkanImageLayout(CONST ENUM_RESOURCE_STATE& state, bool Is_inside_renderpass , bool frag_density_map_instead_of_shadingrate)
+	{
+		VkImageLayout vulkan_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+		if (state == ENUM_RESOURCE_STATE::Invalid)
+			return vulkan_image_layout;
+		switch (state)
+		{
+		case ENUM_RESOURCE_STATE::Undefined:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+			break;
+		case ENUM_RESOURCE_STATE::VertexBuffer:
+		case ENUM_RESOURCE_STATE::IndexBuffer:
+		case ENUM_RESOURCE_STATE::ConstantBuffer:
+		case ENUM_RESOURCE_STATE::StreamOut:
+		case ENUM_RESOURCE_STATE::IndirectArgument:
+		case ENUM_RESOURCE_STATE::BuildAsRead:
+		case ENUM_RESOURCE_STATE::BuildAsWrite:
+			CHECK_WITH_LOG(true, "RHI Error: Translate_ReourceState_To_Vulkan-- invalid resource state !");
+			break;
+		case ENUM_RESOURCE_STATE::RenderTarget:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::UnorderedAccess:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_GENERAL;
+			break;
+		case ENUM_RESOURCE_STATE::DepthWrite:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::DepthRead:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::ShaderResource:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::CopyDest:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::CopySource:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::ResolveDest:
+			vulkan_image_layout = Is_inside_renderpass? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::ResolveSource:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			break;
+		case ENUM_RESOURCE_STATE::Present:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			break;
+		case ENUM_RESOURCE_STATE::Common:
+			vulkan_image_layout = VK_IMAGE_LAYOUT_GENERAL;
+			break;
+		case ENUM_RESOURCE_STATE::ShaderRate:
+			vulkan_image_layout = frag_density_map_instead_of_shadingrate ? VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT : VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+			break;
+		}
+		return vulkan_image_layout;
+	}
+
+	VkPipelineStageFlags VK_Utils::Translate_ReourceState_To_VulkanPipelineStage(CONST ENUM_RESOURCE_STATE& state)
+	{
+		VkPipelineStageFlags vulkan_pipeline_stage = 0;
+		switch (state)
+		{
+		case ENUM_RESOURCE_STATE::Undefined:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::VertexBuffer:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::IndexBuffer:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::ConstantBuffer:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT | VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::StreamOut:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::IndirectArgument:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::BuildAsRead:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+			break;
+		case ENUM_RESOURCE_STATE::BuildAsWrite:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+			break;
+		case ENUM_RESOURCE_STATE::RenderTarget:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::UnorderedAccess:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::DepthWrite:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::DepthRead:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::ShaderResource:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT | VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::CopyDest:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::CopySource:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::ResolveDest:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::ResolveSource:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::Present:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::Common:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+			break;
+		case ENUM_RESOURCE_STATE::ShaderRate:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+			break;
+		case ENUM_RESOURCE_STATE::Invalid:
+			break;
+		default:
+			vulkan_pipeline_stage = VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM;
+			CHECK_WITH_LOG(true, "RHI Error: Translate_ReourceState_To_VulkanPipelineStage-- invalid resource state !");
+			break;
+		}
+		return vulkan_pipeline_stage;
+	}
+
+	Bool VK_Utils::Check_ResourceState_Has_WriteAccess(ENUM_RESOURCE_STATE state)
+	{
+		constexpr ENUM_RESOURCE_STATE write_access_states =
+			ENUM_RESOURCE_STATE::RenderTarget |
+			ENUM_RESOURCE_STATE::UnorderedAccess |
+			ENUM_RESOURCE_STATE::CopyDest |
+			ENUM_RESOURCE_STATE::ResolveDest |
+			ENUM_RESOURCE_STATE::BuildAsWrite;
+
+		return (state & write_access_states) == (ENUM_RESOURCE_STATE)1;
+	}
+
 	VkFormat VK_Utils::Translate_API_DataTypeEnum_To_Vulkan(ENUM_RENDER_DATA_TYPE data_type)
 	{
 		switch (data_type)
@@ -1075,7 +1367,7 @@ namespace MXRender
 		return VK_FORMAT_UNDEFINED;
 	}
 
-	VkShaderStageFlagBits VK_Utils::Translate_API_ShaderTypeEnum_To_Vulkan(ENUM_SHADER_STAGE shader_type)
+	VkShaderStageFlagBits VK_Utils::Translate_ShaderTypeEnum_To_Vulkan(ENUM_SHADER_STAGE shader_type)
 	{
 		switch (shader_type)
 		{
@@ -1112,42 +1404,291 @@ namespace MXRender
 		}
 	}
 
-	void VK_Utils::ClearImageColor(std::weak_ptr< VK_GraphicsContext> context, VkImageLayout image_layout, VkImage image,
-		VkImageAspectFlags imageAspectflags)
+	VkPrimitiveTopology VK_Utils::Translate_PrimitiveTopology_To_Vulkan(ENUM_PRIMITIVE_TYPE topology)
 	{
-		if (context.expired())
+		switch (topology)
 		{
-			return;
+		case MXRender::ENUM_PRIMITIVE_TYPE::PointList:
+			return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+			break;
+		case MXRender::ENUM_PRIMITIVE_TYPE::LineList:
+			return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+			break;
+		case MXRender::ENUM_PRIMITIVE_TYPE::TriangleList:
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+			break;
+		case MXRender::ENUM_PRIMITIVE_TYPE::TriangleStrip:
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+			break;
+		case MXRender::ENUM_PRIMITIVE_TYPE::TriangleFan:
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+			break;
+		case MXRender::ENUM_PRIMITIVE_TYPE::TriangleListWithAdjacency:
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
+			break;
+		case MXRender::ENUM_PRIMITIVE_TYPE::TriangleStripWithAdjacency:
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
+			break;
+		case MXRender::ENUM_PRIMITIVE_TYPE::PatchList:
+			return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+			break;
+		default:
+			return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+			break;
+		}
+	}
+
+	VkCullModeFlags VK_Utils::Translate_CullMode_To_Vulkan(ENUM_RASTER_CULLMODE polygon_mode)
+	{
+		switch (polygon_mode)
+		{
+		case MXRender::ENUM_RASTER_CULLMODE::None:
+			return VK_CULL_MODE_NONE;
+			break;
+		case MXRender::ENUM_RASTER_CULLMODE::Front:
+			return VK_CULL_MODE_FRONT_BIT;
+			break;
+		case MXRender::ENUM_RASTER_CULLMODE::Back:
+			return VK_CULL_MODE_BACK_BIT;
+			break;
+		default:
+			return VK_CULL_MODE_NONE;
+			break;
+		}
+	}
+
+	VkBlendFactor VK_Utils::Translate_BlendFactor_To_Vulkan(ENUM_BLEND_FACTOR blend_factor)
+	{
+		switch (blend_factor)
+		{
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_ZERO:
+			return VK_BLEND_FACTOR_ZERO;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_ONE:
+			return VK_BLEND_FACTOR_ONE;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_SRC_COLOR:
+			return VK_BLEND_FACTOR_SRC_COLOR;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_ONE_MINUS_SRC_COLOR:
+			return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_DST_COLOR:
+			return VK_BLEND_FACTOR_DST_COLOR;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_ONE_MINUS_DST_COLOR:
+			return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_SRC_ALPHA:
+			return VK_BLEND_FACTOR_SRC_ALPHA;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_ONE_MINUS_SRC_ALPHA:
+			return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_DST_ALPHA:
+			return VK_BLEND_FACTOR_DST_ALPHA;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_ONE_MINUS_DST_ALPHA:
+			return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_CONSTANT_COLOR:
+			return VK_BLEND_FACTOR_CONSTANT_COLOR;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_INV_CONSTANT_COLOR:
+			return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_CONSTANT_ALPHA:
+			return VK_BLEND_FACTOR_CONSTANT_ALPHA;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::ENUM_INV_CONSTANT_ALPHA:
+			return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+			break;
+		case MXRender::ENUM_BLEND_FACTOR::EUNUM_SRC_ALPHA_SATURATE:
+			return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+			break;
+		default:
+			CHECK_WITH_LOG(true, "RHI Error: invalid blend factor !")
+			return VK_BLEND_FACTOR_ZERO;
+			break;
+		}
+	}
+
+	VkBlendOp VK_Utils::Translate_BlendOp_To_Vulkan(ENUM_BLEND_EQUATION blend_op)
+	{
+		switch (blend_op)
+		{
+		case MXRender::ENUM_BLEND_EQUATION::ENUM_ADD:
+			return VK_BLEND_OP_ADD;
+			break;
+		case MXRender::ENUM_BLEND_EQUATION::ENUM_SUB:
+			return VK_BLEND_OP_SUBTRACT;
+			break;
+		case MXRender::ENUM_BLEND_EQUATION::ENUM_REVERSE_SUB:
+			return VK_BLEND_OP_REVERSE_SUBTRACT;
+			break;
+		case MXRender::ENUM_BLEND_EQUATION::ENUM_MIN:
+			return VK_BLEND_OP_MIN;
+			break;
+		case MXRender::ENUM_BLEND_EQUATION::ENUM_MAX:
+			return VK_BLEND_OP_MAX;
+			break;
+		default:
+			CHECK_WITH_LOG(true, "RHI Error: invalid blend equation !")
+			return VK_BLEND_OP_ADD;
+			break;
+		}
+	
+
+	}
+
+	VkCompareOp VK_Utils::Translate_CompareOp_To_Vulkan(ENUM_STENCIL_FUNCTION compare_op)
+	{
+		switch (compare_op)
+		{
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_NEVER:
+			return VK_COMPARE_OP_NEVER;
+			break;
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_LESS:
+			return VK_COMPARE_OP_LESS;
+			break;
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_EQUAL:
+			return VK_COMPARE_OP_EQUAL;
+			break;
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_LESSOREQUAL :
+			return VK_COMPARE_OP_LESS_OR_EQUAL;
+			break;
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_GREATER:
+			return VK_COMPARE_OP_GREATER;
+			break;
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_NOT_EQUAL:
+			return VK_COMPARE_OP_NOT_EQUAL;
+			break;
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_GREATEROREQUAL:
+			return VK_COMPARE_OP_GREATER_OR_EQUAL;
+			break;
+		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_ALWAYS:
+			return VK_COMPARE_OP_ALWAYS;
+			break;
+		default:
+			CHECK_WITH_LOG(true, "RHI Error: invalid compare op !")
+			return VK_COMPARE_OP_NEVER;
+			break;
 		}
 
-		VkCommandBuffer commandBuffer = context.lock()->begin_single_time_commands();
-
-		VkClearColorValue clearColor;
-		clearColor.float32[0] = 0.0f; // 红色分量
-		clearColor.float32[1] = 0.0f; // 绿色分量
-		clearColor.float32[2] = 0.0f; // 蓝色分量
-		clearColor.float32[3] = 1.0f; // alpha 分量
-
-		// 定义清除的范围
-		VkImageSubresourceRange range;
-		range.aspectMask = imageAspectflags;
-		range.baseMipLevel = 0;
-		range.levelCount = 1;
-		range.baseArrayLayer = 0;
-		range.layerCount = 1;
-
-		// 使用 vkCmdClearColorImage 函数
-		vkCmdClearColorImage(
-			commandBuffer,          // 命令缓冲区
-			image,                  // 要清除的图像
-			image_layout,// 图像布局
-			&clearColor,            // 清除颜色
-			1,                      // 范围数组的长度
-			&range                  // 清除范围
-		);
-
-		context.lock()->end_single_time_commands(commandBuffer);
 	}
+
+	VkStencilOpState VK_Utils::Translate_StencilOpState_To_Vulkan(StencilOpDesc stencil_op_state)
+	{
+		VkStencilOpState vulkan_stencil_op;
+		vulkan_stencil_op.failOp = Translate_StencilOp_To_Vulkan(stencil_op_state.fail_op);
+		vulkan_stencil_op.passOp = Translate_StencilOp_To_Vulkan(stencil_op_state.pass_op);
+		vulkan_stencil_op.depthFailOp = Translate_StencilOp_To_Vulkan(stencil_op_state.depth_fail_op);
+		vulkan_stencil_op.compareOp = Translate_CompareOp_To_Vulkan(stencil_op_state.func);
+		return vulkan_stencil_op;
+
+	}
+
+	VkStencilOp VK_Utils::Translate_StencilOp_To_Vulkan(ENUM_STENCIL_OPERATIOON stencil_op)
+	{
+switch (stencil_op)
+		{
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_KEEP:
+			return VK_STENCIL_OP_KEEP;
+			break;
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_ZERO:
+			return VK_STENCIL_OP_ZERO;
+			break;
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_REPLACE:
+			return VK_STENCIL_OP_REPLACE;
+			break;
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_INCREMENT_AND_CLAMP:
+			return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+			break;
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_DECREMENT_AND_CLAMP:
+			return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+			break;
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_INVERT:
+			return VK_STENCIL_OP_INVERT;
+			break;
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_INCREMENT_AND_WRAP:
+			return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+			break;
+		case MXRender::ENUM_STENCIL_OPERATIOON::ENUM_DECREMENT_AND_WRAP:
+			return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+			break;
+		default:
+			CHECK_WITH_LOG(true, "RHI Error: invalid stencil op !")
+			return VK_STENCIL_OP_KEEP;
+			break;
+		}
+
+	}
+
+	VkVertexInputRate VK_Utils::Translation_VertexInputRate_To_Vulkan(ENUM_VERTEX_INPUTRATE input_rate)
+	{
+		switch (input_rate)
+		{
+		case MXRender::ENUM_VERTEX_INPUTRATE::PerVertex:
+			return VK_VERTEX_INPUT_RATE_VERTEX;
+			break;
+		case MXRender::ENUM_VERTEX_INPUTRATE::PerInstance:
+			return VK_VERTEX_INPUT_RATE_INSTANCE;
+			break;
+		default:
+			CHECK_WITH_LOG(true,"RHI Error: invalid vertex input rate !")
+			return VK_VERTEX_INPUT_RATE_MAX_ENUM;
+			break;
+		}
+	}
+
+	VkDescriptorType VK_Utils::Translate_BindingResourceType_To_VulkanDescriptorType(ENUM_BINDING_RESOURCE_TYPE bingding_resource_type)
+	{
+		switch (bingding_resource_type)
+		{
+		case MXRender::ENUM_BINDING_RESOURCE_TYPE::UniformBuffer:
+			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			break;
+		case MXRender::ENUM_BINDING_RESOURCE_TYPE::StorageBuffer:
+			return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			break;
+		case MXRender::ENUM_BINDING_RESOURCE_TYPE::SampledTexture:
+			return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			break;
+		case MXRender::ENUM_BINDING_RESOURCE_TYPE::StorageTexture:
+			return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			break;
+		case MXRender::ENUM_BINDING_RESOURCE_TYPE::Sampler:
+			return VK_DESCRIPTOR_TYPE_SAMPLER;
+			break;
+		case MXRender::ENUM_BINDING_RESOURCE_TYPE::UniformBufferDynamic:
+			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+			break;
+		case MXRender::ENUM_BINDING_RESOURCE_TYPE::StorageBufferDynamic:
+			return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+			break;
+		default:
+			CHECK_WITH_LOG(true, "RHI Error: invalid binding resource type !")
+			break;
+		}
+	}
+
+	VkPolygonMode VK_Utils::Translate_FillMode_To_Vulkan(ENUM_RASTER_FILLMODE polygon_mode)
+	{
+		switch (polygon_mode)
+		{
+		case MXRender::ENUM_RASTER_FILLMODE::Line:
+			return VK_POLYGON_MODE_LINE;
+			break;
+		case MXRender::ENUM_RASTER_FILLMODE::Fill:
+			return VK_POLYGON_MODE_FILL;
+			break;
+		default:
+			return VK_POLYGON_MODE_MAX_ENUM;
+			break;
+		}
+
+	}
+
 
 	void CheckAndSetAccessMaskAndStage(VkImageLayout& old_layout, VkImageLayout& new_layout, VkImageMemoryBarrier& barrier, VkPipelineStageFlags& sourceStage, VkPipelineStageFlags& destinationStage)
 	{
@@ -1296,123 +1837,6 @@ namespace MXRender
 		{
 			throw std::invalid_argument("unsupported layout transition!");
 		}
-	}
-
-	void VK_Utils::Transition_ImageLayout(std::weak_ptr< VK_GraphicsContext> context, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout, uint32_t layer_count, uint32_t miplevels, VkImageAspectFlags aspect_mask_bits)
-	{
-		if (context.expired())
-		{
-			return ;
-		}
-
-		VkCommandBuffer commandBuffer = context.lock()->begin_single_time_commands();
-
-		VkImageMemoryBarrier barrier{};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.oldLayout = old_layout;
-		barrier.newLayout = new_layout;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = image;
-		barrier.subresourceRange.aspectMask = aspect_mask_bits;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = miplevels;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = layer_count;
-
-		VkPipelineStageFlags sourceStage;
-		VkPipelineStageFlags destinationStage;
-
-		CheckAndSetAccessMaskAndStage(old_layout,new_layout,barrier,sourceStage,destinationStage);
-
-		vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-		context.lock()->end_single_time_commands(commandBuffer);
-	}
-
-	void VK_Utils::Transition_ImageLayout(std::weak_ptr< VK_GraphicsContext> context, VkCommandBuffer commandbuffer, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout, uint32_t layer_count, uint32_t miplevels, VkImageAspectFlags aspect_mask_bits)
-	{
-		if (context.expired())
-		{
-			return;
-		}
-
-		VkImageMemoryBarrier barrier{};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.oldLayout = old_layout;
-		barrier.newLayout = new_layout;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = image;
-		barrier.subresourceRange.aspectMask = aspect_mask_bits;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = miplevels;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = layer_count;
-
-		VkPipelineStageFlags sourceStage;
-		VkPipelineStageFlags destinationStage;
-
-		CheckAndSetAccessMaskAndStage(old_layout, new_layout, barrier, sourceStage, destinationStage);
-
-		vkCmdPipelineBarrier(commandbuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-	}
-
-	void VK_Utils::Copy_Buffer_To_Image(std::weak_ptr< VK_GraphicsContext> context, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layer_count)
-	{
-		if (context.expired())
-		{
-			return;
-		}
-
-		VkCommandBuffer commandBuffer = context.lock()->begin_single_time_commands();
-		VkBufferImageCopy region{};
-		region.bufferOffset = 0;
-		region.bufferRowLength = 0;
-		region.bufferImageHeight = 0;
-		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.imageSubresource.mipLevel = 0;
-		region.imageSubresource.baseArrayLayer = 0;
-		region.imageSubresource.layerCount = layer_count;
-		region.imageOffset = { 0, 0, 0 };
-		region.imageExtent = { width, height, 1 };
-
-		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-		context.lock()->end_single_time_commands(commandBuffer);
-	}
-
-
-
-	void VK_Utils::Copy_Buffer_To_Image(std::weak_ptr< VK_GraphicsContext> context, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layer_count, uint32_t level, uint32_t baseArrayLayer, uint32_t bufferOffset)
-	{
-		if (context.expired())
-		{
-			return;
-		}
-
-		VkCommandBuffer commandBuffer = context.lock()->begin_single_time_commands();
-		VkBufferImageCopy region{};
-		region.bufferOffset = bufferOffset;
-		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.imageSubresource.mipLevel = level;
-		region.imageSubresource.baseArrayLayer = baseArrayLayer;
-		region.imageSubresource.layerCount = layer_count;
-		region.imageExtent = { width, height, 1 };
-
-		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-		context.lock()->end_single_time_commands(commandBuffer);
-	}
-
-	VkDescriptorBufferInfo AllocatedBufferUntyped::get_info(VkDeviceSize offset /*= 0*/)
-	{
-		VkDescriptorBufferInfo info;
-		info.buffer = _buffer;
-		info.offset = offset;
-		info.range = _size;
-		return info;
 	}
 
 }

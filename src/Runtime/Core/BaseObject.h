@@ -6,11 +6,12 @@ MYRENDERER_BEGIN_CLASS(IObject)
 public:
 	IObject()DEFAULT;
 	VIRTUAL ~IObject()DEFAULT;
-	Int i=0;
+	void AddRef() { ++ref_count; }
+	VIRTUAL void Release()=0;
 protected:
-
+	Bool is_valid{ false };
+	UInt32 ref_count{ 1 };
 private:
 
 MYRENDERER_END_CLASS
-
 MYRENDERER_END_NAMESPACE

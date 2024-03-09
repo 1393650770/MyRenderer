@@ -1,11 +1,9 @@
 #include"VK_Memory.h"
-
 #include "VK_Define.h"
 #include "VK_Device.h"
 #include "VK_Utils.h"
-#include "../../Core/ConstGlobals.h"
-#include "../../Core/ConstDefine.h"
-
+#include "Core/ConstGlobals.h"
+#include "Core/TypeHash.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -166,11 +164,15 @@ VK_DeviceMemoryManager::VK_DeviceMemoryManager(VK_Device* in_device):device(in_d
 {
     VkPhysicalDeviceMemoryProperties2 properties2;
     memory_budget.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
+	memory_budget.pNext = nullptr;
     properties2.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
     properties2.pNext=&memory_budget;
-    vkGetPhysicalDeviceMemoryProperties2(device->GetGpu(), &properties2);
+
+	vkGetPhysicalDeviceMemoryProperties2(device->GetGpu(), &properties2);
+
     memcpy(&memory_properties,&(properties2.memoryProperties),sizeof(VkPhysicalDeviceMemoryProperties));
-    for (UInt32 index= 0; index<VK_MAX_MEMORY_HEAPS;++index)
+   
+	for (UInt32 index= 0; index<VK_MAX_MEMORY_HEAPS;++index)
     {
         memory_budget.heapBudget[index]=g_vulkan_budget_percentage_scale*  memory_budget.heapBudget[index] / 100;
     }
@@ -229,7 +231,7 @@ VK_DeviceMemoryAllocation* VK_DeviceMemoryManager::Alloc(VkDeviceSize allocation
 {
     if (dedicated_allocate_info==nullptr)
     {
-        MemoryBlockKey key = {memory_type_index, allocation_size};
+        MemoryBlockKey key(memory_type_index, allocation_size);
         MemoryBlock& block = memory_block_map[key];
         if(block.allocations.size() > 0)
         {
@@ -242,7 +244,7 @@ VK_DeviceMemoryAllocation* VK_DeviceMemoryManager::Alloc(VkDeviceSize allocation
     allocate_info.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocate_info.allocationSize=allocation_size;
     allocate_info.memoryTypeIndex=memory_type_index;
-
+	allocate_info.pNext = nullptr;
 #if VULKAN_SUPPORTS_MEMORY_PRIORITY
     VkMemoryPriorityAllocateInfoEXT prio;
     if (device->GetOptionalExtensions().HasMemoryPriority)
@@ -301,7 +303,7 @@ VK_DeviceMemoryAllocation* VK_DeviceMemoryManager::Alloc(VkDeviceSize allocation
 void VK_DeviceMemoryManager::Free(VK_DeviceMemoryAllocation*& allocation)
 {
     VkDeviceSize allocation_size = allocation->size;
-    MemoryBlockKey key = { allocation->property.memory_type_index, allocation_size };
+    MemoryBlockKey key(allocation->property.memory_type_index, allocation_size );
     MemoryBlock block = memory_block_map[key];
     MemoryBlock::FreeBlock free_block = {allocation, g_frame_number_render_thread};
     block.allocations.push_back(free_block);
@@ -481,7 +483,7 @@ VK_MemoryManager::VK_MemoryManager(VK_Device* in_device):device_memory_manager(i
 {
     CONST UInt32 type_bits = (1<<device_memory_manager->GetMemoryTypeNum())-1;
     CONST VkPhysicalDeviceMemoryProperties& memory_properties = device_memory_manager->GetMemoryProperties();
-    resource_heaps.resize(memory_properties.memoryTypeCount);
+    resource_heaps.resize(memory_properties.memoryTypeCount,nullptr);
 
 	auto GetMemoryTypesFromPropertiesFunc = [memory_properties](UInt32 in_type_bits, VkMemoryPropertyFlags properties, Vector<UInt32>& out_type_indices)
 	{
@@ -527,7 +529,10 @@ VK_MemoryManager::VK_MemoryManager(VK_Device* in_device):device_memory_manager(i
             type_index = host_vis_index;
 		}
         CHECK_WITH_LOG(host_cache_result != VK_SUCCESS&& host_result != VK_SUCCESS,"RHI Error : No Memory Type Found Supporting VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT ! ")
-        auto& page_size_buckets= resource_heaps[type_index]->page_size_buckets;
+		UInt64 heap_size = memory_properties.memoryHeaps[memory_properties.memoryTypes[type_index].heapIndex].size;
+		if(!resource_heaps[type_index])
+			resource_heaps[type_index] = new VK_MemoryResourceHeap(this, type_index, STAGING_HEAP_PAGE_SIZE);
+		auto& page_size_buckets= resource_heaps[type_index]->page_size_buckets;
 		VK_VulkanPageSizeBucket bucket0 = { STAGING_HEAP_PAGE_SIZE, STAGING_HEAP_PAGE_SIZE, VK_VulkanPageSizeBucket::BUCKET_MASK_IMAGE | VK_VulkanPageSizeBucket::BUCKET_MASK_BUFFER };
         VK_VulkanPageSizeBucket bucket1 = { UINT64_MAX, 0, VK_VulkanPageSizeBucket::BUCKET_MASK_IMAGE | VK_VulkanPageSizeBucket::BUCKET_MASK_BUFFER };
         page_size_buckets.push_back(bucket0);
@@ -584,26 +589,12 @@ VK_DeviceMemoryManager* VK_MemoryManager::GetDeviceMemoryManager()
 
 Bool VK_MemoryManager::AllocateImageMemory(VK_Allocation& out_allocation, VkImage in_image, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment /*= 1*/)
 {
-	VkImageMemoryRequirementsInfo2 image_memory_requirements_info;
-	image_memory_requirements_info.sType= VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
-	image_memory_requirements_info.image = in_image;
 
-	VkMemoryDedicatedRequirements dedicated_requirements;
-	dedicated_requirements.sType= VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
-
-	VkMemoryRequirements2 memory_requirements;
-	memory_requirements.sType= VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
-	memory_requirements.pNext = &dedicated_requirements;
-
-	vkGetImageMemoryRequirements2(device->GetDevice(), &image_memory_requirements_info, &memory_requirements);
-
+	VkMemoryRequirements memory_requirements;
+	vkGetImageMemoryRequirements( device->GetDevice(), in_image, &memory_requirements);
 	// Allow caller to force his own alignment requirements
-	memory_requirements.memoryRequirements.alignment = std::max(memory_requirements.memoryRequirements.alignment, (VkDeviceSize)in_force_min_alignment);
+	memory_requirements.alignment = std::max(memory_requirements.alignment, (VkDeviceSize)in_force_min_alignment);
 
-	if (dedicated_requirements.requiresDedicatedAllocation || dedicated_requirements.prefersDedicatedAllocation)
-	{
-		in_alloc_flags |= ENUM_VulkanAllocationFlags::Dedicated;
-	}
 
 	// For now, translate all the flags into a call to the legacy AllocateImageMemory() function
 	CONST VkMemoryPropertyFlags memory_property_flags = GetMemoryPropertyFlags(in_alloc_flags, device_memory_manager->GetIsSupportUnifiedMemory());
@@ -614,32 +605,27 @@ Bool VK_MemoryManager::AllocateImageMemory(VK_Allocation& out_allocation, VkImag
 	{
 		VkMemoryPropertyFlags use_memory_property_flags = memory_property_flags;
 		UInt32 type_index = 0;
-		VkResult result = device_memory_manager->GetMemoryTypeFromProperties(memory_requirements.memoryRequirements.memoryTypeBits, use_memory_property_flags, &type_index);
+		VkResult result = device_memory_manager->GetMemoryTypeFromProperties(memory_requirements.memoryTypeBits, use_memory_property_flags, &type_index);
 		Bool is_mapped = VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 		if ((result != VK_SUCCESS) || !resource_heaps[type_index])
 		{
-			if (VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_HOST_CACHED_BIT))
-			{
-				// Try non-cached flag
-				use_memory_property_flags = use_memory_property_flags & ~VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-			}
-
 			if (VKHasAllFlags(memory_property_flags, VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT))
 			{
 				// Try non-lazy flag
 				use_memory_property_flags = use_memory_property_flags & ~VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
+				device_memory_manager->GetMemoryTypeFromProperties(memory_requirements.memoryTypeBits, use_memory_property_flags, &type_index);
 			}
 		}
 
 		CONST Bool is_force_separate_allocation = is_external || VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
-		if (!resource_heaps[type_index]->AllocateResource(out_allocation, nullptr, ENUM_VK_HeapAllocationType::Image, memory_requirements.memoryRequirements.size, memory_requirements.memoryRequirements.alignment, is_mapped, is_force_separate_allocation, ENUM_VK_AllocationMetaType::EVulkanAllocationMetaImageOther, is_external))
+		if (!resource_heaps[type_index]->AllocateResource(out_allocation, nullptr, ENUM_VK_HeapAllocationType::Image, memory_requirements.size, memory_requirements.alignment, is_mapped, is_force_separate_allocation, ENUM_VK_AllocationMetaType::EVulkanAllocationMetaImageOther, is_external))
 		{
 
 			use_memory_property_flags &= (~VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			CHECK_WITH_LOG(device_memory_manager->GetMemoryTypeFromPropertiesExcluding(memory_requirements.memoryRequirements.memoryTypeBits, use_memory_property_flags, type_index, &type_index) != VK_SUCCESS,
+			CHECK_WITH_LOG(device_memory_manager->GetMemoryTypeFromPropertiesExcluding(memory_requirements.memoryTypeBits, use_memory_property_flags, type_index, &type_index) != VK_SUCCESS,
 				"RHI Error: failed to getMemoryTypeFromPropertiesExcluding index !")
 				is_mapped = VKHasAllFlags(use_memory_property_flags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-			if (!resource_heaps[type_index]->AllocateResource(out_allocation, nullptr, ENUM_VK_HeapAllocationType::Image, memory_requirements.memoryRequirements.size, memory_requirements.memoryRequirements.alignment, is_mapped, is_force_separate_allocation, ENUM_VK_AllocationMetaType::EVulkanAllocationMetaImageOther, is_external))
+			if (!resource_heaps[type_index]->AllocateResource(out_allocation, nullptr, ENUM_VK_HeapAllocationType::Image, memory_requirements.size, memory_requirements.alignment, is_mapped, is_force_separate_allocation, ENUM_VK_AllocationMetaType::EVulkanAllocationMetaImageOther, is_external))
 			{
 				return false;
 			}
@@ -1034,12 +1020,12 @@ void VK_MemoryManager::ReleaseSubresourceAllocator(VK_MemoryResourceFragmentAllo
 	}
 	else
 	{
-		VK_MemoryResourceHeap* heap = resource_type_heaps[subresource_allocator->memory_type_index];
+		VK_MemoryResourceHeap* heap = resource_heaps[subresource_allocator->memory_type_index];
 		heap->FreePage(subresource_allocator);
 	}
 }
 
-Bool VK_MemoryManager::FreeAllocation(VK_Allocation& allocation)
+void VK_MemoryManager::FreeAllocation(VK_Allocation& allocation)
 {
 	CONST UInt32 index = allocation.allocator_index;
 	GetSubresourceAllocator(index)->Free(allocation);
@@ -1075,11 +1061,11 @@ void VK_MemoryManager::UnregisterSubresourceAllocator(VK_MemoryResourceFragmentA
 void VK_MemoryManager::Destroy()
 {
 	DestroyResourceAllocations();
-	for (VK_MemoryResourceHeap* heap : resource_type_heaps)
+	for (VK_MemoryResourceHeap* heap : resource_heaps)
 	{
 		delete heap;
 	}
-	resource_type_heaps.clear();
+	resource_heaps.clear();
 }
 
 void VK_MemoryManager::DestroyResourceAllocations()
@@ -1139,7 +1125,7 @@ void VK_MemoryManager::ReleaseFreedResources(Bool is_immediately)
 
 		buffer_allocation->Destroy(device);
 
-		VK_MemoryResourceHeap* heap = resource_type_heaps[buffer_allocation->memory_type_index];
+		VK_MemoryResourceHeap* heap = resource_heaps[buffer_allocation->memory_type_index];
 		heap->ReleasePage(buffer_allocation);
 	}
 
@@ -1572,6 +1558,70 @@ void VK_Section::SanityCheck(Vector<VK_Section>& ranges)
 			("RHI Error: VK_Section::SanityCheck() failed : Array is not sorted!"))
 	}
 #endif
+}
+
+void VK_Section::MergeConsecutiveRanges(Vector<VK_Section>& ranges)
+{
+	if (ranges.size() > 1)
+	{
+		SanityCheck(ranges);
+		for(Int index = ranges.size() - 1; index > 0; --index)
+		{
+			VK_Section& current = ranges[index];
+			VK_Section& pre = ranges[index - 1];
+			if (pre.offset + pre.size == current.offset)
+			{
+				pre.size += current.size;
+				auto it = ranges.begin() + index;
+				ranges.erase(it);
+			}
+		}
+	}
+}
+
+size_t MemoryBlockKey::operator()(CONST MemoryBlockKey& p) CONST
+{
+	return HashCombine(std::hash<UInt32>()(p.block_size), std::hash<UInt32>()(p.memory_type_index));
+}
+
+Bool MemoryBlockKey::operator==(CONST MemoryBlockKey& other) CONST
+{
+	return memory_type_index == other.memory_type_index && block_size == other.block_size;
+}
+
+Bool MemoryBlockKey::operator<(CONST MemoryBlockKey& other) CONST
+{
+	if (memory_type_index < other.memory_type_index)
+	{
+		return true;
+	}
+	else if (memory_type_index == other.memory_type_index)
+	{
+		return block_size < other.block_size;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+MemoryBlockKey& MemoryBlockKey::operator=(CONST MemoryBlockKey& other)
+{
+	memory_type_index = other.memory_type_index;
+	block_size = other.block_size;
+	return *this;
+}
+
+MemoryBlockKey::MemoryBlockKey(UInt32 in_memory_type_index, VkDeviceSize in_block_size)
+{
+	memory_type_index = in_memory_type_index;
+	block_size = in_block_size;
+}
+
+MemoryBlockKey::MemoryBlockKey(CONST MemoryBlockKey& other) 
+{
+	memory_type_index = other.memory_type_index;
+	block_size = other.block_size;
 }
 
 MYRENDERER_END_NAMESPACE

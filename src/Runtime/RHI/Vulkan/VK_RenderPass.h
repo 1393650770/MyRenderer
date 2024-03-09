@@ -1,91 +1,75 @@
 #pragma once
 #ifndef _VK_RENDERPASS_
 #define _VK_RENDERPASS_
+#include "RHI/RenderPass.h"
+#include "vulkan/vulkan_core.h"
 
-#include <glad/glad.h>
-#include <glm/glm.hpp>
-#include <string>
-#include<vector>
-#include <fstream>
-#include <sstream>
-#include <iostream>
 
-#include "../RenderEnum.h"
-#include<memory>
-#include<string>
-#include "../RenderPass.h"
-#include "../../Core/ConstDefine.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
-
+class VK_Device;
 class VK_Shader;
 class VK_Viewport;
-class VK_GraphicsContext; 
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_RenderPass,public RenderPass)
 
-struct VKPassCommonInfo:PassOtherInfo
-{
+#pragma region METHOD
 public:
-    std::weak_ptr<VK_GraphicsContext> context;
-    VkRenderPass render_pass;
-};
-
-struct VertexInputDescription {
-	std::vector<VkVertexInputBindingDescription> bindings;
-	std::vector<VkVertexInputAttributeDescription> attributes;
-
-	VkPipelineVertexInputStateCreateFlags flags = 0;
-};
-
-class PipelineBuilder
-{
-public:
-	std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
-	VertexInputDescription vertexDescription;
-	VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
-	VkPipelineInputAssemblyStateCreateInfo _inputAssembly;
-	VkViewport _viewport;
-	VkRect2D _scissor;
-	VkPipelineRasterizationStateCreateInfo _rasterizer;
-	VkPipelineColorBlendAttachmentState _colorBlendAttachment;
-	VkPipelineMultisampleStateCreateInfo _multisampling;
-	VkPipelineLayout _pipelineLayout;
-	VkPipelineDepthStencilStateCreateInfo _depthStencil;
-	VkPipeline build_pipeline(VkDevice device, VkRenderPass pass);
-	void clear_vertex_input();
-
-	void set_shaders(VK_Shader* effect);
-};
-
-class ComputePipelineBuilder {
-public:
-
-	VkPipelineShaderStageCreateInfo  _shaderStage;
-	VkPipelineLayout _pipelineLayout;
-	VkPipeline build_pipeline(VkDevice device);
-};
-
-class VK_RenderPass :public RenderPass
-{
+	VK_RenderPass(VK_Device* in_device, CONST RenderPassDesc& in_desc);
+	VIRTUAL ~VK_RenderPass();
+	VkRenderPass METHOD(GetRenderPass)() CONST;
+	VIRTUAL void METHOD(Destroy)();
 protected:
-	std::vector<RenderPipelineBase> render_pipeline_array;
-	std::weak_ptr<VK_GraphicsContext> cur_context;
-	VkRenderPass  render_pass;
-	VkPipeline pipeline;
-	VkPipelineLayout pipeline_layout;
+private:
+
+#pragma endregion
+
+#pragma region MEMBER
 public:
-	virtual void initialize(const PassInfo& init_info, PassOtherInfo* other_info);
-	virtual void post_initialize();
-	virtual void set_commonInfo(const PassInfo& init_info);
-	virtual void prepare_pass_data();
-	virtual void initialize_ui_renderbackend(WindowUI* window_ui);
-	VK_RenderPass();
-	VK_RenderPass(const PassInfo& init_info);
-	virtual ~VK_RenderPass();
-	virtual VkRenderPass& get_render_pass();
-	virtual VkPipeline& get_pipeline();
-};
+protected:
+	VK_Device * device;
+	VkRenderPass render_pass;
+private:
+
+#pragma endregion
+
+MYRENDERER_END_CLASS
+
+MYRENDERER_BEGIN_CLASS(VK_RenderPassManager)
+public:
+
+
+#pragma region METHOD
+public:
+	VK_RenderPassManager(VK_Device* in_device) ;
+	VK_RenderPassManager(CONST VK_RenderPassManager&) DELETE;
+	VK_RenderPassManager(VK_RenderPassManager&&) DELETE;
+	VK_RenderPassManager& operator=(CONST VK_RenderPassManager&) DELETE;
+	VK_RenderPassManager& operator=(VK_RenderPassManager&&) DELETE;
+
+	~VK_RenderPassManager();
+
+	VK_RenderPass* METHOD(GetRenderPass)(CONST RenderPassCacheKey& key);
+	VK_RenderPass* METHOD(GetRenderPass)(CONST RenderPassDesc& desc);
+	void METHOD(Destroy)();
+protected:
+private:
+
+#pragma endregion
+
+#pragma region MEMBER
+public:
+	
+protected:
+	VK_Device* device;
+	Map<RenderPassCacheKey, VK_RenderPass*, RenderPassCacheKeyHash> render_pass_cache;
+private:
+
+#pragma endregion
+
+MYRENDERER_END_CLASS
+
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

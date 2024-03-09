@@ -1,7 +1,7 @@
 #pragma once
-
 #ifndef _CONSTDEFINE_
 #define _CONSTDEFINE_
+
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
@@ -62,9 +62,11 @@
 
 #define MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Name, ...) class Name : __VA_ARGS__ \
                                                 {
-#define MYRENDERER_END_CLASS };
+#define MYRENDERER_END_CLASS  };
 
 #define MYRENDERER_END_STRUCT };
+
+#define MYRENDERER_TEMPLATE_HEAD(...)  template<__VA_ARGS__>
 
 #define MYRENDERER_VALUE(x) = x
 
@@ -75,19 +77,21 @@
                                    	throw std::runtime_error(String(LOG)+"\n"+boost::stacktrace::to_string(stack_trace)); \
                                 }
 
-#define THIS
-#define THIS_
 #define VIRTUAL      virtual
 #define CONST        const
 #define DEFAULT      =default
 #define PURE         = 0
+
+#define DELETE       = delete
+
 #define OVERRIDE      override
 #define FINAL        final
 #define REF          &
 #define METHOD(Name) MYRENDERER_CALL_TYPE Name
 
-#define STATIC_CAST(Pointer,Type) (static_cast<(Type)*>(Pointer))
-#define DYNAMIC_CAST(Pointer,Type) (dynamic_cast<(Type)*>(Pointer))
+#define STATIC_CAST(Pointer,Type) (static_cast<Type*>(Pointer))
+#define DYNAMIC_CAST(Pointer,Type) (dynamic_cast<Type>(Pointer))
+#define REINTERPRET_CAST(Pointer,Type) (reinterpret_cast<Type*>(Pointer))
 
 using UInt8 = std::uint8_t;
 using UInt16 = std::uint16_t;
@@ -107,8 +111,8 @@ using Float64 = double;
 template <typename T>
 using Vector = std::vector<T>; 
 
-template <typename K,typename T>
-using Map = std::unordered_map<K,T>;
+template <typename K,typename T, typename Hash = std::hash<K>>
+using Map = std::unordered_map<K,T, Hash>;
 
 template <typename T>
 using Optional = std::optional<T>;
@@ -161,27 +165,90 @@ constexpr bool EnumHasAllFlags(Enum Flags, Enum Contains)
 {
 	using UnderlyingType = __underlying_type(Enum);
 	return ((UnderlyingType)Flags & (UnderlyingType)Contains) == (UnderlyingType)Contains;
-}
+};
 
 template<typename Enum>
 constexpr bool EnumHasAnyFlags(Enum Flags, Enum Contains)
 {
 	using UnderlyingType = __underlying_type(Enum);
 	return ((UnderlyingType)Flags & (UnderlyingType)Contains) != 0;
-}
+};
 
 template<typename Enum>
 void EnumAddFlags(Enum & Flags, Enum FlagsToAdd)
 {
 	using UnderlyingType = __underlying_type(Enum);
 	Flags = (Enum)((UnderlyingType)Flags | (UnderlyingType)FlagsToAdd);
-}
+};
 
 template<typename Enum>
-void EnumRemoveFlags(Enum & Flags, Enum FlagsToRemove)
+void EnumRemoveFlags(Enum& Flags, Enum FlagsToRemove)
 {
 	using UnderlyingType = __underlying_type(Enum);
 	Flags = (Enum)((UnderlyingType)Flags & ~(UnderlyingType)FlagsToRemove);
-}
+};
 
+
+template <typename T>
+struct TIsIntegral
+{
+	enum { Value = false };
+};
+template <> struct TIsIntegral<         bool> { enum { Value = true }; };
+template <> struct TIsIntegral<         char> { enum { Value = true }; };
+template <> struct TIsIntegral<signed   char> { enum { Value = true }; };
+template <> struct TIsIntegral<unsigned char> { enum { Value = true }; };
+template <> struct TIsIntegral<         char16_t> { enum { Value = true }; };
+template <> struct TIsIntegral<         char32_t> { enum { Value = true }; };
+template <> struct TIsIntegral<         wchar_t> { enum { Value = true }; };
+template <> struct TIsIntegral<         short> { enum { Value = true }; };
+template <> struct TIsIntegral<unsigned short> { enum { Value = true }; };
+template <> struct TIsIntegral<         int> { enum { Value = true }; };
+template <> struct TIsIntegral<unsigned int> { enum { Value = true }; };
+template <> struct TIsIntegral<         long> { enum { Value = true }; };
+template <> struct TIsIntegral<unsigned long> { enum { Value = true }; };
+template <> struct TIsIntegral<         long long> { enum { Value = true }; };
+template <> struct TIsIntegral<unsigned long long> { enum { Value = true }; };
+template <typename T> struct TIsIntegral<const          T> { enum { Value = TIsIntegral<T>::Value }; };
+template <typename T> struct TIsIntegral<      volatile T> { enum { Value = TIsIntegral<T>::Value }; };
+template <typename T> struct TIsIntegral<const volatile T> { enum { Value = TIsIntegral<T>::Value }; };
+
+
+
+template <typename T>
+struct TIsPointer
+{
+	enum { Value = false };
+};
+template <typename T> struct TIsPointer<T*> { enum { Value = true }; };
+template <typename T> struct TIsPointer<const          T> { enum { Value = TIsPointer<T>::Value }; };
+template <typename T> struct TIsPointer<      volatile T> { enum { Value = TIsPointer<T>::Value }; };
+template <typename T> struct TIsPointer<const volatile T> { enum { Value = TIsPointer<T>::Value }; };
+
+template <typename T>
+FORCEINLINE constexpr T Align(T Val, UInt64 Alignment)
+{
+	static_assert(TIsIntegral<T>::Value || TIsPointer<T>::Value, "Align expects an integer or pointer type");
+
+	return (T)(((UInt64)Val + Alignment - 1) & ~(Alignment - 1));
+};
+
+template <bool AllowTouch, typename T>
+bool CheckLineSectionOverlap(T Min0, T Max0, T Min1, T Max1)
+{
+
+	//     [------]         [------]
+	//   Min0    Max0    Min1     Max1
+	//
+	//     [------]         [------]
+	//   Min1    Max1    Min0     Max0
+	if (AllowTouch)
+	{
+		return !(Min0 > Max1 || Min1 > Max0);
+	}
+	else
+	{
+		return !(Min0 >= Max1 || Min1 >= Max0);
+	}
+};
 #endif 

@@ -3,8 +3,8 @@
 #ifndef _VK_DEVICE_
 #define _VK_DEVICE_
 #include <vulkan/vulkan.h>
-#include "../../Core/ConstDefine.h"
-#include "../RenderRource.h"
+#include "Core/ConstDefine.h"
+#include "RHI/RenderRource.h"
 #include "VK_RenderRHI.h"
 #include "VK_Memory.h"
 
@@ -17,6 +17,11 @@ class VK_FenceManager;
 class VK_DeviceMemoryManager;
 class VK_MemoryManager;
 class VK_CommandBufferManager;
+class VK_StagingBufferManager;
+class VK_RenderPassManager;
+class VK_PipelineStateManager;
+class VK_FrameBufferManager;
+class VK_DescriptsetAllocator;
 MYRENDERER_BEGIN_STRUCT(OptionalVulkanDeviceExtensions)
 union
 {
@@ -98,6 +103,7 @@ Bool isComplete() {
 }
 MYRENDERER_END_CLASS
 
+
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Device , public RenderResource)
 
 #pragma region METHOD
@@ -120,6 +126,13 @@ public:
 	VK_FenceManager* METHOD(GetFenceManager)();
 	VK_DeviceMemoryManager* METHOD(GetDeviceMemoryManager)();
 	VK_MemoryManager* METHOD(GetMemoryManager)();
+	VK_StagingBufferManager* METHOD(GetStagingBufferManager)();
+	VK_CommandBufferManager* METHOD(GetCommandBufferManager)();
+	VK_RenderPassManager* METHOD(GetRenderPassManager)();
+	VK_PipelineStateManager* METHOD(GetPipelineStateManager)();
+	VK_FrameBufferManager* METHOD(GetFrameBufferManager)();
+	VK_DescriptsetAllocator* METHOD(GetDescriptsetAllocator)();
+	VK_Queue* METHOD(GetQueue)(ENUM_QUEUE_TYPE queue_type);
 	CONST OptionalVulkanDeviceExtensions& METHOD(GetOptionalExtensions)() CONST;
 	void METHOD(CreatePresentQueue)(VkSurfaceKHR surface);
 	CONST VkPhysicalDeviceLimits&  METHOD(GetLimits)() CONST;
@@ -145,6 +158,11 @@ protected:
 	VK_DeviceMemoryManager* device_memory_manager=nullptr;
 	VK_MemoryManager* memory_manager = nullptr;
 	VK_CommandBufferManager* command_buffer_manager = nullptr;
+	VK_StagingBufferManager* staging_buffer_manager = nullptr;
+	VK_RenderPassManager* render_pass_manager = nullptr;
+	VK_PipelineStateManager* pipeline_state_manager = nullptr;
+	VK_FrameBufferManager* frame_buffer_manager = nullptr;
+	VK_DescriptsetAllocator* descriptset_allocator = nullptr;
 public:
 
 

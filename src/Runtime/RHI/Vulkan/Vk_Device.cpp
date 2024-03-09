@@ -7,6 +7,11 @@
 #include "VK_Memory.h"
 #include "VK_Define.h"
 #include "VK_CommandBuffer.h"
+#include "VK_Buffer.h"
+#include "VK_RenderPass.h"
+#include "VK_PipelineState.h"
+#include "VK_FrameBuffer.h"
+#include "VK_DescriptorSets.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -119,6 +124,11 @@ void VK_Device::Init(Int device_index,Bool enable_validation_layers, Vector<CONS
 	memory_manager=new VK_MemoryManager(this);
 	fence_manager=new VK_FenceManager(this);
 	command_buffer_manager=new VK_CommandBufferManager(this);
+	staging_buffer_manager = new VK_StagingBufferManager(this);
+	render_pass_manager = new VK_RenderPassManager(this);
+	pipeline_state_manager = new VK_PipelineStateManager(this);
+	frame_buffer_manager = new VK_FrameBufferManager(this);
+	descriptset_allocator = new VK_DescriptsetAllocator(this, gpu_props.limits.maxSamplerAllocationCount);
 }
 
 VkDevice VK_Device::GetDevice()
@@ -146,6 +156,34 @@ VK_MemoryManager* VK_Device::GetMemoryManager()
 	return memory_manager;
 }
 
+VK_StagingBufferManager* VK_Device::GetStagingBufferManager()
+{
+	return staging_buffer_manager;
+}
+
+VK_CommandBufferManager* VK_Device::GetCommandBufferManager()
+{
+	return command_buffer_manager;
+}
+
+VK_Queue* VK_Device::GetQueue(ENUM_QUEUE_TYPE queue_type)
+{
+	switch (queue_type)
+	{
+	case ENUM_QUEUE_TYPE::GRAPHICS:
+		return graph_queue;
+	case ENUM_QUEUE_TYPE::COMPUTE:
+		return compute_queue == nullptr? graph_queue : compute_queue;
+	case ENUM_QUEUE_TYPE::TRANSFER:
+		return transfer_queue==nullptr? graph_queue : transfer_queue;
+	case ENUM_QUEUE_TYPE::PRESENT:
+		return present_queue == nullptr ? graph_queue : present_queue;
+	default:
+		return nullptr;
+	}
+	return nullptr;
+}
+
 CONST OptionalVulkanDeviceExtensions& VK_Device::GetOptionalExtensions() CONST
 {
 	return extensions;
@@ -168,7 +206,7 @@ void VK_Device::CreatePresentQueue(VkSurfaceKHR surface)
 			return present_support;
 		};
 
-		CHECK_WITH_LOG(check_and_create_queue(graph_queue) || check_and_create_queue(compute_queue)||check_and_create_queue(transfer_queue),
+		CHECK_WITH_LOG(!(check_and_create_queue(graph_queue) || check_and_create_queue(compute_queue)||check_and_create_queue(transfer_queue)),
 						"RHI Error: failed to create present queue!")
 	}
 }
@@ -242,12 +280,56 @@ void VK_Device::Destroy()
 		delete command_buffer_manager;
 		command_buffer_manager=nullptr;
 	}
-
+	if (staging_buffer_manager)
+	{
+		delete staging_buffer_manager;
+		staging_buffer_manager=nullptr;
+	}
+	if (render_pass_manager)
+	{
+		delete render_pass_manager;
+		render_pass_manager=nullptr;
+	}
+	if (pipeline_state_manager)
+	{
+		delete pipeline_state_manager;
+		pipeline_state_manager=nullptr;
+	}
+	if (frame_buffer_manager)
+	{
+		delete frame_buffer_manager;
+		frame_buffer_manager=nullptr;
+	}
+	if (descriptset_allocator)
+	{
+		delete descriptset_allocator;
+		descriptset_allocator=nullptr;
+	}
 	if (device)
 	{
 		vkDestroyDevice(device, VULKAN_CPU_ALLOCATOR);
 		device=VK_NULL_HANDLE;
 	}	
+}
+
+VK_RenderPassManager* VK_Device::GetRenderPassManager()
+{
+	return render_pass_manager;
+}
+
+VK_PipelineStateManager* VK_Device::GetPipelineStateManager()
+{
+	return pipeline_state_manager;
+}
+
+VK_FrameBufferManager* VK_Device::GetFrameBufferManager()
+{
+	return frame_buffer_manager;
+}
+
+VK_DescriptsetAllocator* VK_Device::GetDescriptsetAllocator()
+{
+	return descriptset_allocator;
 }
 
 MYRENDERER_END_NAMESPACE

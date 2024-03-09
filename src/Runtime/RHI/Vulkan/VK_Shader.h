@@ -2,8 +2,9 @@
 
 #ifndef _VK_SHADER_
 #define _VK_SHADER_
-#include "../Shader.h"
+#include "RHI/RenderShader.h"
 #include "VK_Device.h"
+#include "VK_Define.h"
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -12,59 +13,95 @@ MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 class VK_Device;
 
-MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Shader, public Shader)
+MYRENDERER_BEGIN_STRUCT(DescriptorSetLayoutData)
+UInt8 set_number;
+VkDescriptorSetLayoutCreateInfo create_info;
+Vector<VkDescriptorSetLayoutBinding> bindings;
+MYRENDERER_END_STRUCT
 
-struct ReflectionOverrides;
+MYRENDERER_BEGIN_STRUCT(ReflectedBinding)
+public:
+	UInt8 set;
+	UInt8 binding;
+	VkDescriptorType type;
+MYRENDERER_END_STRUCT
 
+MYRENDERER_BEGIN_STRUCT(ReflectedConstantInfo)
+String name;
+VkPushConstantRange constant;
+MYRENDERER_END_STRUCT
+
+MYRENDERER_BEGIN_STRUCT(ReflectedInfo)
+Map<String, ReflectedBinding> bindings;
+Vector<DescriptorSetLayoutData> setlayouts;
+Vector<ReflectedConstantInfo> constant_ranges;
+ReflectedInfo() DEFAULT;
+ReflectedInfo( CONST Vector<DescriptorSetLayoutData>& in_setlayouts, CONST Vector<ReflectedConstantInfo>& in_constant_ranges) :
+	 setlayouts(in_setlayouts), constant_ranges(in_constant_ranges) {}
+ReflectedInfo(CONST ReflectedInfo& in_reflect) :
+	 setlayouts(in_reflect.setlayouts), constant_ranges(in_reflect.constant_ranges) {}
+MYRENDERER_END_STRUCT
+
+
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_ShaderResourceBinding, public ShaderResourceBinding)
+friend class VK_PipelineState;
 #pragma region METHOD
 public:
-	VK_Shader(VK_Device* in_device,Vector<ShaderData>& in_shader_data);
+	VK_ShaderResourceBinding(VK_Device* in_device,Map<String, ReflectedBinding>& in_bindings) ;
 
-	VkPipelineLayout METHOD(get_built_layout)();
-
-	void METHOD(fill_stages)(Vector<VkPipelineShaderStageCreateInfo>& pipeline_stages);
-	void METHOD(reflect_layout)(ReflectionOverrides* overrides, int override_count);
-	void METHOD(build_sets)(VkDevice device, VkDescriptorPool descript_pool);
-	void METHOD(destroy)();
-	VIRTUAL ~VK_Shader();
-
+	VIRTUAL ~VK_ShaderResourceBinding();
+	CONST VkDescriptorSet* METHOD(GetDescriptorSets)() CONST;
+	VIRTUAL void METHOD(SetResource)(CONST String& name, CONST RenderResource* resource) OVERRIDE FINAL;
 protected:
 
 private:
-	Vector<UInt32> METHOD(read_file)(CONST String& filename);
-	VkShaderModule METHOD(create_shader_module)(CONST Vector<UInt32>& code);
-	std::tuple<VkDeviceSize, VkBuffer, VkDeviceMemory>& getUniformTuple(CONST String& name);
+
+#pragma endregion
+
+#pragma region MEMBER
+public:
+protected:
+	Array<VkDescriptorSet, MYRENDER_MAX_BINDING_SET_NUM> descriptorset{ VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE };
+	Map<String, ReflectedBinding>& bindings;
+	VK_Device* device;
+private:
+
+#pragma endregion
+
+MYRENDERER_END_CLASS
+
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Shader, public Shader)
+
+
+#pragma region METHOD
+public:
+	VK_Shader(VK_Device* in_device, CONST ShaderDesc& desc, CONST ShaderDataPayload& data);
+
+	void METHOD(Destroy)();
+	VIRTUAL ~VK_Shader();
+	VkPipelineLayout METHOD(GetBuiltLayout)();
+	VkShaderModule METHOD(GetShaderModule)() CONST;
+	ReflectedInfo& METHOD(GetReflectedInfo)();
+protected:
+	Vector<UInt32> METHOD(ReadFile)(CONST String& filename);
+	VkShaderModule METHOD(CreateShaderModule)(CONST Vector<UInt32>& code);
+	void METHOD(ReflectBindings)(CONST Vector<ShaderDataPayload::ShaderBindingOverrides>& shader_binding_overrides);
+private:
+
 #pragma endregion
 
 
 #pragma region MEMBER
 public:
-	struct ReflectionOverrides {
-		CONST Char* name;
-		VkDescriptorType override_type;
-	};
-	struct DescriptorSetLayoutData {
-		UInt32 set_number;
-		VkDescriptorSetLayoutCreateInfo create_info;
-		Vector<VkDescriptorSetLayoutBinding> bindings;
-	};
-	struct ReflectedBinding {
-		UInt32 set;
-		UInt32 binding;
-		VkDescriptorType type;
-	};
+
 protected:
-	// ≥Ã–ÚID
-	UInt32 id;
+
 	VK_Device* device;
-	mutable Map<String, std::tuple<VkDeviceSize, VkBuffer, VkDeviceMemory>> uniform_map;
-	Map<String, ReflectedBinding> bindings;
-	Array<VkDescriptorSetLayout, 4> set_layouts{ VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE };
-	Array<UInt32, 4> set_hashes;
-	Array<VkDescriptorSet, 4> sets;
-	VkPipelineLayout built_layout = VK_NULL_HANDLE;
-	VkShaderModule shader_modules[ENUM_SHADER_STAGE::NumStages]{ VK_NULL_HANDLE };
-	Vector<UInt32> shader_codes[ENUM_SHADER_STAGE::NumStages];
+
+	ReflectedInfo reflect_info;
+
+	VkShaderModule shader_modules= VK_NULL_HANDLE ;
+	Vector<UInt32> shader_codes;
 
 private:
 #pragma endregion

@@ -4,7 +4,7 @@
 #define _VK_PLATFORM_
 
 #include "vulkan/vulkan_core.h"
-#include "../../Core/ConstDefine.h"
+#include "Core/ConstDefine.h"
 
 
 

@@ -1,95 +1,106 @@
-set_arch("x64")
-
 add_requires("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","rttr","lz4","nlohmann_json","gli","optick","boost","flatbuffers")
 add_requires("imgui v1.88-docking", {configs = {glfw_vulkan = true}})
-add_rules("mode.debug", "mode.release")
+add_rules("mode.debug", "mode.release", "mode.releasedbg")
 add_rules("plugin.vsxmake.autoupdate")
 
+rule("module")
+    on_load(function (target)
+        if is_mode("debug") then
+            target:set("kind", "static")
+        elseif is_mode("release", "releasedbg") then
+            target:set("kind", "shared")
+            if is_plat("windows") then
+                import("core.project.rule")
+                local rule = rule.rule("utils.symbols.export_all")
+                target:rule_add(rule)
+                target:extraconf_set("rules", "utils.symbols.export_all", {export_classes = true})
+            end
+        else
+            assert(false, "Unknown build kind")
+        end
+    end)
+rule_end()
 
-    
+
+function CommonLibrarySetting()
+    set_languages("c++20")  
+    add_headerfiles("src/Runtime/**.h")
+    add_files("src/Runtime/**.cpp")
+    add_headerfiles("src/ThirdParty/**.h")
+    add_files("src/ThirdParty/**.cpp")
+    add_files("src/ThirdParty/**.c")
+    add_includedirs("src/Runtime")
+    add_includedirs("src/ThirdParty")
+    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr","lz4","nlohmann_json","gli","optick","boost","flatbuffers")
+end
 
 target("Runtime")
-    set_kind("static")
-    set_languages("c++20")  
+    add_rules("module")
+    CommonLibrarySetting()
+
+
+function CompileShader(target)
+    os.run("$(projectdir)/resource/Shader/compile-glslangValidator.bat")
+end
+
+function MoveResource(target)
+    local root_taget_path = "$(buildir)"
+    if is_plat("windows") then
+        root_taget_path = root_taget_path .. "/windows"
+    end
+    if is_arch("x64") then
+        root_taget_path = root_taget_path .. "/x64"
+    end
+    if is_mode("release") then
+        root_taget_path = root_taget_path .. "/release"
+    elseif is_mode("debug") then
+        root_taget_path = root_taget_path .. "/debug"
+    elseif is_mode("releasedbg") then
+        root_taget_path = root_taget_path .. "/releasedbg"
+    end
+    local root_taget_shader_path = root_taget_path .. "/Shader"
+    local root_taget_lib_path = root_taget_path
+    os.cp("$(projectdir)/resource/Shader", root_taget_shader_path)
+    os.cp("$(projectdir)/libs/*", root_taget_lib_path)
     
-    --add_headerfiles("src/ThirdParty/spv_reflect/*.h") 
-    --add_headerfiles("src/ThirdParty/spv_reflect/include/spirv/unified1/*.h") 
-    add_headerfiles("src/**.h")
-    add_files("src/**.cpp")
-    add_files("src/**.c")
-    --[[
-    add_files("src/Runtime/Mesh/*.cpp") 
-    add_files("src/Runtime/RHI/OpenGL/*.cpp") 
-    add_files("src/Runtime/RHI/Vulkan/*.cpp") 
-    add_files("src/Runtime/RHI/*.cpp") 
-    add_files("src/Runtime/Utils/*.cpp") 
-    add_files("src/Runtime/Render/*.cpp") 
-    add_files("src/Runtime/Render/Pass/*.cpp") 
-    add_files("src/Runtime/Logic/*.cpp") 
-    add_files("src/Runtime/Logic/Component/*.cpp") 
-    add_files("src/Runtime/Rttr/*.cpp") 
-    add_files("src/Runtime/UI/*.cpp") 
-    add_files("src/Runtime/Logic/Camera/*.cpp") 
-    add_files("src/Runtime/Logic/Input/*.cpp") 
-    add_files("src/Runtime/AssetLoader/*.cpp") 
-    add_headerfiles("src/Runtime/AssetLoader/*.h") 
-    add_headerfiles("src/Runtime/Logic/Input/*.h") 
-    add_headerfiles("src/Runtime/Logic/Camera/*.h") 
-    add_headerfiles("src/Runtime/UI/*.h") 
-    add_headerfiles("src/Runtime/Rttr/*.h") 
-    add_headerfiles("src/Runtime/Logic/Component/*.h") 
-    add_headerfiles("src/Runtime/Logic/*.h") 
-    add_headerfiles("src/Runtime/Render/*.h") 
-    add_headerfiles("src/Runtime/Render/Pass/*.h")  
-    add_headerfiles("src/Runtime/Mesh/*.h") 
-    add_headerfiles("src/Runtime/RHI/OpenGL/*.h") 
-    add_headerfiles("src/Runtime/RHI/Vulkan/*.h") 
-    add_headerfiles("src/Runtime/RHI/*.h") 
-    add_headerfiles("src/Runtime/Utils/*.h") 
-    add_files("src/ThirdParty/spv_reflect/*.c") 
-    add_headerfiles("src/ThirdParty/stb_image/*.h") 
-    add_headerfiles("src/ThirdParty/spv_reflect/*.h") 
-    add_headerfiles("src/ThirdParty/spv_reflect/include/spirv/unified1/*.h") 
-    add_headerfiles("src/ThirdParty/vma/*.h") 
-    --add_headerfiles("src/ThirdParty/imgui/*.h") 
-    --add_files("src/ThirdParty/imgui/*.cpp")
-    --add_headerfiles("src/ThirdParty/imgui/backends/*.h")
-    --add_files("src/ThirdParty/imgui/backends/*.cpp")
-    --]]
-    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr","lz4","nlohmann_json","gli","optick","boost","flatbuffers")
-    
+end
 
-
-
-target("Renderer")
-
+function CommonProjectSetting()
     set_kind("binary")  
     set_languages("c++20")  
     add_deps("Runtime")
+    add_includedirs("src/Runtime")
+    add_includedirs("src/ThirdParty")
+    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","boost","rttr")
+end
 
-    add_files("src/*.cpp") 
+target("Renderer")
+    CommonProjectSetting()
+    add_files("src/RendererApp.cpp") 
+    before_build(CompileShader)
+    before_build(MoveResource)
 
-    add_packages("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","imgui","rttr")
-
-    before_build(function (target)
-        os.run("$(projectdir)/src/Runtime/Render/Shader/compile-glslangValidator.bat")
-    end)
-
-    after_build(function (target)
-        os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)")
-        os.cp("$(projectdir)/src/Resource", "$(buildir)")
-        os.cp("$(projectdir)/src/Setting", "$(buildir)")
-    end)
-
-    after_build(
-        function (target)
-            os.cp("$(projectdir)/src/Runtime/Render/Shader", "$(buildir)/windows/x64/debug")
-            os.cp("$(projectdir)/src/Resource", "$(buildir)/windows/x64/debug")
-            os.cp("$(projectdir)/src/Setting", "$(buildir)/windows/x64/debug")
-        end
-    )
+target("Editor")
+    CommonProjectSetting()
+    add_files("src/Editor/Editor.cpp") 
+    before_build(CompileShader)
+    before_build(MoveResource)
 
 
+target("RendererSample-HelloTriangle")
+    CommonProjectSetting()
+    add_files("src/Sample/1-HelloTriangle/HelloTriangle.cpp")
+    before_build(CompileShader)
+    before_build(MoveResource)
 
+target("RendererSample-Texture")
+    CommonProjectSetting()
+    add_files("src/Sample/2-Texture/Texture.cpp")
+    before_build(CompileShader)
+    before_build(MoveResource)
 
-    
+target("RendererSample-CubeMap")
+    CommonProjectSetting()
+    add_files("src/Sample/3-CubeMap/CubeMap.cpp")
+    before_build(CompileShader)
+    before_build(MoveResource)

@@ -3,9 +3,8 @@
 #define _VK_FENCE_
 #include <vulkan/vulkan_core.h>
 
-#include "../../Core/ConstDefine.h"
-#include "optick.h"
-#include "../RenderRource.h"
+#include "Core/ConstDefine.h"
+#include "RHI/RenderRource.h"
 
 
 
@@ -24,6 +23,7 @@ public:
     VkFence METHOD(GetFence)() CONST;
     VK_FenceManager* METHOD(GetOwner)() CONST;
     Bool METHOD(GetIsSignaled)() CONST;
+    void METHOD(ResetFence)();
 protected:
     
 private:
@@ -36,7 +36,7 @@ public:
 protected:
     VK_Device* device;
     VK_FenceManager* owner_fence_manager;
-    VkFence fence;
+    VkFence fence = VK_NULL_HANDLE;
 	enum class ENUM_Fence_State : UInt8
 	{
 		NotReady,
