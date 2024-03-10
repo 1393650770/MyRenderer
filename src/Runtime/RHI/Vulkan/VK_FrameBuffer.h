@@ -28,8 +28,8 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_FrameBuffer,public FrameBuffer)
 
 	protected:
         VK_Device* device;  
-        VkFramebuffer framebuffer;
-		VkRenderPass render_pass;
+        VkFramebuffer framebuffer = VK_NULL_HANDLE;
+		VkRenderPass render_pass = VK_NULL_HANDLE;
 	private:
 #pragma endregion
         
@@ -74,7 +74,7 @@ MYRENDERER_BEGIN_CLASS(VK_FrameBufferManager)
 		void          METHOD(OnDestroyImageView)(VkImageView image_view);
 		void          METHOD(OnDestroyRenderPass)(VkRenderPass render_pass);
 	protected:
-
+		void METHOD(Destroy)();
 	private:
 #pragma endregion
 

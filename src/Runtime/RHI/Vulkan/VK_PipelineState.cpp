@@ -12,7 +12,24 @@ MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 VK_PipelineState::~VK_PipelineState()
 {
-
+	if (pipeline != VK_NULL_HANDLE)
+	{
+		vkDestroyPipeline(device->GetDevice(), pipeline, nullptr);
+		pipeline = VK_NULL_HANDLE;
+	}
+	if (pipeline_layout != VK_NULL_HANDLE)
+	{
+		vkDestroyPipelineLayout(device->GetDevice(), pipeline_layout, nullptr);
+		pipeline_layout = VK_NULL_HANDLE;
+	}
+	for (auto& it : descriptorset_layouts)
+	{
+		if (it != VK_NULL_HANDLE)
+		{
+			vkDestroyDescriptorSetLayout(device->GetDevice(), it, nullptr);
+			it = VK_NULL_HANDLE;
+		}
+	}
 }
 
 VkPipeline VK_PipelineState::GetPipeline() CONST
@@ -331,6 +348,16 @@ VK_PipelineStateManager::VK_PipelineStateManager(VK_Device* in_device):device(in
 
 VK_PipelineStateManager::~VK_PipelineStateManager()
 {
+	if (pipeline_cache != VK_NULL_HANDLE)
+	{
+		vkDestroyPipelineCache(device->GetDevice(), pipeline_cache, nullptr);
+		pipeline_cache = VK_NULL_HANDLE;
+	}
+	for (auto& it : pipeline_states_map)
+	{
+		delete it.second;
+	}
+	pipeline_states_map.clear();
 
 }
 

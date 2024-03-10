@@ -1,3 +1,4 @@
+#if PLATFORM_WIN32
 #include "Platform/Platform.h"
 #include "RHI/Vulkan/VK_RenderRHI.h"
 
@@ -10,3 +11,4 @@ MXRender::RHI::RenderRHI* PlatformCreateDynamicRHI()
 
 	return pRHI;
 }
+#endif

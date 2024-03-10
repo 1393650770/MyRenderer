@@ -12,10 +12,14 @@ MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 VK_FrameBuffer::~VK_FrameBuffer()
 {
-
+	if (framebuffer != VK_NULL_HANDLE)
+	{
+		vkDestroyFramebuffer(device->GetDevice(), framebuffer, nullptr);
+		framebuffer = VK_NULL_HANDLE;
+	}
 }
 
-VK_FrameBuffer::VK_FrameBuffer(VK_Device* in_device, CONST FrameBufferDesc& in_desc, VkRenderPass in_render_pass) : FrameBuffer(in_desc), device(in_device)
+VK_FrameBuffer::VK_FrameBuffer(VK_Device* in_device, CONST FrameBufferDesc& in_desc, VkRenderPass in_render_pass) : FrameBuffer(in_desc), device(in_device), render_pass(in_render_pass)
 {
 	CHECK_WITH_LOG(in_render_pass == nullptr, "RHI Error : render pass is nullptr when to create framebuffer!");
 	VK_RenderPassManager* render_pass_manager = device->GetRenderPassManager();
@@ -48,7 +52,7 @@ VkFramebuffer VK_FrameBuffer::GetFramebuffer() CONST
 
 VK_FrameBufferManager::~VK_FrameBufferManager()
 {
-
+	Destroy();
 }
 
 VK_FrameBufferManager::VK_FrameBufferManager(VK_Device* in_device) : device(in_device)
@@ -95,6 +99,16 @@ void VK_FrameBufferManager::OnDestroyImageView(VkImageView image_view)
 
 void VK_FrameBufferManager::OnDestroyRenderPass(VkRenderPass render_pass)
 {
+
+}
+
+void VK_FrameBufferManager::Destroy()
+{
+	for (auto& it : framebuffer_cache)
+	{
+		delete it.second;
+	}
+	framebuffer_cache.clear();
 
 }
 

@@ -233,6 +233,7 @@ VK_DeviceMemoryAllocation* VK_DeviceMemoryManager::Alloc(VkDeviceSize allocation
     {
         MemoryBlockKey key(memory_type_index, allocation_size);
         MemoryBlock& block = memory_block_map[key];
+		block.key = key;
         if(block.allocations.size() > 0)
         {
             MemoryBlock::FreeBlock alloc = block.allocations.back();
@@ -302,13 +303,19 @@ VK_DeviceMemoryAllocation* VK_DeviceMemoryManager::Alloc(VkDeviceSize allocation
 
 void VK_DeviceMemoryManager::Free(VK_DeviceMemoryAllocation*& allocation)
 {
-    VkDeviceSize allocation_size = allocation->size;
-    MemoryBlockKey key(allocation->property.memory_type_index, allocation_size );
-    MemoryBlock block = memory_block_map[key];
-    MemoryBlock::FreeBlock free_block = {allocation, g_frame_number_render_thread};
-    block.allocations.push_back(free_block);
-    
+	if (allocation && allocation->property.is_dedicated_memory == false)
+	{
+		VkDeviceSize allocation_size = allocation->size;
+		MemoryBlockKey key(allocation->property.memory_type_index, allocation_size);
+
+		MemoryBlock& block = memory_block_map[key];
+		block.key = key;
+		MemoryBlock::FreeBlock free_block = { allocation, g_frame_number_render_thread };
+		block.allocations.push_back(free_block);
+		return;
+	}
 	FreeInternal(allocation);
+	
 }
 
 
@@ -386,7 +393,10 @@ void VK_DeviceMemoryManager::TrimMemory(Bool is_full_trim)
 {
 /*
 
-这个函数是Vulkan渲染引擎的设备内存管理器的一个函数，用于在内存不足时释放一些内存。该函数首先对内存块进行遍历，对于每个内存块，它会计算出一个部分释放的阈值，然后遍历该内存块中的每个分配块。如果一个分配块已经被保留超过一个指定的帧数（FrameThresholdFull），或者是要进行全面的内存释放（bFullTrim），那么该分配块将被释放，否则如果该分配块已经被保留超过部分释放的阈值（FrameThresholdPartial），则计数器AbovePartialThreshold将会增加。如果AbovePartialThreshold的数量超过了部分释放的阈值（ThresholdPartial），则会从该内存块中删除一些分配块，直到AbovePartialThreshold的数量等于部分释放的阈值，以释放一些内存。在释放一个分配块时，该函数将减少相应内存类型的计数器以及总内存计数器。该函数实现了在内存不足时释放内存的功能，并且考虑了内存块的大小和保留时间等因素，以优化内存释放的效率和性能。
+这个函数是Vulkan渲染引擎的设备内存管理器的一个函数，用于在内存不足时释放一些内存。该函数首先对内存块进行遍历，对于每个内存块，它会计算出一个部分释放的阈值，然后遍历该内存块中的每个分配块。
+如果一个分配块已经被保留超过一个指定的帧数（FrameThresholdFull），或者是要进行全面的内存释放（bFullTrim），那么该分配块将被释放，否则如果该分配块已经被保留超过部分释放的阈值（FrameThresholdPartial），
+则计数器AbovePartialThreshold将会增加。如果AbovePartialThreshold的数量超过了部分释放的阈值（ThresholdPartial），则会从该内存块中删除一些分配块，直到AbovePartialThreshold的数量等于部分释放的阈值，
+以释放一些内存。在释放一个分配块时，该函数将减少相应内存类型的计数器以及总内存计数器。该函数实现了在内存不足时释放内存的功能，并且考虑了内存块的大小和保留时间等因素，以优化内存释放的效率和性能。
 */
     //blocks are always freed after being reserved for FrameThresholdFull frames.
 	CONST UInt32 frame_threshold_full = 100;
@@ -1129,7 +1139,7 @@ void VK_MemoryManager::ReleaseFreedResources(Bool is_immediately)
 		heap->ReleasePage(buffer_allocation);
 	}
 
-	device_memory_manager->TrimMemory(is_immediately);
+	//device_memory_manager->TrimMemory(is_immediately);
 }
 
 VK_MemoryManager::~VK_MemoryManager()
@@ -1144,7 +1154,7 @@ VK_MemoryResourceFragmentAllocator::~VK_MemoryResourceFragmentAllocator()
 		UInt32 leak_count = 0;
 		for (VK_AllocationInternalInfo& data : internal_data)
 		{
-			CHECK_WITH_LOG(data.state == VK_AllocationInternalInfo::ENUM_VK_AllocationState::EALLOCATED,
+			CHECK_WITH_LOG_WARNING(data.state == VK_AllocationInternalInfo::ENUM_VK_AllocationState::EALLOCATED,
 				"RHI WARNING :VK_MemoryResourceFragmentAllocator::~VK_MemoryResourceFragmentAllocator dont release ! ")
 			leak_count++;
 		}

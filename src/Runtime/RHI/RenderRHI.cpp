@@ -16,6 +16,13 @@ void RHIInit()
 void RHIShutdown()
 {
 
+
+	if (g_render_rhi != nullptr)
+	{
+		g_render_rhi->Shutdown();
+		delete g_render_rhi;
+		g_render_rhi = nullptr;
+	}
 }
 
 MXRender::RHI::Viewport* RHICreateViewport(void* window_handle, Int width, Int height, Bool is_full_screen)
