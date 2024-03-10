@@ -78,7 +78,7 @@ public:
 	VK_Shader(VK_Device* in_device, CONST ShaderDesc& desc, CONST ShaderDataPayload& data);
 
 	void METHOD(Destroy)();
-	VIRTUAL ~VK_Shader();
+	VIRTUAL  ~VK_Shader();
 	VkPipelineLayout METHOD(GetBuiltLayout)();
 	VkShaderModule METHOD(GetShaderModule)() CONST;
 	ReflectedInfo& METHOD(GetReflectedInfo)();

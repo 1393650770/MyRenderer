@@ -181,6 +181,14 @@ void VK_SwapChain::Destroy(VK_SwapChainRecreateInfo* RecreateInfo)
 	}
 	swapchain = VK_NULL_HANDLE;
 	surface = VK_NULL_HANDLE;
+
+	for (Int i = 0; i < max_frames_in_flight; i++)
+	{
+		vkDestroySemaphore(device->GetDevice(), image_available_for_render_semaphore[i], nullptr);
+		image_available_for_render_semaphore[i] = VK_NULL_HANDLE;
+		vkDestroySemaphore(device->GetDevice(), image_finished_for_presentation_semaphore[i], nullptr);
+		image_finished_for_presentation_semaphore[i] = VK_NULL_HANDLE;
+	}
 }
 
 VkFormat VK_SwapChain::GetImageFormat() const
@@ -213,10 +221,6 @@ void VK_SwapChain::CreateSyncObjects()
 	VkSemaphoreCreateInfo semaphoreInfo{};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	semaphoreInfo.pNext= nullptr;
-	VkFenceCreateInfo fenceInfo{};
-	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-	fenceInfo.pNext = nullptr;
 	for (Int i = 0; i < max_frames_in_flight; i++) 
 	{
 		CHECK_WITH_LOG (vkCreateSemaphore(device->GetDevice(), &semaphoreInfo, nullptr, &image_available_for_render_semaphore[i]) != VK_SUCCESS ||

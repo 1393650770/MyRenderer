@@ -617,4 +617,17 @@ MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 
+namespace std
+{
+	template<>
+	struct hash<MXRender::RHI::Vulkan::MemoryBlockKey>
+	{
+		size_t operator()(CONST MXRender::RHI::Vulkan::MemoryBlockKey& p) CONST
+		{
+			return p.operator()(p);
+		}
+	};
+   
+}
+
 #endif

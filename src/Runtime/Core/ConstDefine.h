@@ -76,7 +76,11 @@
                                     boost::stacktrace::stacktrace stack_trace;\
                                    	throw std::runtime_error(String(LOG)+"\n"+boost::stacktrace::to_string(stack_trace)); \
                                 }
-
+#define CHECK_WITH_LOG_WARNING(Flag,LOG) if(Flag) \
+                                {\
+                                    boost::stacktrace::stacktrace stack_trace;\
+                                   	std::cout<< String(LOG)+"\n"+boost::stacktrace::to_string(stack_trace) <<std::endl; \
+                                }
 #define VIRTUAL      virtual
 #define CONST        const
 #define DEFAULT      =default

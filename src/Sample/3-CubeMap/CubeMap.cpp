@@ -126,6 +126,8 @@ void RenderTest::BeginRender()
 		texture_desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
 		texture_desc.resource_state = ENUM_RESOURCE_STATE::ShaderResource;
 		data.cube_map = RHICreateTexture(texture_desc);
+		delete vs_shader;
+		delete ps_shader;
 	},
 	[=](CONST TestData& data, CommandList* in_cmd_list)
 	{

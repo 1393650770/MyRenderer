@@ -13,6 +13,7 @@
 #include "VK_PipelineState.h"
 #include "VK_CommandBuffer.h"
 #include "VK_Queue.h"
+#include "vulkan/vulkan_core.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -53,7 +54,42 @@ void VulkanRHI::PostInit()
 void VulkanRHI::Shutdown()
 {
 
+	if (viewports.size() > 0)
+	{
+		for (auto& viewport : viewports)
+		{
+			delete viewport;
+		}
+		viewports.clear();
+	}
+	if (defered_command_buffers.size() > 0)
+	{
+		for (auto& command_buffer : defered_command_buffers)
+		{
+			delete command_buffer;
+		}
+		defered_command_buffers.clear();
+	}
+	if (debug_messenger != VK_NULL_HANDLE)
+	{
+		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+		if (func != nullptr) {
+			func(instance, debug_messenger, nullptr);
+		}
+		debug_messenger = VK_NULL_HANDLE;
+	}
+	if (device != nullptr)
+	{
+		delete device;
+		device = nullptr;
+	}
+	if (instance != VK_NULL_HANDLE)
+	{
+		vkDestroyInstance(instance, nullptr);
+		instance = VK_NULL_HANDLE;
+	}
 }
+
 
 Buffer* VulkanRHI::CreateBuffer(const BufferDesc& buffer_desc)
 {

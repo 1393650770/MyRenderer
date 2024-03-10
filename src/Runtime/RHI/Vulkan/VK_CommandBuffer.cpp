@@ -106,6 +106,11 @@ VK_CommandBuffer::~VK_CommandBuffer()
 		UInt64 wait_seconds = 33 * 1000 * 1000LL;
 		device->GetFenceManager()->WaitForFence(fence, wait_seconds);
 	}
+	if (fence)
+	{
+		device->GetFenceManager()->FreeFence(fence);
+		fence=nullptr;
+	}
 	if(command_buffer!=VK_NULL_HANDLE)
 	{ 
 		Free();
@@ -468,9 +473,9 @@ VK_CommandBufferManager::VK_CommandBufferManager(VK_Device* in_device):device(in
 	transfer_cmd_pools.emplace_back(in_device, *this);
 	transfer_cmd_pools[0].Init(in_device->GetQueueFamilyIndices().transfer_family.value());
 
-	graphic_cmd_buffers.push_back(std::move(graphic_cmd_pools[0].GetOrCreateCommandBuffer(false)));
-	compute_cmd_buffers.push_back(std::move(compute_cmd_pools[0].GetOrCreateCommandBuffer(false)));
-	transfer_cmd_buffers.push_back(std::move(transfer_cmd_pools[0].GetOrCreateCommandBuffer(false)));
+	//graphic_cmd_buffers.push_back(std::move(graphic_cmd_pools[0].GetOrCreateCommandBuffer(false)));
+	//compute_cmd_buffers.push_back(std::move(compute_cmd_pools[0].GetOrCreateCommandBuffer(false)));
+	//transfer_cmd_buffers.push_back(std::move(transfer_cmd_pools[0].GetOrCreateCommandBuffer(false)));
 
 }
 

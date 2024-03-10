@@ -66,9 +66,9 @@ protected:
 	VK_Device* device;
 	VkDeviceSize imageSize;
 
-	VkImage texture_image;
-	VkImageView texture_image_view;
-	VkSampler texture_sampler;
+	VkImage texture_image = VK_NULL_HANDLE;
+	VkImageView texture_image_view = VK_NULL_HANDLE;
+	VkSampler texture_sampler = VK_NULL_HANDLE;
 
 	VkImageLayout texture_image_layout;
 

@@ -36,8 +36,6 @@ VkShaderModule VK_Shader::CreateShaderModule(CONST Vector<UInt32>& code)
 VK_Shader::VK_Shader(VK_Device* in_device, CONST ShaderDesc& desc, CONST ShaderDataPayload& data) :Shader(desc,data)
 {
 	device = in_device;
-
-
 	shader_codes = data.data;
 	shader_modules = CreateShaderModule(shader_codes);
 	ReflectBindings(data.shader_binding_overrides);
@@ -45,7 +43,6 @@ VK_Shader::VK_Shader(VK_Device* in_device, CONST ShaderDesc& desc, CONST ShaderD
 
 void VK_Shader::Destroy()
 {
-
 	if (shader_modules != VK_NULL_HANDLE)
 	{
 		vkDestroyShaderModule(device->GetDevice(), shader_modules, nullptr);

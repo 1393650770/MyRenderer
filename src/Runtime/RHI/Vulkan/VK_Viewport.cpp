@@ -162,7 +162,6 @@ void VK_Viewport::CreateSwapChain(VK_SwapChainRecreateInfo* recreate_info)
 	rtv_desc.format = common_pixel_format;
 	rtv_desc.type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
 	rtv_desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_COLOR_ATTACHMENT;
-	
 	for (Int i = 0; i < images.size(); ++i)
 	{
 		back_buffer_rtvs[i] = new VK_Texture(device, texture_views[i], rtv_desc);
@@ -185,14 +184,24 @@ VK_Viewport::~VK_Viewport()
 {
 	if (swap_chain)
 	{
-		swap_chain->Destroy(nullptr);
 		delete swap_chain;
 		swap_chain = nullptr;
 	}
+	for (Int i = 0; i < 2; i++)
+	{
+		vkDestroySemaphore(device->GetDevice(), sumit_signal_semaphore[i], nullptr);
+		sumit_signal_semaphore[i] = VK_NULL_HANDLE;
+	}
+	for (Int i = 0; i < texture_views.size(); ++i)
+	{
+		texture_views[i].Destroy(*device);
+	}
+	/*
 	for (Int i = 0; i < back_buffer_rtvs.size(); ++i)
 	{
 		delete back_buffer_rtvs[i];
 	}
+	*/
 	if (back_buffer_dsv)
 	{
 		delete back_buffer_dsv;

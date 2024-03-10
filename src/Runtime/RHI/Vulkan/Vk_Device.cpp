@@ -260,20 +260,15 @@ void VK_Device::Destroy()
 		delete present_queue;
 		present_queue=nullptr;
 	}
-	if (fence_manager)
+	if (memory_manager)
 	{
-		delete fence_manager;
-		fence_manager=nullptr;
+		delete memory_manager;
+		memory_manager = nullptr;
 	}
 	if (device_memory_manager)
 	{
 		delete device_memory_manager;
-		device_memory_manager=nullptr;
-	}
-	if (memory_manager)
-	{
-		delete memory_manager;
-		memory_manager=nullptr;
+		device_memory_manager = nullptr;
 	}
 	if (command_buffer_manager)
 	{
@@ -284,6 +279,11 @@ void VK_Device::Destroy()
 	{
 		delete staging_buffer_manager;
 		staging_buffer_manager=nullptr;
+	}
+	if (fence_manager)
+	{
+		delete fence_manager;
+		fence_manager = nullptr;
 	}
 	if (render_pass_manager)
 	{

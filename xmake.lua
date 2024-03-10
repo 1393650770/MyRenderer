@@ -24,6 +24,7 @@ rule_end()
 
 function CommonLibrarySetting()
     set_languages("c++20")  
+    add_defines("PLATFORM_WIN32")
     add_headerfiles("src/Runtime/**.h")
     add_files("src/Runtime/**.cpp")
     add_headerfiles("src/ThirdParty/**.h")

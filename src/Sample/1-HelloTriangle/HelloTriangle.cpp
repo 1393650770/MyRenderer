@@ -10,6 +10,8 @@
 #include "RHI/RenderCommandList.h"
 #include "RHI/Vulkan/VK_Viewport.h"
 #include "RHI/RenderTexture.h"
+#include "RHI/RenderShader.h"
+#include "RHI/RenderPipelineState.h"
 using namespace MXRender::RHI;
 using namespace MXRender::Render;
 using namespace MXRender::Application;
@@ -63,18 +65,21 @@ protected:
 private:
 
 #pragma endregion
-
+	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
 MYRENDERER_END_CLASS
 
 void RenderTest::BeginRender()
 {
-	std::cout << "Hello Triangle" << std::endl;
+	std::cout << "Hello Texture" << std::endl;
 
 	struct TestData
 	{
-	    Viewport* viewport;
-		RenderPipelineState* pipeline_state;
-		Texture* output;
+		Buffer* vertex_buffer = nullptr;
+		Buffer* index_buffer = nullptr;
+	    Viewport* viewport=nullptr;
+		RenderPipelineState* pipeline_state = nullptr;
+		ShaderResourceBinding* srb = nullptr;
+		Texture* output = nullptr;
 	};
 	RenderPassDesc renderpass_desc;
 	CommandList* cmd_list = RHIGetImmediateCommandList();
@@ -86,14 +91,17 @@ void RenderTest::BeginRender()
 		ShaderDesc shader_desc;
 		ShaderDataPayload shader_data;
 		RenderGraphiPipelineStateDesc pipeline_state_desc;
+
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Vertex;
 		shader_desc.shader_name = "TestVS";
 		shader_data.data = ReadShader("Shader/vert.spv");
-		ps_shader = RHICreateShader(shader_desc,shader_data);
+		vs_shader = RHICreateShader(shader_desc,shader_data);
+
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Pixel;
 		shader_desc.shader_name = "TestPS";
 		shader_data.data = ReadShader("Shader/frag.spv");
-		vs_shader = RHICreateShader(shader_desc, shader_data);
+		ps_shader = RHICreateShader(shader_desc, shader_data);
+
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] =vs_shader;
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Pixel] = ps_shader;
 		pipeline_state_desc.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
@@ -105,10 +113,15 @@ void RenderTest::BeginRender()
 		pipeline_state_desc.depth_stencil_view = dsv;
 		pipeline_state_desc.raster_state.sample_count = 1;
 		pipeline_state_desc.blend_state.render_targets.resize(rtvs.size());
+
 		data.pipeline_state = RHICreateRenderPipelineState(pipeline_state_desc);
+		data.pipeline_state->CreateShaderResourceBinding(data.srb);
+		delete vs_shader;
+		delete ps_shader;
 	},
 	[=](CONST TestData& data, CommandList* in_cmd_list)
 	{
+
 		Vector<ClearValue> clear_values;
 		Vector<Texture*> rtvs;
 		Texture* dsv;
@@ -122,6 +135,7 @@ void RenderTest::BeginRender()
 			clear_values.push_back(dsv->GetTextureDesc().clear_value);
 		in_cmd_list->SetRenderTarget(rtvs, dsv, clear_values, dsv != nullptr);
 		in_cmd_list->SetGraphicsPipeline(data.pipeline_state);
+		in_cmd_list->SetShaderResourceBinding(data.srb);
 		DrawAttribute draw_attr;
 		draw_attr.vertexCount = 3;
 		draw_attr.instanceCount = 1;

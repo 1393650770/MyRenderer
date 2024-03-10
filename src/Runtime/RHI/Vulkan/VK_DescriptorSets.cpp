@@ -13,12 +13,23 @@ MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 VK_DescriptorPoolManager::~VK_DescriptorPoolManager()
 {
-	
+	ResetDescriptPool(0);
+	for (auto p : used_pools)
+	{
+		vkDestroyDescriptorPool(device->GetDevice(), p, nullptr);
+	}
+	used_pools.clear();
+	for (auto p : free_pools)
+	{
+		vkDestroyDescriptorPool(device->GetDevice(), p, nullptr);
+	}
+	free_pools.clear();
+
 }
 
 VK_DescriptorPoolManager::VK_DescriptorPoolManager(VK_Device* in_device, UInt32 in_max_descriptorsets) : device(in_device), max_descriptorsets(in_max_descriptorsets)
 {
-	descriptor_pool = CreatePool();
+	descriptor_pool = GrabPool();
 }
 
 VkDescriptorPool VK_DescriptorPoolManager::CreatePool()
@@ -95,8 +106,9 @@ VkDescriptorPool VK_DescriptorPoolManager::GrabPool()
 		free_pools.pop_back();
 		return pool;
 	}
-
-	return CreatePool();
+	VkDescriptorPool pool = CreatePool();
+	used_pools.push_back(pool);
+	return pool;
 	
 }
 
@@ -115,7 +127,6 @@ Bool VK_DescriptorPoolManager::AllocateDescriptorset(VkDescriptorSetLayout layou
 	if (descriptor_pool == VK_NULL_HANDLE)
 	{
 		descriptor_pool = GrabPool();
-		used_pools.push_back(descriptor_pool);
 	}
 
 	VkDescriptorSetAllocateInfo descriptor_set_allocateInfo;
@@ -150,7 +161,6 @@ Bool VK_DescriptorPoolManager::AllocateDescriptorset(VkDescriptorSetLayout layou
 	{
 		//allocate a new pool and retry
 		descriptor_pool = GrabPool();
-		used_pools.push_back(descriptor_pool);
 
 		alloc_result = vkAllocateDescriptorSets(device->GetDevice(), &descriptor_set_allocateInfo, &out_set);
 
@@ -168,7 +178,6 @@ Bool VK_DescriptorPoolManager::AllocateDescriptorsets(CONST VkDescriptorSetAlloc
 	if (descriptor_pool == VK_NULL_HANDLE)
 	{
 		descriptor_pool = GrabPool();
-		used_pools.push_back(descriptor_pool);
 	}
 
 	VkDescriptorSetAllocateInfo descriptor_set_allocateInfo = in_descriptorset_allocate_info;
@@ -197,7 +206,6 @@ Bool VK_DescriptorPoolManager::AllocateDescriptorsets(CONST VkDescriptorSetAlloc
 	{
 		//allocate a new pool and retry
 		descriptor_pool = GrabPool();
-		used_pools.push_back(descriptor_pool);
 
 		alloc_result = vkAllocateDescriptorSets(device->GetDevice(), &descriptor_set_allocateInfo, &out_sets);
 

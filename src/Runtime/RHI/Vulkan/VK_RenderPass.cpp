@@ -188,7 +188,7 @@ VK_RenderPassManager::VK_RenderPassManager(VK_Device* in_device) : device(in_dev
 
 VK_RenderPassManager::~VK_RenderPassManager()
 {
-
+	Destroy();
 }
 
 VK_RenderPass* VK_RenderPassManager::GetRenderPass(CONST RenderPassDesc& desc)
@@ -252,7 +252,12 @@ VK_RenderPass* VK_RenderPassManager::GetRenderPass(CONST RenderPassCacheKey& key
 
 void VK_RenderPassManager::Destroy()
 {
-
+	for (auto it = render_pass_cache.begin(); it != render_pass_cache.end(); ++it)
+	{
+		it->second->Destroy();
+		delete it->second;
+	}
+	render_pass_cache.clear();
 }
 
 
@@ -316,12 +321,16 @@ VkRenderPass VK_RenderPass::GetRenderPass() CONST
 
 VK_RenderPass::~VK_RenderPass()
 {
-
+	Destroy();
 }
 
 void VK_RenderPass::Destroy()
 {
-
+	if (render_pass != VK_NULL_HANDLE)
+	{
+		vkDestroyRenderPass(device->GetDevice(), render_pass, nullptr);
+		render_pass = VK_NULL_HANDLE;
+	}
 }
 
 MYRENDERER_END_NAMESPACE

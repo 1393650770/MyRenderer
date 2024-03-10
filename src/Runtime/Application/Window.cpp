@@ -55,6 +55,10 @@ void Window::Run(RenderInterface* render)
         glfwSwapBuffers(window);
     }
 	render->EndRender();
+
+	delete viewport;
+	viewport = nullptr;
+	RHIShutdown();
 }
 
 GLFWwindow* Window::GetWindow() CONST

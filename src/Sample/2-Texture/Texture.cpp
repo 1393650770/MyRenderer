@@ -95,12 +95,12 @@ void RenderTest::BeginRender()
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Vertex;
 		shader_desc.shader_name = "TestVS";
 		shader_data.data = ReadShader("Shader/vert.spv");
-		ps_shader = RHICreateShader(shader_desc,shader_data);
+		vs_shader = RHICreateShader(shader_desc,shader_data);
 
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Pixel;
 		shader_desc.shader_name = "TestPS";
 		shader_data.data = ReadShader("Shader/frag.spv");
-		vs_shader = RHICreateShader(shader_desc, shader_data);
+		ps_shader = RHICreateShader(shader_desc, shader_data);
 
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] =vs_shader;
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Pixel] = ps_shader;
@@ -116,7 +116,8 @@ void RenderTest::BeginRender()
 
 		data.pipeline_state = RHICreateRenderPipelineState(pipeline_state_desc);
 		data.pipeline_state->CreateShaderResourceBinding(data.srb);
-		
+		delete vs_shader;
+		delete ps_shader;
 	},
 	[=](CONST TestData& data, CommandList* in_cmd_list)
 	{

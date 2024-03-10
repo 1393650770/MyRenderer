@@ -21,6 +21,11 @@ VK_Fence::VK_Fence(VK_Device* in_device, VK_FenceManager* in_fence_manager, bool
 
 VK_Fence::~VK_Fence()
 {
+	if (fence != VK_NULL_HANDLE)
+	{
+		vkDestroyFence(device->GetDevice(), fence, VULKAN_CPU_ALLOCATOR);
+		fence = VK_NULL_HANDLE;
+	}
 }
 
 VkFence VK_Fence::GetFence() const
@@ -49,6 +54,7 @@ VK_FenceManager::VK_FenceManager(VK_Device* in_device): device(in_device)
 
 VK_FenceManager::~VK_FenceManager()
 {
+	DestroyManagerResource();
 }
 
 VK_Fence* VK_FenceManager::GetOrCreateFence()
@@ -80,6 +86,8 @@ void VK_FenceManager::DestroyManagerResource()
 
 void VK_FenceManager::FreeFence(VK_Fence*& fence)
 {
+	ResetFence(fence);
+	using_fences.erase(std::remove(using_fences.begin(),using_fences.end(),fence),using_fences.end());
 	vkDestroyFence(device->GetDevice(),fence->fence,VULKAN_CPU_ALLOCATOR);
 	fence->fence=VK_NULL_HANDLE;
 	delete fence;
