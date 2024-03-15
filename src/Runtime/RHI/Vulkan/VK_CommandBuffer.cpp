@@ -424,6 +424,7 @@ void VK_CommandBuffer::SetShaderResourceBinding(ShaderResourceBinding* srb)
 		if ( descriptor_sets[i] != VK_NULL_HANDLE)
 		{
 			state_cache.descriptor_sets = &(descriptor_sets[i]);
+			state_cache.descriptor_sets_count = std::max((UInt8)(i+1), state_cache.descriptor_sets_count);
 			break;
 		}
 	}
@@ -444,7 +445,7 @@ void VK_CommandBuffer::Draw(CONST DrawAttribute& draw_attr)
 	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.graphics_pipeline);
 	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 	if(state_cache.descriptor_sets != nullptr)
-		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.pipeline_layout, 0, MYRENDER_MAX_BINDING_SET_NUM, state_cache.descriptor_sets, 0, nullptr);
+		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.pipeline_layout, 0, state_cache.descriptor_sets_count, state_cache.descriptor_sets, 0, nullptr);
 	vkCmdDraw(command_buffer, draw_attr.vertexCount, draw_attr.instanceCount, draw_attr.firstVertex, draw_attr.firstInstance);
 }
 

@@ -23,7 +23,8 @@ device(in_device)
 	vkCreateBuffer(device->GetDevice(), &buffer_create_info, VULKAN_CPU_ALLOCATOR, &buffer);
 
 	device->GetMemoryManager()->AllocateBufferMemory(allocation, buffer, 
-		TranslateBufferTypeToVulkanAllocationFlags(buffer_desc.type), 0);
+		TranslateBufferTypeToVulkanAllocationFlags(buffer_desc.type));
+	allocation.BindBuffer(device,buffer);
 
 }
 
@@ -36,10 +37,13 @@ void VK_Buffer::GenerateBufferCreateInfo(VkBufferCreateInfo& buffer_create_info,
 
 void VK_Buffer::Destroy()
 {
-	vkDestroyBuffer(device->GetDevice(), buffer, VULKAN_CPU_ALLOCATOR);
-	buffer = VK_NULL_HANDLE;
-	VK_MemoryManager* memory_manager = device->GetMemoryManager();
-	memory_manager->FreeAllocation(allocation);
+	if (buffer)
+	{
+		vkDestroyBuffer(device->GetDevice(), buffer, VULKAN_CPU_ALLOCATOR);
+		buffer = VK_NULL_HANDLE;
+		VK_MemoryManager* memory_manager = device->GetMemoryManager();
+		memory_manager->FreeAllocation(allocation);
+	}
 }
 
 void* VK_Buffer::Map()
@@ -99,8 +103,7 @@ ENUM_VulkanAllocationFlags VK_Buffer::TranslateBufferTypeToVulkanAllocationFlags
 
 VK_Buffer::~VK_Buffer()
 {
-	VK_MemoryManager* memory_manager = device->GetMemoryManager();
-	memory_manager->FreeAllocation(allocation);
+	Destroy();
 }
 
 VkBuffer VK_Buffer::GetBuffer() CONST
@@ -140,7 +143,7 @@ void VK_StagingBufferManager::ProcessPendingFree(Bool is_immediate, Bool is_free
 	{
 		for (Int i = 0; i < free_buffers.size(); i++)
 		{
-			if (free_buffers[i].frame_num + VK_NUM_FRAMES_TO_WAIT_BEFORE_RELEASING_TO_OS < g_frame_number_render_thread)
+			if (is_immediate ||free_buffers[i].frame_num + VK_NUM_FRAMES_TO_WAIT_BEFORE_RELEASING_TO_OS < g_frame_number_render_thread)
 			{
 				free_buffers[i].buffer->Destroy();
 				delete free_buffers[i].buffer;

@@ -16,11 +16,11 @@ MYRENDERER_BEGIN_CLASS(RenderGraph)
 #pragma region MATHOD
 
 public:
-	RenderGraph() DEFAULT;
-	VIRTUAL~RenderGraph() DEFAULT;
-	RenderGraph(RenderGraph&& temp) DEFAULT;
-	RenderGraph& operator=(CONST RenderGraph& that) DELETE;
-	RenderGraph& operator=(RenderGraph&& temp) DEFAULT;
+	RenderGraph() MYDEFAULT;
+	VIRTUAL~RenderGraph() MYDEFAULT;
+	RenderGraph(RenderGraph&& temp) MYDEFAULT;
+	RenderGraph& operator=(CONST RenderGraph& that) MYDELETE;
+	RenderGraph& operator=(RenderGraph&& temp) MYDEFAULT;
 
 	template<typename data_type, typename... argument_types>
 	RenderGraphPass<data_type>* AddRenderPass(argument_types&&... arguments)

@@ -10,7 +10,7 @@ class ShaderResourceBinding;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderPipelineState, public RenderResource)
 #pragma region METHOD
 public:
-	RenderPipelineState() DEFAULT;
+	RenderPipelineState() MYDEFAULT;
 	RenderPipelineState(CONST RenderGraphiPipelineStateDesc& in_desc);
 	VIRTUAL ~RenderPipelineState();
 	VIRTUAL void CreateShaderResourceBinding(ShaderResourceBinding*& out_srb, Bool init_static_resource = false) PURE;

@@ -15,7 +15,7 @@ struct ReflectedBinding;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_PipelineState, public RenderPipelineState)
 #pragma region METHOD
 public:
-	VK_PipelineState() DEFAULT;
+	VK_PipelineState() MYDEFAULT;
 	VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipelineStateDesc& in_desc, VkPipelineCache pipeline_cache,CONST VK_RenderPass* render_pass);
 	VIRTUAL ~VK_PipelineState();
 
@@ -44,7 +44,7 @@ MYRENDERER_END_CLASS
 MYRENDERER_BEGIN_CLASS(VK_PipelineStateManager)
 #pragma region METHOD
 public:
-	VK_PipelineStateManager() DEFAULT;
+	VK_PipelineStateManager() MYDEFAULT;
 	VK_PipelineStateManager(VK_Device* in_device);
 	~VK_PipelineStateManager();
 

@@ -64,10 +64,10 @@ MYRENDERER_BEGIN_CLASS(VK_FrameBufferManager)
 #pragma region METHOD
 	public:
 		VK_FrameBufferManager(VK_Device* in_device);
-		VK_FrameBufferManager(CONST VK_FrameBufferManager&) DELETE;
-		VK_FrameBufferManager(VK_FrameBufferManager&&) DELETE;
-		VK_FrameBufferManager& operator=(CONST VK_FrameBufferManager&) DELETE;
-		VK_FrameBufferManager& operator=(VK_FrameBufferManager&&) DELETE;
+		VK_FrameBufferManager(CONST VK_FrameBufferManager&) MYDELETE;
+		VK_FrameBufferManager(VK_FrameBufferManager&&) MYDELETE;
+		VK_FrameBufferManager& operator=(CONST VK_FrameBufferManager&) MYDELETE;
+		VK_FrameBufferManager& operator=(VK_FrameBufferManager&&) MYDELETE;
 		VIRTUAL ~VK_FrameBufferManager();
 
 		VK_FrameBuffer* METHOD(GetFramebuffer)(CONST FramebufferCacheKey& key, uint32_t width, uint32_t height, uint32_t layers);

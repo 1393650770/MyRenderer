@@ -40,8 +40,8 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderTest,public MXRender::RenderInterface)
 #pragma region METHOD
 public:
 	RenderTest(Window* in_window);
-	RenderTest() DEFAULT;
-	VIRTUAL ~RenderTest() DEFAULT;
+	RenderTest() MYDEFAULT;
+	VIRTUAL ~RenderTest() MYDEFAULT;
 
 	VIRTUAL void BeginRender() OVERRIDE FINAL;
 	VIRTUAL void EndRender() OVERRIDE FINAL;
@@ -124,7 +124,6 @@ void RenderTest::BeginRender()
 		texture_desc.format = ENUM_TEXTURE_FORMAT::RGBA32U;
 		texture_desc.type = ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP;
 		texture_desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
-		texture_desc.resource_state = ENUM_RESOURCE_STATE::ShaderResource;
 		data.cube_map = RHICreateTexture(texture_desc);
 		delete vs_shader;
 		delete ps_shader;

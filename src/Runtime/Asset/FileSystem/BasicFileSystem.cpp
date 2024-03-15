@@ -1,7 +1,7 @@
 #include "BasicFileSystem.h"
 #include "Core/ConstDefine.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
-MYRENDERER_BEGIN_NAMESPACE(Asset)
+
 
 String BasicFile::GetOpenModeStr()
 {
@@ -150,7 +150,7 @@ Vector<StringType> SplitPath(CONST Char* Path, Bool Simplify)
 
 Vector<String> BasicFileSystem::SplitPath(CONST Char* Path, Bool Simplify)
 {
-	return MXRender::Asset::SplitPath<String>(Path, Simplify);
+	return MXRender::SplitPath<String>(Path, Simplify);
 }
 
 
@@ -204,7 +204,7 @@ String BasicFileSystem::SimplifyPath(CONST Char* Path, Char Slash /*= 0*/)
 		const char* const End;
 	};
 
-	const auto PathComponents = MXRender::Asset::SplitPath<MiniStringView>(Path, true);
+	const auto PathComponents = MXRender::SplitPath<MiniStringView>(Path, true);
 	const auto NumComponents = PathComponents.size();
 	const auto UseLeadingSlash = Slash == '/' && IsSlash(Path[0]);
 
@@ -288,5 +288,5 @@ String BasicFileSystem::OpenFolderDialog(CONST char* Title)
 	return "";
 }
 
-MYRENDERER_END_NAMESPACE
+
 MYRENDERER_END_NAMESPACE

@@ -154,8 +154,9 @@ VK_ShaderResourceBinding::~VK_ShaderResourceBinding()
 
 }
 
-VK_ShaderResourceBinding::VK_ShaderResourceBinding(VK_Device* in_device, Map<String, ReflectedBinding>& in_bindings) :device(in_device), bindings(in_bindings)
+VK_ShaderResourceBinding::VK_ShaderResourceBinding(VK_Device* in_device, Map<String, ReflectedBinding>& in_bindings,Bool in_is_static_resource) :device(in_device), bindings(in_bindings),is_static_resource(in_is_static_resource)
 {
+	
 }
 
 CONST VkDescriptorSet* VK_ShaderResourceBinding::GetDescriptorSets() CONST
@@ -216,8 +217,16 @@ void VK_ShaderResourceBinding::SetResource(CONST String& name, CONST RenderResou
 		}
 
 		vkUpdateDescriptorSets(device->GetDevice(), 1, &descriptor_write, 0, nullptr);
+		if (is_static_resource)
+		{
+			bindings.erase(name);
+		}
 	}
-	CHECK_WITH_LOG(true, "RHI Error : fail to find binding name in shader");
+	else
+	{
+		
+		CHECK_WITH_LOG(is_static_resource==false, "RHI Error : fail to find binding name in shader");
+	}
 }
 
 

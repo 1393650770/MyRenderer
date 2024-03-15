@@ -17,17 +17,40 @@ class RenderGraphPassBuilder;
 class RenderGraphResourceBase;
 class RenderGraph;
 
+MYRENDERER_BEGIN_CLASS(RenderGraphPassDataBase)
+
+#pragma region MATHOD
+
+public:
+	explicit RenderGraphPassDataBase() MYDEFAULT;
+	VIRTUAL ~RenderGraphPassDataBase() MYDEFAULT;
+
+	VIRTUAL void METHOD(Release)() PURE;
+protected:
+private:
+
+#pragma endregion
+
+#pragma region MEMBER
+
+public:
+protected:
+private:
+
+#pragma endregion
+MYRENDERER_END_CLASS
+
 MYRENDERER_BEGIN_CLASS(RenderGraphPassBase)
 
 #pragma region MATHOD
 
 public:
 	explicit RenderGraphPassBase(CONST std::string& in_name);
-	RenderGraphPassBase() DEFAULT;
-	VIRTUAL ~RenderGraphPassBase() DEFAULT;
-	RenderGraphPassBase(RenderGraphPassBase&& temp) DEFAULT;
-	RenderGraphPassBase& operator=(CONST RenderGraphPassBase& that) DELETE;
-	RenderGraphPassBase& operator=(RenderGraphPassBase&& temp) DEFAULT;
+	RenderGraphPassBase() MYDEFAULT;
+	VIRTUAL ~RenderGraphPassBase() MYDEFAULT;
+	RenderGraphPassBase(RenderGraphPassBase&& temp) MYDEFAULT;
+	RenderGraphPassBase& operator=(CONST RenderGraphPassBase& that) MYDELETE;
+	RenderGraphPassBase& operator=(RenderGraphPassBase&& temp) MYDEFAULT;
 
 	CONST String& METHOD(GetName)() CONST;
 	void METHOD(SetName)(CONST String& in_name);
@@ -84,11 +107,14 @@ public:
 	{
 
 	}
-	RenderGraphPass() DEFAULT;
-	VIRTUAL ~RenderGraphPass() DEFAULT;
-	RenderGraphPass(RenderGraphPass&& temp) DEFAULT;
-	RenderGraphPass& operator=(CONST RenderGraphPass& that) DELETE;
-	RenderGraphPass& operator=(RenderGraphPass&& temp) DEFAULT;
+	RenderGraphPass() MYDEFAULT;
+	VIRTUAL ~RenderGraphPass()
+	{
+		data.Release();
+	}
+	RenderGraphPass(RenderGraphPass&& temp) MYDEFAULT;
+	RenderGraphPass& operator=(CONST RenderGraphPass& that) MYDELETE;
+	RenderGraphPass& operator=(RenderGraphPass&& temp) MYDEFAULT;
 
 	CONST data_type& GetData() CONST
 	{
@@ -129,11 +155,11 @@ MYRENDERER_BEGIN_CLASS(RenderGraphPassBuilder)
 
 public:
 	explicit RenderGraphPassBuilder(RenderGraph* in_rendergraph, RenderGraphPassBase* in_render_pass) ;
-	RenderGraphPassBuilder() DEFAULT;
-	VIRTUAL ~RenderGraphPassBuilder() DEFAULT;
-	RenderGraphPassBuilder(RenderGraphPassBuilder&& temp) DEFAULT;
-	RenderGraphPassBuilder& operator=(CONST RenderGraphPassBuilder& that) DEFAULT;
-	RenderGraphPassBuilder& operator=(RenderGraphPassBuilder&& temp) DEFAULT;
+	RenderGraphPassBuilder() MYDEFAULT;
+	VIRTUAL ~RenderGraphPassBuilder() MYDEFAULT;
+	RenderGraphPassBuilder(RenderGraphPassBuilder&& temp) MYDEFAULT;
+	RenderGraphPassBuilder& operator=(CONST RenderGraphPassBuilder& that) MYDEFAULT;
+	RenderGraphPassBuilder& operator=(RenderGraphPassBuilder&& temp) MYDEFAULT;
 
 	template<typename resource_type, typename description_type>
 	resource_type* METHOD(Create)(CONST std::string& name, CONST description_type& description);

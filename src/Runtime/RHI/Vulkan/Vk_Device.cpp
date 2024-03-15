@@ -260,6 +260,11 @@ void VK_Device::Destroy()
 		delete present_queue;
 		present_queue=nullptr;
 	}
+	if (staging_buffer_manager)
+	{
+		delete staging_buffer_manager;
+		staging_buffer_manager = nullptr;
+	}
 	if (memory_manager)
 	{
 		delete memory_manager;
@@ -274,11 +279,6 @@ void VK_Device::Destroy()
 	{
 		delete command_buffer_manager;
 		command_buffer_manager=nullptr;
-	}
-	if (staging_buffer_manager)
-	{
-		delete staging_buffer_manager;
-		staging_buffer_manager=nullptr;
 	}
 	if (fence_manager)
 	{

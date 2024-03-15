@@ -114,7 +114,7 @@ MYRENDERER_BEGIN_STRUCT(MemoryBlockKey)
 
     MemoryBlockKey(CONST MemoryBlockKey& other);
     MemoryBlockKey(UInt32 in_memory_type_index, VkDeviceSize in_block_size);
-    MemoryBlockKey() DEFAULT;
+    MemoryBlockKey() MYDEFAULT;
     MemoryBlockKey& operator=(CONST MemoryBlockKey& other);
 MYRENDERER_END_STRUCT
 
@@ -145,7 +145,7 @@ friend  VK_DeviceMemoryManager;
 #pragma region METHOD
 public:
     VK_DeviceMemoryAllocation();
-    VIRTUAL ~VK_DeviceMemoryAllocation() DEFAULT;
+    VIRTUAL ~VK_DeviceMemoryAllocation() MYDEFAULT;
     void* METHOD(Map)(VkDeviceSize in_size,VkDeviceSize offset);
     void METHOD(UnMap)();
     VkDeviceMemory METHOD(GetMemory)();
@@ -442,7 +442,7 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Allocation,public RenderResource)
 #pragma region METHOD
 public:
     VK_Allocation();
-    VIRTUAL ~VK_Allocation() DEFAULT;
+    VIRTUAL ~VK_Allocation() MYDEFAULT;
     void METHOD(Init)(ENUM_VK_AllocationType in_type, ENUM_VK_AllocationMetaType in_meta_type, UInt64 in_handle, UInt32 in_size, UInt32 in_aligned_offset, UInt32 in_allocator_index, UInt32 in_allocation_index, UInt32 in_buffer_id);
     void METHOD(Free)(VK_Device& device);
     void METHOD(Swap)(VK_Allocation& other);

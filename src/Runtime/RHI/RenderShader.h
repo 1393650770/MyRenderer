@@ -19,7 +19,7 @@ MYRENDERER_BEGIN_CLASS(ShaderResourceBinding)
 
 #pragma region METHOD
 public:
-	ShaderResourceBinding() DEFAULT;
+	ShaderResourceBinding() MYDEFAULT;
 
 	VIRTUAL ~ShaderResourceBinding();
 
@@ -43,7 +43,7 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Shader, public RenderResource)
 
 #pragma region METHOD
 public:
-	Shader() DEFAULT;
+	Shader() MYDEFAULT;
 	Shader(CONST ShaderDesc& desc);
 	Shader(CONST ShaderDesc& desc,CONST ShaderDataPayload& data);
 	VIRTUAL ~Shader();

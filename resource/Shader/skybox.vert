@@ -52,7 +52,7 @@ vec3 positions[36] = vec3[](
 
 
 void main() {
-    vec4 pos = PerView.proj * PerView.view * vec4(positions[gl_VertexIndex], 1.0f);
+    vec4 pos = g_perView.proj * g_perView.view * vec4(positions[gl_VertexIndex], 1.0f);
     pos.z=pos.w*0.9999999999f;
     gl_Position = pos;
     TexCoords= positions[gl_VertexIndex] ;

@@ -21,7 +21,7 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderPass, public RenderResource)
 #pragma region METHOD
 public:
 	RenderPass(CONST RenderPassDesc& in_desc);
-	VIRTUAL ~RenderPass() DEFAULT;
+	VIRTUAL ~RenderPass() MYDEFAULT;
 protected:
 private:
 

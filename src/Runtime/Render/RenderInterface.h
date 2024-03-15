@@ -9,8 +9,8 @@ MYRENDERER_BEGIN_CLASS(RenderInterface)
 #pragma region MATHOD
 
 public:
-	RenderInterface() DEFAULT;
-	VIRTUAL ~RenderInterface() DEFAULT;
+	RenderInterface() MYDEFAULT;
+	VIRTUAL ~RenderInterface() MYDEFAULT;
 
 	VIRTUAL void BeginRender() PURE;
 	VIRTUAL void EndRender() PURE;

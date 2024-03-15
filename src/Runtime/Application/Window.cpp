@@ -5,6 +5,7 @@
 #include "RHI/RenderViewport.h"
 #include "Render/RenderInterface.h"
 #include "RHI/RenderCommandList.h"
+#include <limits>
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
 
@@ -51,7 +52,7 @@ void Window::Run(RenderInterface* render)
 		render->EndFrame();
 		
 		viewport->Present(cmd_list, true, true);
-
+		g_frame_number_render_thread = (g_frame_number_render_thread + 1) % g_max_frame_number;
         glfwSwapBuffers(window);
     }
 	render->EndRender();

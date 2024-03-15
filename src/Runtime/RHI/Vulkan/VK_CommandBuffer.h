@@ -169,6 +169,7 @@ public:
 		VkPipeline    compute_pipeline = VK_NULL_HANDLE;
 		VkPipeline    raytracing_pipeline = VK_NULL_HANDLE;
 		VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+		UInt8         descriptor_sets_count = 0;
 		CONST VkDescriptorSet* descriptor_sets = nullptr;
 		VkBuffer      index_buffer = VK_NULL_HANDLE;
 		VkDeviceSize  index_buffer_offset = 0;

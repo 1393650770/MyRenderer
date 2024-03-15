@@ -18,5 +18,6 @@ glslangValidator.exe -V fullscreen.vert -o fullscreen_vert.spv
 glslangValidator.exe -V copy.frag -o copy_frag.spv
 glslangValidator.exe -V mesh_rock_copy.vert -o mesh_rock_copy_vert.spv
 glslangValidator.exe -V default_prefabs_mesh_copy.frag -o default_prefabs_mesh_copy_frag.spv
-
+glslangValidator.exe -V texture_test.frag -o texture_test_frag.spv
+glslangValidator.exe -V texture_test.vert -o texture_test_vert.spv
 pause

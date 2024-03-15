@@ -37,7 +37,7 @@ CONST Texture::TextureFormatAttribs& Texture::GetTextureFormatAttribs(ENUM_TEXTU
 		TextureFormatAttribsMap()
 		{
 	#define INIT_TEX_FORMAT_INFO(TexFmt, ComponentSize, NumComponents, ComponentType, IsTypeless, BlockWidth, BlockHeight) \
-					format_attribs_map[ (UInt32)TexFmt ] = TextureFormatAttribs{ TexFmt,ComponentType, NumComponents, ComponentSize , IsTypeless, BlockWidth, BlockHeight};
+					format_attribs_map[ (UInt32)TexFmt ] = TextureFormatAttribs{ TexFmt,ComponentType, NumComponents, ComponentSize , BlockWidth, BlockHeight, IsTypeless};
 			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::RGBA32F, 4, 4, ENUM_TEXTURE_COMPONENT_FORMAT::Float, false, 1, 1)
 			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::RGBA16F, 2, 4, ENUM_TEXTURE_COMPONENT_FORMAT::Float, false, 1, 1)
 			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::R32F, 4, 1, ENUM_TEXTURE_COMPONENT_FORMAT::Float, false, 1, 1)
@@ -47,6 +47,7 @@ CONST Texture::TextureFormatAttribs& Texture::GetTextureFormatAttribs(ENUM_TEXTU
 			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::D32, 4, 1, ENUM_TEXTURE_COMPONENT_FORMAT::Depth, false, 1, 1)
 			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::D32FS8, 4, 2, ENUM_TEXTURE_COMPONENT_FORMAT::DepthStencil, false, 1, 1)
 			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::BGRA8, 1, 4, ENUM_TEXTURE_COMPONENT_FORMAT::SNorm, false,1,1)	
+			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::BC3, 16, 4, ENUM_TEXTURE_COMPONENT_FORMAT::Compressed, false, 4, 4)
 		}
 	CONST TextureFormatAttribs& operator[](ENUM_TEXTURE_FORMAT format) CONST
 		{

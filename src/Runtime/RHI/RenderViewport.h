@@ -12,8 +12,8 @@ class CommandList;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Viewport,  public RenderResource)
 #pragma region METHOD
 public:
-	Viewport() DEFAULT;
-	VIRTUAL ~Viewport() DEFAULT;
+	Viewport() MYDEFAULT;
+	VIRTUAL ~Viewport() MYDEFAULT;
 
 	//virtual void METHOD(SetViewport)(Float32 x, Float32 y, Float32 width, Float32 height, Float32 min_depth, Float32 max_depth) PURE;
 	VIRTUAL Texture* METHOD(GetCurrentBackBufferRTV)() PURE;

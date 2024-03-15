@@ -82,376 +82,6 @@ VK_Texture::VK_Texture(VK_Device* in_device, CONST VK_TextureView& texture_view,
 	//texture_sampler = VK_Utils::Create_Linear_Sampler(in_device->GetGpu(), in_device->GetDevice());
 }
 
- //void VK_Texture::load_dds(ENUM_TEXTURE_TYPE _type, CONST std::string& texture_path)
- //{
- //	switch (_type)
- //	{
- //	case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_NOT_VALID:
- //		break;
- //	case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_2D:
- //	case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_MULTISAMPLE:
- //		load_dds_2d(_type,texture_path);
- //		break;
- //	case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_DEPTH:
- //		break;
- //	case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP:
- //		load_dds_cubemap(_type,texture_path);
- //		break;
- //	case MXRender::ENUM_TEXTURE_TYPE::ENUM_TYPE_2D_DYNAMIC:
- //		break;
- //	default:
- //		break;
- //	}
- //}
- //
- //void VK_Texture::load_dds_cubemap(ENUM_TEXTURE_TYPE _type, CONST std::string& texture_path)
- //{
- //	gli::texture_cube cubemap(gli::load(texture_path));
- //	if (cubemap.empty()) {
- //		return;
- //	}
- //	std::weak_ptr<VK_Device> device = Singleton<DefaultSetting>::get_instance().context->device;
- //	if (device.expired())
- //		return;
- //	// 设置图像创建信息
- //	VkImageCreateInfo imageCreateInfo = {};
- //	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
- //	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
- //	imageCreateInfo.format = trans_gli_format_to_vulkan(cubemap.format()); // 假设Cube Map是RGBA8格式
- //	imageCreateInfo.extent = { static_cast<uint32_t>(cubemap.extent().x), static_cast<uint32_t>(cubemap.extent().y), 1 };
- //	imageCreateInfo.mipLevels = static_cast<uint32_t>(cubemap.levels());
- //	imageCreateInfo.arrayLayers = cubemap.faces(); // Cube Map需要6个数组层
- //	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
- //	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
- //	imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
- //	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
- //	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
- //	imageCreateInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; // 设置为Cube Map兼容
- //
- //	// 创建Vulkan图像
- //	VkResult result = vkCreateImage(device.lock()->device, &imageCreateInfo, nullptr, &texture_image);
- //	if (result != VK_SUCCESS) {
- //		return;
- //	}
- //
- //	// 分配图像内存
- //	VkMemoryRequirements memReqs;
- //	vkGetImageMemoryRequirements(device.lock()->device, texture_image, &memReqs);
- //
- //	VkMemoryAllocateInfo memAllocInfo = {};
- //	memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
- //	memAllocInfo.allocationSize = memReqs.size;
- //	memAllocInfo.memoryTypeIndex = VK_Utils::Find_MemoryType(device, memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
- //
- //	result = vkAllocateMemory(device.lock()->device, &memAllocInfo, nullptr, &texture_image_memory);
- //	if (result != VK_SUCCESS) {
- //		vkDestroyImage(device.lock()->device, texture_image, nullptr);
- //		return;
- //	}
- //
- //	// 绑定图像内存
- //	vkBindImageMemory(device.lock()->device, texture_image, texture_image_memory, 0);
- //
- //
- //	VkBuffer       inefficient_staging_buffer;
- //	VkDeviceMemory inefficient_staging_buffer_memory;
- //	VK_Utils::Create_VKBuffer(device,
- //		cubemap.size(),
- //		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
- //		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
- //		inefficient_staging_buffer,
- //		inefficient_staging_buffer_memory);
- //
- //
- //	void* data;
- //	vkMapMemory(device.lock()->device, inefficient_staging_buffer_memory, 0, cubemap.size(), 0, &data);
- //	memcpy(data, cubemap.data(), cubemap.size());
- //	vkUnmapMemory(device.lock()->device, inefficient_staging_buffer_memory);
- //	VK_Utils::Transition_ImageLayout(Singleton<DefaultSetting>::get_instance().context, texture_image,
- //		VK_IMAGE_LAYOUT_UNDEFINED,
- //		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
- //		6,
- //		cubemap.levels(),
- //		VK_IMAGE_ASPECT_COLOR_BIT);
- //
- //	VkDeviceSize bufferOffset = 0;
- //	for (uint32_t layer = 0; layer < cubemap.faces(); ++layer)
- //	{
- //
- //		for (uint32_t level = 0; level < cubemap.levels(); ++level)
- //		{
- //			VK_Utils::Copy_Buffer_To_Image(Singleton<DefaultSetting>::get_instance().context, inefficient_staging_buffer,
- //				texture_image,
- //				static_cast<uint32_t>(cubemap[layer][level].extent().x),
- //				static_cast<uint32_t>(cubemap[layer][level].extent().y),
- //				1,
- //				level,
- //				layer,
- //				bufferOffset);
- //			bufferOffset += cubemap[layer][level].size();
- //		}
- //	}
- //	VK_Utils::Transition_ImageLayout(Singleton<DefaultSetting>::get_instance().context, texture_image,
- //		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
- //		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
- //		6,
- //		cubemap.levels(),
- //		VK_IMAGE_ASPECT_COLOR_BIT);
- //	vkDestroyBuffer(device.lock()->device, inefficient_staging_buffer, nullptr);
- //	vkFreeMemory(device.lock()->device, inefficient_staging_buffer_memory, nullptr);
- //
- //	texture_image_view = VK_Utils::Create_ImageView(device.lock()->device,
- //		texture_image,
- //		imageCreateInfo.format,
- //		VK_IMAGE_ASPECT_COLOR_BIT,
- //		VK_IMAGE_VIEW_TYPE_CUBE,
- //		6,
- //		cubemap.levels());
- //	texture_image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
- //
- //	texture_sampler = VK_Utils::Create_Linear_Sampler(device.lock()->gpu, device.lock()->device);
- //}
- //
- //void VK_Texture::load_dds_2d(ENUM_TEXTURE_TYPE _type, CONST std::string& texture_path)
- //{
- //	gli::texture2d texture_2d(gli::load(texture_path));
- //	if (texture_2d.empty()) {
- //		return;
- //	}
- //	std::weak_ptr<VK_Device> device = Singleton<DefaultSetting>::get_instance().context->device;
- //	if (device.expired())
- //		return;
- //
- //	int miplevels = texture_2d.levels();
- //
- //
- //
- //	VkFormat     vulkan_image_format;
- //	unsigned layer_cout = 1;
- //	vulkan_image_format=trans_gli_format_to_vulkan(texture_2d.format());
- //
- //	uint32_t texture_image_width = texture_2d.extent().x;
- //	uint32_t texture_image_height = texture_2d.extent().y;
- //	VkImageCreateInfo image_create_info{};
- //	image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
- //
- //	image_create_info.imageType = VK_IMAGE_TYPE_2D;
- //	image_create_info.extent.width = static_cast<uint32_t>(texture_image_width);
- //	image_create_info.extent.height = static_cast<uint32_t>(texture_image_height);
- //	image_create_info.extent.depth = 1;
- //	image_create_info.mipLevels = miplevels;
- //	image_create_info.arrayLayers = layer_cout;
- //	image_create_info.format = vulkan_image_format;
- //	image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
- //	image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
- //	image_create_info.usage =
- //		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
- //	image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
- //	image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
- //
- //	if (vkCreateImage(device.lock()->device, &image_create_info, nullptr, &texture_image) != VK_SUCCESS) {
- //		throw std::runtime_error("failed to create image!");
- //	}
- //
- //	VkMemoryRequirements memRequirements;
- //	vkGetImageMemoryRequirements(device.lock()->device, texture_image, &memRequirements);
- //
- //	VkMemoryAllocateInfo allocInfo{};
- //	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
- //	allocInfo.allocationSize = memRequirements.size;
- //	allocInfo.memoryTypeIndex = VK_Utils::Find_MemoryType(device, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
- //
- //	if (vkAllocateMemory(device.lock()->device, &allocInfo, nullptr, &texture_image_memory) != VK_SUCCESS) {
- //		throw std::runtime_error("failed to allocate image memory!");
- //	}
- //
- //	vkBindImageMemory(device.lock()->device, texture_image, texture_image_memory, 0);
- //
- //	VkBuffer       inefficient_staging_buffer;
- //	VkDeviceMemory inefficient_staging_buffer_memory;
- //	VK_Utils::Create_VKBuffer(device,
- //		texture_2d.size(),
- //		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
- //		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
- //		inefficient_staging_buffer,
- //		inefficient_staging_buffer_memory);
- //
- //	void* data;
- //	vkMapMemory(device.lock()->device, inefficient_staging_buffer_memory, 0, texture_2d.size(), 0, &data);
- //
- //	memcpy((void*)(static_cast<char*>(data)),
- //		texture_2d.data(),
- //		static_cast<size_t>(texture_2d.size()));
- //		
- //	vkUnmapMemory(device.lock()->device, inefficient_staging_buffer_memory);
- //	VK_Utils::Transition_ImageLayout(Singleton<DefaultSetting>::get_instance().context, texture_image,
- //		VK_IMAGE_LAYOUT_UNDEFINED,
- //		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
- //		layer_cout,
- //		miplevels,
- //		VK_IMAGE_ASPECT_COLOR_BIT);
- //
- //	VkDeviceSize bufferOffset = 0;
- //	for (uint32_t level = 0; level < texture_2d.levels(); ++level)
- //	{
- //		VK_Utils::Copy_Buffer_To_Image(Singleton<DefaultSetting>::get_instance().context, inefficient_staging_buffer,
- //			texture_image,
- //			static_cast<uint32_t>(texture_2d[level].extent().x),
- //			static_cast<uint32_t>(texture_2d[level].extent().y),
- //			1,
- //			level,
- //			0,
- //			bufferOffset);
- //		bufferOffset += texture_2d[level].size();
- //	}
- //		
- //	VK_Utils::Transition_ImageLayout(Singleton<DefaultSetting>::get_instance().context, texture_image,
- //		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
- //		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
- //		layer_cout,
- //		miplevels,
- //		VK_IMAGE_ASPECT_COLOR_BIT);
- //	vkDestroyBuffer(device.lock()->device, inefficient_staging_buffer, nullptr);
- //	vkFreeMemory(device.lock()->device, inefficient_staging_buffer_memory, nullptr);
- //
- //	texture_image_view = VK_Utils::Create_ImageView(device.lock()->device,
- //		texture_image,
- //		vulkan_image_format,
- //		VK_IMAGE_ASPECT_COLOR_BIT,
- //		VK_IMAGE_VIEW_TYPE_2D,
- //		layer_cout,
- //		miplevels);
- //	texture_image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
- //
- //	texture_sampler = VK_Utils::Create_Linear_Sampler(device.lock()->gpu, device.lock()->device);
- //}
- //
- //void VK_Texture::load_common_2d(CONST std::string& texture_path)
- //{
- //
- //
- //	std::weak_ptr<VK_Device> device = Singleton<DefaultSetting>::get_instance().context->device;
- //	if (device.expired()) return;
- //
- //	int miplevels = 1;
- //	std::vector<std::shared_ptr<TextureData>> texture_data(1);
- //
- //	texture_data[0] = RenderUtils::Load_Texture(texture_path, true);
- //
- //	VkDeviceSize texture_layer_byte_size;
- //	VkDeviceSize texture_byte_size;
- //	VkFormat     vulkan_image_format;
- //	unsigned layer_cout = 1;
- //	switch (texture_data[0]->format)
- //	{
- //	case ENUM_TEXTURE_FORMAT::RGBA8S:
- //	{
- //		texture_layer_byte_size = texture_data[0]->width * texture_data[0]->height * 4;
- //		vulkan_image_format = VK_FORMAT_R8G8B8A8_SRGB;
- //		break;
- //	}
- //	case ENUM_TEXTURE_FORMAT::RGBA8U:
- //	{
- //		texture_layer_byte_size = texture_data[0]->width * texture_data[0]->height * 4;
- //		vulkan_image_format = VK_FORMAT_R8G8B8A8_SRGB;
- //		break;
- //	}
- //	default:
- //	{
- //		texture_layer_byte_size = VkDeviceSize(-1);
- //		throw std::runtime_error("invalid texture_layer_byte_size");
- //		break;
- //	}
- //	}
- //	texture_byte_size = texture_layer_byte_size;
- //	uint32_t texture_image_width = texture_data[0]->width;
- //	uint32_t texture_image_height = texture_data[0]->height;
- //	VkImageCreateInfo image_create_info{};
- //	image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
- //
- //	image_create_info.imageType = VK_IMAGE_TYPE_2D;
- //	image_create_info.extent.width = static_cast<uint32_t>(texture_image_width);
- //	image_create_info.extent.height = static_cast<uint32_t>(texture_image_height);
- //	image_create_info.extent.depth = 1;
- //	image_create_info.mipLevels = miplevels;
- //	image_create_info.arrayLayers = layer_cout;
- //	image_create_info.format = vulkan_image_format;
- //	image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
- //	image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
- //	image_create_info.usage =
- //		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
- //	image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
- //	image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
- //
- //	if (vkCreateImage(device.lock()->device, &image_create_info, nullptr, &texture_image) != VK_SUCCESS) {
- //		throw std::runtime_error("failed to create image!");
- //	}
- //
- //	VkMemoryRequirements memRequirements;
- //	vkGetImageMemoryRequirements(device.lock()->device, texture_image, &memRequirements);
- //
- //	VkMemoryAllocateInfo allocInfo{};
- //	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
- //	allocInfo.allocationSize = memRequirements.size;
- //	allocInfo.memoryTypeIndex = VK_Utils::Find_MemoryType(device, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
- //
- //	if (vkAllocateMemory(device.lock()->device, &allocInfo, nullptr, &texture_image_memory) != VK_SUCCESS) {
- //		throw std::runtime_error("failed to allocate image memory!");
- //	}
- //
- //	vkBindImageMemory(device.lock()->device, texture_image, texture_image_memory, 0);
- //
- //	VkBuffer       inefficient_staging_buffer;
- //	VkDeviceMemory inefficient_staging_buffer_memory;
- //	VK_Utils::Create_VKBuffer(device,
- //		texture_byte_size,
- //		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
- //		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
- //		inefficient_staging_buffer,
- //		inefficient_staging_buffer_memory);
- //
- //	void* data;
- //	vkMapMemory(device.lock()->device, inefficient_staging_buffer_memory, 0, texture_byte_size, 0, &data);
- //	for (int i = 0; i < layer_cout; i++)
- //	{
- //		memcpy((void*)(static_cast<char*>(data) + texture_layer_byte_size * i),
- //			texture_data[i]->pixels,
- //			static_cast<size_t>(texture_layer_byte_size));
- //	}
- //	vkUnmapMemory(device.lock()->device, inefficient_staging_buffer_memory);
- //	VK_Utils::Transition_ImageLayout(Singleton<DefaultSetting>::get_instance().context, texture_image,
- //		VK_IMAGE_LAYOUT_UNDEFINED,
- //		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
- //		layer_cout,
- //		miplevels,
- //		VK_IMAGE_ASPECT_COLOR_BIT);
- //	VK_Utils::Copy_Buffer_To_Image(Singleton<DefaultSetting>::get_instance().context, inefficient_staging_buffer,
- //		texture_image,
- //		static_cast<uint32_t>(texture_image_width),
- //		static_cast<uint32_t>(texture_image_height),
- //		layer_cout);
- //	VK_Utils::Transition_ImageLayout(Singleton<DefaultSetting>::get_instance().context, texture_image,
- //		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
- //		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
- //		layer_cout,
- //		miplevels,
- //		VK_IMAGE_ASPECT_COLOR_BIT);
- //	vkDestroyBuffer(device.lock()->device, inefficient_staging_buffer, nullptr);
- //	vkFreeMemory(device.lock()->device, inefficient_staging_buffer_memory, nullptr);
- //
- //	texture_image_view = VK_Utils::Create_ImageView(device.lock()->device,
- //		texture_image,
- //		vulkan_image_format,
- //		VK_IMAGE_ASPECT_COLOR_BIT,
- //		VK_IMAGE_VIEW_TYPE_2D,
- //		layer_cout,
- //		miplevels);
- //
- //	texture_sampler = VK_Utils::Create_Linear_Sampler(device.lock()->gpu, device.lock()->device);
- //	texture_image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
- //
- //}
-
 VkFormat VK_Texture::trans_gli_format_to_vulkan(gli::format format)
 {
 	switch (format)
@@ -961,6 +591,7 @@ void VK_Texture::GenerateViewCreateInfo(VkImageViewCreateInfo& view_create_info,
 	view_create_info.subresourceRange.baseArrayLayer = 0;
 	view_create_info.subresourceRange.layerCount = static_cast<uint32_t>(desc.layer_count);
 	view_create_info.pNext = nullptr;
+	view_create_info.flags = 0;
 
 }
 VkImage VK_Texture::GetImage() CONST
@@ -978,15 +609,15 @@ VkSampler VK_Texture::GetSampler() CONST
 
 void VK_Texture::UpdateTextureData(CONST TextureDataPayload& texture_data_payload)
 {
-	if (texture_data_payload.data == nullptr|| texture_data_payload.data_size == 0)
+	if (texture_data_payload.data.size() == 0)
 	{
 		return;
 	}
 
-	VK_Buffer* staging_buffer = device->GetStagingBufferManager()->GetStagingBuffer(texture_data_payload.data_size);
+	VK_Buffer* staging_buffer = device->GetStagingBufferManager()->GetStagingBuffer(texture_data_payload.data.size());
 	
 	void* data = staging_buffer->Map();
-	memcpy(data, texture_data_payload.data, texture_data_payload.data_size);
+	memcpy(data, texture_data_payload.data.data(), texture_data_payload.data.size());
 
 	Vector<VkBufferImageCopy> buffer_copy_regions(texture_data_payload.layer_count*texture_data_payload.mip_level);
 	VkDeviceSize buffer_offset = 0;
@@ -1020,7 +651,7 @@ void VK_Texture::UpdateTextureData(CONST TextureDataPayload& texture_data_payloa
 	}
 	
 	VK_CommandBuffer* command_buffer = device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::TRANSFER);
-
+	command_buffer->Begin();
 	VkImageSubresourceRange subres_range;
 	subres_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	subres_range.baseArrayLayer = 0;
@@ -1031,7 +662,8 @@ void VK_Texture::UpdateTextureData(CONST TextureDataPayload& texture_data_payloa
 	command_buffer->MemoryBarrier(VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 	texture_image_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	command_buffer->CopyBufferToImage(staging_buffer->GetBuffer(), texture_image, texture_image_layout, buffer_copy_regions.size(), buffer_copy_regions.data());
-
+	command_buffer->TransitionTextureState(this, ENUM_RESOURCE_STATE::ShaderResource);
+	command_buffer->End();
 	device->GetQueue(ENUM_QUEUE_TYPE::TRANSFER)->Submit(command_buffer);
 
 	device->GetStagingBufferManager()->ReleaseStagingBuffer(staging_buffer, command_buffer);

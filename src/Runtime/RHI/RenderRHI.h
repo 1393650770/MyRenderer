@@ -7,7 +7,7 @@
 #include<vector>
 #include<memory>
 #include "RenderRource.h"
-
+#include "Core/ConstGlobals.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -29,8 +29,8 @@ MYRENDERER_END_CLASS
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderRHI,public RenderResource)
 
 public:
-	RenderRHI() DEFAULT;
-	VIRTUAL~ RenderRHI() DEFAULT;
+	RenderRHI() MYDEFAULT;
+	VIRTUAL~ RenderRHI() MYDEFAULT;
 
 #pragma region INIT_MATHOD
 	VIRTUAL void METHOD(Init)(RenderFactory* render_factory) PURE;

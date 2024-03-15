@@ -22,7 +22,7 @@ class VK_Device;
 
 MYRENDERER_BEGIN_STRUCT(VK_TextureView)
 
-VK_TextureView() DEFAULT;
+VK_TextureView() MYDEFAULT;
 
 void METHOD(Create)(VK_Device& device, VkImage in_image, VkImageViewType view_type, VkImageAspectFlags aspect_flags,VkFormat format, UInt32 first_mip, UInt32 num_mips, UInt32 array_slice_index, UInt32 num_array_slices, Bool use_identity_swizzle = false);
 
