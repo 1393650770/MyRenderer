@@ -12,6 +12,8 @@
 #include "RHI/RenderTexture.h"
 #include "RHI/RenderShader.h"
 #include "RHI/RenderPipelineState.h"
+#include "Asset/TextureAsset.h"
+using namespace MXRender::Asset;
 using namespace MXRender::RHI;
 using namespace MXRender::Render;
 using namespace MXRender::Application;
@@ -25,7 +27,7 @@ Vector<UInt32> ReadShader(CONST String& filename)
 
 	CHECK_WITH_LOG(!file.is_open(), " App Error: fail to open the shader file! ")
 
-	size_t fileSize = (size_t)file.tellg();
+		size_t fileSize = (size_t)file.tellg();
 	Vector<UInt32> buffer(fileSize / sizeof(UInt32));
 
 	file.seekg(0);
@@ -36,7 +38,7 @@ Vector<UInt32> ReadShader(CONST String& filename)
 	return std::move(buffer);
 }
 
-MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderTest,public MXRender::RenderInterface)
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderTest, public MXRender::RenderInterface)
 #pragma region METHOD
 public:
 	RenderTest(Window* in_window);
@@ -65,44 +67,60 @@ protected:
 private:
 
 #pragma endregion
-	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+
 MYRENDERER_END_CLASS
 
 void RenderTest::BeginRender()
 {
-	std::cout << "Hello CubeMap" << std::endl;
+	std::cout << "Hello Texture" << std::endl;
 
-	struct TestData
+	struct TestData :public RenderGraphPassDataBase
 	{
-		Buffer* vertex_buffer = nullptr;
-		Buffer* index_buffer = nullptr;
-	    Viewport* viewport=nullptr;
+
 		RenderPipelineState* pipeline_state = nullptr;
 		ShaderResourceBinding* srb = nullptr;
-		Texture* cube_map =nullptr;
+		TextureAsset* bind_texture = nullptr;
+		VIRTUAL ~TestData()
+		{
+			Release();
+		}
+		void Release()
+		{
+			if (srb)
+			{
+				delete srb;
+				srb = nullptr;
+			}
+			if (bind_texture)
+			{
+				delete bind_texture;
+				bind_texture = nullptr;
+			}
+		}
 	};
 	RenderPassDesc renderpass_desc;
 	CommandList* cmd_list = RHIGetImmediateCommandList();
-	graph.AddRenderPass<TestData>("TestPass",&graph, cmd_list,
-	[&](TestData& data, RenderGraphPassBuilder& builder, CommandList* in_cmd_list)
+	graph.AddRenderPass<TestData>("TestPass", &graph, cmd_list,
+		[&](TestData& data, RenderGraphPassBuilder& builder, CommandList* in_cmd_list)
 	{
 		Shader* vs_shader;
 		Shader* ps_shader;
 		ShaderDesc shader_desc;
 		ShaderDataPayload shader_data;
 		RenderGraphiPipelineStateDesc pipeline_state_desc;
-
+		TextureDesc texture_desc;
+		TextureDataPayload texture_data;
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Vertex;
 		shader_desc.shader_name = "TestVS";
-		shader_data.data = ReadShader("Shader/skybox.spv");
-		ps_shader = RHICreateShader(shader_desc,shader_data);
+		shader_data.data = ReadShader("Shader/Sample/skybox_test_vert.spv");
+		vs_shader = RHICreateShader(shader_desc, shader_data);
 
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Pixel;
 		shader_desc.shader_name = "TestPS";
-		shader_data.data = ReadShader("Shader/skybox.spv");
-		vs_shader = RHICreateShader(shader_desc, shader_data);
+		shader_data.data = ReadShader("Shader/Sample/skybox_test_frag.spv");
+		ps_shader = RHICreateShader(shader_desc, shader_data);
 
-		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] =vs_shader;
+		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] = vs_shader;
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Pixel] = ps_shader;
 		pipeline_state_desc.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
 		Vector<Texture*> rtvs;
@@ -115,42 +133,37 @@ void RenderTest::BeginRender()
 		pipeline_state_desc.blend_state.render_targets.resize(rtvs.size());
 
 		data.pipeline_state = RHICreateRenderPipelineState(pipeline_state_desc);
-		data.pipeline_state->CreateShaderResourceBinding(data.srb);
-		
-		TextureDesc texture_desc;
-		texture_desc.type = ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP;
-		texture_desc.width = 1024;
-		texture_desc.height = 1024;
-		texture_desc.format = ENUM_TEXTURE_FORMAT::RGBA32U;
-		texture_desc.type = ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP;
-		texture_desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
-		data.cube_map = RHICreateTexture(texture_desc);
+		data.pipeline_state->CreateShaderResourceBinding(data.srb, true);
+
+		data.bind_texture = new TextureAsset("Texture/Skybox/bolonga_lod.dds");
 		delete vs_shader;
 		delete ps_shader;
 	},
-	[=](CONST TestData& data, CommandList* in_cmd_list)
+		[=](CONST TestData& data, CommandList* in_cmd_list)
 	{
-
-		Vector<ClearValue> clear_values;
-		Vector<Texture*> rtvs;
-		Texture* dsv;
-		rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
-		dsv = this->GetWindow()->GetViewport()->GetCurrentBackBufferDSV();
-		for (auto rtv : rtvs)
+		if (data.bind_texture->GetTexture())
 		{
-			clear_values.push_back(rtv->GetTextureDesc().clear_value);
-		}
-		if(dsv)
-			clear_values.push_back(dsv->GetTextureDesc().clear_value);
-		in_cmd_list->SetRenderTarget(rtvs, dsv, clear_values, dsv != nullptr);
-		in_cmd_list->SetGraphicsPipeline(data.pipeline_state);
-		in_cmd_list->SetShaderResourceBinding(data.srb);
+			Vector<ClearValue> clear_values;
+			Vector<Texture*> rtvs;
+			Texture* dsv;
+			rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
+			dsv = this->GetWindow()->GetViewport()->GetCurrentBackBufferDSV();
+			for (auto rtv : rtvs)
+			{
+				clear_values.push_back(rtv->GetTextureDesc().clear_value);
+			}
+			if (dsv)
+				clear_values.push_back(dsv->GetTextureDesc().clear_value);
+			in_cmd_list->SetRenderTarget(rtvs, dsv, clear_values, dsv != nullptr);
+			in_cmd_list->SetGraphicsPipeline(data.pipeline_state);
+			data.srb->SetResource("cubemap_sampler", data.bind_texture->GetTexture());
+			in_cmd_list->SetShaderResourceBinding(data.srb);
+			DrawAttribute draw_attr;
+			draw_attr.vertexCount = 6;
+			draw_attr.instanceCount = 1;
 
-		data.srb->SetResource("cubeMap", this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV());
-		DrawAttribute draw_attr;
-		draw_attr.vertexCount = 36;
-		draw_attr.instanceCount = 1;
-		in_cmd_list->Draw(draw_attr);
+			in_cmd_list->Draw(draw_attr);
+		}
 	});
 
 	graph.Compile();
@@ -177,7 +190,7 @@ void RenderTest::EndFrame()
 
 }
 
-RenderTest::RenderTest(Window* in_window):window(in_window)
+RenderTest::RenderTest(Window* in_window) :window(in_window)
 {
 
 }
@@ -193,6 +206,7 @@ int main()
 	RenderTest render(&window);
 	window.InitWindow();
 	window.Run(&render);
+	system("pause");
 
 	return 0;
 }

@@ -205,7 +205,6 @@ void VK_Texture::UpdateTextureData(CONST TextureDataPayload& texture_data_payloa
 			buffer_copy_region.imageExtent.depth = mip_info.depth;
 			buffer_copy_region.bufferOffset = buffer_offset;
 
-			buffer_offset += mip_info.mip_size;
 			buffer_offset += (mip_info.mip_size + 3) & (~3);
 		}
 	}

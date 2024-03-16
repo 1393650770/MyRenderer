@@ -31,6 +31,10 @@ ENUM_TEXTURE_FORMAT ToolUtils::TranslateGliFormatToEngineFormat(CONST gli::forma
 		{
 			return ENUM_TEXTURE_FORMAT::BC3;
 		}
+		case gli::FORMAT_RGBA16_SFLOAT_PACK16:
+		{
+			return ENUM_TEXTURE_FORMAT::RGBA16S;
+		}
 		default:
 		{
 			CHECK_WITH_LOG(true, "Error: Texture format is not supported");

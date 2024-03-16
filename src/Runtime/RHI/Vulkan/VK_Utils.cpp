@@ -576,6 +576,7 @@ namespace MXRender
 			vulkan_image_format = VK_FORMAT_R8G8B8A8_UNORM;
 			break;
 		}
+		case ENUM_TEXTURE_FORMAT::RGBA16S:
 		case ENUM_TEXTURE_FORMAT::RGBA16F:
 		{
 			vulkan_image_format = VK_FORMAT_R16G16B16A16_SFLOAT;

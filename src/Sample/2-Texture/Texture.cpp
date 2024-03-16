@@ -135,7 +135,7 @@ void RenderTest::BeginRender()
 		data.pipeline_state = RHICreateRenderPipelineState(pipeline_state_desc);
 		data.pipeline_state->CreateShaderResourceBinding(data.srb,true);
 
-		data.bind_texture = new TextureAsset("Texture\\pbr_stone\\pbr_stone_aorm.dds");
+		data.bind_texture = new TextureAsset("Texture/pbr_stone/pbr_stone_aorm.dds");
 		delete vs_shader;
 		delete ps_shader;
 	},
