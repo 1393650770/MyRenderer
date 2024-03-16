@@ -4,8 +4,8 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_CLASS(IObject)
 public:
-	IObject()DEFAULT;
-	VIRTUAL ~IObject()DEFAULT;
+	IObject()MYDEFAULT;
+	VIRTUAL ~IObject()MYDEFAULT;
 	void AddRef() { ++ref_count; }
 	VIRTUAL void Release()=0;
 protected:

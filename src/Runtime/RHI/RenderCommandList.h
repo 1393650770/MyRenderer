@@ -23,8 +23,8 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(CommandList,public RenderResource)
 
 #pragma region METHOD
 public:
-	CommandList() DEFAULT;
-	VIRTUAL ~CommandList() DEFAULT;
+	CommandList() MYDEFAULT;
+	VIRTUAL ~CommandList() MYDEFAULT;
 	VIRTUAL void METHOD(SetGraphicsPipeline)(RenderPipelineState* pipeline_state) PURE;
 	VIRTUAL void METHOD(SetRenderTarget)(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, CONST Vector<ClearValue>& clear_values, Bool has_dsv_clear_value) PURE;
 	VIRTUAL void METHOD(SetShaderResourceBinding)(ShaderResourceBinding* srb) PURE;

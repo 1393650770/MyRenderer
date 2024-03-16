@@ -15,7 +15,7 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Texture,public RenderResource)
 #pragma region METHOD
 public:
 	Texture(CONST TextureDesc& in_texture_desc );
-	VIRTUAL ~Texture() DEFAULT;
+	VIRTUAL ~Texture() MYDEFAULT;
 
 	VIRTUAL TextureDesc METHOD(GetTextureDesc)() CONST ; 
 

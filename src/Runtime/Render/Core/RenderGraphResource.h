@@ -19,11 +19,11 @@ public:
 		static UInt32 static_id = 0;
 		id = static_id++;
 	}
-	RenderGraphResourceBase() DEFAULT;
-	VIRTUAL ~RenderGraphResourceBase() DEFAULT;
-	RenderGraphResourceBase(RenderGraphResourceBase&& temp) DEFAULT;
-	RenderGraphResourceBase& operator=(CONST RenderGraphResourceBase& that) DELETE;
-	RenderGraphResourceBase& operator=(RenderGraphResourceBase&& temp) DEFAULT;
+	RenderGraphResourceBase() MYDEFAULT;
+	VIRTUAL ~RenderGraphResourceBase() MYDEFAULT;
+	RenderGraphResourceBase(RenderGraphResourceBase&& temp) MYDEFAULT;
+	RenderGraphResourceBase& operator=(CONST RenderGraphResourceBase& that) MYDELETE;
+	RenderGraphResourceBase& operator=(RenderGraphResourceBase&& temp) MYDEFAULT;
 
 	UInt32 METHOD(GetID)() CONST;
 	CONST String& METHOD(GetName)() CONST;
@@ -77,11 +77,11 @@ public:
 		if (!in_actual)
 			actual = RealizeResource<description_type, actual_type>(in_description);
 	}
-	RenderGraphResource(CONST RenderGraphResource& that) DELETE;
-	RenderGraphResource(RenderGraphResource&& temp) DEFAULT;
-	~RenderGraphResource() DEFAULT;
-	RenderGraphResource& operator=(CONST RenderGraphResource& that) DELETE;
-	RenderGraphResource& operator=(RenderGraphResource&& temp) DEFAULT;
+	RenderGraphResource(CONST RenderGraphResource& that) MYDELETE;
+	RenderGraphResource(RenderGraphResource&& temp) MYDEFAULT;
+	~RenderGraphResource() MYDEFAULT;
+	RenderGraphResource& operator=(CONST RenderGraphResource& that) MYDELETE;
+	RenderGraphResource& operator=(RenderGraphResource&& temp) MYDEFAULT;
 
 	CONST description_type& METHOD(GetDescription)() CONST
 	{

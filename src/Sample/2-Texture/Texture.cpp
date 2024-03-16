@@ -12,6 +12,8 @@
 #include "RHI/RenderTexture.h"
 #include "RHI/RenderShader.h"
 #include "RHI/RenderPipelineState.h"
+#include "Asset/TextureAsset.h"
+using namespace MXRender::Asset;
 using namespace MXRender::RHI;
 using namespace MXRender::Render;
 using namespace MXRender::Application;
@@ -40,8 +42,8 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderTest,public MXRender::RenderInterface)
 #pragma region METHOD
 public:
 	RenderTest(Window* in_window);
-	RenderTest() DEFAULT;
-	VIRTUAL ~RenderTest() DEFAULT;
+	RenderTest() MYDEFAULT;
+	VIRTUAL ~RenderTest() MYDEFAULT;
 
 	VIRTUAL void BeginRender() OVERRIDE FINAL;
 	VIRTUAL void EndRender() OVERRIDE FINAL;
@@ -72,14 +74,29 @@ void RenderTest::BeginRender()
 {
 	std::cout << "Hello Texture" << std::endl;
 
-	struct TestData
+	struct TestData :public RenderGraphPassDataBase
 	{
-		Buffer* vertex_buffer = nullptr;
-		Buffer* index_buffer = nullptr;
-	    Viewport* viewport=nullptr;
+
 		RenderPipelineState* pipeline_state = nullptr;
 		ShaderResourceBinding* srb = nullptr;
-		Texture* output = nullptr;
+		TextureAsset* bind_texture = nullptr;
+		VIRTUAL ~TestData()
+		{
+			Release();
+		}
+		void Release()
+		{
+			if (srb)
+			{
+				delete srb;
+				srb = nullptr;
+			}
+			if (bind_texture)
+			{
+				delete bind_texture;
+				bind_texture = nullptr;
+			}
+		}
 	};
 	RenderPassDesc renderpass_desc;
 	CommandList* cmd_list = RHIGetImmediateCommandList();
@@ -91,15 +108,16 @@ void RenderTest::BeginRender()
 		ShaderDesc shader_desc;
 		ShaderDataPayload shader_data;
 		RenderGraphiPipelineStateDesc pipeline_state_desc;
-
+		TextureDesc texture_desc;
+		TextureDataPayload texture_data;
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Vertex;
 		shader_desc.shader_name = "TestVS";
-		shader_data.data = ReadShader("Shader/vert.spv");
+		shader_data.data = ReadShader("Shader/texture_test_vert.spv");
 		vs_shader = RHICreateShader(shader_desc,shader_data);
 
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Pixel;
 		shader_desc.shader_name = "TestPS";
-		shader_data.data = ReadShader("Shader/frag.spv");
+		shader_data.data = ReadShader("Shader/texture_test_frag.spv");
 		ps_shader = RHICreateShader(shader_desc, shader_data);
 
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] =vs_shader;
@@ -115,31 +133,37 @@ void RenderTest::BeginRender()
 		pipeline_state_desc.blend_state.render_targets.resize(rtvs.size());
 
 		data.pipeline_state = RHICreateRenderPipelineState(pipeline_state_desc);
-		data.pipeline_state->CreateShaderResourceBinding(data.srb);
+		data.pipeline_state->CreateShaderResourceBinding(data.srb,true);
+
+		data.bind_texture = new TextureAsset("Texture/pbr_stone/pbr_stone_aorm.dds");
 		delete vs_shader;
 		delete ps_shader;
 	},
 	[=](CONST TestData& data, CommandList* in_cmd_list)
 	{
-
-		Vector<ClearValue> clear_values;
-		Vector<Texture*> rtvs;
-		Texture* dsv;
-		rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
-		dsv = this->GetWindow()->GetViewport()->GetCurrentBackBufferDSV();
-		for (auto rtv : rtvs)
+		if (data.bind_texture->GetTexture())
 		{
-			clear_values.push_back(rtv->GetTextureDesc().clear_value);
+			Vector<ClearValue> clear_values;
+			Vector<Texture*> rtvs;
+			Texture* dsv;
+			rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
+			dsv = this->GetWindow()->GetViewport()->GetCurrentBackBufferDSV();
+			for (auto rtv : rtvs)
+			{
+				clear_values.push_back(rtv->GetTextureDesc().clear_value);
+			}
+			if (dsv)
+				clear_values.push_back(dsv->GetTextureDesc().clear_value);
+			in_cmd_list->SetRenderTarget(rtvs, dsv, clear_values, dsv != nullptr);
+			in_cmd_list->SetGraphicsPipeline(data.pipeline_state);
+			data.srb->SetResource("basecolor_sampler", data.bind_texture->GetTexture());
+			in_cmd_list->SetShaderResourceBinding(data.srb);
+			DrawAttribute draw_attr;
+			draw_attr.vertexCount = 6;
+			draw_attr.instanceCount = 1;
+
+			in_cmd_list->Draw(draw_attr);
 		}
-		if(dsv)
-			clear_values.push_back(dsv->GetTextureDesc().clear_value);
-		in_cmd_list->SetRenderTarget(rtvs, dsv, clear_values, dsv != nullptr);
-		in_cmd_list->SetGraphicsPipeline(data.pipeline_state);
-		in_cmd_list->SetShaderResourceBinding(data.srb);
-		DrawAttribute draw_attr;
-		draw_attr.vertexCount = 3;
-		draw_attr.instanceCount = 1;
-		in_cmd_list->Draw(draw_attr);
 	});
 
 	graph.Compile();

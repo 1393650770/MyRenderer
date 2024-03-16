@@ -30,8 +30,8 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VulkanRHI,public RenderRHI)
 #pragma region MATHOD
 
 public:
-	VulkanRHI() DEFAULT;
-	VIRTUAL ~VulkanRHI() DEFAULT;
+	VulkanRHI() MYDEFAULT;
+	VIRTUAL ~VulkanRHI() MYDEFAULT;
 
 #pragma region INIT_MATHOD
 

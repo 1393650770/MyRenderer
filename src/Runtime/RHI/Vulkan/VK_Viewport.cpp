@@ -7,6 +7,7 @@
 #include "VK_Queue.h"
 #include "VK_CommandBuffer.h"
 #include "VK_Fence.h"
+#include "VK_FrameBuffer.h"
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -48,12 +49,17 @@ UInt32 VK_Viewport::GetViewportSizeHeight() CONST
 
 void VK_Viewport::Resize(UInt32 in_width, UInt32 in_height)
 {
-	size_x = in_width;
-	size_y = in_height;
-	VK_SwapChainRecreateInfo recreate_info;
-	recreate_info.swapchain = swap_chain->GetSwapchain();
-	recreate_info.surface = swap_chain->GetSurface();
-	CreateSwapChain(&recreate_info);
+	if ((in_width != size_x || in_height != size_y) || (in_width != 0 && in_height != 0&&is_minimized))
+	{
+
+		size_x = in_width;
+		size_y = in_height;
+		VK_SwapChainRecreateInfo recreate_info;
+		recreate_info.swapchain = swap_chain->GetSwapchain();
+		recreate_info.surface = swap_chain->GetSurface();
+		CreateSwapChain(&recreate_info);
+		TryAcquireNextImage();
+	}
 }
 
 void VK_Viewport::Present(MXRender::RHI::CommandList* in_cmd_list, bool is_present, bool is_lock_to_vsync)
@@ -98,13 +104,7 @@ void VK_Viewport::PresentInternal(VK_CommandBuffer* in_cmd_list, VK_Queue* submi
 	{
 		vkQueueWaitIdle(present_queue->GetQueue());
 	}
-	if (swap_chain->TryGetNextImageIndex(image_acquired_semaphore, acquired_image_index) == false)
-	{
-		VK_SwapChainRecreateInfo recreate_info;
-		recreate_info.swapchain = swap_chain->GetSwapchain();
-		recreate_info.surface = swap_chain->GetSurface();
-		CreateSwapChain(&recreate_info);
-	}
+	TryAcquireNextImage();
 }
 
 void VK_Viewport::CreateSyncObjects()
@@ -126,13 +126,21 @@ void VK_Viewport::DestroySwapChain(VK_SwapChainRecreateInfo* recreate_info)
 		delete swap_chain;
 		swap_chain = nullptr;
 	}
+	for (Int i = 0; i < texture_views.size(); ++i)
+	{
+		device->GetFrameBufferManager()->OnDestroyImageView(texture_views[i].view);
+		texture_views[i].Destroy(*device);
+	}
 	for (Int i = 0; i < back_buffer_rtvs.size(); ++i)
 	{
+		device->GetFrameBufferManager()->OnDestroyImageView(back_buffer_rtvs[i]->GetImageView());
 		delete back_buffer_rtvs[i];
 	}
 	if (back_buffer_dsv)
 	{
+		device->GetFrameBufferManager()->OnDestroyImageView(back_buffer_dsv->GetImageView());
 		delete back_buffer_dsv;
+		back_buffer_dsv = nullptr;
 	}
 	back_buffer_rtvs.clear();
 	texture_views.clear();
@@ -141,13 +149,24 @@ void VK_Viewport::DestroySwapChain(VK_SwapChainRecreateInfo* recreate_info)
 void VK_Viewport::CreateSwapChain(VK_SwapChainRecreateInfo* recreate_info)
 {
 	Vector<VkImage> images;
-	UInt32 image_count = 0;
-	swap_chain=new VK_SwapChain(rhi->instance,device,window_handle,common_pixel_format,size_x,size_y,
-								is_full_screen,&image_count, vk_pixel_format,images, lock_to_sync, recreate_info);
-	size_x = swap_chain->GetExtent2D().width;
-	size_y = swap_chain->GetExtent2D().height;
-	is_minimized = size_x == 0 || size_y == 0;
-
+	UInt32 image_count = 0,new_size_x=0,new_size_y=0;
+	VkFormat new_vk_pixel_format;
+	VK_SwapChain* new_swap_chain=new VK_SwapChain(rhi->instance,device,window_handle,common_pixel_format, new_size_x, new_size_y,
+								is_full_screen,&image_count, new_vk_pixel_format,images, lock_to_sync, recreate_info);
+	new_size_x = new_swap_chain->GetExtent2D().width;
+	new_size_y = new_swap_chain->GetExtent2D().height;
+	is_minimized = new_size_x == 0 || new_size_y == 0;
+	if (is_minimized)
+	{
+		new_swap_chain->Destroy(recreate_info);
+		delete new_swap_chain;
+		return;
+	}
+	DestroySwapChain(recreate_info);
+	swap_chain = new_swap_chain;
+	size_x = new_size_x;
+	size_y = new_size_y;
+	vk_pixel_format = new_vk_pixel_format;
 	texture_views.resize(images.size());
 	common_pixel_format = VK_Utils::Translate_Vulkan_Texture_Format_To_Common(vk_pixel_format);
 	for (Int i = 0; i < images.size(); ++i)
@@ -184,6 +203,7 @@ VK_Viewport::~VK_Viewport()
 {
 	if (swap_chain)
 	{
+		DestroySwapChain(nullptr);
 		delete swap_chain;
 		swap_chain = nullptr;
 	}
@@ -192,23 +212,25 @@ VK_Viewport::~VK_Viewport()
 		vkDestroySemaphore(device->GetDevice(), sumit_signal_semaphore[i], nullptr);
 		sumit_signal_semaphore[i] = VK_NULL_HANDLE;
 	}
-	for (Int i = 0; i < texture_views.size(); ++i)
-	{
-		texture_views[i].Destroy(*device);
-	}
-	/*
-	for (Int i = 0; i < back_buffer_rtvs.size(); ++i)
-	{
-		delete back_buffer_rtvs[i];
-	}
-	*/
-	if (back_buffer_dsv)
-	{
-		delete back_buffer_dsv;
-	}
-	back_buffer_rtvs.clear();
-	texture_views.clear();
+
 	rhi->viewports.erase(std::remove(rhi->viewports.begin(), rhi->viewports.end(), this), rhi->viewports.end());
+}
+
+Bool VK_Viewport::TryAcquireNextImage()
+{
+	if (is_minimized)
+	{
+		return false;
+	}
+	if (swap_chain->TryGetNextImageIndex(image_acquired_semaphore, acquired_image_index) == false)
+	{
+		VK_SwapChainRecreateInfo recreate_info;
+		recreate_info.swapchain = swap_chain->GetSwapchain();
+		recreate_info.surface = swap_chain->GetSurface();
+		CreateSwapChain(&recreate_info);
+		return false;
+	}
+	return true;
 }
 
 MYRENDERER_END_NAMESPACE

@@ -40,8 +40,8 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderTest,public MXRender::RenderInterface)
 #pragma region METHOD
 public:
 	RenderTest(Window* in_window);
-	RenderTest() DEFAULT;
-	VIRTUAL ~RenderTest() DEFAULT;
+	RenderTest() MYDEFAULT;
+	VIRTUAL ~RenderTest() MYDEFAULT;
 
 	VIRTUAL void BeginRender() OVERRIDE FINAL;
 	VIRTUAL void EndRender() OVERRIDE FINAL;
@@ -72,7 +72,7 @@ void RenderTest::BeginRender()
 {
 	std::cout << "Hello Texture" << std::endl;
 
-	struct TestData
+	struct TestData :public RenderGraphPassDataBase
 	{
 		Buffer* vertex_buffer = nullptr;
 		Buffer* index_buffer = nullptr;
@@ -80,6 +80,14 @@ void RenderTest::BeginRender()
 		RenderPipelineState* pipeline_state = nullptr;
 		ShaderResourceBinding* srb = nullptr;
 		Texture* output = nullptr;
+		VIRTUAL ~TestData()
+		{
+			Release();
+		}
+		void Release()
+		{
+
+		}
 	};
 	RenderPassDesc renderpass_desc;
 	CommandList* cmd_list = RHIGetImmediateCommandList();
@@ -94,12 +102,12 @@ void RenderTest::BeginRender()
 
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Vertex;
 		shader_desc.shader_name = "TestVS";
-		shader_data.data = ReadShader("Shader/vert.spv");
+		shader_data.data = ReadShader("Shader/Sample/triangle_test_vert.spv");
 		vs_shader = RHICreateShader(shader_desc,shader_data);
 
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Pixel;
 		shader_desc.shader_name = "TestPS";
-		shader_data.data = ReadShader("Shader/frag.spv");
+		shader_data.data = ReadShader("Shader/Sample/triangle_test_frag.spv");
 		ps_shader = RHICreateShader(shader_desc, shader_data);
 
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] =vs_shader;

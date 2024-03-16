@@ -32,14 +32,7 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 	, instance(in_instance)
 	, lock_to_vsync(in_lock_to_vsync)
 {
-	if (recreate_info != nullptr && recreate_info->swapchain != VK_NULL_HANDLE)
-	{
-		surface = recreate_info->surface;
-		recreate_info->surface = VK_NULL_HANDLE;
-		vkDestroySwapchainKHR(device->GetDevice(), recreate_info->swapchain, VULKAN_CPU_ALLOCATOR);
-		recreate_info->swapchain = VK_NULL_HANDLE;
-	}
-	else if (recreate_info != nullptr)
+	if (recreate_info != nullptr)
 	{
 		surface = recreate_info->surface;
 		recreate_info->surface = VK_NULL_HANDLE;
@@ -47,6 +40,28 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 	else
 	{
 		VK_Platform::CreateSurface(window_handle,instance,&surface);
+	}
+	VkSurfaceCapabilitiesKHR surf_properties;
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetGpu(), surface, &surf_properties);
+
+	VkSurfaceTransformFlagBitsKHR pre_transform;
+	if (surf_properties.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+	{
+		pre_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+	}
+	else
+	{
+		pre_transform = surf_properties.currentTransform;
+	}
+	if ((surf_properties.minImageExtent.width == 0 && surf_properties.maxImageExtent.width == 0) || (surf_properties.minImageExtent.height == 0 && surf_properties.maxImageExtent.height == 0))
+	{
+		image_extent2D = { 0,0 };
+		return;
+	}
+	if (recreate_info != nullptr && recreate_info->swapchain != VK_NULL_HANDLE)
+	{
+		vkDestroySwapchainKHR(device->GetDevice(), recreate_info->swapchain, VULKAN_CPU_ALLOCATOR);
+		recreate_info->swapchain = VK_NULL_HANDLE;
 	}
 
 	UInt32 num_formats=0;
@@ -69,20 +84,9 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 		}
 	} 
 
-	VkSurfaceCapabilitiesKHR surf_properties;
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetGpu(), surface, &surf_properties);
 
-	VkSurfaceTransformFlagBitsKHR pre_transform;
-	if (surf_properties.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
-	{
-		pre_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-	}
-	else
-	{
-		pre_transform = surf_properties.currentTransform;
-	}
-	width = std::max(surf_properties.minImageExtent.width, std::min(surf_properties.maxImageExtent.width, (UInt32)width));
-	height = std::max(surf_properties.minImageExtent.height, std::min(surf_properties.maxImageExtent.height, (UInt32)height));
+	width = std::max(std::max(surf_properties.minImageExtent.width, std::min(surf_properties.maxImageExtent.width, (UInt32)width)),1u);
+	height = std::max(std::max(surf_properties.minImageExtent.height, std::min(surf_properties.maxImageExtent.height, (UInt32)height)),1u);
 
 	VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
 	UInt32 num_found_present_modes = 0;
@@ -160,7 +164,7 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 
 VK_SwapChain::~VK_SwapChain()
 {
-	Destroy(nullptr);
+	//Destroy(nullptr);
 }
 
 void VK_SwapChain::Destroy(VK_SwapChainRecreateInfo* RecreateInfo)
@@ -184,10 +188,16 @@ void VK_SwapChain::Destroy(VK_SwapChainRecreateInfo* RecreateInfo)
 
 	for (Int i = 0; i < max_frames_in_flight; i++)
 	{
-		vkDestroySemaphore(device->GetDevice(), image_available_for_render_semaphore[i], nullptr);
-		image_available_for_render_semaphore[i] = VK_NULL_HANDLE;
-		vkDestroySemaphore(device->GetDevice(), image_finished_for_presentation_semaphore[i], nullptr);
-		image_finished_for_presentation_semaphore[i] = VK_NULL_HANDLE;
+		if (image_available_for_render_semaphore[i])
+		{
+			vkDestroySemaphore(device->GetDevice(), image_available_for_render_semaphore[i], nullptr);
+			image_available_for_render_semaphore[i] = VK_NULL_HANDLE;
+		}
+		if (image_finished_for_presentation_semaphore[i])
+		{
+			vkDestroySemaphore(device->GetDevice(), image_finished_for_presentation_semaphore[i], nullptr);
+			image_finished_for_presentation_semaphore[i] = VK_NULL_HANDLE;
+		}
 	}
 }
 

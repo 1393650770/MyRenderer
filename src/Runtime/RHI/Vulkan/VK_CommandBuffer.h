@@ -82,22 +82,22 @@ public:
 		{
 			FlushBarriers();
 
-			VkRenderPassBeginInfo BeginInfo;
-			BeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			BeginInfo.pNext = nullptr;
-			BeginInfo.renderPass = in_render_pass;
-			BeginInfo.framebuffer = in_frame_buffer;
+			VkRenderPassBeginInfo begin_info;
+			begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			begin_info.pNext = nullptr;
+			begin_info.renderPass = in_render_pass;
+			begin_info.framebuffer = in_frame_buffer;
 			
-			BeginInfo.renderArea = { {0, 0}, {in_framebuffer_width, in_framebuffer_height} };
-			BeginInfo.clearValueCount = in_clear_value_count;
-			BeginInfo.pClearValues = in_clear_values; // an array of VkClearValue structures that contains clear values for
+			begin_info.renderArea = { {0, 0}, {in_framebuffer_width, in_framebuffer_height} };
+			begin_info.clearValueCount = in_clear_value_count;
+			begin_info.pClearValues = in_clear_values; // an array of VkClearValue structures that contains clear values for
 			// each attachment, if the attachment uses a loadOp value of VK_ATTACHMENT_LOAD_OP_CLEAR
 			// or if the attachment has a depth/stencil format and uses a stencilLoadOp value of
 			// VK_ATTACHMENT_LOAD_OP_CLEAR. The array is indexed by attachment number. Only elements
 			// corresponding to cleared attachments are used. Other elements of pClearValues are
 			// ignored 
 
-			vkCmdBeginRenderPass(command_buffer, &BeginInfo,
+			vkCmdBeginRenderPass(command_buffer, &begin_info,
 				VK_SUBPASS_CONTENTS_INLINE // the contents of the subpass will be recorded inline in the
 										   // primary command buffer, and secondary command buffers must not
 										   // be executed within the subpass
@@ -169,6 +169,7 @@ public:
 		VkPipeline    compute_pipeline = VK_NULL_HANDLE;
 		VkPipeline    raytracing_pipeline = VK_NULL_HANDLE;
 		VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+		UInt8         descriptor_sets_count = 0;
 		CONST VkDescriptorSet* descriptor_sets = nullptr;
 		VkBuffer      index_buffer = VK_NULL_HANDLE;
 		VkDeviceSize  index_buffer_offset = 0;

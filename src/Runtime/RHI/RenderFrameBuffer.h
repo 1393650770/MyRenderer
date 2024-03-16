@@ -10,9 +10,9 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(FrameBuffer,public RenderResource)
 
 #pragma region METHOD
     public:
-        FrameBuffer() DEFAULT;
+        FrameBuffer() MYDEFAULT;
         FrameBuffer(CONST FrameBufferDesc& in_desc);
-        virtual ~FrameBuffer() DEFAULT;
+        virtual ~FrameBuffer() MYDEFAULT;
     protected:
 
     private:

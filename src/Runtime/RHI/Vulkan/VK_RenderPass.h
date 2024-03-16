@@ -43,10 +43,10 @@ public:
 #pragma region METHOD
 public:
 	VK_RenderPassManager(VK_Device* in_device) ;
-	VK_RenderPassManager(CONST VK_RenderPassManager&) DELETE;
-	VK_RenderPassManager(VK_RenderPassManager&&) DELETE;
-	VK_RenderPassManager& operator=(CONST VK_RenderPassManager&) DELETE;
-	VK_RenderPassManager& operator=(VK_RenderPassManager&&) DELETE;
+	VK_RenderPassManager(CONST VK_RenderPassManager&) MYDELETE;
+	VK_RenderPassManager(VK_RenderPassManager&&) MYDELETE;
+	VK_RenderPassManager& operator=(CONST VK_RenderPassManager&) MYDELETE;
+	VK_RenderPassManager& operator=(VK_RenderPassManager&&) MYDELETE;
 
 	~VK_RenderPassManager();
 

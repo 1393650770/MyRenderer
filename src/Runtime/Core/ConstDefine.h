@@ -1,5 +1,6 @@
 #pragma once
 #ifndef _CONSTDEFINE_
+
 #define _CONSTDEFINE_
 
 #include <vector>
@@ -12,6 +13,7 @@
 #include <array>
 #include <stdexcept>
 #include <boost/stacktrace.hpp>
+#include <iostream>
 
 #ifndef MYRENDERER_C_INTERFACE
 #    ifdef __cplusplus
@@ -74,6 +76,8 @@
 #define CHECK_WITH_LOG(Flag,LOG) if(Flag) \
                                 {\
                                     boost::stacktrace::stacktrace stack_trace;\
+									String log = String(LOG)+"\n"+boost::stacktrace::to_string(stack_trace);\
+									std::cout<<log<<std::endl; \
                                    	throw std::runtime_error(String(LOG)+"\n"+boost::stacktrace::to_string(stack_trace)); \
                                 }
 #define CHECK_WITH_LOG_WARNING(Flag,LOG) if(Flag) \
@@ -83,10 +87,10 @@
                                 }
 #define VIRTUAL      virtual
 #define CONST        const
-#define DEFAULT      =default
+#define MYDEFAULT      =default
 #define PURE         = 0
 
-#define DELETE       = delete
+#define MYDELETE       = delete
 
 #define OVERRIDE      override
 #define FINAL        final

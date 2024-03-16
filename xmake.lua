@@ -60,8 +60,12 @@ function MoveResource(target)
         root_taget_path = root_taget_path .. "/releasedbg"
     end
     local root_taget_shader_path = root_taget_path .. "/Shader"
+    local root_taget_texture_path = root_taget_path .. "/Texture"
+    local root_taget_editor_path = root_taget_path .. "/Editor"
     local root_taget_lib_path = root_taget_path
     os.cp("$(projectdir)/resource/Shader", root_taget_shader_path)
+    os.cp("$(projectdir)/resource/Texture", root_taget_texture_path)
+    os.cp("$(projectdir)/resource/Editor", root_taget_editor_path)
     os.cp("$(projectdir)/libs/*", root_taget_lib_path)
     
 end

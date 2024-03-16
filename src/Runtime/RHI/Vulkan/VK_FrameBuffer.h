@@ -64,10 +64,10 @@ MYRENDERER_BEGIN_CLASS(VK_FrameBufferManager)
 #pragma region METHOD
 	public:
 		VK_FrameBufferManager(VK_Device* in_device);
-		VK_FrameBufferManager(CONST VK_FrameBufferManager&) DELETE;
-		VK_FrameBufferManager(VK_FrameBufferManager&&) DELETE;
-		VK_FrameBufferManager& operator=(CONST VK_FrameBufferManager&) DELETE;
-		VK_FrameBufferManager& operator=(VK_FrameBufferManager&&) DELETE;
+		VK_FrameBufferManager(CONST VK_FrameBufferManager&) MYDELETE;
+		VK_FrameBufferManager(VK_FrameBufferManager&&) MYDELETE;
+		VK_FrameBufferManager& operator=(CONST VK_FrameBufferManager&) MYDELETE;
+		VK_FrameBufferManager& operator=(VK_FrameBufferManager&&) MYDELETE;
 		VIRTUAL ~VK_FrameBufferManager();
 
 		VK_FrameBuffer* METHOD(GetFramebuffer)(CONST FramebufferCacheKey& key, uint32_t width, uint32_t height, uint32_t layers);
@@ -85,7 +85,7 @@ MYRENDERER_BEGIN_CLASS(VK_FrameBufferManager)
 		VK_Device* device;
 		Map<FramebufferCacheKey, VK_FrameBuffer*, FramebufferCacheKeyHash> framebuffer_cache;
 
-		Map<Texture*, FramebufferCacheKey>  view_to_key_map;
+		Map<VkImageView, FramebufferCacheKey>  view_to_key_map;
 		Map<VkRenderPass, FramebufferCacheKey> render_pass_to_key_map;
 	private:
 #pragma endregion

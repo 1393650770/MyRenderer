@@ -22,7 +22,7 @@ class VK_Device;
 
 MYRENDERER_BEGIN_STRUCT(VK_TextureView)
 
-VK_TextureView() DEFAULT;
+VK_TextureView() MYDEFAULT;
 
 void METHOD(Create)(VK_Device& device, VkImage in_image, VkImageViewType view_type, VkImageAspectFlags aspect_flags,VkFormat format, UInt32 first_mip, UInt32 num_mips, UInt32 array_slice_index, UInt32 num_array_slices, Bool use_identity_swizzle = false);
 
@@ -48,12 +48,6 @@ public:
 	VkImageView METHOD(GetImageView)() CONST;
 	VkSampler METHOD(GetSampler)() CONST;
 protected:
-	void load_dds(ENUM_TEXTURE_TYPE _type, CONST std::string& texture_path);
-	void load_dds_cubemap(ENUM_TEXTURE_TYPE _type, CONST std::string& texture_path);
-	void load_dds_2d(ENUM_TEXTURE_TYPE _type, CONST std::string& texture_path);
-	void load_common_2d(CONST std::string& texture_path);
-	VkFormat trans_gli_format_to_vulkan(gli::format format);
-	std::string get_file_extension(CONST std::string& filename);
 
 private:
 
@@ -73,8 +67,7 @@ protected:
 	VkImageLayout texture_image_layout;
 
 	VK_Allocation allocation;
-
-	VkImageCreateInfo image_create_info;
+	Bool is_proxy_texture = false;
 private:
 
 #pragma endregion

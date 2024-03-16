@@ -45,7 +45,7 @@ MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_STRUCT(ShaderDataPayload)
 public:
-	ShaderDataPayload() DEFAULT;
+	ShaderDataPayload() MYDEFAULT;
 	ShaderDataPayload(CONST ShaderDataPayload& other);
 
 	ShaderDataPayload& operator=(CONST ShaderDataPayload& other)
@@ -66,7 +66,7 @@ MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_STRUCT(ShaderDesc)
 public:
-	ShaderDesc() DEFAULT;
+	ShaderDesc() MYDEFAULT;
 	ShaderDesc(ENUM_SHADER_STAGE in_shader_type) : shader_type(in_shader_type) {}
 	ENUM_SHADER_STAGE shader_type = ENUM_SHADER_STAGE::Invalid;
 	String debug_name;
@@ -125,8 +125,8 @@ static constexpr UInt32 c_ConstantBufferOffsetSizeAlignment = 256;
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderResource,public IObject)
 public:
-	RenderResource() DEFAULT;
-	VIRTUAL ~RenderResource() DEFAULT;
+	RenderResource() MYDEFAULT;
+	VIRTUAL ~RenderResource() MYDEFAULT;
 	VIRTUAL void METHOD(Release)();
 	VIRTUAL void METHOD(AddRef)() ;
 	VIRTUAL void METHOD(Realize)() CONST;  
@@ -149,7 +149,7 @@ public:
 	Vector<UInt32> spirv;
 	ENUM_SHADER_STAGE stage{ ENUM_SHADER_STAGE::Invalid };
 
-	ShaderData() DEFAULT;
+	ShaderData() MYDEFAULT;
 	~ShaderData()
 	{
 		spirv.clear();
@@ -172,7 +172,7 @@ union ClearValue
 
 MYRENDERER_BEGIN_STRUCT(TextureDesc)
 public:
-	TextureDesc() DEFAULT;
+	TextureDesc() MYDEFAULT;
 	TextureDesc(CONST TextureDesc& other);
 
 	TextureDesc& operator=(CONST TextureDesc& other)
@@ -210,13 +210,12 @@ MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_STRUCT(TextureDataPayload)
 public:
-	TextureDataPayload() DEFAULT;
+	TextureDataPayload() MYDEFAULT;
 	TextureDataPayload(CONST TextureDataPayload& other);
 
 	TextureDataPayload& operator=(CONST TextureDataPayload& other)
 	{
 		data = other.data;
-		data_size = other.data_size;
 		mip_level = other.mip_level;
 		layer_count = other.layer_count;
 		format = other.format;
@@ -224,8 +223,7 @@ public:
 		return *this;
 	}
 
-	void* data = nullptr;
-	size_t data_size = 0;
+	Vector<Char> data;
 	UInt8 mip_level = 1;
 	UInt8 layer_count = 1;
 	UInt32 width = 0;
@@ -235,14 +233,14 @@ public:
 	ENUM_TEXTURE_TYPE type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
 	MYRENDERER_BEGIN_STRUCT(MipLevelProperties)
 	public:
-		UInt32 logic_width = 0;
-		UInt32 logic_height = 0;
+		UInt32 logical_width = 0;
+		UInt32 logical_height = 0;
 		UInt32 storage_width = 0;
 		UInt32 storage_height = 0;
 		UInt32 depth = 1;
-		UInt32 row_size = 0;
-		UInt32 slice_size = 0;
-		UInt32 mip_size = 0;
+		UInt64 row_size = 0;
+		UInt64 slice_size = 0;
+		UInt64 mip_size = 0;
 	MYRENDERER_END_STRUCT
 
 	MipLevelProperties METHOD(GetMipLevelProperties)(UInt8 in_mip_level) CONST;
@@ -263,8 +261,8 @@ MYRENDERER_BEGIN_STRUCT(BlenderState)
 		ENUM_BLEND_EQUATION op_alpha{ ENUM_BLEND_EQUATION::ENUM_ADD };
 		ENUM_COLOR_MASK write_mask{ ENUM_COLOR_MASK::All };
 
-		RenderTarget() DEFAULT;
-		~RenderTarget() DEFAULT;
+		RenderTarget() MYDEFAULT;
+		~RenderTarget() MYDEFAULT;
 
 		constexpr Bool operator == (CONST RenderTarget& rhs) CONST
 		{
@@ -312,8 +310,8 @@ MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_STRUCT(DepthStencilState)
 public:
-	DepthStencilState()DEFAULT;
-	~DepthStencilState()DEFAULT;
+	DepthStencilState()MYDEFAULT;
+	~DepthStencilState()MYDEFAULT;
 	
 	Bool depth_test_enable{ true };
 	Bool depth_write_enable{ true };
@@ -347,8 +345,8 @@ public:
 MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_STRUCT(RasterizerState)
-	RasterizerState()DEFAULT;
-	~RasterizerState()DEFAULT;
+	RasterizerState()MYDEFAULT;
+	~RasterizerState()MYDEFAULT;
 
 	ENUM_RASTER_CULLMODE cull_mode{ ENUM_RASTER_CULLMODE::Back };
 	ENUM_RASTER_FILLMODE fill_mode{ ENUM_RASTER_FILLMODE::Solid };
@@ -391,8 +389,8 @@ public:
 	ENUM_VERTEX_INPUTRATE input_rate{ ENUM_VERTEX_INPUTRATE::PerVertex };
 	UInt32 offset{ 0 };
 
-	VertexInputLayout() DEFAULT;
-	~VertexInputLayout() DEFAULT;
+	VertexInputLayout() MYDEFAULT;
+	~VertexInputLayout() MYDEFAULT;
 
 	VertexInputLayout& operator= (CONST VertexInputLayout& rhs)
 	{
@@ -434,8 +432,8 @@ MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderGraphiPipelineStateDesc,public RenderResource)
 public:
-	RenderGraphiPipelineStateDesc() DEFAULT;
-	VIRTUAL ~RenderGraphiPipelineStateDesc() DEFAULT;
+	RenderGraphiPipelineStateDesc() MYDEFAULT;
+	VIRTUAL ~RenderGraphiPipelineStateDesc() MYDEFAULT;
 
 	Shader* shaders[ENUM_SHADER_STAGE::NumStages]{nullptr};
 	ENUM_PRIMITIVE_TYPE primitive_topology{ ENUM_PRIMITIVE_TYPE::TriangleList };

@@ -35,7 +35,7 @@ MYRENDERER_BEGIN_STRUCT(ReflectedInfo)
 Map<String, ReflectedBinding> bindings;
 Vector<DescriptorSetLayoutData> setlayouts;
 Vector<ReflectedConstantInfo> constant_ranges;
-ReflectedInfo() DEFAULT;
+ReflectedInfo() MYDEFAULT;
 ReflectedInfo( CONST Vector<DescriptorSetLayoutData>& in_setlayouts, CONST Vector<ReflectedConstantInfo>& in_constant_ranges) :
 	 setlayouts(in_setlayouts), constant_ranges(in_constant_ranges) {}
 ReflectedInfo(CONST ReflectedInfo& in_reflect) :
@@ -47,7 +47,7 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_ShaderResourceBinding, public ShaderResour
 friend class VK_PipelineState;
 #pragma region METHOD
 public:
-	VK_ShaderResourceBinding(VK_Device* in_device,Map<String, ReflectedBinding>& in_bindings) ;
+	VK_ShaderResourceBinding(VK_Device* in_device,Map<String, ReflectedBinding>& in_bindings, Bool in_is_static_resource) ;
 
 	VIRTUAL ~VK_ShaderResourceBinding();
 	CONST VkDescriptorSet* METHOD(GetDescriptorSets)() CONST;
@@ -64,6 +64,7 @@ protected:
 	Array<VkDescriptorSet, MYRENDER_MAX_BINDING_SET_NUM> descriptorset{ VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE };
 	Map<String, ReflectedBinding>& bindings;
 	VK_Device* device;
+	Bool is_static_resource =false;
 private:
 
 #pragma endregion

@@ -41,6 +41,7 @@ protected:
 	void METHOD(DestroySwapChain)(VK_SwapChainRecreateInfo* recreate_info=nullptr);
 	void METHOD(PresentInternal)(VK_CommandBuffer* in_cmd_list, VK_Queue* submit_queue,VK_Queue* present_queue,  Bool is_lock_to_vsync);
 	void METHOD(CreateSyncObjects)();
+	Bool METHOD(TryAcquireNextImage)();
 private:
 
 #pragma endregion
