@@ -48,12 +48,6 @@ public:
 	VkImageView METHOD(GetImageView)() CONST;
 	VkSampler METHOD(GetSampler)() CONST;
 protected:
-	void load_dds(ENUM_TEXTURE_TYPE _type, CONST std::string& texture_path);
-	void load_dds_cubemap(ENUM_TEXTURE_TYPE _type, CONST std::string& texture_path);
-	void load_dds_2d(ENUM_TEXTURE_TYPE _type, CONST std::string& texture_path);
-	void load_common_2d(CONST std::string& texture_path);
-	VkFormat trans_gli_format_to_vulkan(gli::format format);
-	std::string get_file_extension(CONST std::string& filename);
 
 private:
 
@@ -73,8 +67,7 @@ protected:
 	VkImageLayout texture_image_layout;
 
 	VK_Allocation allocation;
-
-	VkImageCreateInfo image_create_info;
+	Bool is_proxy_texture = false;
 private:
 
 #pragma endregion

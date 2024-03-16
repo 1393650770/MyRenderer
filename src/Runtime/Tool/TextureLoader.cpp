@@ -7,19 +7,18 @@ MYRENDERER_BEGIN_NAMESPACE(Tool)
 void TextureLoader::LoadTextureData(CONST String& filename, RHI::TextureDataPayload* data, std::atomic_bool& result)
 {
 	gli::texture texture=gli::load(filename);
-	if (texture.empty()) 
-		return;
-	
-	data->data.resize(texture.size());
-	memcpy(data->data.data(), texture.data(), texture.size());
-	data->width = texture.extent().x;
-	data->height = texture.extent().y;
-	data->depth = texture.extent().z;
-	data->mip_level = texture.levels();
-	data->layer_count = texture.layers();
-	data->format = ToolUtils::TranslateGliFormatToEngineFormat(texture.format());
-	switch (texture.target())
+	if (texture.empty() == false)
 	{
+		data->data.resize(texture.size());
+		memcpy(data->data.data(), texture.data(), texture.size());
+		data->width = texture.extent().x;
+		data->height = texture.extent().y;
+		data->depth = texture.extent().z;
+		data->mip_level = texture.levels();
+		data->layer_count = texture.faces();
+		data->format = ToolUtils::TranslateGliFormatToEngineFormat(texture.format());
+		switch (texture.target())
+		{
 		case gli::TARGET_2D:
 		{
 			data->type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
@@ -46,8 +45,14 @@ void TextureLoader::LoadTextureData(CONST String& filename, RHI::TextureDataPayl
 			CHECK_WITH_LOG(true, "Loader Error: Texture target is not supported");
 			break;
 		}
+		}
+		result = true;
 	}
-	result = true;
+	else
+	{
+		//TODO:: use the other way to load the png or jpg ... file
+		result = false;
+	}
 }
 
 RHI::TextureDataPayload TextureLoader::LoadTextureData(CONST String& filename)

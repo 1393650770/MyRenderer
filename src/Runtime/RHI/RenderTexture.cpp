@@ -85,17 +85,22 @@ TextureDataPayload::MipLevelProperties TextureDataPayload::GetMipLevelProperties
 	MipLevelProperties mip_props;
 	const auto& format_attribs = Texture::GetTextureFormatAttribs(format);
 
-	mip_props.logic_width = max(width >> in_mip_level, 1u);
-	mip_props.logic_height = max(height >> in_mip_level, 1u);
+	mip_props.logical_width = max(width >> in_mip_level, 1u);
+	mip_props.logical_height = max(height >> in_mip_level, 1u);
 	mip_props.depth = max(depth >> in_mip_level, 1u);
 	//TODO: support compressed formats
-	//if (format_attribs.ComponentType == COMPONENT_TYPE_COMPRESSED)
-	//{
-	//}
-	//else
+	if (format_attribs.component_format == ENUM_TEXTURE_COMPONENT_FORMAT::Compressed)
 	{
-		mip_props.storage_height = mip_props.logic_height;
-		mip_props.storage_width = mip_props.logic_width;
+		mip_props.storage_height = Align(mip_props.logical_height, UInt32{ format_attribs.block_height });
+		mip_props.storage_width = Align(mip_props.logical_width, UInt32{ format_attribs.block_width });
+		mip_props.row_size = (UInt64{ mip_props.storage_width } / UInt32{ format_attribs.block_width }) * UInt32{ format_attribs.single_component_byte_size };
+		mip_props.slice_size = mip_props.storage_height/ UInt32{ format_attribs.block_height } * mip_props.row_size;
+		mip_props.mip_size = mip_props.slice_size * mip_props.depth;
+	}
+	else
+	{
+		mip_props.storage_height = mip_props.logical_height;
+		mip_props.storage_width = mip_props.logical_width;
 		mip_props.row_size = UInt64{ mip_props.storage_width } *UInt32{ format_attribs.component_count } *UInt32{ format_attribs.single_component_byte_size };
 		mip_props.slice_size = mip_props.row_size * mip_props.storage_height;
 		mip_props.mip_size = mip_props.slice_size * mip_props.depth;

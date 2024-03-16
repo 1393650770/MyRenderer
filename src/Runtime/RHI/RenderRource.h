@@ -233,14 +233,14 @@ public:
 	ENUM_TEXTURE_TYPE type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
 	MYRENDERER_BEGIN_STRUCT(MipLevelProperties)
 	public:
-		UInt32 logic_width = 0;
-		UInt32 logic_height = 0;
+		UInt32 logical_width = 0;
+		UInt32 logical_height = 0;
 		UInt32 storage_width = 0;
 		UInt32 storage_height = 0;
 		UInt32 depth = 1;
-		UInt32 row_size = 0;
-		UInt32 slice_size = 0;
-		UInt32 mip_size = 0;
+		UInt64 row_size = 0;
+		UInt64 slice_size = 0;
+		UInt64 mip_size = 0;
 	MYRENDERER_END_STRUCT
 
 	MipLevelProperties METHOD(GetMipLevelProperties)(UInt8 in_mip_level) CONST;

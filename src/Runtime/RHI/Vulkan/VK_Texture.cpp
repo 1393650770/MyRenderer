@@ -50,6 +50,7 @@ void VK_TextureView::Destroy(VK_Device& device)
 
 VK_Texture::VK_Texture(VK_Device* in_device, CONST TextureDesc& texture_desc):Texture(texture_desc),device(in_device)
 {
+	VkImageCreateInfo image_create_info;
 	GenerateImageCreateInfo(image_create_info, *in_device, texture_desc);
 
 	CHECK_WITH_LOG(vkCreateImage(in_device->GetDevice(), &image_create_info, VULKAN_CPU_ALLOCATOR, &texture_image) != VK_SUCCESS,
@@ -80,473 +81,33 @@ VK_Texture::VK_Texture(VK_Device* in_device, CONST VK_TextureView& texture_view,
 	imageSize = texture_desc.width * texture_desc.height * 4;
 	texture_image_layout = VK_Utils::Translate_Texture_usage_type_To_Vulkan(texture_desc.usage);
 	//texture_sampler = VK_Utils::Create_Linear_Sampler(in_device->GetGpu(), in_device->GetDevice());
+	is_proxy_texture = true;
 }
 
-VkFormat VK_Texture::trans_gli_format_to_vulkan(gli::format format)
-{
-	switch (format)
-	{
-	case gli::FORMAT_RGBA8_UNORM_PACK8:
-		return VK_FORMAT_R8G8B8A8_UNORM;
-	case gli::FORMAT_RGB8_UNORM_PACK8:
-		return VK_FORMAT_R8G8B8_UNORM;
-	case gli::FORMAT_RGBA16_SFLOAT_PACK16:
-		return VK_FORMAT_R16G16B16A16_SFLOAT;
-	case gli::FORMAT_RGBA32_SFLOAT_PACK32:
-		return VK_FORMAT_R32G32B32A32_SFLOAT;
-	case gli::FORMAT_R8_UNORM_PACK8:
-		return VK_FORMAT_R8_UNORM;
-	case gli::FORMAT_R16_SFLOAT_PACK16:
-		return VK_FORMAT_R16_SFLOAT;
-	case gli::FORMAT_R32_SFLOAT_PACK32:
-		return VK_FORMAT_R32_SFLOAT;
-	case gli::FORMAT_RG8_UNORM_PACK8:
-		return VK_FORMAT_R8G8_UNORM;
-	case gli::FORMAT_RG16_SFLOAT_PACK16:
-		return VK_FORMAT_R16G16_SFLOAT;
-	case gli::FORMAT_RG32_SFLOAT_PACK32:
-		return VK_FORMAT_R32G32_SFLOAT;
-	case gli::FORMAT_RGB_DXT1_UNORM_BLOCK8:
-		return VK_FORMAT_BC1_RGB_UNORM_BLOCK;
-	case gli::FORMAT_RGBA_DXT1_UNORM_BLOCK8:
-		return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
-	case gli::FORMAT_RGBA_DXT3_UNORM_BLOCK16:
-		return VK_FORMAT_BC2_UNORM_BLOCK;
-	case gli::FORMAT_RGBA_DXT5_UNORM_BLOCK16:
-		return VK_FORMAT_BC3_UNORM_BLOCK;
-	case gli::FORMAT_UNDEFINED:
-		return VK_FORMAT_UNDEFINED;
-		break;
-	case gli::FORMAT_RG4_UNORM_PACK8:
-		return VK_FORMAT_R4G4_UNORM_PACK8;
-		break;
-	case gli::FORMAT_RGBA4_UNORM_PACK16:
-		break;
-	case gli::FORMAT_BGRA4_UNORM_PACK16:
-		break;
-	case gli::FORMAT_R5G6B5_UNORM_PACK16:
-		break;
-	case gli::FORMAT_B5G6R5_UNORM_PACK16:
-		break;
-	case gli::FORMAT_RGB5A1_UNORM_PACK16:
-		break;
-	case gli::FORMAT_BGR5A1_UNORM_PACK16:
-		break;
-	case gli::FORMAT_A1RGB5_UNORM_PACK16:
-		break;
-	case gli::FORMAT_R8_SNORM_PACK8:
-		break;
-	case gli::FORMAT_R8_USCALED_PACK8:
-		break;
-	case gli::FORMAT_R8_SSCALED_PACK8:
-		break;
-	case gli::FORMAT_R8_UINT_PACK8:
-		break;
-	case gli::FORMAT_R8_SINT_PACK8:
-		break;
-	case gli::FORMAT_R8_SRGB_PACK8:
-		break;
-	case gli::FORMAT_RG8_SNORM_PACK8:
-		break;
-	case gli::FORMAT_RG8_USCALED_PACK8:
-		break;
-	case gli::FORMAT_RG8_SSCALED_PACK8:
-		break;
-	case gli::FORMAT_RG8_UINT_PACK8:
-		break;
-	case gli::FORMAT_RG8_SINT_PACK8:
-		break;
-	case gli::FORMAT_RG8_SRGB_PACK8:
-		break;
-	case gli::FORMAT_RGB8_SNORM_PACK8:
-		break;
-	case gli::FORMAT_RGB8_USCALED_PACK8:
-		break;
-	case gli::FORMAT_RGB8_SSCALED_PACK8:
-		break;
-	case gli::FORMAT_RGB8_UINT_PACK8:
-		break;
-	case gli::FORMAT_RGB8_SINT_PACK8:
-		break;
-	case gli::FORMAT_RGB8_SRGB_PACK8:
-		break;
-	case gli::FORMAT_BGR8_UNORM_PACK8:
-		break;
-	case gli::FORMAT_BGR8_SNORM_PACK8:
-		break;
-	case gli::FORMAT_BGR8_USCALED_PACK8:
-		break;
-	case gli::FORMAT_BGR8_SSCALED_PACK8:
-		break;
-	case gli::FORMAT_BGR8_UINT_PACK8:
-		break;
-	case gli::FORMAT_BGR8_SINT_PACK8:
-		break;
-	case gli::FORMAT_BGR8_SRGB_PACK8:
-		break;
-	case gli::FORMAT_RGBA8_SNORM_PACK8:
-		break;
-	case gli::FORMAT_RGBA8_USCALED_PACK8:
-		break;
-	case gli::FORMAT_RGBA8_SSCALED_PACK8:
-		break;
-	case gli::FORMAT_RGBA8_UINT_PACK8:
-		break;
-	case gli::FORMAT_RGBA8_SINT_PACK8:
-		break;
-	case gli::FORMAT_RGBA8_SRGB_PACK8:
-		break;
-	case gli::FORMAT_BGRA8_UNORM_PACK8:
-		break;
-	case gli::FORMAT_BGRA8_SNORM_PACK8:
-		break;
-	case gli::FORMAT_BGRA8_USCALED_PACK8:
-		break;
-	case gli::FORMAT_BGRA8_SSCALED_PACK8:
-		break;
-	case gli::FORMAT_BGRA8_UINT_PACK8:
-		break;
-	case gli::FORMAT_BGRA8_SINT_PACK8:
-		break;
-	case gli::FORMAT_BGRA8_SRGB_PACK8:
-		break;
-	case gli::FORMAT_RGBA8_UNORM_PACK32:
-		break;
-	case gli::FORMAT_RGBA8_SNORM_PACK32:
-		break;
-	case gli::FORMAT_RGBA8_USCALED_PACK32:
-		break;
-	case gli::FORMAT_RGBA8_SSCALED_PACK32:
-		break;
-	case gli::FORMAT_RGBA8_UINT_PACK32:
-		break;
-	case gli::FORMAT_RGBA8_SINT_PACK32:
-		break;
-	case gli::FORMAT_RGBA8_SRGB_PACK32:
-		break;
-	case gli::FORMAT_RGB10A2_UNORM_PACK32:
-		break;
-	case gli::FORMAT_RGB10A2_SNORM_PACK32:
-		break;
-	case gli::FORMAT_RGB10A2_USCALED_PACK32:
-		break;
-	case gli::FORMAT_RGB10A2_SSCALED_PACK32:
-		break;
-	case gli::FORMAT_RGB10A2_UINT_PACK32:
-		break;
-	case gli::FORMAT_RGB10A2_SINT_PACK32:
-		break;
-	case gli::FORMAT_BGR10A2_UNORM_PACK32:
-		break;
-	case gli::FORMAT_BGR10A2_SNORM_PACK32:
-		break;
-	case gli::FORMAT_BGR10A2_USCALED_PACK32:
-		break;
-	case gli::FORMAT_BGR10A2_SSCALED_PACK32:
-		break;
-	case gli::FORMAT_BGR10A2_UINT_PACK32:
-		break;
-	case gli::FORMAT_BGR10A2_SINT_PACK32:
-		break;
-	case gli::FORMAT_R16_UNORM_PACK16:
-		break;
-	case gli::FORMAT_R16_SNORM_PACK16:
-		break;
-	case gli::FORMAT_R16_USCALED_PACK16:
-		break;
-	case gli::FORMAT_R16_SSCALED_PACK16:
-		break;
-	case gli::FORMAT_R16_UINT_PACK16:
-		break;
-	case gli::FORMAT_R16_SINT_PACK16:
-		break;
-	case gli::FORMAT_RG16_UNORM_PACK16:
-		break;
-	case gli::FORMAT_RG16_SNORM_PACK16:
-		break;
-	case gli::FORMAT_RG16_USCALED_PACK16:
-		break;
-	case gli::FORMAT_RG16_SSCALED_PACK16:
-		break;
-	case gli::FORMAT_RG16_UINT_PACK16:
-		break;
-	case gli::FORMAT_RG16_SINT_PACK16:
-		break;
-	case gli::FORMAT_RGB16_UNORM_PACK16:
-		break;
-	case gli::FORMAT_RGB16_SNORM_PACK16:
-		break;
-	case gli::FORMAT_RGB16_USCALED_PACK16:
-		break;
-	case gli::FORMAT_RGB16_SSCALED_PACK16:
-		break;
-	case gli::FORMAT_RGB16_UINT_PACK16:
-		break;
-	case gli::FORMAT_RGB16_SINT_PACK16:
-		break;
-	case gli::FORMAT_RGB16_SFLOAT_PACK16:
-		break;
-	case gli::FORMAT_RGBA16_UNORM_PACK16:
-		break;
-	case gli::FORMAT_RGBA16_SNORM_PACK16:
-		break;
-	case gli::FORMAT_RGBA16_USCALED_PACK16:
-		break;
-	case gli::FORMAT_RGBA16_SSCALED_PACK16:
-		break;
-	case gli::FORMAT_RGBA16_UINT_PACK16:
-		break;
-	case gli::FORMAT_RGBA16_SINT_PACK16:
-		break;
-	case gli::FORMAT_R32_UINT_PACK32:
-		break;
-	case gli::FORMAT_R32_SINT_PACK32:
-		break;
-	case gli::FORMAT_RG32_UINT_PACK32:
-		break;
-	case gli::FORMAT_RG32_SINT_PACK32:
-		break;
-	case gli::FORMAT_RGB32_UINT_PACK32:
-		break;
-	case gli::FORMAT_RGB32_SINT_PACK32:
-		break;
-	case gli::FORMAT_RGB32_SFLOAT_PACK32:
-		break;
-	case gli::FORMAT_RGBA32_UINT_PACK32:
-		break;
-	case gli::FORMAT_RGBA32_SINT_PACK32:
-		break;
-	case gli::FORMAT_R64_UINT_PACK64:
-		break;
-	case gli::FORMAT_R64_SINT_PACK64:
-		break;
-	case gli::FORMAT_R64_SFLOAT_PACK64:
-		break;
-	case gli::FORMAT_RG64_UINT_PACK64:
-		break;
-	case gli::FORMAT_RG64_SINT_PACK64:
-		break;
-	case gli::FORMAT_RG64_SFLOAT_PACK64:
-		break;
-	case gli::FORMAT_RGB64_UINT_PACK64:
-		break;
-	case gli::FORMAT_RGB64_SINT_PACK64:
-		break;
-	case gli::FORMAT_RGB64_SFLOAT_PACK64:
-		break;
-	case gli::FORMAT_RGBA64_UINT_PACK64:
-		break;
-	case gli::FORMAT_RGBA64_SINT_PACK64:
-		break;
-	case gli::FORMAT_RGBA64_SFLOAT_PACK64:
-		break;
-	case gli::FORMAT_RG11B10_UFLOAT_PACK32:
-		break;
-	case gli::FORMAT_RGB9E5_UFLOAT_PACK32:
-		break;
-	case gli::FORMAT_D16_UNORM_PACK16:
-		break;
-	case gli::FORMAT_D24_UNORM_PACK32:
-		break;
-	case gli::FORMAT_D32_SFLOAT_PACK32:
-		break;
-	case gli::FORMAT_S8_UINT_PACK8:
-		break;
-	case gli::FORMAT_D16_UNORM_S8_UINT_PACK32:
-		break;
-	case gli::FORMAT_D24_UNORM_S8_UINT_PACK32:
-		break;
-	case gli::FORMAT_D32_SFLOAT_S8_UINT_PACK64:
-		break;
-	case gli::FORMAT_RGB_DXT1_SRGB_BLOCK8:
-		break;
-	case gli::FORMAT_RGBA_DXT1_SRGB_BLOCK8:
-		break;
-	case gli::FORMAT_RGBA_DXT3_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_DXT5_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_R_ATI1N_UNORM_BLOCK8:
-		break;
-	case gli::FORMAT_R_ATI1N_SNORM_BLOCK8:
-		break;
-	case gli::FORMAT_RG_ATI2N_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RG_ATI2N_SNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGB_BP_UFLOAT_BLOCK16:
-		break;
-	case gli::FORMAT_RGB_BP_SFLOAT_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_BP_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_BP_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGB_ETC2_UNORM_BLOCK8:
-		break;
-	case gli::FORMAT_RGB_ETC2_SRGB_BLOCK8:
-		break;
-	case gli::FORMAT_RGBA_ETC2_UNORM_BLOCK8:
-		break;
-	case gli::FORMAT_RGBA_ETC2_SRGB_BLOCK8:
-		break;
-	case gli::FORMAT_RGBA_ETC2_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ETC2_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_R_EAC_UNORM_BLOCK8:
-		break;
-	case gli::FORMAT_R_EAC_SNORM_BLOCK8:
-		break;
-	case gli::FORMAT_RG_EAC_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RG_EAC_SNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_4X4_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_4X4_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_5X4_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_5X4_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_5X5_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_5X5_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_6X5_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_6X5_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_6X6_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_6X6_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_8X5_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_8X5_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_8X6_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_8X6_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_8X8_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_8X8_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_10X5_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_10X5_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_10X6_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_10X6_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_10X8_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_10X8_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_10X10_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_10X10_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_12X10_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_12X10_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_12X12_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ASTC_12X12_SRGB_BLOCK16:
-		break;
-	case gli::FORMAT_RGB_PVRTC1_8X8_UNORM_BLOCK32:
-		break;
-	case gli::FORMAT_RGB_PVRTC1_8X8_SRGB_BLOCK32:
-		break;
-	case gli::FORMAT_RGB_PVRTC1_16X8_UNORM_BLOCK32:
-		break;
-	case gli::FORMAT_RGB_PVRTC1_16X8_SRGB_BLOCK32:
-		break;
-	case gli::FORMAT_RGBA_PVRTC1_8X8_UNORM_BLOCK32:
-		break;
-	case gli::FORMAT_RGBA_PVRTC1_8X8_SRGB_BLOCK32:
-		break;
-	case gli::FORMAT_RGBA_PVRTC1_16X8_UNORM_BLOCK32:
-		break;
-	case gli::FORMAT_RGBA_PVRTC1_16X8_SRGB_BLOCK32:
-		break;
-	case gli::FORMAT_RGBA_PVRTC2_4X4_UNORM_BLOCK8:
-		break;
-	case gli::FORMAT_RGBA_PVRTC2_4X4_SRGB_BLOCK8:
-		break;
-	case gli::FORMAT_RGBA_PVRTC2_8X4_UNORM_BLOCK8:
-		break;
-	case gli::FORMAT_RGBA_PVRTC2_8X4_SRGB_BLOCK8:
-		break;
-	case gli::FORMAT_RGB_ETC_UNORM_BLOCK8:
-		break;
-	case gli::FORMAT_RGB_ATC_UNORM_BLOCK8:
-		break;
-	case gli::FORMAT_RGBA_ATCA_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_RGBA_ATCI_UNORM_BLOCK16:
-		break;
-	case gli::FORMAT_L8_UNORM_PACK8:
-		break;
-	case gli::FORMAT_A8_UNORM_PACK8:
-		break;
-	case gli::FORMAT_LA8_UNORM_PACK8:
-		break;
-	case gli::FORMAT_L16_UNORM_PACK16:
-		break;
-	case gli::FORMAT_A16_UNORM_PACK16:
-		break;
-	case gli::FORMAT_LA16_UNORM_PACK16:
-		break;
-	case gli::FORMAT_BGR8_UNORM_PACK32:
-		break;
-	case gli::FORMAT_BGR8_SRGB_PACK32:
-		break;
-	case gli::FORMAT_RG3B2_UNORM_PACK8:
-		break;
-	default:
-		break;
-	}
-	std::abort();
-	return VK_FORMAT_UNDEFINED;
-}
 
-std::string VK_Texture::get_file_extension(CONST std::string& filename)
-{
-	size_t pos = filename.rfind('.');
-	if (pos != std::string::npos) 
-	{
-		return filename.substr(pos + 1);
-	}
-	else 
-	{
-		return "";
-	}
-}
 
 VK_Texture::~VK_Texture()
 {
-	if (texture_image != VK_NULL_HANDLE)
+	if (is_proxy_texture == false)
 	{
-		vkDestroyImage(device->GetDevice(), texture_image, nullptr);
-		texture_image = VK_NULL_HANDLE;
+		if (texture_image != VK_NULL_HANDLE)
+		{
+			vkDestroyImage(device->GetDevice(), texture_image, nullptr);
+			texture_image = VK_NULL_HANDLE;
+		}
+		if (texture_image_view != VK_NULL_HANDLE)
+		{
+			vkDestroyImageView(device->GetDevice(), texture_image_view, nullptr);
+			texture_image_view = VK_NULL_HANDLE;
+		}
+		if (texture_sampler != VK_NULL_HANDLE)
+		{
+			vkDestroySampler(device->GetDevice(), texture_sampler, nullptr);
+			texture_sampler = VK_NULL_HANDLE;
+		}
+		VK_MemoryManager* memory_manager = device->GetMemoryManager();
+		memory_manager->FreeAllocation(allocation);
 	}
-	if (texture_image_view != VK_NULL_HANDLE)
-	{
-		vkDestroyImageView(device->GetDevice(), texture_image_view, nullptr);
-		texture_image_view = VK_NULL_HANDLE;
-	}
-	if (texture_sampler != VK_NULL_HANDLE)
-	{
-		vkDestroySampler(device->GetDevice(), texture_sampler, nullptr);
-		texture_sampler = VK_NULL_HANDLE;
-	}
-	VK_MemoryManager* memory_manager = device->GetMemoryManager();
-	memory_manager->FreeAllocation(allocation);
 }
 
 void VK_Texture::GenerateImageCreateInfo(VkImageCreateInfo& image_create_info, VK_Device& in_device, CONST TextureDesc& desc)
@@ -633,20 +194,19 @@ void VK_Texture::UpdateTextureData(CONST TextureDataPayload& texture_data_payloa
 			buffer_copy_region.imageSubresource.mipLevel = level;
 			buffer_copy_region.imageSubresource.baseArrayLayer = layer;
 			buffer_copy_region.imageSubresource.layerCount = 1;
-			if (texture_data_payload.type == ENUM_TEXTURE_TYPE::ENUM_TYPE_CUBE_MAP)
-			{
-				buffer_copy_region.imageExtent.width = static_cast<uint32_t>(texture_data_payload.width );
-				buffer_copy_region.imageExtent.height = static_cast<uint32_t>(texture_data_payload.height );
-			}
-			else
-			{
-				buffer_copy_region.imageExtent.width = static_cast<uint32_t>(texture_data_payload.width >> level);
-				buffer_copy_region.imageExtent.height = static_cast<uint32_t>(texture_data_payload.height >> level);
-			}
-			buffer_copy_region.imageExtent.depth = 1;
+			buffer_copy_region.imageOffset = { 0, 0, 0 };
+			buffer_copy_region.bufferRowLength = 0;
+			buffer_copy_region.bufferImageHeight = 0;
+
+
+			buffer_copy_region.imageExtent.width = mip_info.logical_width;
+			buffer_copy_region.imageExtent.height = mip_info.logical_height;
+
+			buffer_copy_region.imageExtent.depth = mip_info.depth;
 			buffer_copy_region.bufferOffset = buffer_offset;
 
 			buffer_offset += mip_info.mip_size;
+			buffer_offset += (mip_info.mip_size + 3) & (~3);
 		}
 	}
 	

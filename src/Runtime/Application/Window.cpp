@@ -37,6 +37,8 @@ Window::~Window()
 
 void Window::Run(RenderInterface* render)
 {
+	Int width = 0;
+	Int height = 0;
 	render->BeginRender();
 	while (!glfwWindowShouldClose(window))
     {
@@ -54,6 +56,15 @@ void Window::Run(RenderInterface* render)
 		viewport->Present(cmd_list, true, true);
 		g_frame_number_render_thread = (g_frame_number_render_thread + 1) % g_max_frame_number;
         glfwSwapBuffers(window);
+
+
+		glfwGetFramebufferSize(window, &width, &height);
+		while (width == 0 || height == 0) // minimized 0,0, pause for now
+		{
+			glfwGetFramebufferSize(window, &width, &height);
+			glfwWaitEvents();
+		}
+		viewport->Resize(width, height);
     }
 	render->EndRender();
 
