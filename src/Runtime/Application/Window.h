@@ -4,10 +4,13 @@
 #include "Core/ConstDefine.h"
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
 #include <array>
 #include <functional>
 #include <vector>
 #include <memory>
+
+struct GLFWwindow;
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)

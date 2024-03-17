@@ -35,7 +35,7 @@ public:
 	VkExtent2D METHOD(GetExtent2D)() CONST;
 	UInt32 METHOD(GetSwapChainImagesNum)() CONST;
 	VkSurfaceKHR METHOD(GetSurface)() CONST;
-
+	VkInstance METHOD(GetInstance)() CONST;
 	VkResult METHOD(PresentInternal)(VkQueue present_queue, VkSemaphore wait_semaphore, CONST UInt32& image_index, Bool is_lock_to_vsync);
 	Bool METHOD(TryGetNextImageIndex)(VkSemaphore& semaphore, UInt32& out_image_index);
 protected:

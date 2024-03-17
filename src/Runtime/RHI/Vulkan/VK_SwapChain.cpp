@@ -1,5 +1,7 @@
 #include "VK_SwapChain.h"
-#define GLFW_INCLUDE_VULKAN
+#ifndef GLFW_INCLUDE_VULKAN
+#define  GLFW_INCLUDE_VULKAN
+#endif
 #include <GLFW/glfw3.h>
 
 #define GLM_FORCE_RADIANS
@@ -76,8 +78,13 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 	VkColorSpaceKHR requested_colorspace = Formats[0].colorSpace;
 	VkSurfaceFormatKHR cur_format = Formats[0];
 	VkFormat needed_format = VK_Utils::Translate_Texture_Format_To_Vulkan(in_format);
+	VkFormat needed_format2 = needed_format;
+	if (needed_format == VK_FORMAT_B8G8R8A8_UNORM)
+	{
+		needed_format2 = (VkFormat)(VK_FORMAT_R8G8B8A8_UNORM+1);
+	}
 	for (const auto& Format : Formats) {
-		if (Format.format == needed_format && Format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+		if ((Format.format == needed_format || Format.format == needed_format2) && Format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 			cur_format = Format;
 			requested_colorspace = Format.colorSpace;
 			break;
@@ -201,7 +208,7 @@ void VK_SwapChain::Destroy(VK_SwapChainRecreateInfo* RecreateInfo)
 	}
 }
 
-VkFormat VK_SwapChain::GetImageFormat() const
+VkFormat VK_SwapChain::GetImageFormat() CONST
 {
 	return image_format;
 }
@@ -211,19 +218,24 @@ VkSwapchainKHR& VK_SwapChain::GetSwapchain()
 	return swapchain;
 }
 
-VkExtent2D VK_SwapChain::GetExtent2D() const
+VkExtent2D VK_SwapChain::GetExtent2D() CONST
 {
 	return image_extent2D;
 }
 
-UInt32 VK_SwapChain::GetSwapChainImagesNum() const
+UInt32 VK_SwapChain::GetSwapChainImagesNum() CONST
 {
 	return num_swap_chain_images;
 }
 
-VkSurfaceKHR VK_SwapChain::GetSurface() const
+VkSurfaceKHR VK_SwapChain::GetSurface() CONST
 {
 	return surface;
+}
+
+VkInstance VK_SwapChain::GetInstance() CONST
+{
+	return instance;
 }
 
 void VK_SwapChain::CreateSyncObjects()

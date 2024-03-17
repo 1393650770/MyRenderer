@@ -30,6 +30,10 @@ public:
 	VIRTUAL void METHOD(SetShaderResourceBinding)(ShaderResourceBinding* srb) PURE;
 	VIRTUAL void METHOD(Draw)(CONST DrawAttribute& draw_attr) PURE;
 	VIRTUAL void METHOD(TransitionTextureState)(Texture* texture, CONST ENUM_RESOURCE_STATE& required_state) PURE;
+	VIRTUAL void METHOD(ClearTexture)(Texture* texture,Vector<float> clear_value= Vector<float>(4,0.0f)) PURE;
+
+	VIRTUAL void METHOD(BeginUI)() PURE;
+	VIRTUAL void METHOD(EndUI)() PURE;
 private:
 
 protected:

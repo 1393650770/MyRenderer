@@ -12,11 +12,11 @@ public:
 	RenderInterface() MYDEFAULT;
 	VIRTUAL ~RenderInterface() MYDEFAULT;
 
-	VIRTUAL void BeginRender() PURE;
-	VIRTUAL void EndRender() PURE;
-	VIRTUAL void BeginFrame() PURE;
-	VIRTUAL void OnFrame() PURE;
-	VIRTUAL void EndFrame() PURE;
+	VIRTUAL void METHOD(BeginRender)() PURE;
+	VIRTUAL void METHOD(EndRender)() PURE;
+	VIRTUAL void METHOD(BeginFrame)() PURE;
+	VIRTUAL void METHOD(OnFrame)() PURE;
+	VIRTUAL void METHOD(EndFrame)() PURE;
 
 protected:
 

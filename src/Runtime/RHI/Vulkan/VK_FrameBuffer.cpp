@@ -37,7 +37,8 @@ VK_FrameBuffer::VK_FrameBuffer(VK_Device* in_device, CONST FrameBufferDesc& in_d
 	{
 		attachments.push_back(STATIC_CAST(render_target,VK_Texture)->GetImageView());
 	}
-	attachments.push_back(STATIC_CAST(in_desc.depth_stencil_view, VK_Texture)->GetImageView());
+	if (in_desc.depth_stencil_view)
+		attachments.push_back(STATIC_CAST(in_desc.depth_stencil_view, VK_Texture)->GetImageView());
 	framebuffer_create_info.attachmentCount = attachments.size();
 	framebuffer_create_info.pAttachments = attachments.data();
 	CHECK_WITH_LOG(vkCreateFramebuffer(device->GetDevice(), &framebuffer_create_info, nullptr, &framebuffer) != VK_SUCCESS,("RHI Error : failed to create framebuffer!"));

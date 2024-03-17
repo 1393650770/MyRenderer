@@ -110,6 +110,7 @@ public:
 
 	Vector<RenderPassAttatchmentDesc> attachments;
 	Vector<RenderPassAttachmentReferenceDesc> attachment_refs;
+	Bool last_attachment_is_depth_stencil = true;
 MYRENDERER_END_STRUCT
 
 

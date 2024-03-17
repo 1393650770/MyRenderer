@@ -35,6 +35,7 @@ public:
 	VIRTUAL UInt32 METHOD(GetViewportSizeHeight)() CONST OVERRIDE FINAL;
 	VIRTUAL void METHOD(Resize)(UInt32 in_width, UInt32 in_height) OVERRIDE FINAL;
 	VIRTUAL void METHOD(Present)(MXRender::RHI::CommandList* in_cmd_list, Bool is_present, Bool is_lock_to_vsync) OVERRIDE FINAL;
+	VIRTUAL void METHOD(AttachUiLayer)(UI::UIBase* ui_layer)  OVERRIDE FINAL;
 
 protected:
 	void METHOD(CreateSwapChain)(VK_SwapChainRecreateInfo* recreate_info=nullptr);

@@ -1,5 +1,5 @@
 add_requires("vulkansdk","glad", "glfw", "glm","assimp","tinyobjloader","rttr","lz4","nlohmann_json","gli","optick","boost","flatbuffers")
-add_requires("imgui v1.88-docking", {configs = {glfw_vulkan = true}})
+add_requires("imgui v1.90-docking", {configs = {glfw_vulkan = true, debug = true, shared = true }})
 add_rules("mode.debug", "mode.release", "mode.releasedbg")
 add_rules("plugin.vsxmake.autoupdate")
 
@@ -87,7 +87,9 @@ target("Renderer")
 
 target("Editor")
     CommonProjectSetting()
-    add_files("src/Editor/Editor.cpp") 
+    add_headerfiles("src/Editor/**.h")
+    add_files("src/Editor/**.cpp")
+    add_includedirs("src/Editor")
     before_build(CompileShader)
     before_build(MoveResource)
 
