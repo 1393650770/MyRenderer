@@ -87,6 +87,7 @@ target("Renderer")
 
 target("Editor")
     CommonProjectSetting()
+    add_defines("IMGUI_DEFINE_MATH_OPERATORS")
     add_headerfiles("src/Editor/**.h")
     add_files("src/Editor/**.cpp")
     add_includedirs("src/Editor")

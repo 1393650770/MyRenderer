@@ -8,7 +8,8 @@
 #include <imgui_impl_vulkan.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_internal.h>
-#include "UI/RenderGraphPanel.h"
+#include "UI/BasePanel.h"
+#include "UI/RenderGraphEditor/RenderGraphPanel.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
@@ -109,11 +110,14 @@ void EditorUI::AddPanelUI(CONST String& name)
 			return;
 		}
 	}
-	panels.push_back(UI::BasePanel::CreatePanel(name));
+	auto it =UI::BasePanel::CreatePanel(name);
+	it ->Init();
+	panels.push_back(it);
 }
 
 void EditorUI::AddPanelUI(UI::BasePanel* in_panel)
 {
+	in_panel->Init();
 	panels.push_back(in_panel);
 }
 

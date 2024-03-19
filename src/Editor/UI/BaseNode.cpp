@@ -1,0 +1,13 @@
+#include "BaseNode.h"
+
+MYRENDERER_BEGIN_NAMESPACE(MXRender)
+MYRENDERER_BEGIN_NAMESPACE(UI)
+
+
+BaseNode::BaseNode(CONST String& in_name, Bool in_show /*= true*/)
+{
+
+}
+
+MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE

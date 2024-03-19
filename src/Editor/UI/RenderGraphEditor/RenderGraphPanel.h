@@ -2,7 +2,12 @@
 #pragma once
 #ifndef _RENDERGRAPHPANNEL_
 #define _RENDERGRAPHPANNEL_
-#include "BasePanel.h"
+#include "UI/BasePanel.h"
+MYRENDERER_BEGIN_NAMESPACE(ax)
+MYRENDERER_BEGIN_NAMESPACE(NodeEditor)
+struct EditorContext; 
+MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -34,10 +39,8 @@ private:
 
 #pragma region MEMBER
 public:
-	Bool is_show = true;
 protected:
-	String name = "";
-
+	ax::NodeEditor::EditorContext* m_Context = nullptr;
 private:
 #pragma endregion
 
