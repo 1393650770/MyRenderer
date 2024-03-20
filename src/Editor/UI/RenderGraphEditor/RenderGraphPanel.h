@@ -3,6 +3,7 @@
 #ifndef _RENDERGRAPHPANNEL_
 #define _RENDERGRAPHPANNEL_
 #include "UI/BasePanel.h"
+
 MYRENDERER_BEGIN_NAMESPACE(ax)
 MYRENDERER_BEGIN_NAMESPACE(NodeEditor)
 struct EditorContext; 
@@ -12,6 +13,8 @@ MYRENDERER_END_NAMESPACE
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
+class BaseNode;
+class BaseLink;
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderGraphPanel,public BasePanel)
 
@@ -32,6 +35,8 @@ public:
 	VIRTUAL void METHOD(Update)() OVERRIDE FINAL;
 	VIRTUAL void METHOD(Draw)() OVERRIDE FINAL;
 	VIRTUAL void METHOD(Release)() OVERRIDE FINAL;
+
+	
 protected:
 private:
 
@@ -40,7 +45,9 @@ private:
 #pragma region MEMBER
 public:
 protected:
-	ax::NodeEditor::EditorContext* m_Context = nullptr;
+	ax::NodeEditor::EditorContext* context = nullptr;
+	Vector<BaseNode*> nodes;
+	Vector<BaseLink*> links;
 private:
 #pragma endregion
 

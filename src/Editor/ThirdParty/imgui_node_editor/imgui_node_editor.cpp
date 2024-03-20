@@ -19,6 +19,7 @@
 # include <sstream>
 # include <streambuf>
 # include <type_traits>
+#include <iostream>
 
 // https://stackoverflow.com/a/8597498
 # define DECLARE_HAS_NESTED(Name, Member)                                          \
@@ -2374,12 +2375,11 @@ ed::Control ed::EditorContext::BuildControl(bool allowOffscreen)
         if (!ItemAdd(bb, id))
             return -1;
 
-        auto buttonIndex = ImGui::GetCurrentContext()->ActiveIdMouseButton;
-
         bool hovered, held;
         bool pressed = ButtonBehavior(bb, id, &hovered, &held, extraFlags);
+		auto buttonIndex = ImGui::GetCurrentContext()->ActiveIdMouseButton;
 
-        return pressed ? buttonIndex : -1;
+        return pressed|| held ? buttonIndex : -1;
     };
 
     // Emits invisible button and returns true if it is clicked.
@@ -2411,7 +2411,7 @@ ed::Control ed::EditorContext::BuildControl(bool allowOffscreen)
     // Check input interactions over area.
     auto checkInteractionsInArea = [this, &emitInteractiveArea, &hotObject, &activeObject, &clickedObject, &doubleClickedObject](ObjectId id, const ImRect& rect, Object* object)
     {
-        if (emitInteractiveArea(id, rect) >= 0)
+        if (emitInteractiveArea(id, rect) == 0)
             clickedObject = object;
         if (!doubleClickedObject && ImGui::IsMouseDoubleClicked(m_Config.DragButtonIndex) && ImGui::IsItemHovered())
             doubleClickedObject = object;
@@ -5772,6 +5772,8 @@ ed::Config::Config(const ax::NodeEditor::Config* config)
 std::string ed::Config::Load()
 {
     std::string data;
+    if (SettingsFile == nullptr)
+        return data;
 
     if (LoadSettings)
     {

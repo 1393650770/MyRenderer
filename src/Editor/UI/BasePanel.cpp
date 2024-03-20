@@ -17,13 +17,13 @@ Bool BasePanel::OnBegin(Int window_flags)
 	ImGui::SetNextWindowSize(ImVec2(480, 640), ImGuiCond_FirstUseEver);
 
 	ImGui::Begin(name.c_str(), &is_show, window_flags | ImGuiWindowFlags_NoCollapse);
-	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,ImVec2(4.0f,2.0f));
+	//ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,ImVec2(4.0f,2.0f));
 	return true;
 }
 
 void BasePanel::OnEnd() CONST
 {
-	ImGui::PopStyleVar();
+	//ImGui::PopStyleVar();
 	ImGui::End();
 }
 
