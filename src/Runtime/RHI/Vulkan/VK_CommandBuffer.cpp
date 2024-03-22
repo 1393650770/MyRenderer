@@ -515,7 +515,6 @@ void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, T
 	framebuffer_key.render_targets = render_targets;
 	framebuffer_key.depth_stencil = depth_stencil;
 	framebuffer_key.render_pass = render_pass;
-
 	VK_FrameBuffer* vk_framebuffer = device->GetFrameBufferManager()->GetFramebuffer(framebuffer_key, render_targets[0]->GetTextureDesc().width, render_targets[0]->GetTextureDesc().height, 1);
 
 	VkFramebuffer framebuffer = vk_framebuffer->GetFramebuffer();

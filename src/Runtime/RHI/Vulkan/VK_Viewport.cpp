@@ -58,7 +58,6 @@ void VK_Viewport::Resize(UInt32 in_width, UInt32 in_height)
 {
 	if ((in_width != size_x || in_height != size_y) || (in_width != 0 && in_height != 0&&is_minimized))
 	{
-
 		size_x = in_width;
 		size_y = in_height;
 		VK_SwapChainRecreateInfo recreate_info;
@@ -101,17 +100,18 @@ void VK_Viewport::AttachUiLayer(UI::UIBase* ui_layer)
 	RenderPassCacheKey renderpass_key(rtvs.size(), rtv_formats.data(), ENUM_TEXTURE_FORMAT::None, rtvs[0]->GetTextureDesc().samples, false, false);
 	VK_RenderPass* vk_renderpass = device->GetRenderPassManager()->GetRenderPass(renderpass_key);
 	VkRenderPass render_pass = vk_renderpass->GetRenderPass();
-	FramebufferCacheKey framebuffer_key;
-	framebuffer_key.render_targets = rtvs;
-	framebuffer_key.depth_stencil = nullptr;
-	framebuffer_key.render_pass = render_pass;
+	//FramebufferCacheKey framebuffer_key;
+	//framebuffer_key.render_targets = rtvs;
+	//framebuffer_key.depth_stencil = nullptr;
+	//framebuffer_key.render_pass = render_pass;
 
-	VK_FrameBuffer* vk_framebuffer = device->GetFrameBufferManager()->GetFramebuffer(framebuffer_key, rtvs[0]->GetTextureDesc().width, rtvs[0]->GetTextureDesc().height, 1);
+	//VK_FrameBuffer* vk_framebuffer = device->GetFrameBufferManager()->GetFramebuffer(framebuffer_key, rtvs[0]->GetTextureDesc().width, rtvs[0]->GetTextureDesc().height, 1);
 
-	VkFramebuffer framebuffer = vk_framebuffer->GetFramebuffer();
+	//VkFramebuffer framebuffer = vk_framebuffer->GetFramebuffer();
 
-	
-	CHECK_WITH_LOG( ImGui_ImplVulkan_Init(&init_info, render_pass)==false ,"Failed to init ImGui for Vulkan!");
+	init_info.UseDynamicRendering = false;
+	init_info.RenderPass = render_pass;
+	CHECK_WITH_LOG( ImGui_ImplVulkan_Init(&init_info)==false ,"Failed to init ImGui for Vulkan!");
 }
 
 void VK_Viewport::PresentInternal(VK_CommandBuffer* in_cmd_list, VK_Queue* submit_queue, VK_Queue* present_queue, bool is_lock_to_vsync)

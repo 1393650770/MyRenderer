@@ -82,13 +82,14 @@ VK_FrameBuffer* VK_FrameBufferManager::GetFramebuffer(CONST FramebufferCacheKey&
 
 		auto new_it = framebuffer_cache.insert(std::make_pair(key, std::move(frame_buffer)));
 
-		render_pass_to_key_map.emplace(key.render_pass, key);
+		render_pass_to_key_map[key.render_pass].push_back(key);
 		if (key.depth_stencil != nullptr)
-			view_to_key_map.emplace(std::make_pair(((VK_Texture*)key.depth_stencil)->GetImageView(), key));
+			view_to_key_map[(((VK_Texture*)key.depth_stencil)->GetImageView())].push_back(key);
 		for (UInt32 rt = 0; rt < key.render_targets.size(); ++rt)
+		{
 			if (key.render_targets[rt] != nullptr)
-				view_to_key_map.emplace(std::make_pair(((VK_Texture*)key.render_targets[rt])->GetImageView(), key));
-
+				view_to_key_map[(((VK_Texture*)key.render_targets[rt])->GetImageView())].push_back(key);
+		}
 		return frame_buffer;
 	}
 }
@@ -98,11 +99,14 @@ void VK_FrameBufferManager::OnDestroyImageView(VkImageView image_view)
 	auto it = view_to_key_map.find(image_view);
 	if (it != view_to_key_map.end())
 	{
-		auto key_it = framebuffer_cache.find(it->second);
-		if (key_it != framebuffer_cache.end())
+		for (auto& key : it->second)
 		{
-			delete key_it->second;
-			framebuffer_cache.erase(key_it);
+			auto key_it = framebuffer_cache.find(key);
+			if (key_it != framebuffer_cache.end())
+			{
+				delete key_it->second;
+				framebuffer_cache.erase(key_it);
+			}
 		}
 		view_to_key_map.erase(it);
 	}
@@ -113,11 +117,14 @@ void VK_FrameBufferManager::OnDestroyRenderPass(VkRenderPass render_pass)
 	auto it = render_pass_to_key_map.find(render_pass);
 	if (it != render_pass_to_key_map.end())
 	{
-		auto key_it = framebuffer_cache.find(it->second);
-		if (key_it != framebuffer_cache.end())
-		{
-			delete key_it->second;
-			framebuffer_cache.erase(key_it);
+		for (auto& key : it->second)
+		{ 
+			auto key_it = framebuffer_cache.find(key);
+			if (key_it != framebuffer_cache.end())
+			{
+				delete key_it->second;
+				framebuffer_cache.erase(key_it);
+			}
 		}
 		render_pass_to_key_map.erase(it);
 	}
@@ -130,7 +137,8 @@ void VK_FrameBufferManager::Destroy()
 		delete it.second;
 	}
 	framebuffer_cache.clear();
-
+	render_pass_to_key_map.clear();
+	view_to_key_map.clear();
 }
 
 Bool FramebufferCacheKey::operator==(CONST FramebufferCacheKey& rhs) CONST
@@ -156,9 +164,10 @@ UInt64 FramebufferCacheKey::GetHash() CONST
 {
 	if (hash == 0)
 	{
-		HashCombine(hash,render_pass, render_targets.size(), depth_stencil, shading_rate, command_queue_mask);
-		for (UInt32 rt = 0; rt < render_targets.size(); ++rt)
-			HashCombine(hash, render_targets[rt]);
+		//HashCombine(hash,render_pass, render_targets.size(), depth_stencil, shading_rate, command_queue_mask);
+		//for (UInt32 rt = 0; rt < render_targets.size(); ++rt)
+		//	HashCombine(hash, render_targets[rt]);
+		hash = CityHash64((Char*)this, sizeof(FramebufferCacheKey));
 	}
 	return hash;
 }

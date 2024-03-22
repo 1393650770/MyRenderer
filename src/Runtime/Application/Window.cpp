@@ -48,6 +48,7 @@ void Window::Run(RenderInterface* render)
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 		glfwPollEvents();
+
 		MXRender::RHI::CommandList* cmd_list = RHIGetImmediateCommandList();
 
 		render->BeginFrame();
@@ -66,6 +67,7 @@ void Window::Run(RenderInterface* render)
 			glfwWaitEvents();
 		}
 		viewport->Resize(width, height);
+
     }
 	render->EndRender();
 

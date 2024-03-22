@@ -2,31 +2,78 @@
 #include "ThirdParty/imgui_node_editor/imgui_node_editor.h"
 #include "BasePin.h"
 
+
 namespace ed = ax::NodeEditor;
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
 
-
-BaseNode::BaseNode( CONST String& in_name /*= ""*/, Bool in_show /*= true*/) : name(in_name), is_show(in_show)
+BaseNode::BaseNode(CONST String& in_name, Bool in_show /*= true*/) : BaseItem(in_name, in_show)
 {
-	self_id = node_id++;
 }
 
 void BaseNode::AddInput(CONST String& in_name)
 {
-	input_pins.push_back(new BasePin(PinType::Input, in_name));
+	input_pins.push_back(new BasePin(PinType::Input,this, in_name));
 	is_need_resize = true;
 }
 
 void BaseNode::AddOutput(CONST String& in_name)
 {
-	output_pins.push_back(new BasePin(PinType::Output, in_name));
+	output_pins.push_back(new BasePin(PinType::Output, this, in_name));
 	is_need_resize = true;
 }
-UInt64 BaseNode::GetSelfID() CONST
+
+void BaseNode::DeletePin(UInt64 id)
 {
-	return self_id;
+	for (Int i = 0; i < input_pins.size(); ++i)
+	{
+		if (input_pins[i]->GetSelfID() == id)
+		{
+			input_pins[i]->Release();
+			delete input_pins[i];
+			input_pins.erase(input_pins.begin() + i);
+			is_need_resize = true;
+			return;
+		}
+	}
+	for (Int i = 0; i < output_pins.size(); ++i)
+	{
+		if (output_pins[i]->GetSelfID() == id)
+		{
+			output_pins[i]->Release();
+			delete output_pins[i];
+			output_pins.erase(output_pins.begin() + i);
+			is_need_resize = true;
+			return;
+		}
+	}
+}
+
+BasePin* BaseNode::GetPin(UInt64 id)
+{
+	for (auto& pin : input_pins)
+	{
+		if (pin->GetSelfID() == id)
+		{
+			return pin;
+		}
+	}
+	for (auto& pin : output_pins)
+	{
+		if (pin->GetSelfID() == id)
+		{
+			return pin;
+		}
+	}
+	return nullptr;
+
+}
+
+
+void BaseNode::SetSetNeedRecalcSize()
+{
+	is_need_resize = true;
 }
 
 void BaseNode::RecalcSize()
@@ -58,7 +105,7 @@ void BaseNode::Draw()
 	Int maxpin_size = max(input_pins.size(), output_pins.size());
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 	ImVec2 p = ImGui::GetCursorScreenPos();
-	Float32 lineWidth = node_single_line_width; // 设置分隔符的长度
+	Float32 lineWidth = max( node_single_line_width+10 , ImGui::CalcTextSize(name.c_str()).x); // 设置分隔符的长度
 	draw_list->AddLine(ImVec2(p.x, p.y), ImVec2(p.x + lineWidth, p.y), IM_COL32(255, 255, 255, 255), 2.0f);
 	ImGui::Dummy(ImVec2(0, 5));
 	for (Int i = 0; i < maxpin_size; ++i)
@@ -71,8 +118,11 @@ void BaseNode::Draw()
 		}
 		else if (i < output_pins.size())
 		{
-			ImGui::NewLine();
-			ImGui::SameLine(node_single_line_width - output_pins[i]->GetSize().x + 10);
+			if (input_pins.size() > 0)
+			{
+				ImGui::NewLine();
+				ImGui::SameLine(node_single_line_width - output_pins[i]->GetSize().x + 10);
+			}
 			output_pins[i]->Draw();
 		}
 		else if (i < input_pins.size())
@@ -103,9 +153,6 @@ void BaseNode::Release()
 		delete pin;
 	}
 }
-
-
-UInt64 BaseNode::node_id=1;
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

@@ -1570,7 +1570,7 @@ void ed::EditorContext::End()
     m_DrawList->ChannelsMerge();
 
     // #debug
-    // drawList->AddRectFilled(ImVec2(-10.0f, -10.0f), ImVec2(10.0f, 10.0f), IM_COL32(255, 0, 255, 255));
+    //m_DrawList->AddRectFilled(ImVec2(-10.0f, -10.0f), ImVec2(10.0f, 10.0f), IM_COL32(255, 0, 255, 255));
 
     // ImGui::EndChild();
     // ImGui::PopStyleColor();
@@ -2308,7 +2308,7 @@ void ed::EditorContext::SetUserContext(bool globalSpace)
     }
 
     // #debug
-    // drawList->AddCircleFilled(ImGui::GetMousePos(), 4, IM_COL32(0, 255, 0, 255));
+    //m_DrawList->AddCircleFilled(ImGui::GetMousePos(), 4, IM_COL32(0, 255, 0, 255));
 }
 
 void ed::EditorContext::EnableShortcuts(bool enable)
@@ -2379,7 +2379,7 @@ ed::Control ed::EditorContext::BuildControl(bool allowOffscreen)
         bool pressed = ButtonBehavior(bb, id, &hovered, &held, extraFlags);
 		auto buttonIndex = ImGui::GetCurrentContext()->ActiveIdMouseButton;
 
-        return pressed|| held ? buttonIndex : -1;
+        return pressed||held ? buttonIndex : -1;
     };
 
     // Emits invisible button and returns true if it is clicked.
@@ -2390,7 +2390,7 @@ ed::Control ed::EditorContext::BuildControl(bool allowOffscreen)
         ImGui::SetCursorScreenPos(rect.Min);
 
         // debug
-        //if (id < 0) return ImGui::Button(idString, to_imvec(rect.size));
+        //if (id.Get() < 0) return ImGui::Button(idString, (rect.GetSize()));
 
         auto buttonIndex = invisibleButtonEx(idString, rect.GetSize(), extraFlags);
 

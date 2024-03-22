@@ -85,8 +85,8 @@ MYRENDERER_BEGIN_CLASS(VK_FrameBufferManager)
 		VK_Device* device;
 		Map<FramebufferCacheKey, VK_FrameBuffer*, FramebufferCacheKeyHash> framebuffer_cache;
 
-		Map<VkImageView, FramebufferCacheKey>  view_to_key_map;
-		Map<VkRenderPass, FramebufferCacheKey> render_pass_to_key_map;
+		Map<VkImageView, Vector<FramebufferCacheKey>>  view_to_key_map;
+		Map<VkRenderPass, Vector<FramebufferCacheKey>> render_pass_to_key_map;
 	private:
 #pragma endregion
 

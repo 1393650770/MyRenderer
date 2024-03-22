@@ -3,8 +3,6 @@
 #ifndef _BASEPANNEL_
 #define _BASEPANNEL_
 
-#include <imgui.h>
-
 #include "Core/ConstDefine.h"
 
 
@@ -37,7 +35,9 @@ public:
 	VIRTUAL void METHOD(Release)() PURE;
 
 	CONST String& METHOD(GetName)() CONST;
-	static BasePanel* METHOD(CreatePanel)(CONST String& in_name, Bool in_show = true);
+	static BasePanel* METHOD(CreatePanel)(CONST String& in_type_name, CONST String& in_name, Bool in_show = true);
+
+	void METHOD(ShowLabel)(CONST Char* label, Vector<Int> color = Vector<Int>{ 232, 45, 32, 200 });
 protected:
 	Bool METHOD(OnBegin)(Int window_flags);
 	void METHOD(OnEnd)() CONST;

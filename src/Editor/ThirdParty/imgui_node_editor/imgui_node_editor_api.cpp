@@ -140,7 +140,10 @@ void ax::NodeEditor::Begin(const char* id, const ImVec2& size)
 
 void ax::NodeEditor::End()
 {
+    if(s_Editor->GetCurrentAction())
+        s_Editor->GetCurrentAction()->ShowMetrics();
     s_Editor->End();
+
 }
 
 void ax::NodeEditor::BeginNode(NodeId id)

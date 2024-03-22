@@ -44,6 +44,9 @@ void EditorUI::Init(Window* in_window)
 	in_window->GetViewport()->AttachUiLayer(this);
 
 	AddPanelUI(RenderGraphPanel::GetTypeName());
+	//auto it = UI::BasePanel::CreatePanel(RenderGraphPanel::GetTypeName(),"test");
+
+	//AddPanelUI(it);
 }
 
 void EditorUI::AddPass(RenderGraph* in_graph)
@@ -110,7 +113,7 @@ void EditorUI::AddPanelUI(CONST String& name)
 			return;
 		}
 	}
-	auto it =UI::BasePanel::CreatePanel(name);
+	auto it =UI::BasePanel::CreatePanel(name,name);
 	it ->Init();
 	panels.push_back(it);
 }

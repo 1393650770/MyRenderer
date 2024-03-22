@@ -1,9 +1,10 @@
 #include "BasePanel.h"
+#include "imgui.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
-
+Map<String, MXRender::UI::PanelCreateFunction> BasePanel::panel_createfunc_map;
 
 BasePanel::BasePanel(CONST String& in_name, Bool in_show /*= true*/) :name(in_name), is_show(in_show)
 {
@@ -18,6 +19,8 @@ Bool BasePanel::OnBegin(Int window_flags)
 
 	ImGui::Begin(name.c_str(), &is_show, window_flags | ImGuiWindowFlags_NoCollapse);
 	//ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,ImVec2(4.0f,2.0f));
+	auto& io = ImGui::GetIO();
+	ImGui::Text("FPS: %.2f (%.2gms)", io.Framerate, io.Framerate ? 1000.0f / io.Framerate : 0.0f);
 	return true;
 }
 
@@ -32,12 +35,30 @@ CONST String& BasePanel::GetName() CONST
 	return name;
 }
 
-BasePanel* BasePanel::CreatePanel(CONST String& in_name, Bool in_show /*= true*/)
+BasePanel* BasePanel::CreatePanel(CONST String& in_type_name, CONST String& in_name, Bool in_show /*= true*/)
 {
-	return panel_createfunc_map[in_name](in_name, in_show);
+	return panel_createfunc_map[in_type_name](in_name, in_show);
 }
 
-Map<String, MXRender::UI::PanelCreateFunction> BasePanel::panel_createfunc_map;
+void BasePanel::ShowLabel(CONST Char* label, Vector<Int> color)
+{
+	ImColor col(color[0], color[1], color[2], color[3]);
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetTextLineHeight());
+	auto size = ImGui::CalcTextSize(label);
+
+	auto padding = ImGui::GetStyle().FramePadding;
+	auto spacing = ImGui::GetStyle().ItemSpacing;
+
+	ImGui::SetCursorPos(ImGui::GetCursorPos() + ImVec2(spacing.x, -spacing.y));
+
+	auto rectMin = ImGui::GetCursorScreenPos() - padding;
+	auto rectMax = ImGui::GetCursorScreenPos() + size + padding;
+
+	auto drawList = ImGui::GetWindowDrawList();
+	drawList->AddRectFilled(rectMin, rectMax, col, size.y * 0.15f);
+	ImGui::TextUnformatted(label);
+
+}
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

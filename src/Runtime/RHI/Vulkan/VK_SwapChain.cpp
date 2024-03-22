@@ -157,7 +157,7 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 	vkGetSwapchainImagesKHR(device->GetDevice(), swapchain, &num_swap_chain_images, nullptr);
 	out_images.resize(num_swap_chain_images);
 	vkGetSwapchainImagesKHR(device->GetDevice(), swapchain, &num_swap_chain_images, out_images.data());
-
+	image_size = std::min(num_swap_chain_images,(UInt32) max_frames_in_flight);
 	image_format = cur_format.format;
 	image_extent2D = swapchain_info.imageExtent;
 	out_pixel_format = image_format;
@@ -185,9 +185,7 @@ void VK_SwapChain::Destroy(VK_SwapChainRecreateInfo* RecreateInfo)
 	}
 	else
 	{
-
 		vkDestroySwapchainKHR(device->GetDevice(), swapchain, nullptr);
-
 		vkDestroySurfaceKHR(instance, surface, nullptr);
 	}
 	swapchain = VK_NULL_HANDLE;
@@ -284,7 +282,7 @@ VkResult VK_SwapChain::PresentInternal(VkQueue present_queue, VkSemaphore wait_s
 
 	vkQueuePresentKHR(present_queue, &present_info);
 
-	current_frame_in_flight = (current_frame_in_flight + 1) % max_frames_in_flight;
+	current_frame_in_flight = (current_frame_in_flight + 1) % image_size;
 	return result;
 }
 

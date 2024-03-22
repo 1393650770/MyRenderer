@@ -1,20 +1,18 @@
 #include "BasePin.h"
 #include "ThirdParty/imgui_node_editor/imgui_node_editor.h"
+#include "BaseNode.h"
+
 namespace ed = ax::NodeEditor;
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
 
 
-UInt64 BasePin::pin_id=1;
-
-
-
-BasePin::BasePin( PinType in_pin_type /*= PinType::Input*/, CONST String& in_name/*=""*/, Bool in_show /*= true*/) :  pin_type(in_pin_type), name(in_name), is_show(in_show)
+BasePin::BasePin(PinType in_pin_type, BaseNode* in_owner, CONST String& in_name/*=""*/, Bool in_show /*= true*/) : BaseItem(in_name, in_show)
 {
-	self_id = pin_id++;
+	pin_type = in_pin_type;
+	owner = in_owner;
 }
-
 void BasePin::Draw()
 {
 	ed::PinId id = self_id;
@@ -42,20 +40,21 @@ ImVec2 BasePin::GetSize()
 	ImVec2 size;
 	if (pin_type == PinType::Input)
 	{
-		size= ImGui::CalcTextSize(("-> " + name).c_str());
+		String text = "-> " + name;
+		size= ImGui::CalcTextSize(text.c_str());
 	}
 	else
 	{
-		size = ImGui::CalcTextSize((name + " ->").c_str());
+		String text = name + " ->";
+		size = ImGui::CalcTextSize(text.c_str());
 	}
 	return size;
 }
 
-UInt64 BasePin::GetSelfID() CONST
+BaseNode* BasePin::GetBelongNode()
 {
-	return self_id;
+	return owner;
 }
-
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

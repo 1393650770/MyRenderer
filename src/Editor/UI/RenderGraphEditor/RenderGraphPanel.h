@@ -23,7 +23,7 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderGraphPanel,public BasePanel)
 public:
 	VIRTUAL ~RenderGraphPanel() MYDEFAULT;
 	RenderGraphPanel() MYDEFAULT;
-	RenderGraphPanel(CONST String& in_name = "RenderGraphPanel", Bool in_show = true);
+	RenderGraphPanel(CONST String& in_name, Bool in_show = true);
 	RenderGraphPanel(CONST RenderGraphPanel& other) MYDELETE;
 	RenderGraphPanel(RenderGraphPanel&& other) MYDELETE;
 	RenderGraphPanel& operator=(CONST RenderGraphPanel& other) MYDELETE;
@@ -36,8 +36,18 @@ public:
 	VIRTUAL void METHOD(Draw)() OVERRIDE FINAL;
 	VIRTUAL void METHOD(Release)() OVERRIDE FINAL;
 
+	void METHOD(DeleteItem)(UInt64 id);
 	
 protected:
+
+	void METHOD(BaseOperator)();
+	void METHOD(CreateOperator)();
+	void METHOD(GraphMenu)();
+
+	BaseNode* METHOD(GetNode)(UInt64 id);
+
+	void METHOD(DeleteNode)(UInt64 id);
+	void METHOD(DeleteLink)(UInt64 id);
 private:
 
 #pragma endregion
@@ -48,6 +58,8 @@ protected:
 	ax::NodeEditor::EditorContext* context = nullptr;
 	Vector<BaseNode*> nodes;
 	Vector<BaseLink*> links;
+
+	UInt64 hover_node_id=0, hover_link_id=0, hover_pin_id=0;
 private:
 #pragma endregion
 
