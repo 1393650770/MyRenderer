@@ -1,0 +1,2 @@
+include "bbbb.fbs";
+include "test.fbs";

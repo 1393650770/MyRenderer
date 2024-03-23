@@ -117,12 +117,12 @@ void EditorRenderPipeline::BeginRender()
 		RHI::TextureDataPayload texture_data;
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Vertex;
 		shader_desc.shader_name = "TestVS";
-		shader_data.data = ReadShader("Shader/texture_test_vert.spv");
+		shader_data.data = ReadShader("Shader/texture_test.vert.spv");
 		vs_shader = RHICreateShader(shader_desc, shader_data);
 
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Pixel;
 		shader_desc.shader_name = "TestPS";
-		shader_data.data = ReadShader("Shader/texture_test_frag.spv");
+		shader_data.data = ReadShader("Shader/texture_test.frag.spv");
 		ps_shader = RHICreateShader(shader_desc, shader_data);
 
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] = vs_shader;
