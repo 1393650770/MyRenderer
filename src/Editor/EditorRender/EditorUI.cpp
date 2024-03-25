@@ -4,6 +4,8 @@
 #include "RHI/RenderViewport.h"
 #include "RHI/RenderCommandList.h"
 #include "RHI/RenderTexture.h"
+#define  GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_impl_vulkan.h>
 #include <imgui_impl_glfw.h>
@@ -21,7 +23,8 @@ void EditorUI::Init(Window* in_window)
 {
 	window = in_window;
 	IMGUI_CHECKVERSION();
-	CHECK_WITH_LOG(ImGui::CreateContext()==nullptr,"Failed to create ImGui context!");
+	ImGuiContext* context = ImGui::CreateContext();
+	CHECK_WITH_LOG(context ==nullptr,"Failed to create ImGui context!");
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
@@ -31,18 +34,20 @@ void EditorUI::Init(Window* in_window)
 	io.ConfigFlags |= ImGuiConfigFlags_DpiEnableScaleFonts;
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();
-
 	ImGuiStyle& style = ImGui::GetStyle();
 	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
 		style.WindowRounding = 0.0f;
 		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
 	}
+	io.Fonts->AddFontDefault();
+	io.Fonts->Build();
+	//ImFont* font1 = io.Fonts->AddFontDefault();
 
-	CHECK_WITH_LOG(ImGui_ImplGlfw_InitForVulkan(in_window->GetWindow(), true)==false ,"Failed to init ImGui for Vulkan!");
-
+	GLFWwindow* glfw_window = window->GetWindow();
+	CHECK_WITH_LOG(ImGui_ImplGlfw_InitForVulkan(glfw_window, true) == false, "Failed to init ImGui for Vulkan!");
 	in_window->GetViewport()->AttachUiLayer(this);
-
+	
 	AddPanelUI(RenderGraphPanel::GetTypeName());
 	//auto it = UI::BasePanel::CreatePanel(RenderGraphPanel::GetTypeName(),"test");
 

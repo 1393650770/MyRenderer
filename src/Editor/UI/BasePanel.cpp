@@ -49,10 +49,10 @@ void BasePanel::ShowLabel(CONST Char* label, Vector<Int> color)
 	auto padding = ImGui::GetStyle().FramePadding;
 	auto spacing = ImGui::GetStyle().ItemSpacing;
 
-	ImGui::SetCursorPos(ImGui::GetCursorPos() + ImVec2(spacing.x, -spacing.y));
+	ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPos().x+spacing.x, ImGui::GetCursorPos().y  -spacing.y));
 
-	auto rectMin = ImGui::GetCursorScreenPos() - padding;
-	auto rectMax = ImGui::GetCursorScreenPos() + size + padding;
+	auto rectMin = ImVec2(ImGui::GetCursorScreenPos().x - padding.x, ImGui::GetCursorScreenPos().y - padding.y);
+	auto rectMax = ImVec2(ImGui::GetCursorScreenPos().x + size.x + padding.x, ImGui::GetCursorScreenPos().y + size.y + padding.y);
 
 	auto drawList = ImGui::GetWindowDrawList();
 	drawList->AddRectFilled(rectMin, rectMax, col, size.y * 0.15f);

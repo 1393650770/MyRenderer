@@ -109,9 +109,29 @@ void VK_Viewport::AttachUiLayer(UI::UIBase* ui_layer)
 
 	//VkFramebuffer framebuffer = vk_framebuffer->GetFramebuffer();
 
-	init_info.UseDynamicRendering = false;
-	init_info.RenderPass = render_pass;
-	CHECK_WITH_LOG( ImGui_ImplVulkan_Init(&init_info)==false ,"Failed to init ImGui for Vulkan!");
+	//init_info.UseDynamicRendering = false;
+	//init_info.RenderPass = render_pass;
+	CHECK_WITH_LOG( ImGui_ImplVulkan_Init(&init_info, render_pass)==false ,"Failed to init ImGui for Vulkan!");
+	 
+	VK_CommandBuffer* command_buffer= device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::GRAPHICS, true);
+	if (command_buffer)
+	{
+
+
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		command_buffer->Begin();
+
+		ImGui_ImplVulkan_CreateFontsTexture(command_buffer->GetCommandBuffer());
+
+		command_buffer->End();
+
+		device->GetQueue(ENUM_QUEUE_TYPE::TRANSFER)->Submit(command_buffer);
+
+		ImGui_ImplVulkan_DestroyFontUploadObjects();
+	}
 }
 
 void VK_Viewport::PresentInternal(VK_CommandBuffer* in_cmd_list, VK_Queue* submit_queue, VK_Queue* present_queue, bool is_lock_to_vsync)

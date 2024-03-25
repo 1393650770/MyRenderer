@@ -1,7 +1,5 @@
 #include "VK_SwapChain.h"
-#ifndef GLFW_INCLUDE_VULKAN
 #define  GLFW_INCLUDE_VULKAN
-#endif
 #include <GLFW/glfw3.h>
 
 #define GLM_FORCE_RADIANS

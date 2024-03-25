@@ -9,14 +9,11 @@
 #include "VK_FrameBuffer.h"
 #include "Core/ConstDefine.h"
 #include "VK_Shader.h"
-#ifndef GLFW_INCLUDE_VULKAN
 #define  GLFW_INCLUDE_VULKAN
-#endif
-#include <GLFW/glfw3.h>
-#include <imgui.h>
-#include <imgui_impl_vulkan.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_internal.h>
+#include "imgui_impl_vulkan.h"
+#include "imgui_impl_glfw.h"
+#include "GLFW/glfw3.h"
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
@@ -292,7 +289,9 @@ void VK_CommandBuffer::TransitionTextureState(Texture* texture, CONST ENUM_RESOU
 void VK_CommandBuffer::BeginUI()
 {
 	ImGui_ImplVulkan_NewFrame();
+
 	ImGui_ImplGlfw_NewFrame();
+	
 	ImGui::NewFrame();
 }
 

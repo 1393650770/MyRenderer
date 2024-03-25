@@ -138,7 +138,6 @@ VK_RenderPass::VK_RenderPass(VK_Device* in_device, CONST RenderPassDesc& in_desc
 		subpass.pColorAttachments = attachment_ref.data();
 		subpass.pDepthStencilAttachment = nullptr;
 	}
-
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependency.dstSubpass = 0;
 	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ;
