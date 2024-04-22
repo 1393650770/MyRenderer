@@ -81,7 +81,7 @@ void EditorUI::AddPass(RenderGraph* in_graph)
 		Vector<RHI::Texture*> rtvs;
 		RHI::Texture* dsv=nullptr;
 		rtvs = { window->GetViewport()->GetCurrentBackBufferRTV() };
-		dsv = window->GetViewport()->GetCurrentBackBufferDSV();
+		//dsv = window->GetViewport()->GetCurrentBackBufferDSV();
 		for (auto rtv : rtvs)
 		{
 			clear_values.push_back(rtv->GetTextureDesc().clear_value);
@@ -91,6 +91,7 @@ void EditorUI::AddPass(RenderGraph* in_graph)
 		in_cmd_list->SetRenderTarget(rtvs, nullptr, clear_values, dsv != nullptr);
 		cmd_list->BeginUI();
 
+		ImGui::SliderFloat("transparency", &(cmd_list->z), 0.0f, 1.0f);
 		for (auto& panel : panels)
 		{
 			panel->Draw();

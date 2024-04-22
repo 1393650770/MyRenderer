@@ -141,5 +141,15 @@ void RenderGraph::Release()
 	resources.clear();
 }
 
+bool RenderGraph::Searilize(CONST String& filename)
+{
+	return false;
+}
+
+bool RenderGraph::Desearilize(CONST String& filename)
+{
+	return false;
+}
+
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

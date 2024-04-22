@@ -521,15 +521,18 @@ void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, T
 	TransitionRenderTargets(render_targets,depth_stencil);
 
 	Vector<VkClearValue> vk_clear_values;
-	Int size = clear_values.size() - 1;
+	Int size = clear_values.size();
+
 	for (Int i = 0; size > 0 &&i < size;++i)
 	{
 		vk_clear_values.push_back( { clear_values[i].color[0], clear_values[i].color[1], clear_values[i].color[2], clear_values[i].color[3] });
 	}
-	if (has_dsv_clear_value&& size >0)
-	{
-		vk_clear_values.push_back( { clear_values[size].ds_value[0], clear_values[size].ds_value[1]});
-	}
+	//if (has_dsv_clear_value)
+	//{
+	//	size = clear_values.size() - 1;
+	//	if (size > 0)
+	//		vk_clear_values.push_back({ clear_values[size].ds_value[0], clear_values[size].ds_value[1] });
+	//}
 	if (state_cache.render_pass != render_pass || state_cache.framebuffer != framebuffer)
 	{
 		state_cache.render_targets = render_targets;
@@ -557,7 +560,7 @@ void VK_CommandBuffer::SetShaderResourceBinding(ShaderResourceBinding* srb)
 
 void VK_CommandBuffer::Draw(CONST DrawAttribute& draw_attr)
 {
-	
+	vkCmdPushConstants(GetCommandBuffer(), state_cache.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &z);
 	VkViewport viewport{};
 	viewport.x = 0.0f; viewport.y = 0.0f;
 	viewport.width = state_cache.framebuffer_width;

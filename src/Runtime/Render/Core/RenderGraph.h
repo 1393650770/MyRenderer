@@ -60,6 +60,10 @@ public:
 	void METHOD(Execute)();
 
 	void METHOD(Release)();
+
+	bool METHOD(Searilize)(CONST String& filename);
+
+	bool METHOD(Desearilize)(CONST String& filename);
 protected:
 
 private:

@@ -122,7 +122,7 @@ void EditorRenderPipeline::BeginRender()
 
 		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Pixel;
 		shader_desc.shader_name = "TestPS";
-		shader_data.data = ReadShader("Shader/texture_test.frag.spv");
+		shader_data.data = ReadShader("Shader/stipple_transparency_test.frag.spv");
 		ps_shader = RHICreateShader(shader_desc, shader_data);
 
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] = vs_shader;
@@ -166,7 +166,6 @@ void EditorRenderPipeline::BeginRender()
 			DrawAttribute draw_attr;
 			draw_attr.vertexCount = 6;
 			draw_attr.instanceCount = 1;
-
 			in_cmd_list->Draw(draw_attr);
 		}
 	});
