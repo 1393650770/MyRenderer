@@ -5,7 +5,12 @@
 #include "RenderEnum.h"
 #include "RenderRource.h"
 
+
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
+MYRENDERER_BEGIN_NAMESPACE(UI)
+class UIBase;
+MYRENDERER_END_NAMESPACE
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 class Texture;
 class CommandList;
@@ -24,6 +29,8 @@ public:
 
 	VIRTUAL void METHOD(Resize)(UInt32 in_width, UInt32 in_height) PURE;
 	VIRTUAL void METHOD(Present)(MXRender::RHI::CommandList* in_cmd_list , bool is_present, bool is_lock_to_vsync) PURE;
+
+	VIRTUAL void METHOD(AttachUiLayer)(UI::UIBase* ui_layer) PURE;
 protected:
 
 private:

@@ -1,0 +1,178 @@
+		
+namespace MxRender.Data;
+
+
+enum TextureFomat:uint 
+{ 
+	None = 0,
+	BC1,
+	BC1A,
+	BC2,
+	BC3,
+	BC4,
+	BC5,
+	BC6H,
+	BC7,
+	ETC1,
+	ETC2,
+	ETC2A,
+	ETC2A1,
+	PTC12,
+	PTC14,
+	PTC12A,
+	PTC14A,
+	PTC22,
+	PTC24,
+	ATC,
+	ATCE,
+	ATCI,
+	ASTC4x4,
+	ASTC5x5,
+	ASTC6x6,
+	ASTC8x5,
+	ASTC8x6,
+	ASTC10x5,
+
+	Unknown,
+
+	R1,
+	A8,
+	R8,
+	R8I,
+	R8U,
+	R8S,
+	R16,
+	R16I,
+	R16U,
+	R16F,
+	R16S,
+	R32I,
+	R32U,
+	R32F,
+	RG8,
+	RG8I,
+	RG8U,
+	RG8S,
+	RG16,
+	RG16I,
+	RG16U,
+	RG16F,
+	RG16S,
+	RG32I,
+	RG32U,
+	RG32F,
+	RGB8,
+	RGB8I,
+	RGB8U,
+	RGB8S,
+	RGB9E5F,
+	RGB16I,
+	RGB16U,
+	RGB16F,
+	RGB32I,
+	RGB32U,
+	RGB32F,
+	BGRA8,
+	RGBA8,
+	RGBA8I,
+	RGBA8U,
+	RGBA8S,
+	RGBA16,
+	RGBA16I,
+	RGBA16U,
+	RGBA16F,
+	RGBA16S,
+	RGBA32I,
+	RGBA32U,
+	RGBA32F,
+	R5G6B5,
+	RGBA4,
+	RGB5A1,
+	RGB10A2,
+	RG11B10F,
+
+	UnknownDepth, // Depth formats below.
+
+	D16,
+	D24,
+	D24S8,
+	D32,
+	D32FS8,
+	D16F,
+	D24F,
+	D32F,
+	D0S8,
+
+	Count
+}
+
+
+enum TextureType:ubyte 
+{ 
+	ENUM_TYPE_NOT_VALID = 0,
+	ENUM_TYPE_2D,
+	ENUM_TYPE_2D_MULTISAMPLE,
+	ENUM_TYPE_2D_ARRAY,
+	ENUM_TYPE_2D_DEPTH,
+	ENUM_TYPE_CUBE_MAP,
+	ENUM_TYPE_2D_DYNAMIC,
+	ENUM_TYPE_3D
+
+}
+enum TextureUsageType :uint
+{
+	ENUM_TYPE_NOT_VALID = 0,
+	ENUM_TYPE_COLOR_ATTACHMENT = 1,
+	ENUM_TYPE_PRESENT_SWAPCHAIN = 2,
+	ENUM_TYPE_COPY = 4,
+	ENUM_TYPE_SHADERRESOURCE = 8,
+	ENUM_TYPE_DEPTH_ATTACHMENT = 16,
+	ENUM_TYPE_DEPTH_ATTACHMENT_READ_ONLY = 32,
+	ENUM_TYPE_DEPTH_ATTACHMENT_WRITE_ONLY = 64,
+}
+
+enum RenderResourceState: ulong
+{
+	Invalid = 0,
+	Undefined = 1,
+	VertexBuffer  = 2,
+	ConstantBuffer=4,
+	IndexBuffer=8,
+	RenderTarget=16,
+	Count = 21,
+	UnorderedAccess=32,
+	DepthWrite=64,
+	DepthRead=128,
+	ShaderResource=256,
+	StreamOut=512,
+	IndirectArgument=1024,
+	CopyDest=2048,
+	CopySource=4096,
+	GenerricRead =  5374, //1 | 2 | 8 | 4 | 256 | 1024 | 4096 () VertexBuffer | IndexBuffer | ConstantBuffer | ShaderResource | IndirectArgument | CopySource
+	ResolveDest = 8192, // 1<<13
+	ResolveSource = 16384, // 1<<14
+	InputAttachment = 32768, // 1<<15
+	Present = 65536, // 1<<16
+	BuildAsRead = 131072, // 1<<17
+	BuildAsWrite = 262144, // 1<<18
+	Raytracing = 524288, // 1<<19
+	Common = 1048576, // 1<<20
+	ShaderRate = 2097152, // 1 << 21
+	
+}
+struct TextureResourceDesc
+{	
+	width:uint ;
+	height:uint;
+	mip_level:ubyte;
+	layer_count:ubyte;
+	format :TextureFomat;
+	type :TextureType;
+	usage :TextureUsageType;
+	//resource_state:RenderResourceState ;
+	depth:ubyte;
+	samples:ubyte;
+}
+
+
+

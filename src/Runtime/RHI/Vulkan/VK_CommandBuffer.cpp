@@ -9,6 +9,10 @@
 #include "VK_FrameBuffer.h"
 #include "Core/ConstDefine.h"
 #include "VK_Shader.h"
+#define  GLFW_INCLUDE_VULKAN
+#include "imgui_impl_vulkan.h"
+#include "imgui_impl_glfw.h"
+#include "GLFW/glfw3.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -147,6 +151,96 @@ void VK_CommandBuffer::Free()
 	
 }
 
+void VK_CommandBuffer::ClearTexture(Texture* texture, Vector<float> clear_value /*= Vector<float>(4, 0.0f)*/)
+{
+	static constexpr CONST UInt32 invalid_attachment_index = ~UInt32{ 0 };
+
+	bool clear_depth_attachment = false,clear_depth_image=false;
+	UInt32 attachment_index = invalid_attachment_index;
+	for (UInt32 rt = 0; rt < state_cache.render_targets.size(); ++rt)
+	{
+		if (state_cache.render_targets[rt] == texture)
+		{
+			attachment_index = rt;
+			break;
+		}
+	}
+	if (attachment_index == invalid_attachment_index)
+	{
+		if (state_cache.depth_stencil == texture)
+		{
+			clear_depth_attachment = true;
+		}
+		else
+		{
+			if ((UInt32)(texture->GetTextureDesc().usage & ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT) == 1 ||
+				(UInt32)(texture->GetTextureDesc().usage & ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT_READ_ONLY) == 1 ||
+				(UInt32)(texture->GetTextureDesc().usage & ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT_WRITE_ONLY) == 1
+				)
+			{
+				clear_depth_image = true;
+			}
+		}
+	}
+	if (attachment_index != invalid_attachment_index)
+	{
+		VkClearAttachment clear_attachment{};
+		clear_attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		clear_attachment.colorAttachment = attachment_index;
+		clear_attachment.clearValue = { clear_value[0], clear_value[1], clear_value[2], clear_value[3] };
+		VkClearRect clear_rect{};
+		clear_rect.baseArrayLayer = 0;
+		clear_rect.layerCount = texture->GetTextureDesc().layer_count;
+		clear_rect.rect.offset = { 0, 0 };
+		clear_rect.rect.extent = { texture->GetTextureDesc().width, texture->GetTextureDesc().height };
+		ClearAttachment(clear_attachment, clear_rect);
+	}
+	else if (clear_depth_attachment)
+	{
+		VkClearAttachment clear_attachment{};
+		clear_attachment.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		clear_attachment.clearValue.depthStencil.depth = clear_value[0];
+		clear_attachment.clearValue.depthStencil.stencil = static_cast<UInt32>(clear_value[1]);
+		VkClearRect clear_rect{};
+		clear_rect.baseArrayLayer = 0;
+		clear_rect.layerCount = texture->GetTextureDesc().layer_count;
+		clear_rect.rect.offset = { 0, 0 };
+		clear_rect.rect.extent = { texture->GetTextureDesc().width, texture->GetTextureDesc().height };
+		ClearAttachment(clear_attachment, clear_rect);
+	}
+	else if (clear_depth_image)
+	{
+		TransitionTextureState(texture, ENUM_RESOURCE_STATE::CopyDest);
+		VkImageSubresourceRange subresource_range{};
+		subresource_range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		subresource_range.baseArrayLayer = 0;
+		subresource_range.layerCount = texture->GetTextureDesc().layer_count;
+		subresource_range.baseMipLevel = 0;
+		subresource_range.levelCount = texture->GetTextureDesc().mip_level;
+		VkClearDepthStencilValue clear_value_depth_stencil{};
+		clear_value_depth_stencil.depth = clear_value[0];
+		clear_value_depth_stencil.stencil = static_cast<UInt32>(clear_value[1]);
+		ClearDepthStencilImage(((VK_Texture*)texture)->GetImage(), clear_value_depth_stencil, subresource_range);
+	}
+	else
+	{
+		TransitionTextureState(texture, ENUM_RESOURCE_STATE::CopyDest);
+		VkImageSubresourceRange subresource_range{};
+		subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		subresource_range.baseArrayLayer = 0;
+		subresource_range.layerCount = texture->GetTextureDesc().layer_count;
+		subresource_range.baseMipLevel = 0;
+		subresource_range.levelCount = texture->GetTextureDesc().mip_level;
+		VkClearColorValue clear_color_value{};
+		for (UInt32 i = 0; i < 4; ++i)
+		{
+			clear_color_value.float32[i] = clear_value[i];
+		}
+		ClearColorImage(((VK_Texture*)texture)->GetImage(), clear_color_value, subresource_range);
+
+	}
+}
+
 void VK_CommandBuffer::TransitionTextureState(Texture* texture, CONST ENUM_RESOURCE_STATE& required_state)
 {
 	if (texture->GetTextureDesc().resource_state != required_state)
@@ -190,6 +284,29 @@ void VK_CommandBuffer::TransitionTextureState(Texture* texture, CONST ENUM_RESOU
 		}
 	}
 
+}
+
+void VK_CommandBuffer::BeginUI()
+{
+	ImGui_ImplVulkan_NewFrame();
+
+	ImGui_ImplGlfw_NewFrame();
+	
+	ImGui::NewFrame();
+}
+
+void VK_CommandBuffer::EndUI()
+{
+	ImGui::Render();
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(),command_buffer );
+	ImGuiIO& io = ImGui::GetIO();
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		GLFWwindow* backup_current_context = glfwGetCurrentContext();
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+		glfwMakeContextCurrent(backup_current_context);
+	}
 }
 
 void VK_CommandBuffer::TransitionRenderTargets(CONST Vector<Texture*>& render_targets, Texture* depth_stencil)
@@ -385,7 +502,10 @@ void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, T
 	{
 		rtv_formats.push_back(rtv->GetTextureDesc().format);
 	}
-	RenderPassCacheKey renderpass_key(render_targets.size(), rtv_formats.data(), depth_stencil->GetTextureDesc().format, depth_stencil->GetTextureDesc().samples, false, false);
+	ENUM_TEXTURE_FORMAT depth_stencil_format = ENUM_TEXTURE_FORMAT::None;
+	if(depth_stencil!=nullptr)
+		depth_stencil_format = depth_stencil->GetTextureDesc().format;
+	RenderPassCacheKey renderpass_key(render_targets.size(), rtv_formats.data(), depth_stencil_format, render_targets[0]->GetTextureDesc().samples, false, false);
 	VK_RenderPass* vk_renderpass = device->GetRenderPassManager()->GetRenderPass(renderpass_key);
 
 	VkRenderPass render_pass = vk_renderpass->GetRenderPass();
@@ -394,7 +514,6 @@ void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, T
 	framebuffer_key.render_targets = render_targets;
 	framebuffer_key.depth_stencil = depth_stencil;
 	framebuffer_key.render_pass = render_pass;
-
 	VK_FrameBuffer* vk_framebuffer = device->GetFrameBufferManager()->GetFramebuffer(framebuffer_key, render_targets[0]->GetTextureDesc().width, render_targets[0]->GetTextureDesc().height, 1);
 
 	VkFramebuffer framebuffer = vk_framebuffer->GetFramebuffer();
@@ -402,13 +521,19 @@ void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, T
 	TransitionRenderTargets(render_targets,depth_stencil);
 
 	Vector<VkClearValue> vk_clear_values;
-	for (UInt32 i = 0;i< clear_values.size()-1;++i)
+	Int size = clear_values.size() - 1;
+	for (Int i = 0; size > 0 &&i < size;++i)
 	{
 		vk_clear_values.push_back( { clear_values[i].color[0], clear_values[i].color[1], clear_values[i].color[2], clear_values[i].color[3] });
 	}
-	if (has_dsv_clear_value&& clear_values.size() - 1>0)
+	if (has_dsv_clear_value&& size >0)
 	{
-		vk_clear_values.push_back( { clear_values[clear_values.size() - 1].ds_value[0], clear_values[clear_values.size() - 1].ds_value[1]});
+		vk_clear_values.push_back( { clear_values[size].ds_value[0], clear_values[size].ds_value[1]});
+	}
+	if (state_cache.render_pass != render_pass || state_cache.framebuffer != framebuffer)
+	{
+		state_cache.render_targets = render_targets;
+		state_cache.depth_stencil = depth_stencil;
 	}
 	BeginRenderPass(render_pass, framebuffer, render_targets[0]->GetTextureDesc().width, render_targets[0]->GetTextureDesc().height, vk_clear_values.size(),vk_clear_values.data());
 

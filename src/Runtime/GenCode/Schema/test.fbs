@@ -1,0 +1,32 @@
+
+namespace MxRender.Data;
+
+enum Color:byte { Red = 0, Green, Blue = 2 }
+
+union Equipment { Weapon } // Optionally add more tables.
+
+struct Vec32 {
+  x:float;
+  y:float;
+  z:float;
+}
+
+table Monster {
+  pos:Vec32;
+  mana:short = 150;
+  hp:short = 100;
+  name:string;
+  friendly:bool = false (deprecated);
+  inventory:[ubyte];
+  color:Color = Blue;
+  weapons:[Weapon];
+  equipped:Equipment;
+  path:[Vec32];
+}
+
+table Weapon {
+  name:string;
+  damage:short;
+}
+
+root_type Monster;

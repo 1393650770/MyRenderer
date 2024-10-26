@@ -145,11 +145,53 @@ public:
 			command_state = EState::NeedReset;
 		}
 	}
+	__forceinline void METHOD(ClearAttachment)(CONST VkClearAttachment& attachment, CONST VkClearRect& clear_rect)
+	{
+		vkCmdClearAttachments(
+			command_buffer,
+			1,
+			&attachment,
+			1,
+			&clear_rect // The rectangular region specified by each element of pRects must be
+			// contained within the render area of the current render pass instance
+		);
+	}
+
+	__forceinline void ClearDepthStencilImage(VkImage image,CONST VkClearDepthStencilValue& depth_stencil,CONST VkImageSubresourceRange& subresource)
+	{
+
+		FlushBarriers();
+		vkCmdClearDepthStencilImage(
+			command_buffer,
+			image,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // must be VK_IMAGE_LAYOUT_GENERAL or VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+			&depth_stencil,
+			1,
+			&subresource);
+	}
+
+	__forceinline void ClearColorImage(VkImage  image, CONST VkClearColorValue& color,CONST VkImageSubresourceRange& subresource)
+	{
+		FlushBarriers();
+		vkCmdClearColorImage(
+			command_buffer,
+			image,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // must be VK_IMAGE_LAYOUT_GENERAL or VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+			&color,
+			1,
+			&subresource);
+	}
+
 	__forceinline VIRTUAL void METHOD(SetGraphicsPipeline)(RenderPipelineState* pipeline_state) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(SetRenderTarget)(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, CONST Vector<ClearValue>& clear_values, Bool has_dsv_clear_value) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(SetShaderResourceBinding)(ShaderResourceBinding* srb) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(Draw)(CONST DrawAttribute& draw_attr) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(TransitionTextureState)(Texture* texture, CONST ENUM_RESOURCE_STATE& required_state) OVERRIDE FINAL;
+	__forceinline VIRTUAL void METHOD(ClearTexture)(Texture* texture, Vector<float> clear_value = Vector<float>(4, 0.0f)) OVERRIDE FINAL;
+
+	__forceinline VIRTUAL void METHOD(BeginUI)()  OVERRIDE FINAL;
+
+	__forceinline VIRTUAL void METHOD(EndUI)()  OVERRIDE FINAL;
 protected:
 	void METHOD(Allocate)();
 	void METHOD(Free)();
@@ -180,6 +222,9 @@ public:
 		UInt32      outside_pass_queries = 0;
 		VkClearValue* clear_values = nullptr;
 		UInt32      clear_value_count = 0;
+
+		Vector<Texture*> render_targets;
+		Texture* depth_stencil = nullptr;
 	MYRENDERER_END_STRUCT
 
 

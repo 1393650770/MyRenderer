@@ -85,6 +85,7 @@ extern CORE_API MXRender::RHI::RenderPipelineState* METHOD(RHICreateRenderPipeli
 extern CORE_API MXRender::RHI::RenderPass* METHOD(RHICreateRenderPass)(CONST MXRender::RHI::RenderPassDesc& desc);
 extern CORE_API MXRender::RHI::FrameBuffer* METHOD(RHICreateFrameBuffer)(CONST MXRender::RHI::FrameBufferDesc& desc);
 extern CORE_API MXRender::RHI::CommandList* METHOD(RHIGetImmediateCommandList)();
+extern CORE_API MXRender::RHI::CommandList* METHOD(RHIGetImmediateCommandList)();
 extern CORE_API void METHOD(RHISubmitCommandList)(MXRender::RHI::CommandList* command_list);
 #endif
 

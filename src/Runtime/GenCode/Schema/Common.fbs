@@ -1,0 +1,47 @@
+
+namespace MxRender.Data;
+
+struct Vec3 
+{
+  x:float;
+  y:float;
+  z:float;
+}
+
+struct Vec4
+{
+  x:float;
+  y:float;
+  z:float;
+  w:float;
+}
+
+
+struct Matrix_Row
+{
+    row0:Vec4;
+    row1:Vec4;
+    row2:Vec4;
+    row3:Vec4;
+}
+
+struct Matrix_Column
+{
+    column0:Vec4;
+    column1:Vec4;
+    column2:Vec4;
+    column3:Vec4;
+}
+
+union Matrix
+{
+    Matrix_Column,
+    Matrix_Row
+}
+
+struct Transform
+{
+    position:Vec3;
+    rotation:Vec3;
+    scale:Vec3;
+}

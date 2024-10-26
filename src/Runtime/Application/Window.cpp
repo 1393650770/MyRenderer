@@ -1,4 +1,5 @@
 #include "Window.h"
+
 #include<iostream>
 #include <memory>
 #include "RHI/RenderRHI.h"
@@ -17,13 +18,13 @@ Window::Window()
 		return;
 	}
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	window = glfwCreateWindow(width,height, "MyRender", NULL, NULL);
-	if (!window)
+	glfw_window = glfwCreateWindow(width,height, "MxRender",NULL, NULL);
+	if (!glfw_window)
 	{
 		glfwTerminate();
 		return;
 	}
-	glfwSetWindowUserPointer(window, this);
+	glfwSetWindowUserPointer(glfw_window, this);
 
 	//glfwSetWindowSizeCallback(window, on_window_size_callback);
 
@@ -31,7 +32,7 @@ Window::Window()
 
 Window::~Window()
 {
-    glfwDestroyWindow(window);
+    glfwDestroyWindow(glfw_window);
     glfwTerminate();
 }
 
@@ -40,13 +41,14 @@ void Window::Run(RenderInterface* render)
 	Int width = 0;
 	Int height = 0;
 	render->BeginRender();
-	while (!glfwWindowShouldClose(window))
+	while (!glfwWindowShouldClose(glfw_window))
     {
 
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 		glfwPollEvents();
+
 		MXRender::RHI::CommandList* cmd_list = RHIGetImmediateCommandList();
 
 		render->BeginFrame();
@@ -55,16 +57,17 @@ void Window::Run(RenderInterface* render)
 		
 		viewport->Present(cmd_list, true, true);
 		g_frame_number_render_thread = (g_frame_number_render_thread + 1) % g_max_frame_number;
-        glfwSwapBuffers(window);
+        glfwSwapBuffers(glfw_window);
 
 
-		glfwGetFramebufferSize(window, &width, &height);
+		glfwGetFramebufferSize(glfw_window, &width, &height);
 		while (width == 0 || height == 0) // minimized 0,0, pause for now
 		{
-			glfwGetFramebufferSize(window, &width, &height);
+			glfwGetFramebufferSize(glfw_window, &width, &height);
 			glfwWaitEvents();
 		}
 		viewport->Resize(width, height);
+
     }
 	render->EndRender();
 
@@ -75,15 +78,14 @@ void Window::Run(RenderInterface* render)
 
 GLFWwindow* Window::GetWindow() CONST
 {
-    return window;
+    return glfw_window;
 }
 
 void Window::InitWindow()
 {
 
 	RHIInit();
-	viewport = RHICreateViewport((void*)window,width,height, is_full_screen);
-
+	viewport = RHICreateViewport((void*)glfw_window, width, height, is_full_screen);
 }
 
 MXRender::RHI::Viewport* Window::GetViewport() CONST

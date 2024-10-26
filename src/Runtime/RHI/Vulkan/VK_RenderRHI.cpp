@@ -2,6 +2,7 @@
 #include "VK_RenderRHI.h"
 
 #include "VK_Device.h"
+#define  GLFW_INCLUDE_VULKAN
 #include "GLFW/glfw3.h"
 #include "VK_Buffer.h"
 #include "VK_Viewport.h"

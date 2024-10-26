@@ -23,9 +23,10 @@ UInt64 RenderPassCacheKey::GetHash() CONST
 {
 	if (hash == 0)
 	{
-		hash = HashCombine(num_render_targets, HashCombine((UInt64)depth_stencil_format, HashCombine((UInt64)sample_count, HashCombine(is_enable_vrs, is_read_only_dsv))));
-		for (UInt8 rt = 0; rt < num_render_targets; ++rt)
-			hash = HashCombine(hash, (UInt64)render_target_formats[rt]);
+		//hash = HashCombine(num_render_targets, HashCombine((UInt64)depth_stencil_format, HashCombine((UInt64)sample_count, HashCombine(is_enable_vrs, is_read_only_dsv))));
+		//for (UInt8 rt = 0; rt < num_render_targets; ++rt)
+		//	hash = HashCombine(hash, (UInt64)render_target_formats[rt]);
+		hash = CityHash64((Char*)this, sizeof(RenderPassCacheKey));
 	}
 	return hash;
 }

@@ -35,7 +35,7 @@ public:
 	VkExtent2D METHOD(GetExtent2D)() CONST;
 	UInt32 METHOD(GetSwapChainImagesNum)() CONST;
 	VkSurfaceKHR METHOD(GetSurface)() CONST;
-
+	VkInstance METHOD(GetInstance)() CONST;
 	VkResult METHOD(PresentInternal)(VkQueue present_queue, VkSemaphore wait_semaphore, CONST UInt32& image_index, Bool is_lock_to_vsync);
 	Bool METHOD(TryGetNextImageIndex)(VkSemaphore& semaphore, UInt32& out_image_index);
 protected:
@@ -80,6 +80,7 @@ protected:
 	UInt32 num_swap_chain_images;
 
 	static UInt8 CONST   max_frames_in_flight{ 3 };
+	UInt8 image_size = 3;
 	VkSemaphore          image_available_for_render_semaphore[max_frames_in_flight]{VK_NULL_HANDLE};
 	VkSemaphore          image_finished_for_presentation_semaphore[max_frames_in_flight]{ VK_NULL_HANDLE };
 	UInt8                current_frame_in_flight = 0;

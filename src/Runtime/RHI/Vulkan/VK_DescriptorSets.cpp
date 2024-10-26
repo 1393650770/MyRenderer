@@ -85,11 +85,11 @@ VkDescriptorPool VK_DescriptorPoolManager::CreatePool()
 
 	VkDescriptorPoolCreateInfo pool_info;
 	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	pool_info.flags = 0;
 	pool_info.poolSizeCount = types.size();
 	pool_info.pPoolSizes = types.data();
 	pool_info.maxSets = max_descriptorsets;
 	pool_info.pNext = 0U;
+	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 	VkDescriptorPool temp_descriptor_pool;
 	CHECK_WITH_LOG(vkCreateDescriptorPool(device->GetDevice(), &pool_info, nullptr, &temp_descriptor_pool) != VK_SUCCESS,
 		("failed to create descriptor pool!"));

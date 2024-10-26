@@ -652,7 +652,7 @@ Bool VK_MemoryManager::AllocateBufferMemory(VK_Allocation& out_allocation, VkBuf
 	buffer_memory_requirements_Info.pNext = nullptr;
 	VkMemoryDedicatedRequirements dedicated_requirements;
     dedicated_requirements.sType= VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
-
+	dedicated_requirements.pNext = nullptr;
 	VkMemoryRequirements2 memory_requirements;
     memory_requirements.sType= VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
 	memory_requirements.pNext = &dedicated_requirements;

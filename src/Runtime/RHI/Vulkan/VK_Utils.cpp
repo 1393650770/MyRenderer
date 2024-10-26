@@ -824,7 +824,7 @@ namespace MXRender
 		}
 		case ENUM_TEXTURE_FORMAT::BGRA8:
 		{
-			vulkan_image_format = VK_FORMAT_B8G8R8A8_SRGB;
+			vulkan_image_format = VK_FORMAT_B8G8R8A8_UNORM;
 			break;
 		}
 		default:

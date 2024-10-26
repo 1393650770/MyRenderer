@@ -1,6 +1,5 @@
 #include"RenderTexture.h"
 #include<iostream>
-#include <glad/glad.h>
 #include <xutility>
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)

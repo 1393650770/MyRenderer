@@ -10,6 +10,13 @@
 #include "VK_FrameBuffer.h"
 
 
+#include <imgui_impl_vulkan.h>
+
+#include <imgui_internal.h>
+#include "VK_DescriptorSets.h"
+#include "VK_RenderPass.h"
+#include "VK_PipelineState.h"
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
@@ -51,7 +58,6 @@ void VK_Viewport::Resize(UInt32 in_width, UInt32 in_height)
 {
 	if ((in_width != size_x || in_height != size_y) || (in_width != 0 && in_height != 0&&is_minimized))
 	{
-
 		size_x = in_width;
 		size_y = in_height;
 		VK_SwapChainRecreateInfo recreate_info;
@@ -68,6 +74,64 @@ void VK_Viewport::Present(MXRender::RHI::CommandList* in_cmd_list, bool is_prese
 	VK_Queue* present_queue = device->GetQueue(ENUM_QUEUE_TYPE::PRESENT);
 	CHECK_WITH_LOG(submit_queue == nullptr || present_queue == nullptr, "RHI Error : can not get free queue!");
 	PresentInternal(STATIC_CAST(in_cmd_list, VK_CommandBuffer), submit_queue, present_queue, is_lock_to_vsync);
+}
+
+void VK_Viewport::AttachUiLayer(UI::UIBase* ui_layer)
+{
+	ImGui_ImplVulkan_InitInfo init_info = {};
+	init_info.Instance = swap_chain->GetInstance();
+	init_info.PhysicalDevice = device->GetGpu();
+	init_info.Device = device->GetDevice();
+	init_info.QueueFamily = device->GetQueueFamilyIndices().graphics_family.value();
+	init_info.Queue = device->GetQueue(ENUM_QUEUE_TYPE::GRAPHICS)->GetQueue();
+	init_info.DescriptorPool = device->GetDescriptsetAllocator()->GetDescriptorPool();
+	init_info.PipelineCache = device->GetPipelineStateManager()->GetPipelineCache();
+	init_info.Subpass = 0;
+	init_info.MinImageCount = texture_views.size();
+	init_info.ImageCount = texture_views.size();
+	init_info.CheckVkResultFn = [](VkResult result) {CHECK_WITH_LOG(result != VK_SUCCESS, "RHI Error: ImGui_ImplVulkan_Init failed!"); };
+	Vector<Texture*> rtvs = { GetCurrentBackBufferRTV() };
+	Vector<ENUM_TEXTURE_FORMAT> rtv_formats;
+	for (auto& rtv : rtvs)
+	{
+		rtv_formats.push_back(rtv->GetTextureDesc().format);
+	}
+
+	RenderPassCacheKey renderpass_key(rtvs.size(), rtv_formats.data(), ENUM_TEXTURE_FORMAT::None, rtvs[0]->GetTextureDesc().samples, false, false);
+	VK_RenderPass* vk_renderpass = device->GetRenderPassManager()->GetRenderPass(renderpass_key);
+	VkRenderPass render_pass = vk_renderpass->GetRenderPass();
+	//FramebufferCacheKey framebuffer_key;
+	//framebuffer_key.render_targets = rtvs;
+	//framebuffer_key.depth_stencil = nullptr;
+	//framebuffer_key.render_pass = render_pass;
+
+	//VK_FrameBuffer* vk_framebuffer = device->GetFrameBufferManager()->GetFramebuffer(framebuffer_key, rtvs[0]->GetTextureDesc().width, rtvs[0]->GetTextureDesc().height, 1);
+
+	//VkFramebuffer framebuffer = vk_framebuffer->GetFramebuffer();
+
+	//init_info.UseDynamicRendering = false;
+	//init_info.RenderPass = render_pass;
+	CHECK_WITH_LOG( ImGui_ImplVulkan_Init(&init_info, render_pass)==false ,"Failed to init ImGui for Vulkan!");
+	 
+	VK_CommandBuffer* command_buffer= device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::GRAPHICS, true);
+	if (command_buffer)
+	{
+
+
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		command_buffer->Begin();
+
+		ImGui_ImplVulkan_CreateFontsTexture(command_buffer->GetCommandBuffer());
+
+		command_buffer->End();
+
+		device->GetQueue(ENUM_QUEUE_TYPE::TRANSFER)->Submit(command_buffer);
+
+		ImGui_ImplVulkan_DestroyFontUploadObjects();
+	}
 }
 
 void VK_Viewport::PresentInternal(VK_CommandBuffer* in_cmd_list, VK_Queue* submit_queue, VK_Queue* present_queue, bool is_lock_to_vsync)
