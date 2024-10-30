@@ -27,22 +27,11 @@ xmake
 ## Feature
 ###### Tip: maybe still in progress
  - [x] RHI
-The architecture refers to UE and
+The architecture refers to UE
  - [x] Vulkan 
 The implementation refers to UE/ Nvrhi/ DiligentEngine etc
  - [x] RenderGraph
 Refers to fg
 
-## To do list
- - [ ] add shadow
- - [ ] add raytrace-gi
- - [ ] add Skeletal-Animation
- - [ ] add particle system
-
-
-
-
-
  ## Sample
 ######Tip: Mainly to verify the engine feature
- ### 1-HelloTriangle
