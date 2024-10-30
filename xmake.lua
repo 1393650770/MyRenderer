@@ -25,6 +25,7 @@ rule("module")
         end
     end)
 rule_end()
+includes("src/**/xmake.lua")
 
 rule("flatbufferFile")
     set_extensions(".fbs")

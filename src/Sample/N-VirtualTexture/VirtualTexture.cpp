@@ -1,5 +1,6 @@
 #include<iostream>
 #include <fstream>
+#include <map>
 #include "Application/Window.h"
 #include "Render/RenderInterface.h"
 #include "Render/Core/RenderGraph.h"
@@ -208,8 +209,29 @@ int main()
 	//RenderTest render(&window);
 	//window.InitWindow();
 	//window.Run(&render);
-	VirtualTextureQuadTree tree(5120, 64);
-	tree.ParseAllLevelFromRoot();
+	//VirtualTextureQuadTree tree(5120, 64);
+	//tree.ParseAllLevelNodeToDebug();
+
+	std::unordered_map<int, int> test_map;
+	std::map<int, int> test_map2;
+
+	for (int i = 0; i < 100000000; i++)
+	{
+		//test_map.insert(std::make_pair(i, i));
+		test_map2.insert(std::make_pair(i, i));
+	}
+
+	//¼ÆËãÄÚ´æ
+	size_t size_of_map = test_map.size() * (sizeof(int) + sizeof(int));
+	size_t size_of_map2 = test_map2.size() * (sizeof(int) + sizeof(int));
+    int test_map_size = sizeof(test_map);
+	int test_map2_size = sizeof(test_map2);
+	std::cout << "test_map_size: " << test_map_size << std::endl;
+	std::cout << "test_map2_size: " << test_map2_size << std::endl;
+	std::cout << "max size :" << test_map.max_size() << std::endl;
+	std::cout << "max size2 :" << test_map2.max_size() << std::endl;
+std::cout << "size_of_map: " << size_of_map << std::endl;
+std::cout << "size_of_map2: " << size_of_map2 << std::endl;
 
 	system("pause");
 
