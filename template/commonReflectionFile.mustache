@@ -1,0 +1,46 @@
+#pragma once
+{{#include_headfiles}}
+#include "{{headfile_name}}"
+{{/include_headfiles}}
+
+namespace MXRender{
+    {{#class_defines}}class {{class_name}};
+    {{/class_defines}}
+namespace Reflection{
+{{#class_defines}}namespace TypeFieldReflectionOparator{
+    class Type{{class_name}}Operator{
+    public:
+        static const char* getClassName(){ return "{{class_name}}";}
+        //static void* constructorWithJson(const Json& json_context){
+        //    {{class_name}}* ret_instance= new {{class_name}};
+        //    Serializer::read(json_context, *ret_instance);
+        //    return ret_instance;
+        //}
+        //static Json writeByName(void* instance){
+        //    return Serializer::write(*({{class_name}}*)instance);
+        //}
+    };
+}//namespace TypeFieldReflectionOparator
+
+
+    void TypeWrapperRegister_{{class_name}}(){
+        registration::class_<{{class_name}}>("{{class_name}}")
+		 .constructor<>()
+         {{#class_field_defines}}
+		 .property("{{class_field_name}}", &{{class_name}}::{{class_field_name}})
+         {{/class_field_defines}}
+		 {{#class_method_defines}}
+		 .method("{{class_method_name}}", &{{class_name}}::{{class_method_name}})
+         {{/class_method_defines}}
+		 ;
+    }{{/class_defines}}
+namespace TypeWrappersRegister{
+    void {{sourefile_name_upper_camel_case}}()
+    {
+        {{#class_defines}}TypeWrapperRegister_{{class_name}}();
+    {{/class_defines}}
+    }
+}//namespace TypeWrappersRegister
+
+}//namespace Reflection
+}//namespace MXRender

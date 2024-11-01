@@ -6,7 +6,7 @@
 
 #include "flatbuffers/flatbuffers.h"
 
-namespace MxRender {
+namespace MXRender {
 namespace Data {
 
 struct Vec3;
@@ -77,11 +77,11 @@ template<typename T> struct MatrixTraits {
   static const Matrix enum_value = Matrix_NONE;
 };
 
-template<> struct MatrixTraits<MxRender::Data::Matrix_Column> {
+template<> struct MatrixTraits<MXRender::Data::Matrix_Column> {
   static const Matrix enum_value = Matrix_Matrix_Column;
 };
 
-template<> struct MatrixTraits<MxRender::Data::Matrix_Row> {
+template<> struct MatrixTraits<MXRender::Data::Matrix_Row> {
   static const Matrix enum_value = Matrix_Matrix_Row;
 };
 
@@ -117,21 +117,21 @@ struct MatrixUnion {
   static void *UnPack(const void *obj, Matrix type, const flatbuffers::resolver_function_t *resolver);
   flatbuffers::Offset<void> Pack(flatbuffers::FlatBufferBuilder &_fbb, const flatbuffers::rehasher_function_t *_rehasher = nullptr) const;
 
-  MxRender::Data::Matrix_Column *AsMatrix_Column() {
+  MXRender::Data::Matrix_Column *AsMatrix_Column() {
     return type == Matrix_Matrix_Column ?
-      reinterpret_cast<MxRender::Data::Matrix_Column *>(value) : nullptr;
+      reinterpret_cast<MXRender::Data::Matrix_Column *>(value) : nullptr;
   }
-  const MxRender::Data::Matrix_Column *AsMatrix_Column() const {
+  const MXRender::Data::Matrix_Column *AsMatrix_Column() const {
     return type == Matrix_Matrix_Column ?
-      reinterpret_cast<const MxRender::Data::Matrix_Column *>(value) : nullptr;
+      reinterpret_cast<const MXRender::Data::Matrix_Column *>(value) : nullptr;
   }
-  MxRender::Data::Matrix_Row *AsMatrix_Row() {
+  MXRender::Data::Matrix_Row *AsMatrix_Row() {
     return type == Matrix_Matrix_Row ?
-      reinterpret_cast<MxRender::Data::Matrix_Row *>(value) : nullptr;
+      reinterpret_cast<MXRender::Data::Matrix_Row *>(value) : nullptr;
   }
-  const MxRender::Data::Matrix_Row *AsMatrix_Row() const {
+  const MXRender::Data::Matrix_Row *AsMatrix_Row() const {
     return type == Matrix_Matrix_Row ?
-      reinterpret_cast<const MxRender::Data::Matrix_Row *>(value) : nullptr;
+      reinterpret_cast<const MXRender::Data::Matrix_Row *>(value) : nullptr;
   }
 };
 
@@ -143,12 +143,12 @@ inline bool operator==(const MatrixUnion &lhs, const MatrixUnion &rhs) {
       return true;
     }
     case Matrix_Matrix_Column: {
-      return *(reinterpret_cast<const MxRender::Data::Matrix_Column *>(lhs.value)) ==
-             *(reinterpret_cast<const MxRender::Data::Matrix_Column *>(rhs.value));
+      return *(reinterpret_cast<const MXRender::Data::Matrix_Column *>(lhs.value)) ==
+             *(reinterpret_cast<const MXRender::Data::Matrix_Column *>(rhs.value));
     }
     case Matrix_Matrix_Row: {
-      return *(reinterpret_cast<const MxRender::Data::Matrix_Row *>(lhs.value)) ==
-             *(reinterpret_cast<const MxRender::Data::Matrix_Row *>(rhs.value));
+      return *(reinterpret_cast<const MXRender::Data::Matrix_Row *>(lhs.value)) ==
+             *(reinterpret_cast<const MXRender::Data::Matrix_Row *>(rhs.value));
     }
     default: {
       return false;
@@ -255,10 +255,10 @@ inline bool operator!=(const Vec4 &lhs, const Vec4 &rhs) {
 
 FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(4) Matrix_Row FLATBUFFERS_FINAL_CLASS {
  private:
-  MxRender::Data::Vec4 row0_;
-  MxRender::Data::Vec4 row1_;
-  MxRender::Data::Vec4 row2_;
-  MxRender::Data::Vec4 row3_;
+  MXRender::Data::Vec4 row0_;
+  MXRender::Data::Vec4 row1_;
+  MXRender::Data::Vec4 row2_;
+  MXRender::Data::Vec4 row3_;
 
  public:
   static const flatbuffers::TypeTable *MiniReflectTypeTable() {
@@ -267,22 +267,22 @@ FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(4) Matrix_Row FLATBUFFERS_FINAL_CLASS {
   Matrix_Row() {
     memset(static_cast<void *>(this), 0, sizeof(Matrix_Row));
   }
-  Matrix_Row(const MxRender::Data::Vec4 &_row0, const MxRender::Data::Vec4 &_row1, const MxRender::Data::Vec4 &_row2, const MxRender::Data::Vec4 &_row3)
+  Matrix_Row(const MXRender::Data::Vec4 &_row0, const MXRender::Data::Vec4 &_row1, const MXRender::Data::Vec4 &_row2, const MXRender::Data::Vec4 &_row3)
       : row0_(_row0),
         row1_(_row1),
         row2_(_row2),
         row3_(_row3) {
   }
-  const MxRender::Data::Vec4 &row0() const {
+  const MXRender::Data::Vec4 &row0() const {
     return row0_;
   }
-  const MxRender::Data::Vec4 &row1() const {
+  const MXRender::Data::Vec4 &row1() const {
     return row1_;
   }
-  const MxRender::Data::Vec4 &row2() const {
+  const MXRender::Data::Vec4 &row2() const {
     return row2_;
   }
-  const MxRender::Data::Vec4 &row3() const {
+  const MXRender::Data::Vec4 &row3() const {
     return row3_;
   }
 };
@@ -303,10 +303,10 @@ inline bool operator!=(const Matrix_Row &lhs, const Matrix_Row &rhs) {
 
 FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(4) Matrix_Column FLATBUFFERS_FINAL_CLASS {
  private:
-  MxRender::Data::Vec4 column0_;
-  MxRender::Data::Vec4 column1_;
-  MxRender::Data::Vec4 column2_;
-  MxRender::Data::Vec4 column3_;
+  MXRender::Data::Vec4 column0_;
+  MXRender::Data::Vec4 column1_;
+  MXRender::Data::Vec4 column2_;
+  MXRender::Data::Vec4 column3_;
 
  public:
   static const flatbuffers::TypeTable *MiniReflectTypeTable() {
@@ -315,22 +315,22 @@ FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(4) Matrix_Column FLATBUFFERS_FINAL_CLASS {
   Matrix_Column() {
     memset(static_cast<void *>(this), 0, sizeof(Matrix_Column));
   }
-  Matrix_Column(const MxRender::Data::Vec4 &_column0, const MxRender::Data::Vec4 &_column1, const MxRender::Data::Vec4 &_column2, const MxRender::Data::Vec4 &_column3)
+  Matrix_Column(const MXRender::Data::Vec4 &_column0, const MXRender::Data::Vec4 &_column1, const MXRender::Data::Vec4 &_column2, const MXRender::Data::Vec4 &_column3)
       : column0_(_column0),
         column1_(_column1),
         column2_(_column2),
         column3_(_column3) {
   }
-  const MxRender::Data::Vec4 &column0() const {
+  const MXRender::Data::Vec4 &column0() const {
     return column0_;
   }
-  const MxRender::Data::Vec4 &column1() const {
+  const MXRender::Data::Vec4 &column1() const {
     return column1_;
   }
-  const MxRender::Data::Vec4 &column2() const {
+  const MXRender::Data::Vec4 &column2() const {
     return column2_;
   }
-  const MxRender::Data::Vec4 &column3() const {
+  const MXRender::Data::Vec4 &column3() const {
     return column3_;
   }
 };
@@ -351,9 +351,9 @@ inline bool operator!=(const Matrix_Column &lhs, const Matrix_Column &rhs) {
 
 FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(4) Transform FLATBUFFERS_FINAL_CLASS {
  private:
-  MxRender::Data::Vec3 position_;
-  MxRender::Data::Vec3 rotation_;
-  MxRender::Data::Vec3 scale_;
+  MXRender::Data::Vec3 position_;
+  MXRender::Data::Vec3 rotation_;
+  MXRender::Data::Vec3 scale_;
 
  public:
   static const flatbuffers::TypeTable *MiniReflectTypeTable() {
@@ -362,18 +362,18 @@ FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(4) Transform FLATBUFFERS_FINAL_CLASS {
   Transform() {
     memset(static_cast<void *>(this), 0, sizeof(Transform));
   }
-  Transform(const MxRender::Data::Vec3 &_position, const MxRender::Data::Vec3 &_rotation, const MxRender::Data::Vec3 &_scale)
+  Transform(const MXRender::Data::Vec3 &_position, const MXRender::Data::Vec3 &_rotation, const MXRender::Data::Vec3 &_scale)
       : position_(_position),
         rotation_(_rotation),
         scale_(_scale) {
   }
-  const MxRender::Data::Vec3 &position() const {
+  const MXRender::Data::Vec3 &position() const {
     return position_;
   }
-  const MxRender::Data::Vec3 &rotation() const {
+  const MXRender::Data::Vec3 &rotation() const {
     return rotation_;
   }
-  const MxRender::Data::Vec3 &scale() const {
+  const MXRender::Data::Vec3 &scale() const {
     return scale_;
   }
 };
@@ -397,10 +397,10 @@ inline bool VerifyMatrix(flatbuffers::Verifier &verifier, const void *obj, Matri
       return true;
     }
     case Matrix_Matrix_Column: {
-      return verifier.Verify<MxRender::Data::Matrix_Column>(static_cast<const uint8_t *>(obj), 0);
+      return verifier.Verify<MXRender::Data::Matrix_Column>(static_cast<const uint8_t *>(obj), 0);
     }
     case Matrix_Matrix_Row: {
-      return verifier.Verify<MxRender::Data::Matrix_Row>(static_cast<const uint8_t *>(obj), 0);
+      return verifier.Verify<MXRender::Data::Matrix_Row>(static_cast<const uint8_t *>(obj), 0);
     }
     default: return true;
   }
@@ -421,12 +421,12 @@ inline bool VerifyMatrixVector(flatbuffers::Verifier &verifier, const flatbuffer
 inline void *MatrixUnion::UnPack(const void *obj, Matrix type, const flatbuffers::resolver_function_t *resolver) {
   switch (type) {
     case Matrix_Matrix_Column: {
-      auto ptr = reinterpret_cast<const MxRender::Data::Matrix_Column *>(obj);
-      return new MxRender::Data::Matrix_Column(*ptr);
+      auto ptr = reinterpret_cast<const MXRender::Data::Matrix_Column *>(obj);
+      return new MXRender::Data::Matrix_Column(*ptr);
     }
     case Matrix_Matrix_Row: {
-      auto ptr = reinterpret_cast<const MxRender::Data::Matrix_Row *>(obj);
-      return new MxRender::Data::Matrix_Row(*ptr);
+      auto ptr = reinterpret_cast<const MXRender::Data::Matrix_Row *>(obj);
+      return new MXRender::Data::Matrix_Row(*ptr);
     }
     default: return nullptr;
   }
@@ -435,11 +435,11 @@ inline void *MatrixUnion::UnPack(const void *obj, Matrix type, const flatbuffers
 inline flatbuffers::Offset<void> MatrixUnion::Pack(flatbuffers::FlatBufferBuilder &_fbb, const flatbuffers::rehasher_function_t *_rehasher) const {
   switch (type) {
     case Matrix_Matrix_Column: {
-      auto ptr = reinterpret_cast<const MxRender::Data::Matrix_Column *>(value);
+      auto ptr = reinterpret_cast<const MXRender::Data::Matrix_Column *>(value);
       return _fbb.CreateStruct(*ptr).Union();
     }
     case Matrix_Matrix_Row: {
-      auto ptr = reinterpret_cast<const MxRender::Data::Matrix_Row *>(value);
+      auto ptr = reinterpret_cast<const MXRender::Data::Matrix_Row *>(value);
       return _fbb.CreateStruct(*ptr).Union();
     }
     default: return 0;
@@ -449,11 +449,11 @@ inline flatbuffers::Offset<void> MatrixUnion::Pack(flatbuffers::FlatBufferBuilde
 inline MatrixUnion::MatrixUnion(const MatrixUnion &u) : type(u.type), value(nullptr) {
   switch (type) {
     case Matrix_Matrix_Column: {
-      FLATBUFFERS_ASSERT(false);  // MxRender::Data::Matrix_Column not copyable.
+      FLATBUFFERS_ASSERT(false);  // MXRender::Data::Matrix_Column not copyable.
       break;
     }
     case Matrix_Matrix_Row: {
-      FLATBUFFERS_ASSERT(false);  // MxRender::Data::Matrix_Row not copyable.
+      FLATBUFFERS_ASSERT(false);  // MXRender::Data::Matrix_Row not copyable.
       break;
     }
     default:
@@ -464,12 +464,12 @@ inline MatrixUnion::MatrixUnion(const MatrixUnion &u) : type(u.type), value(null
 inline void MatrixUnion::Reset() {
   switch (type) {
     case Matrix_Matrix_Column: {
-      auto ptr = reinterpret_cast<MxRender::Data::Matrix_Column *>(value);
+      auto ptr = reinterpret_cast<MXRender::Data::Matrix_Column *>(value);
       delete ptr;
       break;
     }
     case Matrix_Matrix_Row: {
-      auto ptr = reinterpret_cast<MxRender::Data::Matrix_Row *>(value);
+      auto ptr = reinterpret_cast<MXRender::Data::Matrix_Row *>(value);
       delete ptr;
       break;
     }
@@ -486,8 +486,8 @@ inline const flatbuffers::TypeTable *MatrixTypeTable() {
     { flatbuffers::ET_SEQUENCE, 0, 1 }
   };
   static const flatbuffers::TypeFunction type_refs[] = {
-    MxRender::Data::Matrix_ColumnTypeTable,
-    MxRender::Data::Matrix_RowTypeTable
+    MXRender::Data::Matrix_ColumnTypeTable,
+    MXRender::Data::Matrix_RowTypeTable
   };
   static const char * const names[] = {
     "NONE",
@@ -546,7 +546,7 @@ inline const flatbuffers::TypeTable *Matrix_RowTypeTable() {
     { flatbuffers::ET_SEQUENCE, 0, 0 }
   };
   static const flatbuffers::TypeFunction type_refs[] = {
-    MxRender::Data::Vec4TypeTable
+    MXRender::Data::Vec4TypeTable
   };
   static const int64_t values[] = { 0, 16, 32, 48, 64 };
   static const char * const names[] = {
@@ -569,7 +569,7 @@ inline const flatbuffers::TypeTable *Matrix_ColumnTypeTable() {
     { flatbuffers::ET_SEQUENCE, 0, 0 }
   };
   static const flatbuffers::TypeFunction type_refs[] = {
-    MxRender::Data::Vec4TypeTable
+    MXRender::Data::Vec4TypeTable
   };
   static const int64_t values[] = { 0, 16, 32, 48, 64 };
   static const char * const names[] = {
@@ -591,7 +591,7 @@ inline const flatbuffers::TypeTable *TransformTypeTable() {
     { flatbuffers::ET_SEQUENCE, 0, 0 }
   };
   static const flatbuffers::TypeFunction type_refs[] = {
-    MxRender::Data::Vec3TypeTable
+    MXRender::Data::Vec3TypeTable
   };
   static const int64_t values[] = { 0, 12, 24, 36 };
   static const char * const names[] = {
@@ -606,6 +606,6 @@ inline const flatbuffers::TypeTable *TransformTypeTable() {
 }
 
 }  // namespace Data
-}  // namespace MxRender
+}  // namespace MXRender
 
 #endif  // FLATBUFFERS_GENERATED_COMMON_MXRENDER_DATA_H_

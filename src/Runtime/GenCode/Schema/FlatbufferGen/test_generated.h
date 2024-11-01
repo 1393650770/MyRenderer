@@ -6,7 +6,7 @@
 
 #include "flatbuffers/flatbuffers.h"
 
-namespace MxRender {
+namespace MXRender {
 namespace Data {
 
 struct Vec32;
@@ -99,7 +99,7 @@ template<typename T> struct EquipmentTraits {
   static const Equipment enum_value = Equipment_NONE;
 };
 
-template<> struct EquipmentTraits<MxRender::Data::Weapon> {
+template<> struct EquipmentTraits<MXRender::Data::Weapon> {
   static const Equipment enum_value = Equipment_Weapon;
 };
 
@@ -135,13 +135,13 @@ struct EquipmentUnion {
   static void *UnPack(const void *obj, Equipment type, const flatbuffers::resolver_function_t *resolver);
   flatbuffers::Offset<void> Pack(flatbuffers::FlatBufferBuilder &_fbb, const flatbuffers::rehasher_function_t *_rehasher = nullptr) const;
 
-  MxRender::Data::WeaponT *AsWeapon() {
+  MXRender::Data::WeaponT *AsWeapon() {
     return type == Equipment_Weapon ?
-      reinterpret_cast<MxRender::Data::WeaponT *>(value) : nullptr;
+      reinterpret_cast<MXRender::Data::WeaponT *>(value) : nullptr;
   }
-  const MxRender::Data::WeaponT *AsWeapon() const {
+  const MXRender::Data::WeaponT *AsWeapon() const {
     return type == Equipment_Weapon ?
-      reinterpret_cast<const MxRender::Data::WeaponT *>(value) : nullptr;
+      reinterpret_cast<const MXRender::Data::WeaponT *>(value) : nullptr;
   }
 };
 
@@ -153,8 +153,8 @@ inline bool operator==(const EquipmentUnion &lhs, const EquipmentUnion &rhs) {
       return true;
     }
     case Equipment_Weapon: {
-      return *(reinterpret_cast<const MxRender::Data::WeaponT *>(lhs.value)) ==
-             *(reinterpret_cast<const MxRender::Data::WeaponT *>(rhs.value));
+      return *(reinterpret_cast<const MXRender::Data::WeaponT *>(lhs.value)) ==
+             *(reinterpret_cast<const MXRender::Data::WeaponT *>(rhs.value));
     }
     default: {
       return false;
@@ -213,19 +213,19 @@ inline bool operator!=(const Vec32 &lhs, const Vec32 &rhs) {
 
 struct MonsterT : public flatbuffers::NativeTable {
   typedef Monster TableType;
-  std::unique_ptr<MxRender::Data::Vec32> pos;
+  std::unique_ptr<MXRender::Data::Vec32> pos;
   int16_t mana;
   int16_t hp;
   std::string name;
   std::vector<uint8_t> inventory;
-  MxRender::Data::Color color;
-  std::vector<std::unique_ptr<MxRender::Data::WeaponT>> weapons;
-  MxRender::Data::EquipmentUnion equipped;
-  std::vector<MxRender::Data::Vec32> path;
+  MXRender::Data::Color color;
+  std::vector<std::unique_ptr<MXRender::Data::WeaponT>> weapons;
+  MXRender::Data::EquipmentUnion equipped;
+  std::vector<MXRender::Data::Vec32> path;
   MonsterT()
       : mana(150),
         hp(100),
-        color(MxRender::Data::Color_Blue) {
+        color(MXRender::Data::Color_Blue) {
   }
 };
 
@@ -265,8 +265,8 @@ struct Monster FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_EQUIPPED = 22,
     VT_PATH = 24
   };
-  const MxRender::Data::Vec32 *pos() const {
-    return GetStruct<const MxRender::Data::Vec32 *>(VT_POS);
+  const MXRender::Data::Vec32 *pos() const {
+    return GetStruct<const MXRender::Data::Vec32 *>(VT_POS);
   }
   int16_t mana() const {
     return GetField<int16_t>(VT_MANA, 150);
@@ -280,28 +280,28 @@ struct Monster FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   const flatbuffers::Vector<uint8_t> *inventory() const {
     return GetPointer<const flatbuffers::Vector<uint8_t> *>(VT_INVENTORY);
   }
-  MxRender::Data::Color color() const {
-    return static_cast<MxRender::Data::Color>(GetField<int8_t>(VT_COLOR, 2));
+  MXRender::Data::Color color() const {
+    return static_cast<MXRender::Data::Color>(GetField<int8_t>(VT_COLOR, 2));
   }
-  const flatbuffers::Vector<flatbuffers::Offset<MxRender::Data::Weapon>> *weapons() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<MxRender::Data::Weapon>> *>(VT_WEAPONS);
+  const flatbuffers::Vector<flatbuffers::Offset<MXRender::Data::Weapon>> *weapons() const {
+    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<MXRender::Data::Weapon>> *>(VT_WEAPONS);
   }
-  MxRender::Data::Equipment equipped_type() const {
-    return static_cast<MxRender::Data::Equipment>(GetField<uint8_t>(VT_EQUIPPED_TYPE, 0));
+  MXRender::Data::Equipment equipped_type() const {
+    return static_cast<MXRender::Data::Equipment>(GetField<uint8_t>(VT_EQUIPPED_TYPE, 0));
   }
   const void *equipped() const {
     return GetPointer<const void *>(VT_EQUIPPED);
   }
   template<typename T> const T *equipped_as() const;
-  const MxRender::Data::Weapon *equipped_as_Weapon() const {
-    return equipped_type() == MxRender::Data::Equipment_Weapon ? static_cast<const MxRender::Data::Weapon *>(equipped()) : nullptr;
+  const MXRender::Data::Weapon *equipped_as_Weapon() const {
+    return equipped_type() == MXRender::Data::Equipment_Weapon ? static_cast<const MXRender::Data::Weapon *>(equipped()) : nullptr;
   }
-  const flatbuffers::Vector<const MxRender::Data::Vec32 *> *path() const {
-    return GetPointer<const flatbuffers::Vector<const MxRender::Data::Vec32 *> *>(VT_PATH);
+  const flatbuffers::Vector<const MXRender::Data::Vec32 *> *path() const {
+    return GetPointer<const flatbuffers::Vector<const MXRender::Data::Vec32 *> *>(VT_PATH);
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyField<MxRender::Data::Vec32>(verifier, VT_POS) &&
+           VerifyField<MXRender::Data::Vec32>(verifier, VT_POS) &&
            VerifyField<int16_t>(verifier, VT_MANA) &&
            VerifyField<int16_t>(verifier, VT_HP) &&
            VerifyOffset(verifier, VT_NAME) &&
@@ -324,7 +324,7 @@ struct Monster FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   static flatbuffers::Offset<Monster> Pack(flatbuffers::FlatBufferBuilder &_fbb, const MonsterT* _o, const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 };
 
-template<> inline const MxRender::Data::Weapon *Monster::equipped_as<MxRender::Data::Weapon>() const {
+template<> inline const MXRender::Data::Weapon *Monster::equipped_as<MXRender::Data::Weapon>() const {
   return equipped_as_Weapon();
 }
 
@@ -332,7 +332,7 @@ struct MonsterBuilder {
   typedef Monster Table;
   flatbuffers::FlatBufferBuilder &fbb_;
   flatbuffers::uoffset_t start_;
-  void add_pos(const MxRender::Data::Vec32 *pos) {
+  void add_pos(const MXRender::Data::Vec32 *pos) {
     fbb_.AddStruct(Monster::VT_POS, pos);
   }
   void add_mana(int16_t mana) {
@@ -347,19 +347,19 @@ struct MonsterBuilder {
   void add_inventory(flatbuffers::Offset<flatbuffers::Vector<uint8_t>> inventory) {
     fbb_.AddOffset(Monster::VT_INVENTORY, inventory);
   }
-  void add_color(MxRender::Data::Color color) {
+  void add_color(MXRender::Data::Color color) {
     fbb_.AddElement<int8_t>(Monster::VT_COLOR, static_cast<int8_t>(color), 2);
   }
-  void add_weapons(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<MxRender::Data::Weapon>>> weapons) {
+  void add_weapons(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<MXRender::Data::Weapon>>> weapons) {
     fbb_.AddOffset(Monster::VT_WEAPONS, weapons);
   }
-  void add_equipped_type(MxRender::Data::Equipment equipped_type) {
+  void add_equipped_type(MXRender::Data::Equipment equipped_type) {
     fbb_.AddElement<uint8_t>(Monster::VT_EQUIPPED_TYPE, static_cast<uint8_t>(equipped_type), 0);
   }
   void add_equipped(flatbuffers::Offset<void> equipped) {
     fbb_.AddOffset(Monster::VT_EQUIPPED, equipped);
   }
-  void add_path(flatbuffers::Offset<flatbuffers::Vector<const MxRender::Data::Vec32 *>> path) {
+  void add_path(flatbuffers::Offset<flatbuffers::Vector<const MXRender::Data::Vec32 *>> path) {
     fbb_.AddOffset(Monster::VT_PATH, path);
   }
   explicit MonsterBuilder(flatbuffers::FlatBufferBuilder &_fbb)
@@ -376,16 +376,16 @@ struct MonsterBuilder {
 
 inline flatbuffers::Offset<Monster> CreateMonster(
     flatbuffers::FlatBufferBuilder &_fbb,
-    const MxRender::Data::Vec32 *pos = 0,
+    const MXRender::Data::Vec32 *pos = 0,
     int16_t mana = 150,
     int16_t hp = 100,
     flatbuffers::Offset<flatbuffers::String> name = 0,
     flatbuffers::Offset<flatbuffers::Vector<uint8_t>> inventory = 0,
-    MxRender::Data::Color color = MxRender::Data::Color_Blue,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<MxRender::Data::Weapon>>> weapons = 0,
-    MxRender::Data::Equipment equipped_type = MxRender::Data::Equipment_NONE,
+    MXRender::Data::Color color = MXRender::Data::Color_Blue,
+    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<MXRender::Data::Weapon>>> weapons = 0,
+    MXRender::Data::Equipment equipped_type = MXRender::Data::Equipment_NONE,
     flatbuffers::Offset<void> equipped = 0,
-    flatbuffers::Offset<flatbuffers::Vector<const MxRender::Data::Vec32 *>> path = 0) {
+    flatbuffers::Offset<flatbuffers::Vector<const MXRender::Data::Vec32 *>> path = 0) {
   MonsterBuilder builder_(_fbb);
   builder_.add_path(path);
   builder_.add_equipped(equipped);
@@ -402,21 +402,21 @@ inline flatbuffers::Offset<Monster> CreateMonster(
 
 inline flatbuffers::Offset<Monster> CreateMonsterDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
-    const MxRender::Data::Vec32 *pos = 0,
+    const MXRender::Data::Vec32 *pos = 0,
     int16_t mana = 150,
     int16_t hp = 100,
     const char *name = nullptr,
     const std::vector<uint8_t> *inventory = nullptr,
-    MxRender::Data::Color color = MxRender::Data::Color_Blue,
-    const std::vector<flatbuffers::Offset<MxRender::Data::Weapon>> *weapons = nullptr,
-    MxRender::Data::Equipment equipped_type = MxRender::Data::Equipment_NONE,
+    MXRender::Data::Color color = MXRender::Data::Color_Blue,
+    const std::vector<flatbuffers::Offset<MXRender::Data::Weapon>> *weapons = nullptr,
+    MXRender::Data::Equipment equipped_type = MXRender::Data::Equipment_NONE,
     flatbuffers::Offset<void> equipped = 0,
-    const std::vector<MxRender::Data::Vec32> *path = nullptr) {
+    const std::vector<MXRender::Data::Vec32> *path = nullptr) {
   auto name__ = name ? _fbb.CreateString(name) : 0;
   auto inventory__ = inventory ? _fbb.CreateVector<uint8_t>(*inventory) : 0;
-  auto weapons__ = weapons ? _fbb.CreateVector<flatbuffers::Offset<MxRender::Data::Weapon>>(*weapons) : 0;
-  auto path__ = path ? _fbb.CreateVectorOfStructs<MxRender::Data::Vec32>(*path) : 0;
-  return MxRender::Data::CreateMonster(
+  auto weapons__ = weapons ? _fbb.CreateVector<flatbuffers::Offset<MXRender::Data::Weapon>>(*weapons) : 0;
+  auto path__ = path ? _fbb.CreateVectorOfStructs<MXRender::Data::Vec32>(*path) : 0;
+  return MXRender::Data::CreateMonster(
       _fbb,
       pos,
       mana,
@@ -517,7 +517,7 @@ inline flatbuffers::Offset<Weapon> CreateWeaponDirect(
     const char *name = nullptr,
     int16_t damage = 0) {
   auto name__ = name ? _fbb.CreateString(name) : 0;
-  return MxRender::Data::CreateWeapon(
+  return MXRender::Data::CreateWeapon(
       _fbb,
       name__,
       damage);
@@ -526,7 +526,7 @@ inline flatbuffers::Offset<Weapon> CreateWeaponDirect(
 flatbuffers::Offset<Weapon> CreateWeapon(flatbuffers::FlatBufferBuilder &_fbb, const WeaponT *_o, const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 
 inline MonsterT *Monster::UnPack(const flatbuffers::resolver_function_t *_resolver) const {
-  std::unique_ptr<MxRender::Data::MonsterT> _o = std::unique_ptr<MxRender::Data::MonsterT>(new MonsterT());
+  std::unique_ptr<MXRender::Data::MonsterT> _o = std::unique_ptr<MXRender::Data::MonsterT>(new MonsterT());
   UnPackTo(_o.get(), _resolver);
   return _o.release();
 }
@@ -534,15 +534,15 @@ inline MonsterT *Monster::UnPack(const flatbuffers::resolver_function_t *_resolv
 inline void Monster::UnPackTo(MonsterT *_o, const flatbuffers::resolver_function_t *_resolver) const {
   (void)_o;
   (void)_resolver;
-  { auto _e = pos(); if (_e) _o->pos = std::unique_ptr<MxRender::Data::Vec32>(new MxRender::Data::Vec32(*_e)); }
+  { auto _e = pos(); if (_e) _o->pos = std::unique_ptr<MXRender::Data::Vec32>(new MXRender::Data::Vec32(*_e)); }
   { auto _e = mana(); _o->mana = _e; }
   { auto _e = hp(); _o->hp = _e; }
   { auto _e = name(); if (_e) _o->name = _e->str(); }
   { auto _e = inventory(); if (_e) { _o->inventory.resize(_e->size()); for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) { _o->inventory[_i] = _e->Get(_i); } } }
   { auto _e = color(); _o->color = _e; }
-  { auto _e = weapons(); if (_e) { _o->weapons.resize(_e->size()); for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) { _o->weapons[_i] = std::unique_ptr<MxRender::Data::WeaponT>(_e->Get(_i)->UnPack(_resolver)); } } }
+  { auto _e = weapons(); if (_e) { _o->weapons.resize(_e->size()); for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) { _o->weapons[_i] = std::unique_ptr<MXRender::Data::WeaponT>(_e->Get(_i)->UnPack(_resolver)); } } }
   { auto _e = equipped_type(); _o->equipped.type = _e; }
-  { auto _e = equipped(); if (_e) _o->equipped.value = MxRender::Data::EquipmentUnion::UnPack(_e, equipped_type(), _resolver); }
+  { auto _e = equipped(); if (_e) _o->equipped.value = MXRender::Data::EquipmentUnion::UnPack(_e, equipped_type(), _resolver); }
   { auto _e = path(); if (_e) { _o->path.resize(_e->size()); for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) { _o->path[_i] = *_e->Get(_i); } } }
 }
 
@@ -560,11 +560,11 @@ inline flatbuffers::Offset<Monster> CreateMonster(flatbuffers::FlatBufferBuilder
   auto _name = _o->name.empty() ? 0 : _fbb.CreateString(_o->name);
   auto _inventory = _o->inventory.size() ? _fbb.CreateVector(_o->inventory) : 0;
   auto _color = _o->color;
-  auto _weapons = _o->weapons.size() ? _fbb.CreateVector<flatbuffers::Offset<MxRender::Data::Weapon>> (_o->weapons.size(), [](size_t i, _VectorArgs *__va) { return CreateWeapon(*__va->__fbb, __va->__o->weapons[i].get(), __va->__rehasher); }, &_va ) : 0;
+  auto _weapons = _o->weapons.size() ? _fbb.CreateVector<flatbuffers::Offset<MXRender::Data::Weapon>> (_o->weapons.size(), [](size_t i, _VectorArgs *__va) { return CreateWeapon(*__va->__fbb, __va->__o->weapons[i].get(), __va->__rehasher); }, &_va ) : 0;
   auto _equipped_type = _o->equipped.type;
   auto _equipped = _o->equipped.Pack(_fbb);
   auto _path = _o->path.size() ? _fbb.CreateVectorOfStructs(_o->path) : 0;
-  return MxRender::Data::CreateMonster(
+  return MXRender::Data::CreateMonster(
       _fbb,
       _pos,
       _mana,
@@ -579,7 +579,7 @@ inline flatbuffers::Offset<Monster> CreateMonster(flatbuffers::FlatBufferBuilder
 }
 
 inline WeaponT *Weapon::UnPack(const flatbuffers::resolver_function_t *_resolver) const {
-  std::unique_ptr<MxRender::Data::WeaponT> _o = std::unique_ptr<MxRender::Data::WeaponT>(new WeaponT());
+  std::unique_ptr<MXRender::Data::WeaponT> _o = std::unique_ptr<MXRender::Data::WeaponT>(new WeaponT());
   UnPackTo(_o.get(), _resolver);
   return _o.release();
 }
@@ -601,7 +601,7 @@ inline flatbuffers::Offset<Weapon> CreateWeapon(flatbuffers::FlatBufferBuilder &
   struct _VectorArgs { flatbuffers::FlatBufferBuilder *__fbb; const WeaponT* __o; const flatbuffers::rehasher_function_t *__rehasher; } _va = { &_fbb, _o, _rehasher}; (void)_va;
   auto _name = _o->name.empty() ? 0 : _fbb.CreateString(_o->name);
   auto _damage = _o->damage;
-  return MxRender::Data::CreateWeapon(
+  return MXRender::Data::CreateWeapon(
       _fbb,
       _name,
       _damage);
@@ -613,7 +613,7 @@ inline bool VerifyEquipment(flatbuffers::Verifier &verifier, const void *obj, Eq
       return true;
     }
     case Equipment_Weapon: {
-      auto ptr = reinterpret_cast<const MxRender::Data::Weapon *>(obj);
+      auto ptr = reinterpret_cast<const MXRender::Data::Weapon *>(obj);
       return verifier.VerifyTable(ptr);
     }
     default: return true;
@@ -635,7 +635,7 @@ inline bool VerifyEquipmentVector(flatbuffers::Verifier &verifier, const flatbuf
 inline void *EquipmentUnion::UnPack(const void *obj, Equipment type, const flatbuffers::resolver_function_t *resolver) {
   switch (type) {
     case Equipment_Weapon: {
-      auto ptr = reinterpret_cast<const MxRender::Data::Weapon *>(obj);
+      auto ptr = reinterpret_cast<const MXRender::Data::Weapon *>(obj);
       return ptr->UnPack(resolver);
     }
     default: return nullptr;
@@ -645,7 +645,7 @@ inline void *EquipmentUnion::UnPack(const void *obj, Equipment type, const flatb
 inline flatbuffers::Offset<void> EquipmentUnion::Pack(flatbuffers::FlatBufferBuilder &_fbb, const flatbuffers::rehasher_function_t *_rehasher) const {
   switch (type) {
     case Equipment_Weapon: {
-      auto ptr = reinterpret_cast<const MxRender::Data::WeaponT *>(value);
+      auto ptr = reinterpret_cast<const MXRender::Data::WeaponT *>(value);
       return CreateWeapon(_fbb, ptr, _rehasher).Union();
     }
     default: return 0;
@@ -655,7 +655,7 @@ inline flatbuffers::Offset<void> EquipmentUnion::Pack(flatbuffers::FlatBufferBui
 inline EquipmentUnion::EquipmentUnion(const EquipmentUnion &u) : type(u.type), value(nullptr) {
   switch (type) {
     case Equipment_Weapon: {
-      value = new MxRender::Data::WeaponT(*reinterpret_cast<MxRender::Data::WeaponT *>(u.value));
+      value = new MXRender::Data::WeaponT(*reinterpret_cast<MXRender::Data::WeaponT *>(u.value));
       break;
     }
     default:
@@ -666,7 +666,7 @@ inline EquipmentUnion::EquipmentUnion(const EquipmentUnion &u) : type(u.type), v
 inline void EquipmentUnion::Reset() {
   switch (type) {
     case Equipment_Weapon: {
-      auto ptr = reinterpret_cast<MxRender::Data::WeaponT *>(value);
+      auto ptr = reinterpret_cast<MXRender::Data::WeaponT *>(value);
       delete ptr;
       break;
     }
@@ -683,7 +683,7 @@ inline const flatbuffers::TypeTable *ColorTypeTable() {
     { flatbuffers::ET_CHAR, 0, 0 }
   };
   static const flatbuffers::TypeFunction type_refs[] = {
-    MxRender::Data::ColorTypeTable
+    MXRender::Data::ColorTypeTable
   };
   static const char * const names[] = {
     "Red",
@@ -702,7 +702,7 @@ inline const flatbuffers::TypeTable *EquipmentTypeTable() {
     { flatbuffers::ET_SEQUENCE, 0, 0 }
   };
   static const flatbuffers::TypeFunction type_refs[] = {
-    MxRender::Data::WeaponTypeTable
+    MXRender::Data::WeaponTypeTable
   };
   static const char * const names[] = {
     "NONE",
@@ -747,10 +747,10 @@ inline const flatbuffers::TypeTable *MonsterTypeTable() {
     { flatbuffers::ET_SEQUENCE, 1, 0 }
   };
   static const flatbuffers::TypeFunction type_refs[] = {
-    MxRender::Data::Vec32TypeTable,
-    MxRender::Data::ColorTypeTable,
-    MxRender::Data::WeaponTypeTable,
-    MxRender::Data::EquipmentTypeTable
+    MXRender::Data::Vec32TypeTable,
+    MXRender::Data::ColorTypeTable,
+    MXRender::Data::WeaponTypeTable,
+    MXRender::Data::EquipmentTypeTable
   };
   static const char * const names[] = {
     "pos",
@@ -786,22 +786,22 @@ inline const flatbuffers::TypeTable *WeaponTypeTable() {
   return &tt;
 }
 
-inline const MxRender::Data::Monster *GetMonster(const void *buf) {
-  return flatbuffers::GetRoot<MxRender::Data::Monster>(buf);
+inline const MXRender::Data::Monster *GetMonster(const void *buf) {
+  return flatbuffers::GetRoot<MXRender::Data::Monster>(buf);
 }
 
-inline const MxRender::Data::Monster *GetSizePrefixedMonster(const void *buf) {
-  return flatbuffers::GetSizePrefixedRoot<MxRender::Data::Monster>(buf);
+inline const MXRender::Data::Monster *GetSizePrefixedMonster(const void *buf) {
+  return flatbuffers::GetSizePrefixedRoot<MXRender::Data::Monster>(buf);
 }
 
 inline bool VerifyMonsterBuffer(
     flatbuffers::Verifier &verifier) {
-  return verifier.VerifyBuffer<MxRender::Data::Monster>(nullptr);
+  return verifier.VerifyBuffer<MXRender::Data::Monster>(nullptr);
 }
 
 inline bool VerifySizePrefixedMonsterBuffer(
     flatbuffers::Verifier &verifier) {
-  return verifier.VerifySizePrefixedBuffer<MxRender::Data::Monster>(nullptr);
+  return verifier.VerifySizePrefixedBuffer<MXRender::Data::Monster>(nullptr);
 }
 
 inline const char *MonsterExtension() {
@@ -810,29 +810,29 @@ inline const char *MonsterExtension() {
 
 inline void FinishMonsterBuffer(
     flatbuffers::FlatBufferBuilder &fbb,
-    flatbuffers::Offset<MxRender::Data::Monster> root) {
+    flatbuffers::Offset<MXRender::Data::Monster> root) {
   fbb.Finish(root);
 }
 
 inline void FinishSizePrefixedMonsterBuffer(
     flatbuffers::FlatBufferBuilder &fbb,
-    flatbuffers::Offset<MxRender::Data::Monster> root) {
+    flatbuffers::Offset<MXRender::Data::Monster> root) {
   fbb.FinishSizePrefixed(root);
 }
 
-inline std::unique_ptr<MxRender::Data::MonsterT> UnPackMonster(
+inline std::unique_ptr<MXRender::Data::MonsterT> UnPackMonster(
     const void *buf,
     const flatbuffers::resolver_function_t *res = nullptr) {
-  return std::unique_ptr<MxRender::Data::MonsterT>(GetMonster(buf)->UnPack(res));
+  return std::unique_ptr<MXRender::Data::MonsterT>(GetMonster(buf)->UnPack(res));
 }
 
-inline std::unique_ptr<MxRender::Data::MonsterT> UnPackSizePrefixedMonster(
+inline std::unique_ptr<MXRender::Data::MonsterT> UnPackSizePrefixedMonster(
     const void *buf,
     const flatbuffers::resolver_function_t *res = nullptr) {
-  return std::unique_ptr<MxRender::Data::MonsterT>(GetSizePrefixedMonster(buf)->UnPack(res));
+  return std::unique_ptr<MXRender::Data::MonsterT>(GetSizePrefixedMonster(buf)->UnPack(res));
 }
 
 }  // namespace Data
-}  // namespace MxRender
+}  // namespace MXRender
 
 #endif  // FLATBUFFERS_GENERATED_TEST_MXRENDER_DATA_H_

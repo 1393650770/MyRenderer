@@ -139,7 +139,7 @@ bool MetaParser::parseProject()
 
 int MetaParser::parse(void)
 {
-    bool parse_include_ = parseProject();
+    bool parse_include_ = true;//parseProject();
     if (!parse_include_)
     {
         std::cerr << "Parsing project file error! " << std::endl;
@@ -171,7 +171,7 @@ int MetaParser::parse(void)
         std::cerr << input_path << " is not exist" << std::endl;
         return -2;
     }
-
+    std::cout << "m_source_include_file_name :" << m_source_include_file_name << std::endl;
     m_translation_unit = clang_createTranslationUnitFromSourceFile(
         m_index, m_source_include_file_name.c_str(), static_cast<int>(arguments.size()), arguments.data(), 0, nullptr);
     auto cursor = clang_getTranslationUnitCursor(m_translation_unit);
@@ -204,12 +204,10 @@ void MetaParser::buildClassAST(const Cursor& cursor, Namespace& current_namespac
     for (auto& child : cursor.getChildren())
     {
         auto kind = child.getKind();
-
         // actual definition and a class or struct
         if (child.isDefinition() && (kind == CXCursor_ClassDecl || kind == CXCursor_StructDecl))
         {
             auto class_ptr = std::make_shared<Class>(child, current_namespace);
-
             TRY_ADD_LANGUAGE_TYPE(class_ptr, classes);
         }
         else

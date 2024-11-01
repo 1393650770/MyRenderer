@@ -44,14 +44,14 @@ private:
 
     std::vector<const char*>                    arguments = {{"-x",
                                            "c++",
-                                           "-std=c++11",
+                                           "-std=c++2a",
                                            "-D__REFLECTION_PARSER__",
                                            "-DNDEBUG",
                                            "-D__clang__",
                                            "-w",
                                            "-MG",
                                            "-M",
-                                           "-ferror-limit=0",
+                                           "-ferror-limit=1",
                                            "-o clangLog.txt"}};
     std::vector<Generator::GeneratorInterface*> m_generators;
 

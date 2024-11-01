@@ -1,5 +1,5 @@
 
-namespace MxRender.Data;
+namespace MXRender.Data;
 
 enum Color2:byte { Red = 0, Green, Blue = 2 }
 

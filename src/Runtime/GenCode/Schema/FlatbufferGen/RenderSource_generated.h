@@ -6,7 +6,7 @@
 
 #include "flatbuffers/flatbuffers.h"
 
-namespace MxRender {
+namespace MXRender {
 namespace Data {
 
 struct TextureResourceDesc;
@@ -528,7 +528,7 @@ FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(4) TextureResourceDesc FLATBUFFERS_FINAL_CLA
   TextureResourceDesc() {
     memset(static_cast<void *>(this), 0, sizeof(TextureResourceDesc));
   }
-  TextureResourceDesc(uint32_t _width, uint32_t _height, uint8_t _mip_level, uint8_t _layer_count, MxRender::Data::TextureFomat _format, MxRender::Data::TextureType _type, MxRender::Data::TextureUsageType _usage, uint8_t _depth, uint8_t _samples)
+  TextureResourceDesc(uint32_t _width, uint32_t _height, uint8_t _mip_level, uint8_t _layer_count, MXRender::Data::TextureFomat _format, MXRender::Data::TextureType _type, MXRender::Data::TextureUsageType _usage, uint8_t _depth, uint8_t _samples)
       : width_(flatbuffers::EndianScalar(_width)),
         height_(flatbuffers::EndianScalar(_height)),
         mip_level_(flatbuffers::EndianScalar(_mip_level)),
@@ -558,14 +558,14 @@ FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(4) TextureResourceDesc FLATBUFFERS_FINAL_CLA
   uint8_t layer_count() const {
     return flatbuffers::EndianScalar(layer_count_);
   }
-  MxRender::Data::TextureFomat format() const {
-    return static_cast<MxRender::Data::TextureFomat>(flatbuffers::EndianScalar(format_));
+  MXRender::Data::TextureFomat format() const {
+    return static_cast<MXRender::Data::TextureFomat>(flatbuffers::EndianScalar(format_));
   }
-  MxRender::Data::TextureType type() const {
-    return static_cast<MxRender::Data::TextureType>(flatbuffers::EndianScalar(type_));
+  MXRender::Data::TextureType type() const {
+    return static_cast<MXRender::Data::TextureType>(flatbuffers::EndianScalar(type_));
   }
-  MxRender::Data::TextureUsageType usage() const {
-    return static_cast<MxRender::Data::TextureUsageType>(flatbuffers::EndianScalar(usage_));
+  MXRender::Data::TextureUsageType usage() const {
+    return static_cast<MXRender::Data::TextureUsageType>(flatbuffers::EndianScalar(usage_));
   }
   uint8_t depth() const {
     return flatbuffers::EndianScalar(depth_);
@@ -693,7 +693,7 @@ inline const flatbuffers::TypeTable *TextureFomatTypeTable() {
     { flatbuffers::ET_UINT, 0, 0 }
   };
   static const flatbuffers::TypeFunction type_refs[] = {
-    MxRender::Data::TextureFomatTypeTable
+    MXRender::Data::TextureFomatTypeTable
   };
   static const char * const names[] = {
     "None",
@@ -810,7 +810,7 @@ inline const flatbuffers::TypeTable *TextureTypeTypeTable() {
     { flatbuffers::ET_UCHAR, 0, 0 }
   };
   static const flatbuffers::TypeFunction type_refs[] = {
-    MxRender::Data::TextureTypeTypeTable
+    MXRender::Data::TextureTypeTypeTable
   };
   static const char * const names[] = {
     "ENUM_TYPE_NOT_VALID",
@@ -840,7 +840,7 @@ inline const flatbuffers::TypeTable *TextureUsageTypeTypeTable() {
     { flatbuffers::ET_UINT, 0, 0 }
   };
   static const flatbuffers::TypeFunction type_refs[] = {
-    MxRender::Data::TextureUsageTypeTypeTable
+    MXRender::Data::TextureUsageTypeTypeTable
   };
   static const int64_t values[] = { 0, 1, 2, 4, 8, 16, 32, 64 };
   static const char * const names[] = {
@@ -888,7 +888,7 @@ inline const flatbuffers::TypeTable *RenderResourceStateTypeTable() {
     { flatbuffers::ET_ULONG, 0, 0 }
   };
   static const flatbuffers::TypeFunction type_refs[] = {
-    MxRender::Data::RenderResourceStateTypeTable
+    MXRender::Data::RenderResourceStateTypeTable
   };
   static const int64_t values[] = { 0, 1ULL, 2ULL, 4ULL, 8ULL, 16ULL, 21ULL, 32ULL, 64ULL, 128ULL, 256ULL, 512ULL, 1024ULL, 2048ULL, 4096ULL, 5374ULL, 8192ULL, 16384ULL, 32768ULL, 65536ULL, 131072ULL, 262144ULL, 524288ULL, 1048576ULL, 2097152ULL };
   static const char * const names[] = {
@@ -937,9 +937,9 @@ inline const flatbuffers::TypeTable *TextureResourceDescTypeTable() {
     { flatbuffers::ET_UCHAR, 0, -1 }
   };
   static const flatbuffers::TypeFunction type_refs[] = {
-    MxRender::Data::TextureFomatTypeTable,
-    MxRender::Data::TextureTypeTypeTable,
-    MxRender::Data::TextureUsageTypeTypeTable
+    MXRender::Data::TextureFomatTypeTable,
+    MXRender::Data::TextureTypeTypeTable,
+    MXRender::Data::TextureUsageTypeTypeTable
   };
   static const int64_t values[] = { 0, 4, 8, 9, 12, 16, 20, 24, 25, 28 };
   static const char * const names[] = {
@@ -960,6 +960,6 @@ inline const flatbuffers::TypeTable *TextureResourceDescTypeTable() {
 }
 
 }  // namespace Data
-}  // namespace MxRender
+}  // namespace MXRender
 
 #endif  // FLATBUFFERS_GENERATED_RENDERSOURCE_MXRENDER_DATA_H_

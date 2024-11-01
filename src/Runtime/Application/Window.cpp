@@ -18,7 +18,7 @@ Window::Window()
 		return;
 	}
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfw_window = glfwCreateWindow(width,height, "MxRender",NULL, NULL);
+	glfw_window = glfwCreateWindow(width,height, "MXRender",NULL, NULL);
 	if (!glfw_window)
 	{
 		glfwTerminate();

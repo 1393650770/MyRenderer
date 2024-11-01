@@ -1,5 +1,5 @@
 
-namespace MxRender.Data;
+namespace MXRender.Data;
 
 struct Vec3 
 {

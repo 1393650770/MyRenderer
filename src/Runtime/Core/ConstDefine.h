@@ -14,7 +14,7 @@
 #include <stdexcept>
 #include <boost/stacktrace.hpp>
 #include <iostream>
-
+#include "Reflection.h"
 #ifndef MYRENDERER_C_INTERFACE
 #    ifdef __cplusplus
 #        define MYRENDERER_C_INTERFACE 0
@@ -55,15 +55,23 @@
 
 #define MYRENDERER_GLOBAL_FUNCTION(FuncName) FuncName
 
-
-#define MYRENDERER_BEGIN_STRUCT(Name) struct Name  \
+#if defined(__REFLECTION_PARSER__)
+#define META(...) __attribute__((annotate(#__VA_ARGS__)))
+#define MYRENDERER_BEGIN_STRUCT(Name, ...) struct __attribute__((annotate(#__VA_ARGS__))) Name  \
                                     {
-
-#define MYRENDERER_BEGIN_CLASS(Name) class Name  \
+#define MYRENDERER_BEGIN_CLASS(Name, ...) class __attribute__((annotate(#__VA_ARGS__))) Name  \
                                     {
-
+#define MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Name, ...) class __attribute__((annotate(#__VA_ARGS__))) Name : __VA_ARGS__ \
+                                        {
+#else
+#define META(...)
+#define MYRENDERER_BEGIN_STRUCT(Name, ...) struct Name  \
+                                    {
+#define MYRENDERER_BEGIN_CLASS(Name, ...) class Name  \
+                                    { 
 #define MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Name, ...) class Name : __VA_ARGS__ \
-                                                {
+                                        {
+#endif
 #define MYRENDERER_END_CLASS  };
 
 #define MYRENDERER_END_STRUCT };
