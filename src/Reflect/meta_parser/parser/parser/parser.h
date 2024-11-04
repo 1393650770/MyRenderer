@@ -51,7 +51,7 @@ private:
                                            "-w",
                                            "-MG",
                                            "-M",
-                                           "-ferror-limit=1",
+                                           "-ferror-limit=0",
                                            "-o clangLog.txt"}};
     std::vector<Generator::GeneratorInterface*> m_generators;
 

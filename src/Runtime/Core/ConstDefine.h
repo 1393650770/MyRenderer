@@ -1,6 +1,5 @@
 #pragma once
 #ifndef _CONSTDEFINE_
-
 #define _CONSTDEFINE_
 
 #include <vector>

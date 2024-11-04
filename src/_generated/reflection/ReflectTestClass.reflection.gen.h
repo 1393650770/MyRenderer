@@ -1,4 +1,5 @@
 #pragma once
+#include "rttr/registration.h"
 #include "..\..\Sample\4-Reflect\ReflectTestClass.h"
 
 namespace MXRender{
@@ -16,23 +17,22 @@ namespace TypeFieldReflectionOparator{
         //static Json writeByName(void* instance){
         //    return Serializer::write(*(ReflectTest*)instance);
         //}
-    };
-}//namespace TypeFieldReflectionOparator
 
-
-    void TypeWrapperRegister_ReflectTest(){
-        registration::class_<ReflectTest>("ReflectTest")
+        static void TypeWrapperRegister_ReflectTest(){
+        rttr::registration::class_<ReflectTest>("ReflectTest")
 		 .constructor<>()
 		 .property("test1", &ReflectTest::test1)
 		 .property("test2", &ReflectTest::test2)
 		 .property("test3", &ReflectTest::test3)
-		 
+		 .method("testfunc", &ReflectTest::testfunc)
 		 ;
-    }
+    }        
+    };
+}//namespace TypeFieldReflectionOparator
 namespace TypeWrappersRegister{
     void ReflectTestClass()
     {
-        TypeWrapperRegister_ReflectTest();
+        TypeFieldReflectionOparator::TypeReflectTestOperator::TypeWrapperRegister_ReflectTest();
     }
 }//namespace TypeWrappersRegister
 
