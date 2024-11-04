@@ -32,6 +32,7 @@ The architecture refers to UE
 The implementation refers to UE/ Nvrhi/ DiligentEngine etc
  - [x] RenderGraph
 Refers to fg
-
+ - [x] Reflection
+The architecture is metaparser(refers to Piccolo) and rttr 
  ## Sample
 ######Tip: Mainly to verify the engine feature
