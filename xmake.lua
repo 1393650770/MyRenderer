@@ -52,6 +52,31 @@ end
 
 
 function CompileFunc()
+    print("[compile c++ reflection code] schema gen code..")
+    local folders = {
+        "$(projectdir)/src/Runtime",
+        "$(projectdir)/src/Sample",
+        "$(projectdir)/src/Editor"
+    }
+    
+    local headers = {}
+    for _, folder_path in ipairs(folders) do
+        local files_in_folder = os.files(path.join(folder_path, "**.h"), {recursive = true})
+        for _, header in ipairs(files_in_folder) do
+            table.insert(headers, header)
+        end
+    end
+
+    local file = io.open("$(projectdir)/src/Reflect/precompile.info", "w")
+    if file then
+        for _, header in ipairs(headers) do
+            file:write(header, ";")
+        end
+        file:close()
+    end
+    os.exec("$(projectdir)/src/Reflect/MetaParser.exe $(projectdir)/src/Reflect/precompile.info  $(projectdir)/src/Reflect/parser_header.h E:/GameEngine/MyRenderer/src * MXRender 0")
+    print("----\n")
+    
     print("[compile shader] shader to spirv..")
     local vulkan_sdk = find_package("vulkansdk") --定位到vulkansdk的路径
     local glslang_validator_dir =vulkan_sdk["bindir"].."\\glslangValidator.exe" --获取到glslangValidator.exe的路径
@@ -142,7 +167,7 @@ target("Runtime")
     add_files("resource/Shader/**|**.spv|**.bat|**.exe|**.h|**.glsl", {build = false})
     set_group("Runtime")
     CommonLibrarySetting()
-    --add_deps("CompileResource")
+    add_deps("CompileResource")
 
 
 target("Renderer")

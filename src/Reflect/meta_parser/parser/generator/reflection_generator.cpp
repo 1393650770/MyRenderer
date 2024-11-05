@@ -39,7 +39,7 @@ namespace Generator
         Mustache::data mustache_data;
         Mustache::data include_headfiles(Mustache::data::type::list);
         Mustache::data class_defines(Mustache::data::type::list);
-        std::cout << m_root_path << "/_generated/reflection" << std::endl;
+        std::cout << m_root_path << "/_Generated/reflection" << std::endl;
         std::cout << path << std::endl;
         include_headfiles.push_back(
             Mustache::data("headfile_name", Utils::makeRelativePath(m_root_path + "/_Generated/Reflection", path).string()));

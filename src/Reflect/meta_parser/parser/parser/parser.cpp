@@ -139,7 +139,7 @@ bool MetaParser::parseProject()
 
 int MetaParser::parse(void)
 {
-    bool parse_include_ = true;//parseProject();
+    bool parse_include_ = parseProject();
     if (!parse_include_)
     {
         std::cerr << "Parsing project file error! " << std::endl;
