@@ -21,6 +21,7 @@ namespace Generator
 
     protected:
         virtual void prepareStatus(std::string path);
+        virtual std::string genNamesSpaceNameString(std::shared_ptr<Class> class_temp);
         virtual void genClassRenderData(std::shared_ptr<Class> class_temp, Mustache::data& class_def);
         virtual void genClassFieldRenderData(std::shared_ptr<Class> class_temp, Mustache::data& feild_defs);
         virtual void genClassMethodRenderData(std::shared_ptr<Class> class_temp, Mustache::data& method_defs);

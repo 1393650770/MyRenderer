@@ -2,7 +2,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Language](https://img.shields.io/badge/language-C++-blue.svg)](https://isocpp.org/)
 ## How to build 
-##### ①You should download the xmake : https://github.com/xmake-io/xmake
+##### ①You should download the xmake : https://github.com/xmake-io/xmake 
+https://github.com/xmake-io/xmake/releases/download/v2.9.2/xmake-master.win64.exe
 
 ##### ②Open cmd in this document folder , then input then you can build win project:
 <pre>

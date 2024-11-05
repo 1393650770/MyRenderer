@@ -5,9 +5,9 @@
 * simple use
 * metaparser.exe "" E:/GameEngine/MyRenderer/src/Reflect/parser_header.h E:/GameEngine/MyRenderer/src * MXRender 0
 */
-
+MYRENDERER_REFLECTION_TYPE(ReflectTest)
 namespace MXRender {
-    MYRENDERER_REFLECTION_TYPE(ReflectTest)
+
     MYRENDERER_BEGIN_CLASS(ReflectTest,WhiteListFields, WhiteListMethods)
     MYRENDERER_REFLECTION_BODY(ReflectTest)
 

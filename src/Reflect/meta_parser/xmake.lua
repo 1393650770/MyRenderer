@@ -1,5 +1,5 @@
 
-add_requires("llvm" , {version = "18.1.1",configs = {all = true,debug=true}})
+--add_requires("llvm" , {version = "18.1.1",configs = {all = true,debug=true}})
 
 
 target("MetaParser")

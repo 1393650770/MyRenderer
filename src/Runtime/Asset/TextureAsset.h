@@ -4,6 +4,8 @@
 #include "Core/ConstDefine.h"
 #include "Platform/FileSystem.h"
 #include <atomic>
+
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 class Texture;
@@ -20,6 +22,7 @@ public:
 	TextureAsset() MYDEFAULT;
 	TextureAsset(CONST String& path);
 	~TextureAsset();
+
 	void METHOD(LoadTexture)(CONST String& path);
 	RHI::Texture* METHOD(GetTexture)();
 protected:

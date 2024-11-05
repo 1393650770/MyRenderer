@@ -2,7 +2,7 @@ add_requireconfs("**.glfw", {override = true, version = "3.4",configs = {shared 
 add_requires("vulkansdk", "glm","assimp","tinyobjloader","lz4","nlohmann_json","gli","optick","rttr")
 add_requires("imgui v1.89.9-docking", {configs = { glfw_vulkan = true, debug = true, shared = true }})
 add_requires("flatbuffers v1.12.0")
-add_requires("boost","llvm","llvm-mingw")
+add_requires("boost",{ version = "1.84.0",configs = {shared = true,debug=true,cmake=false}})
 add_requires("glfw 3.4", {configs = {shared = true,debug=true}})
 add_requires("glslang", {configs = {binaryonly = true}})
 add_rules("mode.debug", "mode.release", "mode.releasedbg")
@@ -54,7 +54,13 @@ end
 function CompileFunc()
     print("[compile c++ reflection code] schema gen code..")
     local folders = {
-        "$(projectdir)/src/Runtime",
+        "$(projectdir)/src/Runtime/Core",
+        "$(projectdir)/src/Runtime/Platform",
+        "$(projectdir)/src/Runtime/RHI",
+        "$(projectdir)/src/Runtime/Asset",
+        "$(projectdir)/src/Runtime/Tool",
+        "$(projectdir)/src/Runtime/UI",
+        "$(projectdir)/src/Runtime/Application",
         "$(projectdir)/src/Sample",
         "$(projectdir)/src/Editor"
     }
@@ -144,6 +150,7 @@ function CommonProjectSetting()
     set_kind("binary")  
     set_languages("clatest", "cxx20") 
     add_deps("Runtime")
+    add_files("src/_Generated/**.cpp", {public = true}) 
     add_includedirs("src/_Generated", {public = true})
     add_includedirs("src/Runtime", {public = true})
     add_includedirs("src/ThirdParty", {public = true})

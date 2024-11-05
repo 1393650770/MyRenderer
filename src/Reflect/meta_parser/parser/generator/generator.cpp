@@ -12,8 +12,21 @@ namespace Generator
             fs::create_directories(path);
         }
     }
-    void GeneratorInterface::genClassRenderData(std::shared_ptr<Class> class_temp, Mustache::data& class_def)
+
+	std::string GeneratorInterface::genNamesSpaceNameString(std::shared_ptr<Class> class_temp)
+	{
+        auto namespace_list= class_temp->getCurrentNamespace();
+        std::string ret = "";
+        for (auto& it : namespace_list)
+        {
+            ret = ret + it + "::";
+        }
+        return ret;
+	}
+
+	void GeneratorInterface::genClassRenderData(std::shared_ptr<Class> class_temp, Mustache::data& class_def)
     {
+        class_def.set("namespace_name", genNamesSpaceNameString(class_temp));
         class_def.set("class_name", class_temp->getClassName());
         class_def.set("class_base_class_size", std::to_string(class_temp->m_base_classes.size()));
         class_def.set("class_need_register", true);

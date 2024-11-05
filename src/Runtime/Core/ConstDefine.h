@@ -60,7 +60,7 @@
                                     {
 #define MYRENDERER_BEGIN_CLASS(Name, ...) class __attribute__((annotate(#__VA_ARGS__))) Name  \
                                     {
-#define MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Name, ...) class __attribute__((annotate(#__VA_ARGS__))) Name : __VA_ARGS__ \
+#define MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Name,BaseClass, ...) class __attribute__((annotate(#__VA_ARGS__))) Name : BaseClass \
                                         {
 #else
 #define META(...)
@@ -68,7 +68,7 @@
                                     {
 #define MYRENDERER_BEGIN_CLASS(Name, ...) class Name  \
                                     { 
-#define MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Name, ...) class Name : __VA_ARGS__ \
+#define MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Name,BaseClass, ...) class Name : BaseClass \
                                         {
 #endif
 #define MYRENDERER_END_CLASS  };

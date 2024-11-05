@@ -3,9 +3,7 @@
 #include "..\..\Sample\4-Reflect\ReflectTestClass.h"
 
 namespace MXRender{
-    class ReflectTest;
-namespace Reflection{
-namespace TypeFieldReflectionOparator{
+    class MXRender::ReflectTest;
     class TypeReflectTestOperator{
     public:
         static const char* getClassName(){ return "ReflectTest";}
@@ -19,20 +17,20 @@ namespace TypeFieldReflectionOparator{
         //}
 
         static void TypeWrapperRegister_ReflectTest(){
-        rttr::registration::class_<ReflectTest>("ReflectTest")
+        rttr::registration::class_<MXRender::ReflectTest>("ReflectTest")
 		 .constructor<>()
-		 .property("test1", &ReflectTest::test1)
-		 .property("test2", &ReflectTest::test2)
-		 .property("test3", &ReflectTest::test3)
-		 .method("testfunc", &ReflectTest::testfunc)
+		 .property("test1", &MXRender::ReflectTest::test1)
+		 .property("test2", &MXRender::ReflectTest::test2)
+		 .property("test3", &MXRender::ReflectTest::test3)
+		 .method("testfunc", &MXRender::ReflectTest::testfunc)
 		 ;
     }        
     };
-}//namespace TypeFieldReflectionOparator
+namespace Reflection{
 namespace TypeWrappersRegister{
-    void ReflectTestClass()
+    void ReflectTestClassRegister()
     {
-        TypeFieldReflectionOparator::TypeReflectTestOperator::TypeWrapperRegister_ReflectTest();
+        TypeReflectTestOperator::TypeWrapperRegister_ReflectTest();
     }
 }//namespace TypeWrappersRegister
 
