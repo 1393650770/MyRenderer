@@ -4,6 +4,7 @@
 #include "VK_Utils.h"
 #include "Core/ConstGlobals.h"
 #include "Core/TypeHash.h"
+#include <xutility>
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -56,6 +57,88 @@ static VkMemoryPropertyFlags GetMemoryPropertyFlags(ENUM_VulkanAllocationFlags a
 	}
 
 	return mem_flags;
+}
+static UInt32 CalculateBufferAlignmentFromVKUsageFlags(VK_Device* in_device, CONST VkBufferUsageFlags in_buffer_usage_flags)
+{
+	CONST VkPhysicalDeviceLimits& Limits = in_device->GetLimits();
+
+	CONST Bool is_texelbuffer = VK_Utils::VKHasAnyFlags(in_buffer_usage_flags, (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT));
+	CONST Bool is_storagebuffer = VK_Utils::VKHasAnyFlags(in_buffer_usage_flags, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	CONST Bool is_vertex_or_indexbuffer = VK_Utils::VKHasAnyFlags(in_buffer_usage_flags, (VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT));
+	CONST Bool is_acceleration_structurebuffer = VK_Utils::VKHasAnyFlags(in_buffer_usage_flags, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
+	CONST Bool is_uniformbuffer = VK_Utils::VKHasAnyFlags(in_buffer_usage_flags, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+
+	// Buffers are sometimes directly cast into classes with 16byte alignment expectations (like FVector3f)
+	UInt32 alignment = 16u;
+
+	if (is_texelbuffer || is_storagebuffer)
+	{
+		alignment = std::max(alignment, (UInt32)Limits.minTexelBufferOffsetAlignment);
+		alignment = std::max(alignment, (UInt32)Limits.minStorageBufferOffsetAlignment);
+	}
+	else if (is_vertex_or_indexbuffer)
+	{
+		// No alignment restrictions on Vertex or Index buffers, leave it at 1
+	}
+	//else if (bIsAccelerationStructureBuffer)
+	//{
+	//	alignment = std::max(alignment, GRHIRayTracingAccelerationStructureAlignment);
+	//}
+	else if (is_uniformbuffer)
+	{
+		alignment = std::max(alignment, (UInt32)Limits.minUniformBufferOffsetAlignment);
+	}
+	else
+	{
+		CHECK_WITH_LOG(true, ("RHI Error: Unknown buffer alignment for VkBufferUsageFlags combination"));
+	}
+
+	return alignment;
+}
+Bool MetaTypeCanEvict(ENUM_VK_AllocationMetaType meta_type)
+{
+	switch (meta_type)
+	{
+	case ENUM_VK_AllocationMetaType::EVulkanAllocationMetaImageOther:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static Float32 CalculateBufferPriority(CONST VkBufferUsageFlags in_buffer_usage_flags)
+{
+	float priority = VULKAN_MEMORY_MEDIUM_PRIORITY;
+
+	if (VK_Utils::VKHasAnyFlags(in_buffer_usage_flags, (VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT)))
+	{
+		priority = VULKAN_MEMORY_HIGHEST_PRIORITY;
+	}
+	else if (VK_Utils::VKHasAnyFlags(in_buffer_usage_flags, (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)))
+	{
+		priority = VULKAN_MEMORY_MEDIUM_PRIORITY;
+	}
+	else if (VK_Utils::VKHasAnyFlags(in_buffer_usage_flags,
+		(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR |
+			VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR |
+			VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR)))
+	{
+		priority = VULKAN_MEMORY_MEDIUM_PRIORITY;
+	}
+	else if (VK_Utils::VKHasAnyFlags(in_buffer_usage_flags, (VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT)))
+	{
+		priority = VULKAN_MEMORY_LOW_PRIORITY;
+	}
+	else if (VK_Utils::VKHasAnyFlags(in_buffer_usage_flags, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT))
+	{
+		priority = VULKAN_MEMORY_HIGHER_PRIORITY;
+	}
+	else
+	{
+		CHECK_WITH_LOG(true, "RHI Error: Unknown priority for VkBufferUsageFlags combination");
+	}
+
+	return priority;
 }
 
 VK_DeviceMemoryAllocation::VK_DeviceMemoryAllocation()
@@ -372,21 +455,24 @@ VkResult VK_DeviceMemoryManager::GetMemoryTypeFromPropertiesExcluding(UInt32 typ
 	return VK_ERROR_FEATURE_NOT_PRESENT;
 }
 
-void VK_DeviceMemoryManager::FreeInternal(VK_DeviceMemoryAllocation*& allocation)
+Int VK_DeviceMemoryManager::FreeInternal(VK_DeviceMemoryAllocation*& allocation)
 {
 	vkFreeMemory(device->GetDevice(),allocation->GetMemory(),VULKAN_CPU_ALLOCATOR);
 	--num_allocations;
 
-	UInt32 HeapIndex = memory_properties.memoryTypes[allocation->property.memory_type_index].heapIndex;
-
-	memory_heaps[HeapIndex].used_size -= allocation->size;
-	auto it = std::find(memory_heaps[HeapIndex].allocations.begin(), memory_heaps[HeapIndex].allocations.end(), allocation);
-	if (it != memory_heaps[HeapIndex].allocations.end())
-		memory_heaps[HeapIndex].allocations.erase(it);
+	UInt32 heap_index = memory_properties.memoryTypes[allocation->property.memory_type_index].heapIndex;
+	UInt32 erase_index = -1;
+	memory_heaps[heap_index].used_size -= allocation->size;
+	auto it = std::find(memory_heaps[heap_index].allocations.begin(), memory_heaps[heap_index].allocations.end(), allocation);
 	allocation->property.is_freed_by_system = true;
-
 	delete allocation;
 	allocation = nullptr;
+	if (it != memory_heaps[heap_index].allocations.end())
+	{
+		auto erase_it= memory_heaps[heap_index].allocations.erase(it);
+		erase_index = std::distance(memory_heaps[heap_index].allocations.begin(), erase_it);
+	}
+	return erase_index;
 }
 
 void VK_DeviceMemoryManager::TrimMemory(Bool is_full_trim)
@@ -458,35 +544,7 @@ void VK_DeviceMemoryManager::TrimMemory(Bool is_full_trim)
 		}
 	}
 
-	if (is_full_trim)
-	{
-		for (UInt32 index = 0; index < memory_properties.memoryHeapCount; ++index)
-		{
-			if (memory_heaps[index].allocations.size() > 0)
-			{
-				for (auto& alloc : memory_heaps[index].allocations)
-				{
-					FreeInternal(alloc);
-				}
-			}
-		}
-	}
-	else
-	{
-		for (UInt32 index = 0; index < memory_properties.memoryHeapCount; ++index)
-		{
-			if (memory_heaps[index].allocations.size() > 0)
-			{
-				for (auto& alloc : memory_heaps[index].allocations)
-				{
-					if (alloc->property.is_freed_by_system == false)
-					{
-						FreeInternal(alloc);
-					}
-				}
-			}
-		}
-	}
+
 }
 
 VK_MemoryManager::VK_MemoryManager(VK_Device* in_device):device_memory_manager(in_device->GetDeviceMemoryManager()),device(in_device)
@@ -596,7 +654,110 @@ VK_DeviceMemoryManager* VK_MemoryManager::GetDeviceMemoryManager()
 {
     return device_memory_manager;
 }
+Bool VK_MemoryManager::AllocateBufferPooled(VK_Allocation& out_allocation, UInt32 in_size, UInt32 in_min_alignment, VkBufferUsageFlags in_buffer_usage_flags, VkMemoryPropertyFlags in_memory_property_flags, ENUM_VK_AllocationMetaType in_meta_type)
+{
 
+	UInt32 alignment = std::max(in_min_alignment, CalculateBufferAlignmentFromVKUsageFlags(device, in_buffer_usage_flags));
+	CONST Float32 Priority = CalculateBufferPriority(in_buffer_usage_flags);
+
+	CONST Int pool_size = (Int)GetPoolTypeForAlloc(in_size, alignment);
+	if (pool_size != (Int)EPoolSizes::SizesCount)
+	{
+		in_size = PoolSizes[pool_size];
+	}
+
+	for (Int index = 0; index < used_buffer_allocations[pool_size].size(); ++index)
+	{
+		VK_MemoryResourceFragmentAllocator* subresource_allocator = used_buffer_allocations[pool_size][index];
+		if ((subresource_allocator->buffer_usage_flags & in_buffer_usage_flags) == in_buffer_usage_flags &&
+			(subresource_allocator->memory_property_flags & in_memory_property_flags) == in_memory_property_flags)
+		{
+
+			if (subresource_allocator->TryAllocate(out_allocation, nullptr, in_size, alignment, in_meta_type))
+			{
+				return true;
+			}
+		}
+	}
+
+	for (Int index = 0; index < free_buffer_allocations[pool_size].size(); ++index)
+	{
+		VK_MemoryResourceFragmentAllocator* subresource_allocator = free_buffer_allocations[pool_size][index];
+		if ((subresource_allocator->buffer_usage_flags & in_buffer_usage_flags) == in_buffer_usage_flags &&
+			(subresource_allocator->memory_property_flags & in_memory_property_flags) == in_memory_property_flags)
+		{
+
+			if (subresource_allocator->TryAllocate(out_allocation, nullptr, in_size, alignment, in_meta_type))
+			{
+				used_buffer_allocations[pool_size].push_back(subresource_allocator);
+				auto it = free_buffer_allocations[pool_size].begin() + index;
+				free_buffer_allocations[pool_size].erase(it);
+				return true;
+			}
+		}
+	}
+
+	// New Buffer
+	CONST UInt32 buffer_size = std::max(in_size, BufferSizes[pool_size]);
+
+	VkBuffer buffer;
+	VkBufferCreateInfo buffer_create_info;
+	buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	buffer_create_info.size = buffer_size;
+	buffer_create_info.usage = in_buffer_usage_flags;
+	// For descriptors buffers
+	if (device->GetOptionalExtensions().HasBufferDeviceAddress)
+	{
+		buffer_create_info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+	}
+	vkCreateBuffer(device->GetDevice(), &buffer_create_info, VULKAN_CPU_ALLOCATOR, &buffer);
+
+	VkMemoryRequirements MemReqs;
+	vkGetBufferMemoryRequirements(device->GetDevice(), buffer, &MemReqs);
+	alignment = std::max((UInt32)MemReqs.alignment, alignment);
+	CHECK(MemReqs.size < buffer_size);
+
+	UInt32 memory_type_index;
+	device->GetDeviceMemoryManager()->GetMemoryTypeFromProperties(MemReqs.memoryTypeBits, in_memory_property_flags, &memory_type_index);
+
+	bool is_has_unified_memory = device_memory_manager->HasUnifiedMemory();
+	VK_DeviceMemoryAllocation* device_memory_allocation = device_memory_manager->Alloc(MemReqs.size, memory_type_index, nullptr, Priority, false);
+	if (!device_memory_allocation)
+	{
+		in_memory_property_flags &= (~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		CONST UInt32 forbidden_memory_type_index = memory_type_index;
+		if ( VK_SUCCESS == device->GetDeviceMemoryManager()->GetMemoryTypeFromPropertiesExcluding(MemReqs.memoryTypeBits, in_memory_property_flags, forbidden_memory_type_index, &memory_type_index))
+		{
+			device_memory_allocation = device_memory_manager->Alloc( MemReqs.size, memory_type_index, nullptr, Priority, false);
+		}
+	}
+
+	vkBindBufferMemory(device->GetDevice(), buffer, device_memory_allocation->GetMemory(), 0);
+	UInt8 allocation_flags = 0;
+	if (!is_has_unified_memory && MetaTypeCanEvict(in_meta_type))
+	{
+		allocation_flags |= VulkanAllocationFlagsCanEvict;
+	}
+	if (device_memory_allocation->CheckIsMapped())
+	{
+		device_memory_allocation->Map(buffer_size, 0);
+	}
+
+	Int BufferId = 0;
+
+	VK_MemoryResourceFragmentAllocator* subresource_allocator = new VK_MemoryResourceFragmentAllocator(ENUM_VK_AllocationType::EVulkanAllocationPooledBuffer, this, allocation_flags, device_memory_allocation, memory_type_index,
+		in_memory_property_flags, MemReqs.alignment, buffer, buffer_size, BufferId, in_buffer_usage_flags, pool_size);
+
+	RegisterSubresourceAllocator(subresource_allocator);
+	used_buffer_allocations[pool_size].push_back(subresource_allocator);
+
+	if (subresource_allocator->TryAllocate(out_allocation,nullptr, in_size,alignment, in_meta_type))
+	{
+		return true;
+	}
+	return false;
+
+}
 Bool VK_MemoryManager::AllocateImageMemory(VK_Allocation& out_allocation, VkImage in_image, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment /*= 1*/)
 {
 
@@ -773,17 +934,6 @@ VK_MemoryResourceHeap::~VK_MemoryResourceHeap()
 	for (Vector<VK_MemoryResourceFragmentAllocator*>& pages : active_pages)
 	{
 		delete_pages_func(pages);
-	}
-}
-
-Bool MetaTypeCanEvict(ENUM_VK_AllocationMetaType meta_type)
-{
-	switch (meta_type)
-	{
-	case ENUM_VK_AllocationMetaType::EVulkanAllocationMetaImageOther:
-		return true;
-	default:
-		return false;
 	}
 }
 
@@ -1077,6 +1227,11 @@ void VK_MemoryManager::Destroy()
 	}
 	resource_heaps.clear();
 }
+void VK_MemoryManager::ReleaseFreedPages()
+{
+	ReleaseFreedResources(false);
+	device_memory_manager->TrimMemory(false);
+}
 
 void VK_MemoryManager::DestroyResourceAllocations()
 {
@@ -1139,12 +1294,22 @@ void VK_MemoryManager::ReleaseFreedResources(Bool is_immediately)
 		heap->ReleasePage(buffer_allocation);
 	}
 
-	//device_memory_manager->TrimMemory(is_immediately);
+	device_memory_manager->TrimMemory(is_immediately);
 }
 
 VK_MemoryManager::~VK_MemoryManager()
 {
 	Destroy();
+}
+
+Bool VK_MemoryManager::AllocateUniformBuffer(VK_Allocation& out_allocation, UInt32 in_size)
+{
+	return (AllocateBufferPooled(out_allocation, in_size, 0, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, ENUM_VK_AllocationMetaType::EVulkanAllocationMetaUniformBuffer));
+}
+
+void VK_MemoryManager::FreeUniformBuffer(VK_Allocation& in_allocation)
+{
+	FreeAllocation(in_allocation);
 }
 
 VK_MemoryResourceFragmentAllocator::~VK_MemoryResourceFragmentAllocator()
@@ -1230,10 +1395,29 @@ VK_MemoryResourceFragmentAllocator::VK_MemoryResourceFragmentAllocator(ENUM_VK_A
 		subresource_allocator_flags &= ~VulkanAllocationFlagsMapped;
 	}
 
-	VK_Section FullRange;
-	FullRange.offset = 0;
-	FullRange.size = max_size;
-	free_list.push_back(FullRange);
+	VK_Section full_range;
+	full_range.offset = 0;
+	full_range.size = max_size;
+	free_list.push_back(full_range);
+}
+
+VK_MemoryResourceFragmentAllocator::VK_MemoryResourceFragmentAllocator(ENUM_VK_AllocationType in_type, VK_MemoryManager* in_owner, UInt8 in_subresource_allocator_flags, VK_DeviceMemoryAllocation* in_device_memory_allocation, UInt32 in_memory_type_index, VkMemoryPropertyFlags in_memory_property_flags, UInt32 in_alignment, VkBuffer in_buffer, UInt32 in_buffer_size, UInt32 in_buffer_id, VkBufferUsageFlags in_buffer_usage_flags, Int in_pool_size_index)
+	: type(in_type), owner_memory_manager(in_owner), subresource_allocator_flags(in_subresource_allocator_flags), memory_allocation(in_device_memory_allocation), memory_type_index(in_memory_type_index), buffer_id(in_buffer_id),
+	max_size(in_buffer_size),buffer_usage_flags(in_buffer_usage_flags),buffer(in_buffer),pool_size_index(in_pool_size_index),allocator_index(0xffffffff)
+{
+	if (in_device_memory_allocation->CheckIsMapped())
+	{
+		subresource_allocator_flags |= VulkanAllocationFlagsMapped;
+	}
+	else
+	{
+		subresource_allocator_flags &= ~VulkanAllocationFlagsMapped;
+	}
+
+	VK_Section full_range;
+	full_range.offset = 0;
+	full_range.size = max_size;
+	free_list.push_back(full_range);
 }
 
 void* VK_MemoryResourceFragmentAllocator::GetMapPointer()

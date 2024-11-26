@@ -69,3 +69,8 @@ void RHISubmitCommandList(MXRender::RHI::CommandList* command_list)
 {
 	g_render_rhi->SubmitCommandList(command_list);
 }
+
+void RHIRenderEnd()
+{
+	g_render_rhi->RenderEnd();
+}

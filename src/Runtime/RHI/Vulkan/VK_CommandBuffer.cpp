@@ -560,7 +560,7 @@ void VK_CommandBuffer::SetShaderResourceBinding(ShaderResourceBinding* srb)
 
 void VK_CommandBuffer::Draw(CONST DrawAttribute& draw_attr)
 {
-	vkCmdPushConstants(GetCommandBuffer(), state_cache.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &z);
+	//vkCmdPushConstants(GetCommandBuffer(), state_cache.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &z);
 	VkViewport viewport{};
 	viewport.x = 0.0f; viewport.y = 0.0f;
 	viewport.width = state_cache.framebuffer_width;

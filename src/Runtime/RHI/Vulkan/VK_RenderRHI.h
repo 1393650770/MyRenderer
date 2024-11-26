@@ -62,6 +62,7 @@ public:
 #pragma region DRAW
 	VIRTUAL	CommandList* METHOD(GetImmediateCommandList)() OVERRIDE FINAL;
 	VIRTUAL void METHOD(SubmitCommandList)(CommandList* command_list) OVERRIDE FINAL;
+	VIRTUAL void METHOD(RenderEnd)() OVERRIDE FINAL;
 #pragma endregion
 
 private:

@@ -210,11 +210,26 @@ public:
     VkResult METHOD(GetMemoryTypeFromProperties)(UInt32 type_bits, VkMemoryPropertyFlags properties, UInt32* out_type_index);
     VkResult METHOD(GetMemoryTypeFromPropertiesExcluding)(UInt32 type_bits, VkMemoryPropertyFlags properties, UInt32 exclude_type_index, UInt32* out_type_index);
     Bool METHOD(GetIsSupportUnifiedMemory)() CONST;
+
+	FORCEINLINE Bool METHOD(HasUnifiedMemory)() CONST
+	{
+		return is_support_unified_memory;
+	}
+    FORCEINLINE Bool METHOD(SupportsMemoryless)() CONST
+	{
+		return is_support_memory_less;
+	}
+
+    FORCEINLINE UInt32 METHOD(GetNumMemoryTypes)() CONST
+	{
+		return memory_properties.memoryTypeCount;
+	}
+
 protected:
     /// <summary>
     /// 具体的释放内存
     /// </summary>
-    void METHOD(FreeInternal)(VK_DeviceMemoryAllocation*& allocation);
+    Int METHOD(FreeInternal)(VK_DeviceMemoryAllocation*& allocation);
 
     /// <summary>
     /// 按帧数定时清除内存(先统计零散的块数，再按帧数超过一定数量再全部清楚)
@@ -334,6 +349,9 @@ friend class VK_MemoryResourceHeap;
 #pragma region METHOD
 public:
 	VK_MemoryResourceFragmentAllocator(ENUM_VK_AllocationType in_type, VK_MemoryManager* in_owner, UInt8 in_subresource_allocator_flags, VK_DeviceMemoryAllocation* in_device_memory_allocation, UInt32 in_memory_type_index, UInt32 buffer_id = 0xffffffff);
+    VK_MemoryResourceFragmentAllocator(ENUM_VK_AllocationType in_type, VK_MemoryManager* in_owner, UInt8 in_subresource_allocator_flags, VK_DeviceMemoryAllocation* in_device_memory_allocation, UInt32 in_memory_type_index, 
+        VkMemoryPropertyFlags in_memory_property_flags,UInt32 in_alignment, VkBuffer in_buffer, UInt32 in_buffer_size, UInt32 in_buffer_id, VkBufferUsageFlags in_buffer_usage_flags, Int in_pool_size_index);
+
     VIRTUAL ~VK_MemoryResourceFragmentAllocator();
 
     Bool METHOD(TryAllocate)(VK_Allocation& out_allocation, VK_Evictable* owner, UInt32 in_size, UInt32 in_alignment, ENUM_VK_AllocationMetaType in_meta_type);
@@ -510,12 +528,16 @@ public:
     VIRTUAL ~VK_MemoryManager();
 
     void METHOD(Destroy)();
-    //Bool METHOD(AllocateBufferPooled)(VK_Allocation* out_allocation);
+    void METHOD(ReleaseFreedPages)();
+    Bool METHOD(AllocateBufferPooled)(VK_Allocation& out_allocation, UInt32 in_size, UInt32 in_min_alignment, VkBufferUsageFlags in_buffer_usage_flags, VkMemoryPropertyFlags in_memory_property_flags, ENUM_VK_AllocationMetaType in_meta_type);
     Bool METHOD(AllocateImageMemory)(VK_Allocation& out_allocation, VkImage in_image, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment = 1);
     Bool METHOD(AllocateBufferMemory)(VK_Allocation& out_allocation, VkBuffer in_buffer, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment = 1);
     void METHOD(FreeAllocation)(VK_Allocation& allocation);
     //Bool METHOD(AllocateDedicatedImageMemory)(VK_Allocation* out_allocation);
-    //Bool METHOD(AllocateUniformBuffer)(VK_Allocation* out_allocation);
+    Bool METHOD(AllocateUniformBuffer)(VK_Allocation& out_allocation,UInt32 in_size);
+    void METHOD(FreeUniformBuffer)(VK_Allocation& in_allocation);
+
+
 	void METHOD(RegisterSubresourceAllocator)(VK_MemoryResourceFragmentAllocator* subresource_allocator);
 	void METHOD(UnregisterSubresourceAllocator)(VK_MemoryResourceFragmentAllocator* subresource_allocator);
 	void METHOD(ReleaseSubresourceAllocator)(VK_MemoryResourceFragmentAllocator* subresource_allocator);

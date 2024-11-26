@@ -59,6 +59,8 @@ public:
 #pragma region DRAW
 	VIRTUAL	CommandList* METHOD(GetImmediateCommandList)() PURE;
 	VIRTUAL void METHOD(SubmitCommandList)(CommandList* command_list) PURE;
+
+	VIRTUAL void METHOD(RenderEnd)() PURE;
 #pragma endregion
 
 private:
@@ -86,6 +88,7 @@ extern CORE_API MXRender::RHI::RenderPass* METHOD(RHICreateRenderPass)(CONST MXR
 extern CORE_API MXRender::RHI::FrameBuffer* METHOD(RHICreateFrameBuffer)(CONST MXRender::RHI::FrameBufferDesc& desc);
 extern CORE_API MXRender::RHI::CommandList* METHOD(RHIGetImmediateCommandList)();
 extern CORE_API MXRender::RHI::CommandList* METHOD(RHIGetImmediateCommandList)();
+extern CORE_API void METHOD(RHIRenderEnd)();
 extern CORE_API void METHOD(RHISubmitCommandList)(MXRender::RHI::CommandList* command_list);
 #endif
 

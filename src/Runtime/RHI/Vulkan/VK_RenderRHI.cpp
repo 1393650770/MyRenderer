@@ -327,6 +327,11 @@ void VulkanRHI::SubmitCommandList(CommandList* command_list)
 	device->GetQueue(ENUM_QUEUE_TYPE::GRAPHICS)->Submit(STATIC_CAST(command_list,VK_CommandBuffer));
 }
 
+void VulkanRHI::RenderEnd()
+{
+	device->GetMemoryManager()->ReleaseFreedPages();
+}
+
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

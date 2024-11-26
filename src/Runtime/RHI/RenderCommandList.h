@@ -34,7 +34,6 @@ public:
 
 	VIRTUAL void METHOD(BeginUI)() PURE;
 	VIRTUAL void METHOD(EndUI)() PURE;
-	float z = 0.1f;
 private:
 
 protected:

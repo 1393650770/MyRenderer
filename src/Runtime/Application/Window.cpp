@@ -56,6 +56,7 @@ void Window::Run(RenderInterface* render)
 		render->EndFrame();
 		
 		viewport->Present(cmd_list, true, true);
+		RHIRenderEnd();
 		g_frame_number_render_thread = (g_frame_number_render_thread + 1) % g_max_frame_number;
         glfwSwapBuffers(glfw_window);
 

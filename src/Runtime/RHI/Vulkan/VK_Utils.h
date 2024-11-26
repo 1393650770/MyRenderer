@@ -137,6 +137,12 @@ namespace MXRender
 		static VkStencilOp Translate_StencilOp_To_Vulkan(ENUM_STENCIL_OPERATIOON stencil_op);
 		static VkVertexInputRate Translation_VertexInputRate_To_Vulkan(ENUM_VERTEX_INPUTRATE input_rate);
 		static VkDescriptorType Translate_BindingResourceType_To_VulkanDescriptorType(ENUM_BINDING_RESOURCE_TYPE bingding_resource_type);
+		template<typename BitsType>
+		static constexpr Bool VKHasAnyFlags(VkFlags Flags, BitsType Contains)
+		{
+			return (Flags & Contains) != 0;
+		}
+		
 		static void ClearImageColor(std::weak_ptr< VK_GraphicsContext> context,
 			VkImageLayout      image_layout,
 			VkImage            image,
