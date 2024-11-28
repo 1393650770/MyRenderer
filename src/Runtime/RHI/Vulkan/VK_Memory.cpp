@@ -1004,6 +1004,7 @@ Bool VK_MemoryResourceHeap::AllocateResource(VK_Allocation& out_allocation, VK_E
 	VK_MemoryResourceFragmentAllocator* Page = new VK_MemoryResourceFragmentAllocator(allocation_type,owner, allocation_flags, device_memory_allocation, memory_type_index, buffer_id);
 	owner->RegisterSubresourceAllocator(Page);
 	Page->bucket_id = bucket_id;
+	Page->alignment = alignment;
 	active_pages[bucket_id].push_back(Page);
 
 	used_memory += allocation_size;
@@ -1521,6 +1522,11 @@ UInt32 VK_Allocation::GetBufferAlignment(VK_Device* device) CONST
 {
 	VK_MemoryResourceFragmentAllocator* allocator = GetSubresourceAllocator(device);
 	return allocator->GetAlignment();
+}
+
+UInt32 VK_Allocation::GetBufferOffset() CONST
+{
+	return offset;
 }
 
 VkDeviceMemory VK_Allocation::GetDeviceMemoryHandle(VK_Device* device) CONST

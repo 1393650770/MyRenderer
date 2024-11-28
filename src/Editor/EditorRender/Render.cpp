@@ -11,6 +11,9 @@
 #include "RHI/RenderViewport.h"
 #include "RHI/RenderTexture.h"
 #include "RHI/RenderCommandList.h"
+#include "RHI/RenderRource.h"
+#include "RHI/RenderBuffer.h"
+#include "RHI/RenderUtils.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
@@ -86,6 +89,7 @@ void EditorRenderPipeline::BeginRender()
 		RHI::RenderPipelineState* pipeline_state = nullptr;
 		RHI::ShaderResourceBinding* srb = nullptr;
 		Asset::TextureAsset* bind_texture = nullptr;
+		RHI::Buffer* const_buffer = nullptr;
 		VIRTUAL ~TestData()
 		{
 			Release();
@@ -101,6 +105,11 @@ void EditorRenderPipeline::BeginRender()
 			{
 				delete bind_texture;
 				bind_texture = nullptr;
+			}
+			if (const_buffer)
+			{
+				delete const_buffer;
+				const_buffer = nullptr;
 			}
 		}
 	};
@@ -143,6 +152,12 @@ void EditorRenderPipeline::BeginRender()
 		data.bind_texture = new Asset::TextureAsset("Texture/pbr_stone/pbr_stone_aorm.dds");
 		delete vs_shader;
 		delete ps_shader;
+		RHI::BufferDesc bufferdesc;
+		bufferdesc.size = sizeof(float);
+		bufferdesc.stride = sizeof(float);
+		bufferdesc.type = ENUM_BUFFER_TYPE::Uniform;
+		data.const_buffer = RHICreateBuffer(bufferdesc);
+		data.srb->SetResource("constants", data.const_buffer);
 	},
 		[=](CONST TestData& data, RHI::CommandList* in_cmd_list)
 	{
@@ -162,6 +177,16 @@ void EditorRenderPipeline::BeginRender()
 			in_cmd_list->SetRenderTarget(rtvs, dsv, clear_values, dsv != nullptr);
 			in_cmd_list->SetGraphicsPipeline(data.pipeline_state);
 			data.srb->SetResource("basecolor_sampler", data.bind_texture->GetTexture());
+
+			struct Constant
+			{
+				float z = 0.0f;
+			};
+			{
+				RHI::MapHelper<Constant> map_helper(data.const_buffer, ENUM_MAP_TYPE::Write, ENUM_MAP_FLAG::Discard);
+				map_helper->z = 1.0f;
+			}
+
 			in_cmd_list->SetShaderResourceBinding(data.srb);
 			DrawAttribute draw_attr;
 			draw_attr.vertexCount = 6;
@@ -169,7 +194,7 @@ void EditorRenderPipeline::BeginRender()
 			in_cmd_list->Draw(draw_attr);
 		}
 	});
-	
+
 	editor_ui.AddPass(&graph);
 	graph.Compile();
 }
@@ -188,7 +213,6 @@ void EditorRenderPipeline::BeginFrame()
 void EditorRenderPipeline::OnFrame()
 {
 	graph.Execute();
-	//RHISubmitCommandList(RHIGetImmediateCommandList());
 }
 
 void EditorRenderPipeline::EndFrame()

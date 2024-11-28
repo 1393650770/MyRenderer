@@ -127,14 +127,14 @@ FrameBuffer* VulkanRHI::CreateFrameBuffer(CONST FrameBufferDesc& desc)
 	return new VK_FrameBuffer(device,desc, device->GetRenderPassManager()->GetRenderPass(key)->GetRenderPass());
 }
 
-void* VulkanRHI::MapBuffer(Buffer* buffer)
+void* VulkanRHI::MapBuffer(Buffer* buffer, ENUM_MAP_TYPE map_type, ENUM_MAP_FLAG map_flag)
 {
-	return buffer->Map();
+	return STATIC_CAST(buffer,VK_Buffer)->Map(map_type, map_flag);
 }
 
 void VulkanRHI::UnmapBuffer(Buffer* buffer)
 {
-	return buffer->Unmap();
+	return STATIC_CAST(buffer, VK_Buffer)->Unmap();
 }
 
 Bool VulkanRHI::CheckGpuSuitable(VkPhysicalDevice gpu)
@@ -330,6 +330,7 @@ void VulkanRHI::SubmitCommandList(CommandList* command_list)
 void VulkanRHI::RenderEnd()
 {
 	device->GetMemoryManager()->ReleaseFreedPages();
+	device->GetStagingBufferManager()->ProcessPendingFree(false, true);
 }
 
 MYRENDERER_END_NAMESPACE

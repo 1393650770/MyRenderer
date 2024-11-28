@@ -6,9 +6,9 @@ layout(location = 0) out vec4 outColor;
 
 layout(set = 0, binding = 0) uniform sampler2D basecolor_sampler;
 
-layout(push_constant) uniform  constants{   
+layout(set = 0, binding = 1) uniform  Constants{   
    float z;
-};
+} constants;
 
 void main() {
     mat4 thresholdMatrix =
@@ -20,7 +20,7 @@ void main() {
     vec2 pos = gl_FragCoord.xy / gl_FragCoord .w;
     int index1 = int(pos.x) % 4;
     int index2 = int(pos.y) % 4;
-    if (z - thresholdMatrix[index2][index1] > 0.0) {
+    if (constants.z - thresholdMatrix[index2][index1] > 0.0) {
         discard;
     }
     outColor = vec4(texture(basecolor_sampler, out_uv).rgb, 1.0);

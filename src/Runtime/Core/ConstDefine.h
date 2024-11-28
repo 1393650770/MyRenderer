@@ -155,6 +155,8 @@ using Array = std::array<T, Size>;
 
 
 #define ENUM_CLASS_FLAGS(Enum) \
+    extern "C++" \
+	{				\
 	inline           Enum& operator|=(Enum& Lhs, Enum Rhs) { return Lhs = (Enum)((__underlying_type(Enum))Lhs | (__underlying_type(Enum))Rhs); } \
 	inline           Enum& operator&=(Enum& Lhs, Enum Rhs) { return Lhs = (Enum)((__underlying_type(Enum))Lhs & (__underlying_type(Enum))Rhs); } \
 	inline           Enum& operator^=(Enum& Lhs, Enum Rhs) { return Lhs = (Enum)((__underlying_type(Enum))Lhs ^ (__underlying_type(Enum))Rhs); } \
@@ -162,7 +164,8 @@ using Array = std::array<T, Size>;
 	inline constexpr Enum  operator& (Enum  Lhs, Enum Rhs) { return (Enum)((__underlying_type(Enum))Lhs & (__underlying_type(Enum))Rhs); } \
 	inline constexpr Enum  operator^ (Enum  Lhs, Enum Rhs) { return (Enum)((__underlying_type(Enum))Lhs ^ (__underlying_type(Enum))Rhs); } \
 	inline constexpr Bool  operator! (Enum  E)             { return !(__underlying_type(Enum))E; } \
-	inline constexpr Enum  operator~ (Enum  E)             { return (Enum)~(__underlying_type(Enum))E; }
+	inline constexpr Enum  operator~ (Enum  E)             { return (Enum)~(__underlying_type(Enum))E; }\
+	}
 
 // Friends all bitwise operators for enum classes so the definition can be kept private / protected.
 #define FRIEND_ENUM_CLASS_FLAGS(Enum) \

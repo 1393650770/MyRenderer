@@ -3,10 +3,8 @@
 #define _RENDER_ENUM_
 #include "Core/ConstDefine.h"
 
-namespace MXRender
-{
+MYRENDERER_BEGIN_NAMESPACE(MXRender)
 
-	/// Renderer types:
 	enum class ENUM_RENDER_API_TYPE
 	{
 		None = 0,
@@ -25,19 +23,20 @@ namespace MXRender
 		Count
 	};
 
-	enum class ENUM_BUFFER_TYPE
+	enum class ENUM_BUFFER_TYPE:UInt32
 	{
 		None = 0,
-		Static,
-		Dynamic,
-		Index,
-		Vertex,
-		Staging,
-		Uniform,
-		Storage,
-		Indirect,
+		Static = 1<<0,
+		Dynamic = 1 << 1,
+		Index = 1 << 2,
+		Vertex = 1 << 3,
+		Staging = 1 << 4,
+		Uniform = 1 << 5,
+		Storage = 1 << 6,
+		Indirect = 1 << 7,
 		Count
 	};
+	ENUM_CLASS_FLAGS(ENUM_BUFFER_TYPE)
 
 	enum ENUM_SHADER_STAGE
 	{
@@ -533,5 +532,19 @@ namespace MXRender
 	};
 
 
-} // namespace name
+	enum class ENUM_MAP_TYPE:UInt8
+	{
+		Read = 0x01,
+		Write = 0x02
+	};
+	enum class ENUM_MAP_FLAG :UInt8
+	{
+		None = 0,
+		DoNotWait = 1<<0,
+		Discard = 1<<1,
+		NoOverwrite = 1<<2
+	};
+	ENUM_CLASS_FLAGS(ENUM_MAP_FLAG)
+
+MYRENDERER_END_NAMESPACE
 #endif // !_MXRENDER_ENUM_

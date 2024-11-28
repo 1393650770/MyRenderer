@@ -177,7 +177,7 @@ void VK_Texture::UpdateTextureData(CONST TextureDataPayload& texture_data_payloa
 
 	VK_Buffer* staging_buffer = device->GetStagingBufferManager()->GetStagingBuffer(texture_data_payload.data.size());
 	
-	void* data = staging_buffer->Map();
+	void* data = staging_buffer->Map(ENUM_MAP_TYPE::Write, ENUM_MAP_FLAG::None);
 	memcpy(data, texture_data_payload.data.data(), texture_data_payload.data.size());
 
 	Vector<VkBufferImageCopy> buffer_copy_regions(texture_data_payload.layer_count*texture_data_payload.mip_level);

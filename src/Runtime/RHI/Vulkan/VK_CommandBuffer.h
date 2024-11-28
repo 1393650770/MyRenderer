@@ -70,7 +70,19 @@ public:
 	void  METHOD(FlushBarriers)();
 	void  METHOD(MemoryBarrier)(VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask);
 	void  METHOD(CopyBufferToImage)(VkBuffer buffer, VkImage image, VkImageLayout imageLayout, UInt32 region_count, CONST VkBufferImageCopy* region);
-
+	
+	__forceinline void CopyBuffer(VkBuffer            src_buffer,
+		VkBuffer            dst_buffer,
+		uint32_t            region_count,
+		const VkBufferCopy* regions)
+	{
+		if (state_cache.render_pass != VK_NULL_HANDLE)
+		{
+			EndRenderPass();
+		}
+		FlushBarriers();
+		vkCmdCopyBuffer(command_buffer, src_buffer, dst_buffer, region_count, regions);
+	}
 	__forceinline void METHOD(BeginRenderPass)(VkRenderPass in_render_pass,
 		VkFramebuffer       in_frame_buffer,
 		UInt32            in_framebuffer_width,

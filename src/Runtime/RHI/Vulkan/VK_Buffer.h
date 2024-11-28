@@ -20,11 +20,11 @@ public:
 	VK_Buffer(VK_Device* in_device, CONST BufferDesc& in_buffer_desc);
 	VIRTUAL ~VK_Buffer();
 
-	VIRTUAL void* METHOD(Map)() OVERRIDE;
-	VIRTUAL void METHOD(Unmap)() OVERRIDE;
+	void* METHOD(Map)(CONST ENUM_MAP_TYPE& map_type, CONST ENUM_MAP_FLAG& map_flag);
+	void METHOD(Unmap)();
 	VkBuffer METHOD(GetBuffer)() CONST;
-	void Destroy();
-
+	void METHOD(Destroy)();
+	void METHOD(FlushMappedMemory)();
 	static void METHOD(GenerateBufferCreateInfo)(VkBufferCreateInfo& buffer_create_info, CONST BufferDesc& desc);
 	static ENUM_VulkanAllocationFlags METHOD(TranslateBufferTypeToVulkanAllocationFlags)(CONST ENUM_BUFFER_TYPE& buffer_usage);
 protected:
@@ -43,7 +43,6 @@ protected:
 	VK_Device* device = nullptr;
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VK_Allocation allocation;
-	UInt32 size = 0;
 
 	enum class LockState : UInt8
 	{
@@ -52,8 +51,15 @@ protected:
 		Unlocked,
 		PersistentMapping
 	};
+	MYRENDERER_BEGIN_STRUCT(Mapping)
+	public:
+		VK_Buffer* map_staging_buffer = nullptr;
+		ENUM_MAP_TYPE map_type=ENUM_MAP_TYPE::Read;
+	MYRENDERER_END_STRUCT
 
 	LockState lock_state = LockState::Default;
+	UInt32 lock_counter = 0;
+	Mapping mapping;
 private:
 #pragma endregion
 

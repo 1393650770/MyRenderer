@@ -91,7 +91,7 @@ void EditorUI::AddPass(RenderGraph* in_graph)
 		in_cmd_list->SetRenderTarget(rtvs, nullptr, clear_values, dsv != nullptr);
 		cmd_list->BeginUI();
 
-		ImGui::SliderFloat("transparency", &(cmd_list->z), 0.0f, 1.0f);
+		//ImGui::SliderFloat("transparency", &(cmd_list->z), 0.0f, 1.0f);
 		for (auto& panel : panels)
 		{
 			panel->Draw();

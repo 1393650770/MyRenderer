@@ -74,3 +74,14 @@ void RHIRenderEnd()
 {
 	g_render_rhi->RenderEnd();
 }
+
+void* RHIMapBuffer(MXRender::RHI::Buffer* buffer, MXRender::ENUM_MAP_TYPE map_type, MXRender::ENUM_MAP_FLAG map_flag)
+{
+	return g_render_rhi->MapBuffer(buffer, map_type,map_flag);
+}
+
+void RHIUnmapBuffer(MXRender::RHI::Buffer* buffer)
+{
+	g_render_rhi->UnmapBuffer(buffer);
+}
+

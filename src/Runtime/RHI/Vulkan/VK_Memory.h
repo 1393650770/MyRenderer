@@ -478,12 +478,13 @@ public:
     {
 	    type = (UInt8)in_type;
     }
-
+    
     void* METHOD(GetMappedPointer)(VK_Device* device);
     void METHOD(FlushMappedMemory)(VK_Device* device);
     void METHOD(InvalidateMappedMemory)(VK_Device* device);
     VkBuffer METHOD(GetBufferHandle)() CONST;
     UInt32 METHOD(GetBufferAlignment)(VK_Device* device) CONST;
+    UInt32 METHOD(GetBufferOffset)() CONST;
     VkDeviceMemory METHOD(GetDeviceMemoryHandle)(VK_Device* device) CONST;
     VK_MemoryResourceFragmentAllocator* METHOD(GetSubresourceAllocator)(VK_Device* device) CONST;
     void METHOD(BindBuffer)(VK_Device* device, VkBuffer buffer);

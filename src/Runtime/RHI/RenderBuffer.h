@@ -12,8 +12,6 @@ public:
 	Buffer(const BufferDesc& in_buffer_desc) ;
 	VIRTUAL ~Buffer() MYDEFAULT;
 
-	VIRTUAL void* METHOD(Map)();
-	VIRTUAL void METHOD(Unmap)();
 	VIRTUAL BufferDesc METHOD(GetBufferDesc)() CONST;
 protected:
 
@@ -33,6 +31,7 @@ private:
 
 
 MYRENDERER_END_CLASS
+
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

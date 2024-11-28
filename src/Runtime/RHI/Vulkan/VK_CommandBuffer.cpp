@@ -428,7 +428,7 @@ void VK_CommandBuffer::FlushBarriers()
 	vk_mem_barrier.srcAccessMask = pipeline_barrier.memory_src_access & pipeline_barrier.supported_access_mask;
 	vk_mem_barrier.dstAccessMask = pipeline_barrier.memory_dst_access & pipeline_barrier.supported_access_mask;
 
-	CONST bool HasMemoryBarrier =
+	CONST Bool HasMemoryBarrier =
 		pipeline_barrier.memory_src_stages != 0 && pipeline_barrier.memory_dst_stages != 0 &&
 		pipeline_barrier.memory_src_access != 0 && pipeline_barrier.memory_dst_access != 0;
 

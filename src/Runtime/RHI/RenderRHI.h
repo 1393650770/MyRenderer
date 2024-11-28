@@ -51,7 +51,7 @@ public:
 	VIRTUAL RenderPass* METHOD(CreateRenderPass)(CONST RenderPassDesc& desc) PURE;
 	VIRTUAL FrameBuffer* METHOD(CreateFrameBuffer)(CONST FrameBufferDesc& desc) PURE;
 
-	VIRTUAL void* METHOD(MapBuffer)(Buffer* buffer) PURE;
+	VIRTUAL void* METHOD(MapBuffer)(Buffer* buffer, ENUM_MAP_TYPE map_type, ENUM_MAP_FLAG map_flag) PURE;
 	VIRTUAL void METHOD(UnmapBuffer)(Buffer* buffer) PURE;
 
 #pragma endregion
@@ -90,5 +90,7 @@ extern CORE_API MXRender::RHI::CommandList* METHOD(RHIGetImmediateCommandList)()
 extern CORE_API MXRender::RHI::CommandList* METHOD(RHIGetImmediateCommandList)();
 extern CORE_API void METHOD(RHIRenderEnd)();
 extern CORE_API void METHOD(RHISubmitCommandList)(MXRender::RHI::CommandList* command_list);
+extern CORE_API void* METHOD(RHIMapBuffer)(MXRender::RHI::Buffer* buffer, MXRender::ENUM_MAP_TYPE map_type, MXRender::ENUM_MAP_FLAG map_flag);
+extern CORE_API void METHOD(RHIUnmapBuffer)(MXRender::RHI::Buffer* buffer);
 #endif
 
