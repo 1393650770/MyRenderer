@@ -1,4 +1,6 @@
 #include "RenderBuffer.h"
+#include "RenderUtils.h"
+#include "RenderRHI.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 

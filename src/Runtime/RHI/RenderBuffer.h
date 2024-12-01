@@ -9,9 +9,10 @@ MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Buffer,  public RenderResource)
 #pragma region METHOD
 public:
-	Buffer(const BufferDesc& in_buffer_desc) ;
+	Buffer(CONST BufferDesc& in_buffer_desc) ;
 	VIRTUAL ~Buffer() MYDEFAULT;
-
+	VIRTUAL void* METHOD(Map)(CONST ENUM_MAP_TYPE& map_type, CONST ENUM_MAP_FLAG& map_flag) PURE ;
+	VIRTUAL void METHOD(Unmap)() PURE ;
 	VIRTUAL BufferDesc METHOD(GetBufferDesc)() CONST;
 protected:
 
@@ -31,7 +32,6 @@ private:
 
 
 MYRENDERER_END_CLASS
-
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

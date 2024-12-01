@@ -20,8 +20,8 @@ public:
 	VK_Buffer(VK_Device* in_device, CONST BufferDesc& in_buffer_desc);
 	VIRTUAL ~VK_Buffer();
 
-	void* METHOD(Map)(CONST ENUM_MAP_TYPE& map_type, CONST ENUM_MAP_FLAG& map_flag);
-	void METHOD(Unmap)();
+	VIRTUAL void* METHOD(Map)(CONST ENUM_MAP_TYPE& map_type, CONST ENUM_MAP_FLAG& map_flag) OVERRIDE FINAL;
+	VIRTUAL void METHOD(Unmap)()  OVERRIDE FINAL;
 	VkBuffer METHOD(GetBuffer)() CONST;
 	void METHOD(Destroy)();
 	void METHOD(FlushMappedMemory)();

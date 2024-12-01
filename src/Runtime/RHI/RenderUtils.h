@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include "RenderRHI.h"
+#include "RenderRource.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -85,6 +86,54 @@ protected:
 
 
 MYRENDERER_END_CLASS
+
+
+
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(StreamingBuffer, public RenderResource)
+#pragma region METHOD
+public:
+	StreamingBuffer(ENUM_BUFFER_TYPE in_buffer_type, UInt32 in_size, UInt32 in_num_contexts, CONST String in_name);
+	VIRTUAL ~StreamingBuffer();
+
+	UInt32  METHOD(Allocate)(UInt32 in_size, UInt32 ctx_num);
+
+	void  METHOD(Release)(UInt32 ctx_num);
+
+	void  METHOD(Flush)(UInt32 ctx_num);
+
+	Buffer* METHOD(GetBuffer)();
+	void* METHOD(GetMappedCPUAddress)(UInt32 ctx_num);
+
+	void  METHOD(AllowPersistentMapping)(Bool AllowMapping);
+protected:
+
+private:
+
+#pragma endregion
+
+
+#pragma region MEMBER
+public:
+
+protected:
+	Buffer* buffer;
+	String name;
+	Bool allow_persistent_map = false;
+	MYRENDERER_BEGIN_STRUCT(MapInfo)
+	public:
+		MapHelper<UInt8> mapped_data;
+		UInt32           curr_offset = 0;
+	MYRENDERER_END_STRUCT
+	
+	Vector<MapInfo> map_infos;
+
+private:
+#pragma endregion
+
+
+
+MYRENDERER_END_CLASS
+
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
