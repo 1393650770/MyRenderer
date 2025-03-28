@@ -262,9 +262,8 @@ protected:
 	VK_Fence* fence=nullptr;
 	Bool is_upload_only=false;
 
-	// Last value passed after the fence got signaled
+
 	volatile UInt64 fence_signaled_counter;
-	// Last value when we submitted the cmd buffer; useful to track down if something waiting for the fence has actually been submitted
 	volatile UInt64 submitted_fence_counter;
 
 	StateCache state_cache;

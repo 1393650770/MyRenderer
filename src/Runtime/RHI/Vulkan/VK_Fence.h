@@ -47,7 +47,6 @@ protected:
 private:
 
 #pragma endregion
-
     friend class VK_FenceManager;
 MYRENDERER_END_CLASS
 

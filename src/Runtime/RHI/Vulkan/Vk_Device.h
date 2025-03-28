@@ -7,11 +7,13 @@
 #include "RHI/RenderRource.h"
 #include "VK_RenderRHI.h"
 #include "VK_Memory.h"
-
+#include "VK_Extension.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
+
+class VK_Device;
 class VK_Queue;
 class VK_FenceManager;
 class VK_DeviceMemoryManager;
@@ -22,6 +24,7 @@ class VK_RenderPassManager;
 class VK_PipelineStateManager;
 class VK_FrameBufferManager;
 class VK_DescriptsetAllocator;
+class VK_Extension;
 MYRENDERER_BEGIN_STRUCT(OptionalVulkanDeviceExtensions)
 union
 {
@@ -92,6 +95,7 @@ inline Bool METHOD(HasGPUCrashDumpExtensions)() CONST
 MYRENDERER_END_STRUCT
 
 
+
 MYRENDERER_BEGIN_CLASS(QueueFamilyIndices)
 public:
 std::optional<UInt32> graphics_family;
@@ -103,6 +107,50 @@ Bool isComplete() {
 }
 MYRENDERER_END_CLASS
 
+MYRENDERER_BEGIN_STRUCT(VK_DeviceFeature)
+friend VK_Device;
+#pragma region METHOD
+public:
+	VK_DeviceFeature() MYDEFAULT;
+
+	void METHOD(Query)(VkPhysicalDevice gpu, UInt32 api_version);
+protected:
+	VkPhysicalDeviceFeatures	     core_1_0;
+	VkPhysicalDeviceVulkan11Features core_1_1;
+	VkPhysicalDeviceVulkan12Features core_1_2;
+	VkPhysicalDeviceVulkan13Features core_1_3;
+private:
+
+#pragma endregion
+
+#pragma region MEMBER
+public:
+
+protected:
+
+private:
+
+#pragma endregion
+MYRENDERER_END_STRUCT
+
+MYRENDERER_BEGIN_STRUCT(VK_DeviceFeatureProperties)
+public:
+	VkPhysicalDeviceDescriptorBufferPropertiesEXT DescriptorBufferProps;
+	VkPhysicalDeviceSubgroupSizeControlPropertiesEXT SubgroupSizeControlProperties;
+
+	VkPhysicalDeviceAccelerationStructurePropertiesKHR AccelerationStructureProps;
+	VkPhysicalDeviceRayTracingPipelinePropertiesKHR RayTracingPipelineProps;
+
+	VkPhysicalDeviceFragmentShadingRateFeaturesKHR FragmentShadingRateFeatures;
+	VkPhysicalDeviceFragmentDensityMapFeaturesEXT FragmentDensityMapFeatures;
+	VkPhysicalDeviceFragmentDensityMap2FeaturesEXT FragmentDensityMap2Features;
+
+	VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR FragmentShaderBarycentricProps;
+	VkPhysicalDeviceComputeShaderDerivativesFeaturesNV ComputeShaderDerivativesFeatures;
+
+	VkPhysicalDeviceMeshShaderPropertiesEXT MeshShaderProperties;
+
+MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Device , public RenderResource)
 
@@ -112,14 +160,14 @@ private:
 	QueueFamilyIndices METHOD(FindQueueFamilies)(VkPhysicalDevice device);
 	void METHOD(CreateQueue)(QueueFamilyIndices family_indice);
 protected:
-	void METHOD(CreateDevice)(Bool enable_validation_layers, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers);
+	void METHOD(CreateDevice)(Bool enable_validation_layers, CONST Vector<UniquePtr<MXRender::RHI::Vulkan::VK_Extension>>& enable_feature, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers);
 	static void METHOD(GetDeviceExtensionsAndLayers)(VkPhysicalDevice Gpu, UInt32 VendorId, Vector<CONST Char*>& OutDeviceExtensions, Vector<CONST Char*>& OutDeviceLayers, Vector<String>& OutAllDeviceExtensions, Vector<String>& OutAllDeviceLayers, Bool& bOutDebugMarkers);
 	void METHOD(Destroy)();
 public:
 	VK_Device(VulkanRHI* in_vulkan_rhi, VkPhysicalDevice in_gpu);
 	VIRTUAL ~VK_Device();
 
-	void METHOD(Init)(Int device_index, Bool enable_validation_layers, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers);
+	void METHOD(Init)(Int device_index, Bool enable_validation_layers, CONST Vector<UniquePtr<MXRender::RHI::Vulkan::VK_Extension>>& enable_feature, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers);
 
 	VkDevice METHOD(GetDevice)();
 	VkPhysicalDevice METHOD(GetGpu)();
@@ -137,6 +185,8 @@ public:
 	void METHOD(CreatePresentQueue)(VkSurfaceKHR surface);
 	CONST VkPhysicalDeviceLimits&  METHOD(GetLimits)() CONST;
 	QueueFamilyIndices METHOD(GetQueueFamilyIndices)() CONST;
+	CONST VK_DeviceFeatureProperties& METHOD(GetOptionalExtensionProperties)() CONST;
+	Vector<UniquePtr<MXRender::RHI::Vulkan::VK_Extension>> METHOD(EnableDefaultFeature)();
 #pragma endregion
 
 #pragma region MEMBER
@@ -147,6 +197,9 @@ protected:
 	VkPhysicalDevice gpu = VK_NULL_HANDLE;
 	VkPhysicalDeviceProperties gpu_props{};
 	UInt32 vendor_id;
+	UInt32 api_version;
+	VK_DeviceFeature gpu_features;
+	VK_DeviceFeatureProperties gpu_feature_propertis;
 	VulkanRHI* vulkan_rhi;
 	OptionalVulkanDeviceExtensions extensions;
 	VK_Queue* graph_queue = nullptr;

@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <boost/stacktrace.hpp>
 #include <iostream>
+#include <memory>
 #include "Reflection.h"
 #ifndef MYRENDERER_C_INTERFACE
 #    ifdef __cplusplus
@@ -107,7 +108,7 @@
 #define STATIC_CAST(Pointer,Type) (static_cast<Type*>(Pointer))
 #define DYNAMIC_CAST(Pointer,Type) (dynamic_cast<Type>(Pointer))
 #define REINTERPRET_CAST(Pointer,Type) (reinterpret_cast<Type*>(Pointer))
-
+#define CONST_CAST(Pointer,Type) (const_cast<Type>(Pointer))
 using UInt8 = std::uint8_t;
 using UInt16 = std::uint16_t;
 using UInt32 = std::uint32_t;
@@ -143,6 +144,9 @@ using Stack = std::stack<T>;
 
 template <class T, size_t Size>
 using Array = std::array<T, Size>;
+
+template <class T, class FuncDelete = std::default_delete<T> >
+using UniquePtr = std::unique_ptr<T, FuncDelete>;
 
 #define DLLEXPORT __declspec(dllexport)
 #define DLLIMPORT __declspec(dllimport)

@@ -3,7 +3,7 @@
 #include "..\..\Sample\4-Reflect\ReflectTestClass.h"
 
 namespace MXRender{
-    class MXRender::ReflectTest;
+    class std::MXRender::ReflectTest;
     class TypeReflectTestOperator{
     public:
         static const char* getClassName(){ return "ReflectTest";}
@@ -17,12 +17,12 @@ namespace MXRender{
         //}
 
         static void TypeWrapperRegister_ReflectTest(){
-        rttr::registration::class_<MXRender::ReflectTest>("ReflectTest")
+        rttr::registration::class_<std::MXRender::ReflectTest>("ReflectTest")
 		 .constructor<>()
-		 .property("test1", &MXRender::ReflectTest::test1)
-		 .property("test2", &MXRender::ReflectTest::test2)
-		 .property("test3", &MXRender::ReflectTest::test3)
-		 .method("testfunc", &MXRender::ReflectTest::testfunc)
+		 .property("test1", &std::MXRender::ReflectTest::test1)
+		 .property("test2", &std::MXRender::ReflectTest::test2)
+		 .property("test3", &std::MXRender::ReflectTest::test3)
+		 .method("testfunc", &std::MXRender::ReflectTest::testfunc)
 		 ;
     }        
     };

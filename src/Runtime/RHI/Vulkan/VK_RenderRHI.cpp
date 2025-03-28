@@ -24,9 +24,11 @@ CONST Vector<CONST Char*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
 };
 
-CONST Vector<CONST Char*> deviceExtensions = {
+Vector<CONST Char*> deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-	"VK_EXT_sampler_filter_minmax"
+	"VK_EXT_sampler_filter_minmax",
+	"VK_EXT_descriptor_indexing",
+	"VK_KHR_deferred_host_operations"
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
@@ -187,7 +189,8 @@ void VulkanRHI::CreateDevice(Bool enable_validation_layers)
 		VkPhysicalDevice physicalDevice =  GetGpuFromHarddrive();
 		CHECK_WITH_LOG(physicalDevice==VK_NULL_HANDLE,"RHI Error: failed to find a suitable GPU!");
 		device= new  VK_Device(this,physicalDevice);
-		device->Init(0,enable_validation_layers,deviceExtensions,validationLayers);
+		auto enable_feature= device->EnableDefaultFeature();
+		device->Init(0,enable_validation_layers, enable_feature,deviceExtensions,validationLayers);
 	}
 }
 
@@ -249,9 +252,9 @@ void VulkanRHI::CreateInstance(Bool enable_validation_layers)
 
 	VkApplicationInfo app_info{};
 	app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	app_info.pApplicationName = "MyRender";
+	app_info.pApplicationName = "MxRender";
 	app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-	app_info.pEngineName = "MyRender";
+	app_info.pEngineName = "MxRender";
 	app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 	app_info.apiVersion = VK_API_VERSION_1_0;
 

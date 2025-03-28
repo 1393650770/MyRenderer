@@ -12,6 +12,7 @@
 #include "VK_PipelineState.h"
 #include "VK_FrameBuffer.h"
 #include "VK_DescriptorSets.h"
+#include "VK_Extension.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -56,7 +57,7 @@ QueueFamilyIndices VK_Device::FindQueueFamilies(VkPhysicalDevice device)
 	return indices;
 }
 
-void VK_Device::CreateDevice(Bool enable_validation_layers, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers)
+void VK_Device::CreateDevice(Bool enable_validation_layers, CONST Vector<UniquePtr<VK_Extension>>& enable_feature, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers)
 {
 	queue_family_indices = FindQueueFamilies(gpu);
 
@@ -73,11 +74,6 @@ void VK_Device::CreateDevice(Bool enable_validation_layers, Vector<CONST Char*> 
 		queue_create_infos.push_back(queue_create_info);
 	}
 
-	VkPhysicalDeviceFeatures device_features{};
-	device_features.multiDrawIndirect = VK_TRUE;
-	device_features.samplerAnisotropy = VK_TRUE;
-	//deviceFeatures.pipelineStatisticsQuery = VK_TRUE;
-	//deviceFeatures.drawIndirectFirstInstance = VK_TRUE;
 
 	VkDeviceCreateInfo create_info{};
 	create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -85,7 +81,16 @@ void VK_Device::CreateDevice(Bool enable_validation_layers, Vector<CONST Char*> 
 	create_info.queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size());
 	create_info.pQueueCreateInfos = queue_create_infos.data();
 
-	create_info.pEnabledFeatures = &device_features;
+	create_info.pEnabledFeatures = &gpu_features.core_1_0;
+
+	for (auto& extension : enable_feature)
+	{
+		if (extension->GetIsInUse())
+		{
+			extension->PreCreateDevice(create_info);
+			device_extensions.push_back(extension->GetName().c_str());
+		}
+	}
 
 	create_info.enabledExtensionCount = static_cast<uint32_t>(device_extensions.size());
 	create_info.ppEnabledExtensionNames = device_extensions.data();
@@ -116,9 +121,9 @@ void VK_Device::CreateQueue(QueueFamilyIndices family_indice)
 	//present_queue = new VK_Queue(this, family_indice.presentFamily.value());
 }
 
-void VK_Device::Init(Int device_index,Bool enable_validation_layers, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers)
+void VK_Device::Init(Int device_index,Bool enable_validation_layers,CONST Vector<UniquePtr<VK_Extension>>& enable_feature, Vector<CONST Char*> device_extensions, Vector<CONST Char*> validation_layers)
 {
-	CreateDevice(enable_validation_layers, std::move(device_extensions), std::move(validation_layers));
+	CreateDevice(enable_validation_layers, enable_feature, std::move(device_extensions), std::move(validation_layers));
 
 	device_memory_manager=new VK_DeviceMemoryManager(this);
 	memory_manager=new VK_MemoryManager(this);
@@ -236,6 +241,9 @@ VK_Device::VK_Device(VulkanRHI* in_vulkan_rhi, VkPhysicalDevice in_gpu):
 {
 	vkGetPhysicalDeviceProperties(gpu,&gpu_props);
 	vendor_id=gpu_props.vendorID;
+	api_version = gpu_props.apiVersion;
+
+	gpu_features.Query(gpu, api_version);
 }
 
 void VK_Device::Destroy()
@@ -330,6 +338,103 @@ VK_FrameBufferManager* VK_Device::GetFrameBufferManager()
 VK_DescriptsetAllocator* VK_Device::GetDescriptsetAllocator()
 {
 	return descriptset_allocator;
+}
+
+Vector<UniquePtr<MXRender::RHI::Vulkan::VK_Extension>> VK_Device::EnableDefaultFeature()
+{
+	auto support_extensions= VK_Extension::GetRenderSupportGpuFeatures(this, this->api_version);
+	VkPhysicalDeviceFeatures2 physical_device_features2;
+	physical_device_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	physical_device_features2.pNext = nullptr;
+	for (auto& extension : support_extensions)
+	{
+		if (extension->GetIsInUse())
+		{
+			extension->PrePhysicalDeviceFeatures(physical_device_features2);
+		}
+	}
+	vkGetPhysicalDeviceFeatures2(gpu, &physical_device_features2);
+	for (auto& extension : support_extensions)
+	{
+		if (extension->GetIsInUse())
+		{
+			extension->PostPhysicalDeviceFeatures(&extensions);
+		}
+	}
+	VkPhysicalDeviceProperties2 physical_device_properties2;
+	physical_device_properties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+	physical_device_properties2.pNext = nullptr;
+	//physical_device_properties2.pNext = &GpuIdProps;
+	for (auto& extension : support_extensions)
+	{
+		if (extension->GetIsInUse())
+		{
+			extension->PrePhysicalDeviceProperties(physical_device_properties2);
+		}
+	}
+	vkGetPhysicalDeviceProperties2(gpu, &physical_device_properties2);
+	for (auto& extension : support_extensions)
+	{
+		if (extension->GetIsInUse())
+		{
+			extension->PostPhysicalDeviceProperties();
+		}
+	}
+	Vector<VkExtensionProperties> device_extensions;
+	UInt32 count = 0;
+	vkEnumerateDeviceExtensionProperties(gpu, nullptr, &count, nullptr);
+	if (count > 0)
+	{
+		device_extensions.resize(count);
+		vkEnumerateDeviceExtensionProperties(gpu, nullptr, &count, device_extensions.data());
+	}
+	for (CONST VkExtensionProperties& device_extension : device_extensions)
+	{
+		CONST Int extension_index = VK_Extension::FindExtension(support_extensions, device_extension.extensionName);
+		CONST Bool is_found = (extension_index != -1);
+		Bool is_core = false;
+		if (is_found)
+		{
+			support_extensions[extension_index]->SetIsSupported();
+			is_core = support_extensions[extension_index]->SetIsCore(api_version);
+		}
+	}
+	return std::move(support_extensions);
+}
+
+CONST VK_DeviceFeatureProperties& VK_Device::GetOptionalExtensionProperties() CONST
+{
+	return gpu_feature_propertis;
+}
+
+void VK_DeviceFeature::Query(VkPhysicalDevice gpu, UInt32 api_version)
+{
+	VkPhysicalDeviceFeatures2 physical_device_features2;
+	physical_device_features2.sType= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	physical_device_features2.pNext = &core_1_1;
+	core_1_1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+	core_1_1.pNext = nullptr;
+	if (api_version >= VK_API_VERSION_1_2)
+	{
+		core_1_1.pNext = &core_1_2;
+		core_1_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+		core_1_2.pNext = nullptr;
+	}
+
+	if (api_version >= VK_API_VERSION_1_3)
+	{
+		core_1_2.pNext = &core_1_3;
+		core_1_3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+		core_1_3.pNext = nullptr;
+	}
+
+	vkGetPhysicalDeviceFeatures2(gpu, &physical_device_features2);
+
+	// Copy features into old struct for convenience
+	core_1_0 = physical_device_features2.features;
+
+	// Apply config modifications
+	//core_1_0.robustBufferAccess = GCVarRobustBufferAccess.GetValueOnAnyThread() > 0 ? VK_TRUE : VK_FALSE;
 }
 
 MYRENDERER_END_NAMESPACE
