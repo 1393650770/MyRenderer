@@ -248,7 +248,6 @@ void VK_Viewport::CreateSwapChain(VK_SwapChainRecreateInfo* recreate_info)
 	for (Int i = 0; i < images.size(); ++i)
 	{
 		back_buffer_rtvs[i] = new VK_Texture(device, texture_views[i], rtv_desc);
-		rhi->GetImmediateCommandList()->TransitionTextureState(back_buffer_rtvs[i], ENUM_RESOURCE_STATE::RenderTarget);
 	}
 	TextureDesc dsv_desc;
 	dsv_desc.clear_value = { 1.0f, 0 };
@@ -258,9 +257,13 @@ void VK_Viewport::CreateSwapChain(VK_SwapChainRecreateInfo* recreate_info)
 	dsv_desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT;
 	dsv_desc.format = ENUM_TEXTURE_FORMAT::D32;
 	back_buffer_dsv = new VK_Texture(device, dsv_desc);
-	rhi->GetImmediateCommandList()->TransitionTextureState(back_buffer_dsv, ENUM_RESOURCE_STATE::DepthWrite);
-	if(acquired_image_index>image_count)
-		swap_chain->TryGetNextImageIndex(image_acquired_semaphore, acquired_image_index);
+	// Always acquire first image; layout transitions must happen after acquire
+	TryAcquireNextImage();
+	if (acquired_image_index < back_buffer_rtvs.size())
+	{
+		rhi->GetImmediateCommandList()->TransitionTextureState(back_buffer_rtvs[acquired_image_index], ENUM_RESOURCE_STATE::RenderTarget);
+		rhi->GetImmediateCommandList()->TransitionTextureState(back_buffer_dsv, ENUM_RESOURCE_STATE::DepthWrite);
+	}
 }
 
 VK_Viewport::~VK_Viewport()

@@ -1047,7 +1047,7 @@ void VK_MemoryResourceHeap::FreePage(VK_MemoryResourceFragmentAllocator* in_page
 
 		Vector<VK_MemoryResourceFragmentAllocator*>& pages = active_pages[bucket_id];
 		auto it = std::find(pages.begin(), pages.end(), in_page);
-		if (it != used_dedicated_pages.end())
+		if (it != pages.end())
 		{
 			pages.erase(it);
 		}

@@ -6,7 +6,7 @@ MXRender::RHI::RenderRHI* PlatformCreateDynamicRHI()
 {
 	MXRender::RHI::Vulkan::VulkanRHI* pRHI = new MXRender::RHI::Vulkan::VulkanRHI();
 	MXRender::RHI::Vulkan::VulkanRenderFactory factory;
-	factory.enable_render_debug = true;
+	factory.enable_render_debug = false;
 	pRHI->Init(&factory);
 
 	return pRHI;

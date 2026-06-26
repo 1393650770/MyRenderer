@@ -205,18 +205,13 @@ MXRender::Application::Window* RenderTest::GetWindow()
 
 int main()
 {
-	//Window window;
-	//RenderTest render(&window);
-	//window.InitWindow();
-	//window.Run(&render);
-	//VirtualTextureQuadTree tree(5120, 64);
-	//tree.ParseAllLevelNodeToDebug();
+	Window window;
+	RenderTest render(&window);
+	window.InitWindow();
+	window.Run(&render);
+	VirtualTextureQuadTree tree(5120, 64);
+	tree.ParseAllLevelNodeToDebug();
 
-	float fov = 1.57079632679489655800f;
-	float heightT = 36.0 /1.0f;
-	float lenT = heightT / (fov / 2.0f);
-	std::cout << lenT << std::endl;
-	system("pause");
 
 	return 0;
 }
