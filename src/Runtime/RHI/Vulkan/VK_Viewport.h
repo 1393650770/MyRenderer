@@ -59,7 +59,7 @@ protected:
 	Bool is_full_screen = false;
 	ENUM_TEXTURE_FORMAT common_pixel_format;
 	VkFormat vk_pixel_format;
-	UInt32 acquired_image_index = 30000 ;
+	UInt32 acquired_image_index = 0;
 	VK_SwapChain* swap_chain =nullptr ;
 	void* window_handle = nullptr ;
 	UInt32 present_count = 0 ;
