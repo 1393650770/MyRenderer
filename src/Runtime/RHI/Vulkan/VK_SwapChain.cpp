@@ -58,11 +58,6 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 		image_extent2D = { 0,0 };
 		return;
 	}
-	if (recreate_info != nullptr && recreate_info->swapchain != VK_NULL_HANDLE)
-	{
-		vkDestroySwapchainKHR(device->GetDevice(), recreate_info->swapchain, VULKAN_CPU_ALLOCATOR);
-		recreate_info->swapchain = VK_NULL_HANDLE;
-	}
 
 	UInt32 num_formats=0;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetGpu(), surface, &num_formats, nullptr);
@@ -151,6 +146,12 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 	CHECK_WITH_LOG(vkCreateSwapchainKHR(device->GetDevice(), &swapchain_info, nullptr, &swapchain) != VK_SUCCESS,
 					"RHI Error: failed to create swap chain!")
 
+	vkDeviceWaitIdle(device->GetDevice());
+	if (recreate_info != nullptr && recreate_info->swapchain != VK_NULL_HANDLE)
+	{
+		vkDestroySwapchainKHR(device->GetDevice(), recreate_info->swapchain, VULKAN_CPU_ALLOCATOR);
+		recreate_info->swapchain = VK_NULL_HANDLE;
+	}
 
 	vkGetSwapchainImagesKHR(device->GetDevice(), swapchain, &num_swap_chain_images, nullptr);
 	out_images.resize(num_swap_chain_images);
@@ -183,6 +184,7 @@ void VK_SwapChain::Destroy(VK_SwapChainRecreateInfo* RecreateInfo)
 	}
 	else
 	{
+		vkDeviceWaitIdle(device->GetDevice());
 		vkDestroySwapchainKHR(device->GetDevice(), swapchain, nullptr);
 		vkDestroySurfaceKHR(instance, surface, nullptr);
 	}

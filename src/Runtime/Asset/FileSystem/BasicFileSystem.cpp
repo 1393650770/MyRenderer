@@ -1,5 +1,6 @@
 #include "BasicFileSystem.h"
 #include "Core/ConstDefine.h"
+#include <algorithm>
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 
 

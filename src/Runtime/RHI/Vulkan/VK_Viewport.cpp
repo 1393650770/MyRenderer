@@ -64,7 +64,6 @@ void VK_Viewport::Resize(UInt32 in_width, UInt32 in_height)
 		recreate_info.swapchain = swap_chain->GetSwapchain();
 		recreate_info.surface = swap_chain->GetSurface();
 		CreateSwapChain(&recreate_info);
-		TryAcquireNextImage();
 	}
 }
 
@@ -139,6 +138,7 @@ void VK_Viewport::PresentInternal(VK_CommandBuffer* in_cmd_list, VK_Queue* submi
 	//Submit
 	submit_queue->Submit(in_cmd_list, 1, &(sumit_signal_semaphore[0]), 1, &image_acquired_semaphore);
 	//Present
+	bool swapchain_recreated = false;
 	if (present_queue&&!is_minimized)
 	{
 		VK_CommandBuffer* temp_commandbuffer= device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::GRAPHICS);
@@ -158,6 +158,7 @@ void VK_Viewport::PresentInternal(VK_CommandBuffer* in_cmd_list, VK_Queue* submi
 			recreate_info.swapchain = swap_chain->GetSwapchain();
 			recreate_info.surface = swap_chain->GetSurface();
 			CreateSwapChain(&recreate_info);
+			swapchain_recreated = true;
 		}
 		else if (result != VK_SUCCESS) {
 			CHECK_WITH_LOG (true, "RHI Error: failed to present swap chain image!");
@@ -168,7 +169,10 @@ void VK_Viewport::PresentInternal(VK_CommandBuffer* in_cmd_list, VK_Queue* submi
 	{
 		vkQueueWaitIdle(present_queue->GetQueue());
 	}
-	TryAcquireNextImage();
+	if (!swapchain_recreated)
+	{
+		TryAcquireNextImage();
+	}
 }
 
 void VK_Viewport::CreateSyncObjects()
