@@ -1,4 +1,6 @@
 #include "VK_PipelineState.h"
+#include <cstdio>
+#include "Core/ConstGlobals.h"
 #include "VK_Utils.h"
 #include "VK_Shader.h"
 #include "RHI/RenderTexture.h"
@@ -338,27 +340,22 @@ void VK_PipelineState::CreateShaderResourceBinding(ShaderResourceBinding*& out_s
 
 VK_PipelineStateManager::VK_PipelineStateManager(VK_Device* in_device):device(in_device)
 {
-	VkPipelineCacheCreateInfo pipeline_cache_info = {};
-	pipeline_cache_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-	pipeline_cache_info.pInitialData = nullptr;
-	pipeline_cache_info.initialDataSize = 0;
-
-	CHECK_WITH_LOG(vkCreatePipelineCache(in_device->GetDevice(), &pipeline_cache_info, nullptr, &pipeline_cache)!=VK_SUCCESS, "RHI Error: Failed to create pipeline cache");
+	FILE* f = fopen("PipelineCache.bin", "rb");
+	VkPipelineCacheCreateInfo info = {}; info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+	if (f) { fseek(f,0,SEEK_END); size_t sz=ftell(f); fseek(f,0,SEEK_SET);
+		if(sz>0){ void* d=malloc(sz); if(fread(d,1,sz,f)==sz){ info.pInitialData=d; info.initialDataSize=sz; } free(d); } fclose(f); }
+	CHECK_WITH_LOG(vkCreatePipelineCache(in_device->GetDevice(),&info,nullptr,&pipeline_cache)!=VK_SUCCESS,"RHI Error: Failed to create pipeline cache");
 }
 
 VK_PipelineStateManager::~VK_PipelineStateManager()
 {
-	if (pipeline_cache != VK_NULL_HANDLE)
-	{
-		vkDestroyPipelineCache(device->GetDevice(), pipeline_cache, nullptr);
-		pipeline_cache = VK_NULL_HANDLE;
-	}
-	for (auto& it : pipeline_states_map)
-	{
-		delete it.second;
-	}
+	if(pipeline_cache){ size_t sz=0; vkGetPipelineCacheData(device->GetDevice(),pipeline_cache,&sz,nullptr);
+		if(sz>0){ void* d=malloc(sz); if(vkGetPipelineCacheData(device->GetDevice(),pipeline_cache,&sz,d)==VK_SUCCESS)
+			{ FILE* f=fopen("PipelineCache.bin","wb"); if(f){ fwrite(d,1,sz,f); fclose(f); } } free(d); }
+		vkDestroyPipelineCache(device->GetDevice(),pipeline_cache,nullptr); pipeline_cache=VK_NULL_HANDLE; }
+	ProcessPendingDestruction();
+	for(auto& it:pipeline_states_map) delete it.second;
 	pipeline_states_map.clear();
-
 }
 
 VkPipelineCache VK_PipelineStateManager::GetPipelineCache() CONST
@@ -372,16 +369,20 @@ VK_PipelineState* VK_PipelineStateManager::GetPipelineState(CONST RenderGraphiPi
 	auto it = pipeline_states_map.find(hash);
 	if (it != pipeline_states_map.end())
 	{
+		it->second->last_used_frame = g_frame_number_render_thread;
 		return it->second;
 	}
 	else
 	{
 		VK_PipelineState* pipeline_state = new VK_PipelineState(device, in_desc, pipeline_cache, render_pass);
 		pipeline_states_map[hash] = pipeline_state;
+		EvictLRU();
 		return pipeline_state;
 	}
 }
 
+void VK_PipelineStateManager::EvictLRU() {}
+void VK_PipelineStateManager::ProcessPendingDestruction() { for (VkPipeline p : pending_destruction) { if (p) vkDestroyPipeline(device->GetDevice(), p, nullptr); } pending_destruction.clear(); }
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

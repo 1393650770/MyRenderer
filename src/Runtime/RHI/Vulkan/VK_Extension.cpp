@@ -202,12 +202,10 @@ static void FlagExtensionSupport(CONST Vector<VkExtensionProperties>& extension_
 	{
 		CONST Int extension_index = ExtensionType::FindExtension(extensions, Extension.extensionName);
 		CONST Bool bFound = (extension_index != -1);
-		Bool bIsCore = false;
 		if (bFound)
 		{
 			extensions[extension_index]->SetIsSupported();
-
-			bIsCore = extensions[extension_index]->SetIsCore(api_version);
+			extensions[extension_index]->SetIsCore(api_version);
 		}
 	}
 }

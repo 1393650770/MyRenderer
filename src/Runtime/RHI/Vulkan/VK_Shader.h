@@ -52,6 +52,7 @@ public:
 	VIRTUAL ~VK_ShaderResourceBinding();
 	CONST VkDescriptorSet* METHOD(GetDescriptorSets)() CONST;
 	VIRTUAL void METHOD(SetResource)(CONST String& name, CONST RenderResource* resource) OVERRIDE FINAL;
+	void METHOD(FlushDescriptorWrites)();
 protected:
 
 private:
@@ -65,6 +66,9 @@ protected:
 	Map<String, ReflectedBinding>& bindings;
 	VK_Device* device;
 	Bool is_static_resource =false;
+	Vector<VkWriteDescriptorSet> pending_writes;
+	Vector<VkDescriptorBufferInfo> pending_buffer_infos;
+	Vector<VkDescriptorImageInfo> pending_image_infos;
 private:
 
 #pragma endregion

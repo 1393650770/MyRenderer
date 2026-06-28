@@ -164,6 +164,15 @@ CONST VkDescriptorSet* VK_ShaderResourceBinding::GetDescriptorSets() CONST
 	return descriptorset.data();
 }
 
+void VK_ShaderResourceBinding::FlushDescriptorWrites()
+{
+	if (pending_writes.empty()) return;
+	vkUpdateDescriptorSets(device->GetDevice(), (UInt32)pending_writes.size(), pending_writes.data(), 0, nullptr);
+	pending_writes.clear();
+	pending_buffer_infos.clear();
+	pending_image_infos.clear();
+}
+
 void VK_ShaderResourceBinding::SetResource(CONST String& name, CONST RenderResource* resource)
 {
 	auto it = bindings.find(name);
@@ -188,15 +197,16 @@ void VK_ShaderResourceBinding::SetResource(CONST String& name, CONST RenderResou
 			buffer_info.buffer = STATIC_CAST(resource, CONST VK_Buffer)->GetBuffer();
 			buffer_info.offset = 0;
 			buffer_info.range = VK_WHOLE_SIZE;
-
-			descriptor_write.pBufferInfo = &buffer_info;
+			pending_buffer_infos.push_back(buffer_info);
+			descriptor_write.pBufferInfo = &pending_buffer_infos.back();
 			break;
 		}
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
 		{
 			VkDescriptorImageInfo image_info{};
 			image_info.sampler = STATIC_CAST(resource, CONST VK_Texture)->GetSampler();
-			descriptor_write.pImageInfo = &image_info;
+			pending_image_infos.push_back(image_info);
+			descriptor_write.pImageInfo = &pending_image_infos.back();
 			break;
 		}
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -206,7 +216,8 @@ void VK_ShaderResourceBinding::SetResource(CONST String& name, CONST RenderResou
 			image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			image_info.imageView = STATIC_CAST(resource, CONST VK_Texture)->GetImageView();
 			image_info.sampler = STATIC_CAST(resource, CONST VK_Texture)->GetSampler();
-			descriptor_write.pImageInfo = &image_info;
+			pending_image_infos.push_back(image_info);
+			descriptor_write.pImageInfo = &pending_image_infos.back();
 			break;
 		}
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
@@ -216,7 +227,7 @@ void VK_ShaderResourceBinding::SetResource(CONST String& name, CONST RenderResou
 			break;
 		}
 
-		vkUpdateDescriptorSets(device->GetDevice(), 1, &descriptor_write, 0, nullptr);
+		pending_writes.push_back(descriptor_write);
 		if (is_static_resource)
 		{
 			bindings.erase(name);

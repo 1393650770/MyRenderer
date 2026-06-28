@@ -241,6 +241,46 @@ void VK_CommandBuffer::ClearTexture(Texture* texture, Vector<float> clear_value 
 	}
 }
 
+
+void VK_CommandBuffer::BeginDynamicRendering(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, UInt32 width, UInt32 height, UInt32 clear_value_count, CONST VkClearValue* clear_values)
+{
+	if (command_state == EState::IsInsideRenderPass)
+		EndDynamicRendering();
+	FlushBarriers();
+	VkRenderingInfo ri{};
+	ri.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+	ri.renderArea = { {0, 0}, {width, height} };
+	ri.layerCount = 1;
+	Vector<VkRenderingAttachmentInfo> colors;
+	for (UInt32 i = 0; i < render_targets.size(); ++i)
+	{
+		VK_Texture* vk_tex = STATIC_CAST(render_targets[i], VK_Texture);
+		VkRenderingAttachmentInfo att{};
+		att.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		att.imageView = vk_tex->GetImageView();
+		att.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		att.loadOp = (clear_value_count > i) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+		att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		if (clear_value_count > i && clear_values) att.clearValue = clear_values[i];
+		colors.push_back(att);
+	}
+	ri.colorAttachmentCount = (UInt32)colors.size();
+	ri.pColorAttachments = colors.data();
+	VkRenderingAttachmentInfo depth{};
+	if (depth_stencil)
+	{
+		VK_Texture* vk_ds = STATIC_CAST(depth_stencil, VK_Texture);
+		depth.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		depth.imageView = vk_ds->GetImageView();
+		depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		depth.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		depth.clearValue.depthStencil = {1.0f, 0};
+		ri.pDepthAttachment = &depth;
+	}
+	vkCmdBeginRendering(command_buffer, &ri);
+	command_state = EState::IsInsideRenderPass;
+}
 void VK_CommandBuffer::TransitionTextureState(Texture* texture, CONST ENUM_RESOURCE_STATE& required_state)
 {
 	if (texture->GetTextureDesc().resource_state != required_state)
@@ -497,6 +537,20 @@ void VK_CommandBuffer::SetGraphicsPipeline(RenderPipelineState* pipeline_state)
 void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, CONST Vector<ClearValue>& clear_values, Bool has_dsv_clear_value)
 {
 	CHECK_WITH_LOG(command_state < EState::IsInsideBegin, "RHI Error: SetRenderTarget must be called between Begin and End");
+	if (render_targets.empty()) return;
+	// Dynamic rendering path (VK_KHR_dynamic_rendering)
+	if (device->GetOptionalExtensions().HasKHRDynamicRendering)
+	{
+		TransitionRenderTargets(render_targets, depth_stencil);
+		Vector<VkClearValue> vk_clear_values;
+		for (Int i = 0; i < clear_values.size(); ++i)
+			vk_clear_values.push_back({ clear_values[i].color[0], clear_values[i].color[1], clear_values[i].color[2], clear_values[i].color[3] });
+		state_cache.render_targets = render_targets;
+		state_cache.depth_stencil = depth_stencil;
+		BeginDynamicRendering(render_targets, depth_stencil, render_targets[0]->GetTextureDesc().width, render_targets[0]->GetTextureDesc().height, (UInt32)vk_clear_values.size(), vk_clear_values.data());
+		return;
+	}
+	// Legacy VkRenderPass path
 	Vector<ENUM_TEXTURE_FORMAT> rtv_formats;
 	for (auto& rtv : render_targets)
 	{
@@ -546,6 +600,7 @@ void VK_CommandBuffer::SetShaderResourceBinding(ShaderResourceBinding* srb)
 {
 	CHECK(srb == nullptr);
 	VK_ShaderResourceBinding* vk_srb = STATIC_CAST(srb, VK_ShaderResourceBinding);
+	state_cache.srb = vk_srb;
 	CONST VkDescriptorSet* descriptor_sets = vk_srb->GetDescriptorSets();
 	for (UInt32 i = 0; i < MYRENDER_MAX_BINDING_SET_NUM; ++i)
 	{
@@ -572,6 +627,9 @@ void VK_CommandBuffer::Draw(CONST DrawAttribute& draw_attr)
 	scissor.extent = { static_cast<UInt32>(state_cache.framebuffer_width), static_cast<UInt32>(state_cache.framebuffer_height) };
 	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.graphics_pipeline);
 	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+	// Flush any deferred descriptor writes before binding
+	if (state_cache.srb)
+		state_cache.srb->FlushDescriptorWrites();
 	if(state_cache.descriptor_sets != nullptr)
 		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.pipeline_layout, 0, state_cache.descriptor_sets_count, state_cache.descriptor_sets, 0, nullptr);
 	vkCmdDraw(command_buffer, draw_attr.vertexCount, draw_attr.instanceCount, draw_attr.firstVertex, draw_attr.firstInstance);

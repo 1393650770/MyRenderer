@@ -13,6 +13,7 @@ class VK_CommandBuffer;
 class VK_CommandBufferPool;
 class VK_CommandBufferManager;
 class VK_Fence;
+class VK_ShaderResourceBinding;
 class VK_Queue;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_CommandBufferPool,public RenderResource)
 #pragma region METHOD
@@ -134,6 +135,17 @@ public:
 		}
 	}
 
+	__forceinline void METHOD(BeginDynamicRendering)(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, UInt32 width, UInt32 height, UInt32 clear_value_count, CONST VkClearValue* clear_values);
+	__forceinline void METHOD(EndDynamicRendering)()
+	{
+		if (command_state == EState::IsInsideRenderPass)
+		{
+			vkCmdEndRendering(command_buffer);
+			state_cache = StateCache();
+			command_state = EState::HasEndedRenderPass;
+		}
+	}
+
 	__forceinline void METHOD(Begin)()
 	{
 		if (command_state == EState::NeedReset)
@@ -225,6 +237,7 @@ public:
 		VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
 		UInt8         descriptor_sets_count = 0;
 		CONST VkDescriptorSet* descriptor_sets = nullptr;
+		VK_ShaderResourceBinding* srb = nullptr;
 		VkBuffer      index_buffer = VK_NULL_HANDLE;
 		VkDeviceSize  index_buffer_offset = 0;
 		VkIndexType   index_type = VK_INDEX_TYPE_MAX_ENUM;

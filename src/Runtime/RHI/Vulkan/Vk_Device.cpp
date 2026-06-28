@@ -122,6 +122,12 @@ void VK_Device::Init(Int device_index,Bool enable_validation_layers,CONST Vector
 {
 	CreateDevice(enable_validation_layers, enable_feature, std::move(device_extensions), std::move(validation_layers));
 
+	// Verify optional features via vkGetInstanceProcAddr (more reliable than apiVersion alone).
+	if (api_version >= VK_API_VERSION_1_3 && vkGetDeviceProcAddr(device, "vkCmdBeginRendering"))
+		extensions.HasKHRDynamicRendering = 1;
+	if (api_version >= VK_API_VERSION_1_3 && vkGetDeviceProcAddr(device, "vkCmdPipelineBarrier2"))
+		extensions.HasKHRSynchronization2 = 1;
+
 	device_memory_manager=new VK_DeviceMemoryManager(this);
 	memory_manager=new VK_MemoryManager(this);
 	fence_manager=new VK_FenceManager(this);
@@ -131,6 +137,8 @@ void VK_Device::Init(Int device_index,Bool enable_validation_layers,CONST Vector
 	pipeline_state_manager = new VK_PipelineStateManager(this);
 	frame_buffer_manager = new VK_FrameBufferManager(this);
 	descriptset_allocator = new VK_DescriptsetAllocator(this, gpu_props.limits.maxSamplerAllocationCount);
+	resource_pool = new VK_ResourcePool();
+	MXRender::Render::g_resource_pool = resource_pool;
 }
 
 VkDevice VK_Device::GetDevice()
@@ -161,6 +169,11 @@ VK_MemoryManager* VK_Device::GetMemoryManager()
 VK_StagingBufferManager* VK_Device::GetStagingBufferManager()
 {
 	return staging_buffer_manager;
+}
+
+VK_ResourcePool* VK_Device::GetResourcePool()
+{
+	return resource_pool;
 }
 
 VK_CommandBufferManager* VK_Device::GetCommandBufferManager()
@@ -270,6 +283,12 @@ void VK_Device::Destroy()
 		delete staging_buffer_manager;
 		staging_buffer_manager = nullptr;
 	}
+	if (resource_pool)
+	{
+		MXRender::Render::g_resource_pool = nullptr;
+		delete resource_pool;
+		resource_pool = nullptr;
+	}
 	if (memory_manager)
 	{
 		delete memory_manager;
@@ -342,11 +361,6 @@ VK_DescriptsetAllocator* VK_Device::GetDescriptsetAllocator()
 {
 	return descriptset_allocator;
 }
-VK_ResourcePool* VK_Device::GetResourcePool()
-{
-	return resource_pool;
-}
-
 Vector<UniquePtr<MXRender::RHI::Vulkan::VK_Extension>> VK_Device::EnableDefaultFeature()
 {
 	auto support_extensions= VK_Extension::GetRenderSupportGpuFeatures(this, this->api_version);

@@ -25,8 +25,8 @@ class VK_PipelineStateManager;
 class VK_FrameBufferManager;
 class VK_DescriptsetAllocator;
 class VK_TempBlockAllocator;
-class VK_Extension;
 class VK_ResourcePool;
+class VK_Extension;
 MYRENDERER_BEGIN_STRUCT(OptionalVulkanDeviceExtensions)
 union
 {
@@ -180,11 +180,11 @@ public:
 	VK_StagingBufferManager* METHOD(GetStagingBufferManager)();
 	VK_CommandBufferManager* METHOD(GetCommandBufferManager)();
 	VK_TempBlockAllocator* METHOD(GetTempBlockAllocator)();
+	VK_ResourcePool* METHOD(GetResourcePool)();
 	VK_RenderPassManager* METHOD(GetRenderPassManager)();
 	VK_PipelineStateManager* METHOD(GetPipelineStateManager)();
 	VK_FrameBufferManager* METHOD(GetFrameBufferManager)();
 	VK_DescriptsetAllocator* METHOD(GetDescriptsetAllocator)();
-	VK_ResourcePool* METHOD(GetResourcePool)();
 	VK_Queue* METHOD(GetQueue)(ENUM_QUEUE_TYPE queue_type);
 	CONST OptionalVulkanDeviceExtensions& METHOD(GetOptionalExtensions)() CONST;
 	void METHOD(CreatePresentQueue)(VkSurfaceKHR surface);
@@ -218,11 +218,11 @@ protected:
 	VK_CommandBufferManager* command_buffer_manager = nullptr;
 	VK_StagingBufferManager* staging_buffer_manager = nullptr;
 	VK_TempBlockAllocator* temp_block_allocator = nullptr;
+	VK_ResourcePool* resource_pool = nullptr;
 	VK_RenderPassManager* render_pass_manager = nullptr;
 	VK_PipelineStateManager* pipeline_state_manager = nullptr;
 	VK_FrameBufferManager* frame_buffer_manager = nullptr;
 	VK_DescriptsetAllocator* descriptset_allocator = nullptr;
-	VK_ResourcePool* resource_pool = nullptr;
 public:
 
 

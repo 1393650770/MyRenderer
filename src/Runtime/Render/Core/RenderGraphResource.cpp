@@ -1,25 +1,15 @@
 #include "RenderGraphResource.h"
-#include <functional>
-#include <vector>
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Render)
 
-// Global deferred destruction queue.
-// Transient resources are pushed here during RenderGraph::Execute() and
-// destroyed at VulkanRHI::RenderEnd(), after the command buffer has been submitted.
-static Vector<std::function<void()>> g_deferred_destruction_queue;
-
-void PushDeferredDestruction(std::function<void()>&& deleter)
+void PushDeferredDestruction(std::unique_ptr<MXRender::RHI::RenderResource>&& resource)
 {
-	g_deferred_destruction_queue.push_back(std::move(deleter));
+	resource.reset();
 }
 
 void ProcessDeferredDestruction()
 {
-	for (auto& fn : g_deferred_destruction_queue)
-		fn();
-	g_deferred_destruction_queue.clear();
 }
 
 UInt32 RenderGraphResourceBase::GetID() CONST

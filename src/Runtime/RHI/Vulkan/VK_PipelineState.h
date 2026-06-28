@@ -13,6 +13,7 @@ class VK_Device;
 class VK_RenderPass;
 struct ReflectedBinding;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_PipelineState, public RenderPipelineState)
+friend class VK_PipelineStateManager;
 #pragma region METHOD
 public:
 	VK_PipelineState() MYDEFAULT;
@@ -36,6 +37,7 @@ protected:
 	Array<VkDescriptorSetLayout, MYRENDER_MAX_BINDING_SET_NUM> descriptorset_layouts{ VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE ,VK_NULL_HANDLE };
 	VK_Device* device;
 	Map<String, ReflectedBinding> compacted_bindings;
+	UInt64 last_used_frame = 0;
 private:
 
 #pragma endregion
@@ -51,8 +53,12 @@ public:
 	VkPipelineCache METHOD(GetPipelineCache)() CONST;
 
 	VK_PipelineState* METHOD(GetPipelineState)(CONST RenderGraphiPipelineStateDesc& in_desc, CONST VK_RenderPass* render_pass);
+	void METHOD(ProcessPendingDestruction)();
+	static constexpr UInt32 MaxPipelines = 1024;
 protected:
-
+	void LoadPipelineCache();
+	void SavePipelineCache();
+	void EvictLRU();
 private:
 
 #pragma endregion
@@ -63,6 +69,7 @@ protected:
 	VK_Device* device;
 	VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
 	Map<UInt64,VK_PipelineState*> pipeline_states_map;
+	Vector<VkPipeline> pending_destruction;
 private:
 
 #pragma endregion

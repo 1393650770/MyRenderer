@@ -61,6 +61,9 @@ public:
 
 	void METHOD(Release)();
 
+	// Buffer aliasing: compute offsets for transient buffers to share one VkDeviceMemory block.
+	void METHOD(CompileAliasingPlan)();
+
 	bool METHOD(Searilize)(CONST String& filename);
 
 	bool METHOD(Desearilize)(CONST String& filename);
@@ -88,6 +91,10 @@ protected:
 	Vector<std::unique_ptr<RenderGraphPassBase>> passes;
 	Vector<std::unique_ptr<RenderGraphResourceBase>> resources;
 	Vector<RenderGraphStep> steps;
+
+	// Buffer aliasing plan: resource pointer -> byte offset within the shared block
+	Map<RenderGraphResourceBase*, UInt64> aliasing_offsets;
+	UInt64 aliasing_block_size = 0;
 private:
 
 #pragma endregion

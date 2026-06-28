@@ -4,7 +4,6 @@
 #include "RenderGraphResourceImplementation.h"
 #include <variant>
 #include <type_traits>
-#include <functional>
 #include "RHI/RenderEnum.h"
 #include "RHI/RenderTexture.h"
 #include "RHI/RenderBuffer.h"
@@ -12,8 +11,7 @@ MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Render)
 
 // Global deferred destruction queue for transient RDG resources.
-// Push lambda-captured unique_ptrs here during Derealize; process in RenderEnd.
-void PushDeferredDestruction(std::function<void()>&& deleter);
+void PushDeferredDestruction(std::unique_ptr<MXRender::RHI::RenderResource>&& resource);
 void ProcessDeferredDestruction();
 
 // ---------------------------------------------------------------------------
@@ -160,28 +158,7 @@ protected:
 	{
 		if (GetIsTransient())
 		{
-			// Defer destruction to RenderEnd: the command buffer referencing this
-			// resource has not been submitted yet, so we must keep it alive.
-			auto& ptr = std::get<std::unique_ptr<actual_type>>(actual);
-			if (ptr)
-			{
-				if constexpr (std::is_same<actual_type, MXRender::RHI::Texture>::value)
-				{
-					PushDeferredDestruction([captured = std::move(ptr), desc = description]() mutable {
-						ReturnPooledTexture(std::move(captured), desc);
-					});
-				}
-				else if constexpr (std::is_same<actual_type, MXRender::RHI::Buffer>::value)
-				{
-					PushDeferredDestruction([captured = std::move(ptr), desc = description]() mutable {
-						ReturnPooledBuffer(std::move(captured), desc);
-					});
-				}
-				else
-				{
-					PushDeferredDestruction([captured = std::move(ptr)]() mutable { captured.reset(); });
-				}
-			}
+			std::get<std::unique_ptr<actual_type>>(actual).reset();
 		}
 	}
 private:
