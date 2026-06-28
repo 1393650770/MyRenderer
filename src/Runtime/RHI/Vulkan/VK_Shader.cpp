@@ -9,6 +9,7 @@
 #include "spv_reflect/spirv_reflect.h"
 #include "VK_Buffer.h"
 #include "VK_Texture.h"
+#include "VK_BindlessManager.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -116,6 +117,7 @@ void VK_Shader::ReflectBindings(CONST Vector<ShaderDataPayload::ShaderBindingOve
 			
 		}
 		layout.set_number = refl_set.set;
+		layout.is_bindless = (refl_set.set == VK_BindlessManager::BINDLESS_SET_INDEX);  // Set 2 = global bindless heap
 		layout.create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		layout.create_info.bindingCount = refl_set.binding_count;
 		layout.create_info.pBindings = layout.bindings.data();
@@ -156,7 +158,11 @@ VK_ShaderResourceBinding::~VK_ShaderResourceBinding()
 
 VK_ShaderResourceBinding::VK_ShaderResourceBinding(VK_Device* in_device, Map<String, ReflectedBinding>& in_bindings,Bool in_is_static_resource) :device(in_device), bindings(in_bindings),is_static_resource(in_is_static_resource)
 {
-	
+	// Pre-allocate to avoid vector reallocation invalidating pBufferInfo/pImageInfo pointers
+	// stored in pending_writes entries.
+	pending_buffer_infos.reserve(32);
+	pending_image_infos.reserve(32);
+	pending_writes.reserve(16);
 }
 
 CONST VkDescriptorSet* VK_ShaderResourceBinding::GetDescriptorSets() CONST
@@ -193,10 +199,16 @@ void VK_ShaderResourceBinding::SetResource(CONST String& name, CONST RenderResou
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 		{
+			auto* vk_buf = STATIC_CAST(resource, CONST VK_Buffer);
 			VkDescriptorBufferInfo buffer_info{};
-			buffer_info.buffer = STATIC_CAST(resource, CONST VK_Buffer)->GetBuffer();
-			buffer_info.offset = 0;
-			buffer_info.range = VK_WHOLE_SIZE;
+			buffer_info.buffer = vk_buf->GetBuffer();
+			// Use GetOffset() for pooled buffers (sub-allocation offset within shared VkBuffer).
+			// For dedicated buffers, this returns 0 (offset baked into vkBindBufferMemory).
+			buffer_info.offset = vk_buf->GetOffset();
+			// Use actual buffer size, not VK_WHOLE_SIZE — with pooled buffers, VK_WHOLE_SIZE
+			// would extend to the end of the shared pool VkBuffer (e.g. 128KB), exceeding
+			// maxUniformBufferRange (64KB) and causing validation errors.
+			buffer_info.range = vk_buf->GetBufferDesc().size;
 			pending_buffer_infos.push_back(buffer_info);
 			descriptor_write.pBufferInfo = &pending_buffer_infos.back();
 			break;

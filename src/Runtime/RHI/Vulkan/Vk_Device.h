@@ -27,6 +27,7 @@ class VK_DescriptsetAllocator;
 class VK_TempBlockAllocator;
 class VK_ResourcePool;
 class VK_Extension;
+class VK_BindlessManager;
 MYRENDERER_BEGIN_STRUCT(OptionalVulkanDeviceExtensions)
 union
 {
@@ -153,6 +154,8 @@ public:
 
 	VkPhysicalDeviceMeshShaderPropertiesEXT MeshShaderProperties;
 
+	VkPhysicalDeviceDescriptorIndexingProperties DescriptorIndexingProps;
+
 MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Device , public RenderResource)
@@ -185,6 +188,7 @@ public:
 	VK_PipelineStateManager* METHOD(GetPipelineStateManager)();
 	VK_FrameBufferManager* METHOD(GetFrameBufferManager)();
 	VK_DescriptsetAllocator* METHOD(GetDescriptsetAllocator)();
+	VK_BindlessManager* METHOD(GetBindlessManager)();
 	VK_Queue* METHOD(GetQueue)(ENUM_QUEUE_TYPE queue_type);
 	CONST OptionalVulkanDeviceExtensions& METHOD(GetOptionalExtensions)() CONST;
 	void METHOD(CreatePresentQueue)(VkSurfaceKHR surface);
@@ -223,6 +227,7 @@ protected:
 	VK_PipelineStateManager* pipeline_state_manager = nullptr;
 	VK_FrameBufferManager* frame_buffer_manager = nullptr;
 	VK_DescriptsetAllocator* descriptset_allocator = nullptr;
+	VK_BindlessManager* bindless_manager = nullptr;
 public:
 
 

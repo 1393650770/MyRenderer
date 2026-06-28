@@ -14,6 +14,7 @@
 #include "VK_PipelineState.h"
 #include "VK_CommandBuffer.h"
 #include "VK_Queue.h"
+#include "VK_BindlessManager.h"
 #include "vulkan/vulkan_core.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -334,6 +335,16 @@ void VulkanRHI::RenderEnd()
 {
 	device->GetMemoryManager()->ReleaseFreedPages();
 	device->GetStagingBufferManager()->ProcessPendingFree(false, true);
+}
+
+VK_BindlessManager* VulkanRHI::GetBindlessManager()
+{
+	return device ? device->GetBindlessManager() : nullptr;
+}
+
+VK_Device* VulkanRHI::GetDevice() CONST
+{
+	return device;
 }
 
 MYRENDERER_END_NAMESPACE

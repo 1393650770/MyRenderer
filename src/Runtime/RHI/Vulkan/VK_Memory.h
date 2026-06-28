@@ -546,6 +546,7 @@ public:
     Bool METHOD(AllocateBufferPooled)(VK_Allocation& out_allocation, UInt32 in_size, UInt32 in_min_alignment, VkBufferUsageFlags in_buffer_usage_flags, VkMemoryPropertyFlags in_memory_property_flags, ENUM_VK_AllocationMetaType in_meta_type);
     Bool METHOD(AllocateImageMemory)(VK_Allocation& out_allocation, VkImage in_image, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment = 1);
     Bool METHOD(AllocateBufferMemory)(VK_Allocation& out_allocation, VkBuffer in_buffer, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment = 1);
+    static VkMemoryPropertyFlags METHOD(GetMemoryPropertyFlags)(ENUM_VulkanAllocationFlags in_alloc_flags, Bool is_has_unified_memory);
     void METHOD(FreeAllocation)(VK_Allocation& allocation);
     //Bool METHOD(AllocateDedicatedImageMemory)(VK_Allocation* out_allocation);
     Bool METHOD(AllocateUniformBuffer)(VK_Allocation& out_allocation,UInt32 in_size);

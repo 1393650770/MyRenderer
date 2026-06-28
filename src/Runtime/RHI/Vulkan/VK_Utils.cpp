@@ -1552,6 +1552,9 @@ namespace MXRender
 		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_LESS:
 			return VK_COMPARE_OP_LESS;
 			break;
+			case MXRender::ENUM_STENCIL_FUNCTION::ENUM_LEQUAL:
+				return VK_COMPARE_OP_LESS_OR_EQUAL;
+				break;
 		case MXRender::ENUM_STENCIL_FUNCTION::ENUM_EQUAL:
 			return VK_COMPARE_OP_EQUAL;
 			break;

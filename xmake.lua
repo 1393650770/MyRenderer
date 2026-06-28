@@ -227,3 +227,9 @@ target("RendererSample-Reflection")
     set_group("Sample")
     after_build(MoveResource)
 
+target("RendererSample-Bindless")
+    CommonProjectSetting()
+    add_files("src/Sample/5-Bindless/Bindless.cpp")
+    set_group("Sample")
+    after_build(MoveResource)
+

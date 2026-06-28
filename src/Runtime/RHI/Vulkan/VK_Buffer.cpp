@@ -17,14 +17,45 @@ extern enum
 VK_Buffer::VK_Buffer(VK_Device* in_device, const BufferDesc& in_buffer_desc) :Buffer(in_buffer_desc),
 device(in_device)
 {
-	VkBufferCreateInfo buffer_create_info = {};
-	GenerateBufferCreateInfo(buffer_create_info, in_buffer_desc);
-	vkCreateBuffer(device->GetDevice(), &buffer_create_info, VULKAN_CPU_ALLOCATOR, &buffer);
+	ENUM_VulkanAllocationFlags alloc_flags = TranslateBufferTypeToVulkanAllocationFlags(buffer_desc.type);
+	VkBufferUsageFlags usage_flags = VK_Utils::Translate_Buffer_usage_type_To_VulkanUsageFlag(buffer_desc.type);
+	VkMemoryPropertyFlags mem_flags = VK_MemoryManager::GetMemoryPropertyFlags(alloc_flags,
+		device->GetDeviceMemoryManager()->HasUnifiedMemory());
 
-	device->GetMemoryManager()->AllocateBufferMemory(allocation, buffer, 
-		TranslateBufferTypeToVulkanAllocationFlags(buffer_desc.type));
-	allocation.BindBuffer(device,buffer);
+	// Map buffer type to allocation meta type for pooled allocation tracking
+	ENUM_VK_AllocationMetaType meta_type = ENUM_VK_AllocationMetaType::EVulkanAllocationMetaMultiBuffer;
+	if (EnumHasAnyFlags(buffer_desc.type, ENUM_BUFFER_TYPE::Uniform))
+		meta_type = ENUM_VK_AllocationMetaType::EVulkanAllocationMetaUniformBuffer;
+	else if (EnumHasAnyFlags(buffer_desc.type, ENUM_BUFFER_TYPE::Storage))
+		meta_type = ENUM_VK_AllocationMetaType::EVulkanAllocationMetaBufferUAV;
+	else if (EnumHasAnyFlags(buffer_desc.type, ENUM_BUFFER_TYPE::Staging))
+		meta_type = ENUM_VK_AllocationMetaType::EVulkanAllocationMetaBufferStaging;
 
+	// Minimal alignment: request buffer usage flags determine alignment needs
+	UInt32 min_alignment = 16;
+
+	// Staging buffers are always dedicated (they need their own VkBuffer for Map/Unmap)
+	Bool is_staging = EnumHasAnyFlags(buffer_desc.type, ENUM_BUFFER_TYPE::Staging);
+
+	// Try shared pool allocation first (UE-style: sub-allocate from a pool VkBuffer)
+	Bool pooled = !is_staging && device->GetMemoryManager()->AllocateBufferPooled(
+		allocation, buffer_desc.size, min_alignment, usage_flags, mem_flags, meta_type);
+
+	if (pooled)
+	{
+		// Use the shared pool VkBuffer; offset is pool-internal (allocation.offset)
+		buffer = allocation.GetBufferHandle();
+	}
+	else
+	{
+		// Fallback: dedicated VkBuffer (for large or unusual buffers)
+		VkBufferCreateInfo buffer_create_info = {};
+		GenerateBufferCreateInfo(buffer_create_info, in_buffer_desc);
+		vkCreateBuffer(device->GetDevice(), &buffer_create_info, VULKAN_CPU_ALLOCATOR, &buffer);
+
+		device->GetMemoryManager()->AllocateBufferMemory(allocation, buffer, alloc_flags);
+		allocation.BindBuffer(device, buffer);
+	}
 }
 
 void VK_Buffer::GenerateBufferCreateInfo(VkBufferCreateInfo& buffer_create_info, const BufferDesc& desc)
@@ -43,10 +74,15 @@ void VK_Buffer::Destroy()
 {
 	if (buffer)
 	{
-		vkDestroyBuffer(device->GetDevice(), buffer, VULKAN_CPU_ALLOCATOR);
-		buffer = VK_NULL_HANDLE;
 		VK_MemoryManager* memory_manager = device->GetMemoryManager();
 		memory_manager->FreeAllocation(allocation);
+		// Only destroy the VkBuffer if it's a dedicated buffer (not a shared pool buffer).
+		// Shared pool buffers have allocation.GetBufferHandle() == buffer.
+		if (allocation.GetBufferHandle() != buffer)
+		{
+			vkDestroyBuffer(device->GetDevice(), buffer, VULKAN_CPU_ALLOCATOR);
+		}
+		buffer = VK_NULL_HANDLE;
 	}
 }
 
@@ -82,7 +118,9 @@ void* VK_Buffer::Map(CONST ENUM_MAP_TYPE& map_type, CONST ENUM_MAP_FLAG& map_fla
 		command_buffer->Begin();
 		VkBufferCopy region;
 		region.size = buffer_desc.size;
-		region.srcOffset = allocation.GetBufferOffset();
+		// Use GetOffset(): for pooled buffers, this is the sub-allocation offset within the shared VkBuffer.
+		// For dedicated buffers (fallback), this is 0 (offset baked into vkBindBufferMemory).
+		region.srcOffset = GetOffset();
 		region.dstOffset = 0;
 		command_buffer->CopyBuffer(buffer, staging_buffer->GetBuffer(), 1, &region);
 		command_buffer->MemoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_HOST_READ_BIT);
@@ -118,7 +156,7 @@ void VK_Buffer::Unmap()
 			VkBufferCopy region;
 			region.size = buffer_desc.size;
 			region.srcOffset = 0;
-			region.dstOffset = allocation.GetBufferOffset();
+			region.dstOffset = GetOffset();
 			command_buffer->CopyBuffer(mapping.map_staging_buffer->GetBuffer(), buffer, 1, &region);
 			command_buffer->MemoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT);
 			command_buffer->End();
@@ -180,6 +218,16 @@ VkBuffer VK_Buffer::GetBuffer() CONST
 {
 	return buffer;
 }
+
+UInt32 VK_Buffer::GetOffset() CONST
+{
+	// For pooled buffers: return sub-allocation offset within the shared pool VkBuffer.
+	// For dedicated buffers (fallback): allocation offset was baked into vkBindBufferMemory.
+	if (allocation.GetBufferHandle() != VK_NULL_HANDLE)
+		return allocation.GetBufferOffset();
+	return 0;
+}
+
 Bool VK_Buffer::CanMove() CONST
 {
 	return true;
@@ -276,7 +324,7 @@ VK_Buffer* VK_StagingBufferManager::GetStagingBuffer(UInt64 size)
 	{
 		if (stagingbuffer.buffer->GetBufferDesc().size == size)
 		{
-			//´Ófree_buffersÖĞÒÆ³ı£¬std::vectorÃ»ÓĞremove·½·¨£¬ËùÒÔÓÃerase
+			//ï¿½ï¿½free_buffersï¿½ï¿½ï¿½Æ³ï¿½ï¿½ï¿½std::vectorÃ»ï¿½ï¿½removeï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½erase
 		    free_buffers.erase(std::remove(free_buffers.begin(), free_buffers.end(), stagingbuffer), free_buffers.end());
 			return stagingbuffer.buffer;
 		}

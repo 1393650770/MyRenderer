@@ -183,6 +183,64 @@ public:
 
 MYRENDERER_END_CLASS
 
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_DescriptorIndexingExtension, public VK_Extension)
+public:
+	VK_DescriptorIndexingExtension(VK_Device* in_device)
+		: VK_Extension(in_device, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME, VULKAN_EXTENSION_ENABLED, VK_API_VERSION_1_2) {}
+
+	VIRTUAL void METHOD(PrePhysicalDeviceProperties)(VkPhysicalDeviceProperties2KHR& physical_device_properties2) OVERRIDE FINAL
+	{
+		VkPhysicalDeviceDescriptorIndexingProperties& props = GetDeviceExtensionProperties().DescriptorIndexingProps;
+		props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES;
+		props.pNext = nullptr;
+		AddToPNext(physical_device_properties2, props);
+	}
+	VIRTUAL void METHOD(PostPhysicalDeviceProperties)() OVERRIDE FINAL
+	{
+		// Store maxUpdateAfterBindDescriptors for later use
+		const auto& props = GetDeviceExtensionProperties().DescriptorIndexingProps;
+		max_update_after_bind_sampled_images = props.maxDescriptorSetUpdateAfterBindSampledImages;
+		max_update_after_bind_samplers = props.maxDescriptorSetUpdateAfterBindSamplers;
+		max_per_stage_update_after_bind_sampled_images = props.maxPerStageDescriptorUpdateAfterBindSampledImages;
+	}
+
+	VIRTUAL void METHOD(PrePhysicalDeviceFeatures)(VkPhysicalDeviceFeatures2KHR& physical_device_features2) OVERRIDE FINAL
+	{
+		actual_vk_khr.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+		actual_vk_khr.pNext = nullptr;
+		AddToPNext(physical_device_features2, actual_vk_khr);
+	}
+	VIRTUAL void METHOD(PostPhysicalDeviceFeatures)(OptionalVulkanDeviceExtensions* extension_flags) OVERRIDE FINAL
+	{
+		// Require the minimal set of features needed for bindless
+		is_requirements_passed = (
+			actual_vk_khr.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE &&
+			actual_vk_khr.descriptorBindingPartiallyBound == VK_TRUE &&
+			actual_vk_khr.runtimeDescriptorArray == VK_TRUE &&
+			actual_vk_khr.shaderSampledImageArrayNonUniformIndexing == VK_TRUE &&
+			actual_vk_khr.descriptorBindingVariableDescriptorCount == VK_TRUE
+		);
+		if (is_requirements_passed)
+		{
+			extension_flags->HasEXTDescriptorIndexing = 1;
+		}
+	}
+	VIRTUAL void METHOD(PreCreateDevice)(VkDeviceCreateInfo& device_info) OVERRIDE FINAL
+	{
+		if (is_requirements_passed)
+		{
+			AddToPNext(device_info, actual_vk_khr);
+		}
+	}
+	VkPhysicalDeviceDescriptorIndexingFeatures actual_vk_khr;
+
+	// Cached limits for bindless
+	UInt32 max_update_after_bind_sampled_images = 0;
+	UInt32 max_update_after_bind_samplers = 0;
+	UInt32 max_per_stage_update_after_bind_sampled_images = 0;
+
+MYRENDERER_END_CLASS
+
 VK_Extension::VK_Extension(VK_Device* in_device, CONST String in_extension_name, Int in_enable_in_code, UInt32 in_promoted_version, UniquePtr<std::function<void(MXRender::RHI::Vulkan::OptionalVulkanDeviceExtensions& extion_flags)>>&& in_flag_setter, ENUM_ExtensionActivation in_extension_activate)
 	:device(in_device),name(in_extension_name),is_enable_incode(in_enable_in_code),is_supported(false),is_core(false),is_activate(in_extension_activate==ENUM_ExtensionActivation::AutoActivate), promoted_version(in_promoted_version),flag_setter(std::move(in_flag_setter))
 {
@@ -237,6 +295,7 @@ Vector<UniquePtr<VK_Extension>> VK_Extension::GetRenderSupportGpuFeatures(VK_Dev
 	ADD_CUSTOM_EXTENSION(VK_RayTracingPipelineExtension);
 	ADD_CUSTOM_EXTENSION(VK_RayQueryExtension);
 	ADD_CUSTOM_EXTENSION(VK_RayTracingPositionFetchExtension);
+	ADD_CUSTOM_EXTENSION(VK_DescriptorIndexingExtension);
 	FlagExtensionSupport(GetDriverSupportedDeviceExtensions(in_device->GetGpu()), return_device_extensions, api_version, ("device"));
 	return std::move(return_device_extensions);
 }

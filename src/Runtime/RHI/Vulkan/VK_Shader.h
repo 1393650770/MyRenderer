@@ -17,6 +17,7 @@ MYRENDERER_BEGIN_STRUCT(DescriptorSetLayoutData)
 UInt8 set_number;
 VkDescriptorSetLayoutCreateInfo create_info;
 Vector<VkDescriptorSetLayoutBinding> bindings;
+bool is_bindless = false;
 MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_STRUCT(ReflectedBinding)

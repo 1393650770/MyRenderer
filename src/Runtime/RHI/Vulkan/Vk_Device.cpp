@@ -14,6 +14,7 @@
 #include "VK_DescriptorSets.h"
 #include "VK_Extension.h"
 #include "VK_ResourcePool.h"
+#include "VK_BindlessManager.h"
 #include "Render/Core/RenderGraphResource.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -137,6 +138,7 @@ void VK_Device::Init(Int device_index,Bool enable_validation_layers,CONST Vector
 	pipeline_state_manager = new VK_PipelineStateManager(this);
 	frame_buffer_manager = new VK_FrameBufferManager(this);
 	descriptset_allocator = new VK_DescriptsetAllocator(this, gpu_props.limits.maxSamplerAllocationCount);
+	bindless_manager = new VK_BindlessManager(this);
 	resource_pool = new VK_ResourcePool();
 	MXRender::Render::g_resource_pool = resource_pool;
 }
@@ -329,6 +331,11 @@ void VK_Device::Destroy()
 		delete descriptset_allocator;
 		descriptset_allocator=nullptr;
 	}
+	if (bindless_manager)
+	{
+		delete bindless_manager;
+		bindless_manager = nullptr;
+	}
 		if (resource_pool)
 		{
 			MXRender::Render::g_resource_pool = nullptr;
@@ -361,6 +368,12 @@ VK_DescriptsetAllocator* VK_Device::GetDescriptsetAllocator()
 {
 	return descriptset_allocator;
 }
+
+VK_BindlessManager* VK_Device::GetBindlessManager()
+{
+	return bindless_manager;
+}
+
 Vector<UniquePtr<MXRender::RHI::Vulkan::VK_Extension>> VK_Device::EnableDefaultFeature()
 {
 	auto support_extensions= VK_Extension::GetRenderSupportGpuFeatures(this, this->api_version);

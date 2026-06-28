@@ -23,6 +23,7 @@ public:
 	VIRTUAL void* METHOD(Map)(CONST ENUM_MAP_TYPE& map_type, CONST ENUM_MAP_FLAG& map_flag) FINAL;
 	VIRTUAL void METHOD(Unmap)()  FINAL;
 	VkBuffer METHOD(GetBuffer)() CONST;
+	UInt32 METHOD(GetOffset)() CONST;
 	void METHOD(Destroy)();
 	void METHOD(FlushMappedMemory)();
 	static void METHOD(GenerateBufferCreateInfo)(VkBufferCreateInfo& buffer_create_info, CONST BufferDesc& desc);

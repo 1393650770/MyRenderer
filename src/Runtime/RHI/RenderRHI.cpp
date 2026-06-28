@@ -1,6 +1,8 @@
 #include "RenderRHI.h"
 #include "Platform/Platform.h"
 #include "Vulkan/VK_RenderPass.h"
+#include "Vulkan/VK_RenderRHI.h"
+#include "Vulkan/VK_BindlessManager.h"
 #include "RenderTexture.h"
 
 MXRender::RHI::RenderRHI* g_render_rhi = nullptr;
@@ -83,5 +85,15 @@ void* RHIMapBuffer(MXRender::RHI::Buffer* buffer, MXRender::ENUM_MAP_TYPE map_ty
 void RHIUnmapBuffer(MXRender::RHI::Buffer* buffer)
 {
 	g_render_rhi->UnmapBuffer(buffer);
+}
+
+MXRender::RHI::Vulkan::VK_BindlessManager* RHIGetBindlessManager()
+{
+	if (g_render_rhi)
+	{
+		auto* vulkan_rhi = static_cast<MXRender::RHI::Vulkan::VulkanRHI*>(g_render_rhi);
+		return vulkan_rhi->GetBindlessManager();
+	}
+	return nullptr;
 }
 

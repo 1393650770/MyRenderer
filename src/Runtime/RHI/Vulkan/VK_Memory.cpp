@@ -24,7 +24,7 @@ enum
 
 UInt32 g_vulkan_budget_percentage_scale = 100;
 Int g_vulkan_use_buffer_binning = 1;
-static VkMemoryPropertyFlags GetMemoryPropertyFlags(ENUM_VulkanAllocationFlags alloc_flags, Bool is_has_unified_memory)
+static VkMemoryPropertyFlags InternalGetMemoryPropertyFlags(ENUM_VulkanAllocationFlags alloc_flags, Bool is_has_unified_memory)
 {
 	VkMemoryPropertyFlags mem_flags = 0;
 
@@ -90,10 +90,7 @@ static UInt32 CalculateBufferAlignmentFromVKUsageFlags(VK_Device* in_device, CON
 	{
 		alignment = std::max(alignment, (UInt32)Limits.minUniformBufferOffsetAlignment);
 	}
-	else
-	{
-		CHECK_WITH_LOG(true, ("RHI Error: Unknown buffer alignment for VkBufferUsageFlags combination"));
-	}
+	// else: TRANSFER_SRC/DST, INDIRECT, or other general-purpose buffers — keep default 16-byte alignment
 
 	return alignment;
 }
@@ -137,7 +134,8 @@ static Float32 CalculateBufferPriority(CONST VkBufferUsageFlags in_buffer_usage_
 	}
 	else
 	{
-		CHECK_WITH_LOG(true, "RHI Error: Unknown priority for VkBufferUsageFlags combination");
+		// TRANSFER_SRC/DST or other general-purpose buffers — default medium priority
+		priority = VULKAN_MEMORY_MEDIUM_PRIORITY;
 	}
 
 	return priority;
@@ -771,7 +769,7 @@ Bool VK_MemoryManager::AllocateImageMemory(VK_Allocation& out_allocation, VkImag
 
 
 	// For now, translate all the flags into a call to the legacy AllocateImageMemory() function
-	CONST VkMemoryPropertyFlags memory_property_flags = GetMemoryPropertyFlags(in_alloc_flags, device_memory_manager->GetIsSupportUnifiedMemory());
+	CONST VkMemoryPropertyFlags memory_property_flags = InternalGetMemoryPropertyFlags(in_alloc_flags, device_memory_manager->GetIsSupportUnifiedMemory());
 	CONST Bool is_external = EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::External);
 	CONST Bool is_force_separate_allocation = EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::Dedicated);
 
@@ -832,7 +830,7 @@ Bool VK_MemoryManager::AllocateBufferMemory(VK_Allocation& out_allocation, VkBuf
 	}
 
 	// For now, translate all the flags into a call to the legacy AllocateBufferMemory() function
-	CONST VkMemoryPropertyFlags memory_property_flags = GetMemoryPropertyFlags(in_alloc_flags, device_memory_manager->GetIsSupportUnifiedMemory());
+	CONST VkMemoryPropertyFlags memory_property_flags = InternalGetMemoryPropertyFlags(in_alloc_flags, device_memory_manager->GetIsSupportUnifiedMemory());
 	CONST Bool is_external = EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::External);
 	CONST Bool is_force_separate_allocation = EnumHasAllFlags(in_alloc_flags, ENUM_VulkanAllocationFlags::Dedicated);
 
@@ -1632,7 +1630,7 @@ VK_MemoryResourceFragmentAllocator::VK_MemoryResourceFragmentAllocator(ENUM_VK_A
 
 VK_MemoryResourceFragmentAllocator::VK_MemoryResourceFragmentAllocator(ENUM_VK_AllocationType in_type, VK_MemoryManager* in_owner, UInt8 in_subresource_allocator_flags, VK_DeviceMemoryAllocation* in_device_memory_allocation, UInt32 in_memory_type_index, VkMemoryPropertyFlags in_memory_property_flags, UInt32 in_alignment, VkBuffer in_buffer, UInt32 in_buffer_size, UInt32 in_buffer_id, VkBufferUsageFlags in_buffer_usage_flags, Int in_pool_size_index)
 	: type(in_type), owner_memory_manager(in_owner), subresource_allocator_flags(in_subresource_allocator_flags), memory_allocation(in_device_memory_allocation), memory_type_index(in_memory_type_index), buffer_id(in_buffer_id),
-	max_size(in_buffer_size),buffer_usage_flags(in_buffer_usage_flags),buffer(in_buffer),pool_size_index(in_pool_size_index),allocator_index(0xffffffff)
+	max_size(in_buffer_size),buffer_usage_flags(in_buffer_usage_flags),buffer(in_buffer),pool_size_index(in_pool_size_index),allocator_index(0xffffffff),alignment(in_alignment)
 {
 	if (in_device_memory_allocation->CheckIsMapped())
 	{
@@ -2050,6 +2048,11 @@ MemoryBlockKey::MemoryBlockKey(CONST MemoryBlockKey& other)
 {
 	memory_type_index = other.memory_type_index;
 	block_size = other.block_size;
+}
+
+VkMemoryPropertyFlags VK_MemoryManager::GetMemoryPropertyFlags(ENUM_VulkanAllocationFlags in_alloc_flags, Bool is_has_unified_memory)
+{
+	return InternalGetMemoryPropertyFlags(in_alloc_flags, is_has_unified_memory);
 }
 
 MYRENDERER_END_NAMESPACE

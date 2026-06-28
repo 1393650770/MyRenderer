@@ -545,9 +545,9 @@ void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, T
 		Vector<VkClearValue> vk_clear_values;
 		for (Int i = 0; i < clear_values.size(); ++i)
 			vk_clear_values.push_back({ clear_values[i].color[0], clear_values[i].color[1], clear_values[i].color[2], clear_values[i].color[3] });
+		BeginDynamicRendering(render_targets, depth_stencil, render_targets[0]->GetTextureDesc().width, render_targets[0]->GetTextureDesc().height, (UInt32)vk_clear_values.size(), vk_clear_values.data());
 		state_cache.render_targets = render_targets;
 		state_cache.depth_stencil = depth_stencil;
-		BeginDynamicRendering(render_targets, depth_stencil, render_targets[0]->GetTextureDesc().width, render_targets[0]->GetTextureDesc().height, (UInt32)vk_clear_values.size(), vk_clear_values.data());
 		return;
 	}
 	// Legacy VkRenderPass path
@@ -602,14 +602,29 @@ void VK_CommandBuffer::SetShaderResourceBinding(ShaderResourceBinding* srb)
 	VK_ShaderResourceBinding* vk_srb = STATIC_CAST(srb, VK_ShaderResourceBinding);
 	state_cache.srb = vk_srb;
 	CONST VkDescriptorSet* descriptor_sets = vk_srb->GetDescriptorSets();
+	// Find the first and last non-null descriptor set in the array.
+	// This correctly handles non-contiguous sets (e.g., Set 0 and Set 3 used, Sets 1-2 null).
+	Int first_non_null = -1;
+	Int last_non_null = -1;
 	for (UInt32 i = 0; i < MYRENDER_MAX_BINDING_SET_NUM; ++i)
 	{
-		if ( descriptor_sets[i] != VK_NULL_HANDLE)
+		if (descriptor_sets[i] != VK_NULL_HANDLE)
 		{
-			state_cache.descriptor_sets = &(descriptor_sets[i]);
-			state_cache.descriptor_sets_count = std::max((UInt8)(i+1), state_cache.descriptor_sets_count);
-			break;
+			if (first_non_null < 0) first_non_null = (Int)i;
+			last_non_null = (Int)i;
 		}
+	}
+	if (first_non_null >= 0)
+	{
+		state_cache.descriptor_sets = &(descriptor_sets[first_non_null]);
+		state_cache.descriptor_sets_count = (UInt8)(last_non_null - first_non_null + 1);
+		state_cache.first_set = (UInt32)first_non_null;
+	}
+	else
+	{
+		state_cache.descriptor_sets = nullptr;
+		state_cache.descriptor_sets_count = 0;
+		state_cache.first_set = 0;
 	}
 }
 
@@ -631,7 +646,7 @@ void VK_CommandBuffer::Draw(CONST DrawAttribute& draw_attr)
 	if (state_cache.srb)
 		state_cache.srb->FlushDescriptorWrites();
 	if(state_cache.descriptor_sets != nullptr)
-		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.pipeline_layout, 0, state_cache.descriptor_sets_count, state_cache.descriptor_sets, 0, nullptr);
+		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.pipeline_layout, state_cache.first_set, state_cache.descriptor_sets_count, state_cache.descriptor_sets, 0, nullptr);
 	vkCmdDraw(command_buffer, draw_attr.vertexCount, draw_attr.instanceCount, draw_attr.firstVertex, draw_attr.firstInstance);
 }
 

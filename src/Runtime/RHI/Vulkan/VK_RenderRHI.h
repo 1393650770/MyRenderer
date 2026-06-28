@@ -17,6 +17,7 @@ MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 class VK_Device;
 class VK_Viewport;
 class VK_CommandBuffer;
+class VK_BindlessManager;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VulkanRenderFactory,public RenderFactory)
 public:
 	
@@ -63,6 +64,8 @@ public:
 	VIRTUAL	CommandList* METHOD(GetImmediateCommandList)() OVERRIDE FINAL;
 	VIRTUAL void METHOD(SubmitCommandList)(CommandList* command_list) OVERRIDE FINAL;
 	VIRTUAL void METHOD(RenderEnd)() OVERRIDE FINAL;
+	VK_BindlessManager* METHOD(GetBindlessManager)();
+	VK_Device* METHOD(GetDevice)() CONST;
 #pragma endregion
 
 private:

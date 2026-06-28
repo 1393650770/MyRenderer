@@ -8,6 +8,7 @@
 #include "Core/TypeHash.h"
 #include "VK_Shader.h"
 #include "VK_DescriptorSets.h"
+#include "VK_BindlessManager.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
@@ -28,8 +29,17 @@ VK_PipelineState::~VK_PipelineState()
 	{
 		if (it != VK_NULL_HANDLE)
 		{
-			vkDestroyDescriptorSetLayout(device->GetDevice(), it, nullptr);
-			it = VK_NULL_HANDLE;
+			// Do NOT destroy the shared global bindless layout (owned by VK_BindlessManager)
+			VK_BindlessManager* bindless = device->GetBindlessManager();
+			if (bindless && bindless->IsEnabled() && it == bindless->GetLayout())
+			{
+				it = VK_NULL_HANDLE;  // Just clear the reference, don't destroy
+			}
+			else
+			{
+				vkDestroyDescriptorSetLayout(device->GetDevice(), it, nullptr);
+				it = VK_NULL_HANDLE;
+			}
 		}
 	}
 }
@@ -246,17 +256,25 @@ VkPipelineLayout VK_PipelineState::CreatePipelineLayout(CONST RenderGraphiPipeli
 		});
 
 
+		// Detect if this set uses the global bindless heap (Set 3 with bindings)
+		ly.is_bindless = (i == VK_BindlessManager::BINDLESS_SET_INDEX && ly.bindings.size() > 0);
+
 		ly.create_info.bindingCount = (uint32_t)ly.bindings.size();
 		ly.create_info.pBindings = ly.bindings.data();
 		ly.create_info.flags = 0;
 		ly.create_info.pNext = 0;
 
 
-		if (ly.create_info.bindingCount > 0)
+		if (ly.is_bindless && device->GetBindlessManager() && device->GetBindlessManager()->IsEnabled())
+		{
+			// Use the shared global bindless descriptor set layout (all pipelines with Set 3 share this)
+			descriptorset_layouts[i] = device->GetBindlessManager()->GetLayout();
+		}
+		else if (ly.create_info.bindingCount > 0)
 		{
 			CHECK_WITH_LOG( vkCreateDescriptorSetLayout(device->GetDevice(), &ly.create_info, nullptr, &descriptorset_layouts[i])!=VK_SUCCESS, "RHI Error: Failed to create descriptor set layout");
 		}
-		else 
+		else
 		{
 			descriptorset_layouts[i] = VK_NULL_HANDLE;
 		}
@@ -292,7 +310,7 @@ VkPipelineLayout VK_PipelineState::CreatePipelineLayout(CONST RenderGraphiPipeli
 	int s = 0;
 	for (int i = 0; i < MYRENDER_MAX_BINDING_SET_NUM; i++)
 	{
-		if (descriptorset_layouts[i] != VK_NULL_HANDLE) 
+		if (descriptorset_layouts[i] != VK_NULL_HANDLE)
 		{
 			compacted_layouts[s] = descriptorset_layouts[i];
 			s++;
@@ -329,7 +347,16 @@ void VK_PipelineState::CreateShaderResourceBinding(ShaderResourceBinding*& out_s
 	{
 		if (descriptorset_layouts[i] != VK_NULL_HANDLE)
 		{
-			allocator->AllocateDescriptorset(descriptorset_layouts[i], vk_srb->descriptorset[i]);
+			// Check if this set uses the global bindless descriptor set
+			if (device->GetBindlessManager() && device->GetBindlessManager()->IsEnabled()
+				&& descriptorset_layouts[i] == device->GetBindlessManager()->GetLayout())
+			{
+				vk_srb->descriptorset[i] = device->GetBindlessManager()->GetDescriptorSet();
+			}
+			else
+			{
+				allocator->AllocateDescriptorset(descriptorset_layouts[i], vk_srb->descriptorset[i]);
+			}
 		}
 		else
 		{

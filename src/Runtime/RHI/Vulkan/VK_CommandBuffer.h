@@ -163,7 +163,12 @@ public:
 	{
 		if (command_state > EState::NeedReset && command_state < EState::HasEndedCommandBuffer)
 		{
-			EndRenderPass();
+			// Distinguish legacy render pass vs dynamic rendering by state_cache.render_pass.
+			// Legacy BeginRenderPass sets it non-null; BeginDynamicRendering leaves it VK_NULL_HANDLE.
+			if (state_cache.render_pass != VK_NULL_HANDLE)
+				EndRenderPass();
+			else
+				EndDynamicRendering();
 			FlushBarriers();
 			CHECK_WITH_LOG(vkEndCommandBuffer(command_buffer) != VK_SUCCESS, "RHI Error : fail to end commandbuffer ");
 			command_state = EState::NeedReset;
@@ -236,6 +241,7 @@ public:
 		VkPipeline    raytracing_pipeline = VK_NULL_HANDLE;
 		VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
 		UInt8         descriptor_sets_count = 0;
+		UInt32        first_set = 0;
 		CONST VkDescriptorSet* descriptor_sets = nullptr;
 		VK_ShaderResourceBinding* srb = nullptr;
 		VkBuffer      index_buffer = VK_NULL_HANDLE;

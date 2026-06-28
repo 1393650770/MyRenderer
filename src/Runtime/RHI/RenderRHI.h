@@ -92,5 +92,9 @@ extern CORE_API void METHOD(RHIRenderEnd)();
 extern CORE_API void METHOD(RHISubmitCommandList)(MXRender::RHI::CommandList* command_list);
 extern CORE_API void* METHOD(RHIMapBuffer)(MXRender::RHI::Buffer* buffer, MXRender::ENUM_MAP_TYPE map_type, MXRender::ENUM_MAP_FLAG map_flag);
 extern CORE_API void METHOD(RHIUnmapBuffer)(MXRender::RHI::Buffer* buffer);
+
+namespace MXRender::RHI::Vulkan { class VK_BindlessManager; }
+extern CORE_API MXRender::RHI::Vulkan::VK_BindlessManager* METHOD(RHIGetBindlessManager)();
+
 #endif
 
