@@ -180,6 +180,36 @@ VkBuffer VK_Buffer::GetBuffer() CONST
 {
 	return buffer;
 }
+Bool VK_Buffer::CanMove() CONST
+{
+	return true;
+}
+
+VkBuffer VK_Buffer::GetVkBuffer() CONST
+{
+	return buffer;
+}
+
+UInt32 VK_Buffer::GetMemorySize() CONST
+{
+	return buffer_desc.size;
+}
+
+void VK_Buffer::Move(VK_Device& device, VK_CommandBuffer* cmd, VK_Allocation& new_allocation)
+{
+	// 1. GPU copy old buffer -> new buffer
+	VkBufferCopy region;
+	region.srcOffset = 0;
+	region.dstOffset = 0;
+	region.size = buffer_desc.size;
+	cmd->CopyBuffer(buffer, new_allocation.GetBufferHandle(), 1, &region);
+
+	// 2. Bind this buffer to the new memory
+	vkBindBufferMemory(device.GetDevice(), buffer, new_allocation.GetDeviceMemoryHandle(&device), new_allocation.offset);
+
+	// 3. Swap allocations - old goes to new_allocation for caller to free
+	allocation.Swap(new_allocation);
+}
 
 VK_StagingBufferManager::VK_StagingBufferManager(VK_Device* in_device) :device(in_device)
 {

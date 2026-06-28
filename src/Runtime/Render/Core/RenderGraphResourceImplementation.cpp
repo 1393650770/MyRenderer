@@ -1,4 +1,5 @@
 #include "RenderGraphResourceImplementation.h"
+#include "RenderGraphResource.h"
 #include "RHI/RenderRHI.h"
 #include "RHI/RenderTexture.h"
 #include "RHI/RenderBuffer.h"
@@ -12,6 +13,11 @@ MYRENDERER_BEGIN_NAMESPACE(Render)
 template<>
 std::unique_ptr<MXRender::RHI::Texture> RealizeResource<MXRender::RHI::TextureDesc, MXRender::RHI::Texture>(CONST MXRender::RHI::TextureDesc& description)
 {
+	// Try pooled resource first.
+	auto pooled = AcquirePooledTexture(description);
+	if (pooled)
+		return pooled;
+
 	std::unique_ptr<MXRender::RHI::Texture> texture(RHICreateTexture(description));
 	return std::move(texture);
 }
@@ -19,6 +25,11 @@ std::unique_ptr<MXRender::RHI::Texture> RealizeResource<MXRender::RHI::TextureDe
 template<>
 std::unique_ptr<MXRender::RHI::Buffer> RealizeResource<MXRender::RHI::BufferDesc, MXRender::RHI::Buffer>(CONST MXRender::RHI::BufferDesc& description)
 {
+	// Try pooled resource first.
+	auto pooled = AcquirePooledBuffer(description);
+	if (pooled)
+		return pooled;
+
 	std::unique_ptr<MXRender::RHI::Buffer> buffer(RHICreateBuffer(description));
 	return std::move(buffer);
 }

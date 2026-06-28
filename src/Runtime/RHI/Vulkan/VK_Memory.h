@@ -17,6 +17,7 @@ MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 class VK_Device;
 class VK_DeviceMemoryAllocation;
+class VK_CommandBuffer;
 class VK_DeviceMemoryManager;
 class VK_MemoryManager;
 class VK_MemoryResourceHeap;
@@ -30,6 +31,7 @@ enum class ENUM_VK_AllocationType : UInt8
 	EVulkanAllocationBuffer,
 	EVulkanAllocationImage,
 	EVulkanAllocationImageDedicated,
+	EVulkanAllocationTempBlockBuffer,
 };
 
 enum class ENUM_VK_AllocationMetaType : UInt8
@@ -131,10 +133,14 @@ MYRENDERER_BEGIN_STRUCT(MemoryBlock)
 
 MYRENDERER_END_STRUCT
 
-MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Evictable,public RenderResource)
+MYRENDERER_BEGIN_CLASS(VK_Evictable)
 #pragma region METHOD
-public: 
-
+public:
+	virtual Bool CanMove() CONST { return false; }
+	virtual void Move(VK_Device& device, VK_CommandBuffer* cmd, VK_Allocation& new_allocation) {}
+	virtual VkBuffer GetVkBuffer() CONST { return VK_NULL_HANDLE; }
+	virtual UInt32 GetMemorySize() CONST { return 0; }
+	virtual UInt32 GetMemoryAlignment() CONST { return 256; }
 #pragma endregion
 MYRENDERER_END_CLASS
 
@@ -227,12 +233,12 @@ public:
 
 protected:
     /// <summary>
-    /// ¾ßÌåµÄÊÍ·ÅÄÚ´æ
+    /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í·ï¿½ï¿½Ú´ï¿½
     /// </summary>
     Int METHOD(FreeInternal)(VK_DeviceMemoryAllocation*& allocation);
 
     /// <summary>
-    /// °´Ö¡Êý¶¨Ê±Çå³ýÄÚ´æ(ÏÈÍ³¼ÆÁãÉ¢µÄ¿éÊý£¬ÔÙ°´Ö¡Êý³¬¹ýÒ»¶¨ÊýÁ¿ÔÙÈ«²¿Çå³þ)
+    /// ï¿½ï¿½Ö¡ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½Ú´ï¿½(ï¿½ï¿½Í³ï¿½ï¿½ï¿½ï¿½É¢ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù°ï¿½Ö¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½ï¿½)
     /// </summary>
     /// <param name=""></param>
     /// <returns></returns>
@@ -276,7 +282,7 @@ MYRENDERER_BEGIN_STRUCT(VK_VulkanPageSizeBucket)
 MYRENDERER_END_STRUCT
 
 /// <summary>
-/// ¾ßÌåµÄËéÆ¬ÕûÀí
+/// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ¬ï¿½ï¿½ï¿½ï¿½
 /// </summary>
 MYRENDERER_BEGIN_STRUCT(VK_Section)
     UInt32 offset;
@@ -313,7 +319,7 @@ MYRENDERER_END_STRUCT
 
 
 /// <summary>
-/// ÓÃÀ´¼ÇÂ¼ÐÅÏ¢£¬·½±ã×öÇ¨ÒÆºÍËéÆ¬ÕûÀí
+/// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â¼ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç¨ï¿½Æºï¿½ï¿½ï¿½Æ¬ï¿½ï¿½ï¿½ï¿½
 /// </summary>
 MYRENDERER_BEGIN_STRUCT(VK_AllocationInternalInfo)
     enum class ENUM_VK_AllocationState :Int
@@ -355,6 +361,7 @@ public:
     VIRTUAL ~VK_MemoryResourceFragmentAllocator();
 
     Bool METHOD(TryAllocate)(VK_Allocation& out_allocation, VK_Evictable* owner, UInt32 in_size, UInt32 in_alignment, ENUM_VK_AllocationMetaType in_meta_type);
+    void METHOD(SetAllocationOwner)(UInt32 alloc_index, VK_Evictable* owner);
     void METHOD(Free)(VK_Allocation& allocation);
     void METHOD(Destroy)(VK_Device* device);
     UInt8 METHOD(GetSubresourceAllcatorFlags)();
@@ -367,6 +374,8 @@ protected:
     Int METHOD(AllocateInternalData)();
     void METHOD(FreeInternalData)(Int index);
     Bool METHOD(MergeFreeBlocks)();
+	Bool METHOD(CanDefrag)() CONST;
+	UInt32 METHOD(DefragTick)(VK_Device& device, VK_CommandBuffer* cmd, VK_MemoryResourceHeap* heap, UInt32 max_count);
 private:
 
 #pragma endregion
@@ -401,6 +410,7 @@ protected:
     UInt32 free_calls = 0;
     Vector<VK_Section> free_list;
     Vector<VK_AllocationInternalInfo> internal_data;
+	Vector<VK_Allocation*> allocation_refs; // parallel to internal_data, for defrag back-reference
     Int internal_free_listnode_index=-1;
 private:
 
@@ -422,7 +432,9 @@ public:
 
     UInt32 METHOD(GetPageSizeBucket)(VK_VulkanPageSizeBucket& out_bucket,ENUM_VK_HeapAllocationType type, UInt32 allocation_size,Bool is_force_single_allocation);
 protected:
-    Bool METHOD(TryRealloc)(VK_Allocation& out_allocation);
+    Bool METHOD(TryRealloc)(VK_Allocation& out_allocation, VK_Evictable* allocation_owner, ENUM_VK_HeapAllocationType type, UInt32 size, UInt32 alignment, ENUM_VK_AllocationMetaType meta_type);
+	void METHOD(DefragTick)(VK_Device& device, UInt32 count);
+	void METHOD(SetDefragging)(VK_MemoryResourceFragmentAllocator* page);
     Bool METHOD(AllocateResource)(VK_Allocation& out_allocation,  VK_Evictable* allocation_owner, ENUM_VK_HeapAllocationType type, UInt32 size, UInt32 alignment, Bool is_map_allocation, Bool is_force_separate_allocation, ENUM_VK_AllocationMetaType meta_type, Bool is_external);
     Bool METHOD(AllocateDedicatedImage)(VK_Allocation& out_allocation,  VK_Evictable* allocation_owner, ENUM_VK_HeapAllocationType type, UInt32 size, UInt32 alignment, Bool is_map_allocation, Bool is_force_separate_allocation, ENUM_VK_AllocationMetaType meta_type, Bool is_external);
 private:
@@ -530,6 +542,7 @@ public:
 
     void METHOD(Destroy)();
     void METHOD(ReleaseFreedPages)();
+	void METHOD(DefragTick)();
     Bool METHOD(AllocateBufferPooled)(VK_Allocation& out_allocation, UInt32 in_size, UInt32 in_min_alignment, VkBufferUsageFlags in_buffer_usage_flags, VkMemoryPropertyFlags in_memory_property_flags, ENUM_VK_AllocationMetaType in_meta_type);
     Bool METHOD(AllocateImageMemory)(VK_Allocation& out_allocation, VkImage in_image, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment = 1);
     Bool METHOD(AllocateBufferMemory)(VK_Allocation& out_allocation, VkBuffer in_buffer, ENUM_VulkanAllocationFlags in_alloc_flags, UInt32 in_force_min_alignment = 1);

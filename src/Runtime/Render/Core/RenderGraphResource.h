@@ -3,11 +3,41 @@
 #define _RENDERGRAPHRESOURCE_
 #include "RenderGraphResourceImplementation.h"
 #include <variant>
+#include <type_traits>
+#include <functional>
+#include "RHI/RenderEnum.h"
+#include "RHI/RenderTexture.h"
+#include "RHI/RenderBuffer.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Render)
 
+// Global deferred destruction queue for transient RDG resources.
+// Push lambda-captured unique_ptrs here during Derealize; process in RenderEnd.
+void PushDeferredDestruction(std::function<void()>&& deleter);
+void ProcessDeferredDestruction();
+
+// ---------------------------------------------------------------------------
+// Cross-frame resource pooling bridge.
+// Declared here (Render layer) so Derealize/Realize can use them.
+// Implemented in the VK layer (VK_ResourcePool.cpp).
+// ---------------------------------------------------------------------------
+std::unique_ptr<MXRender::RHI::Texture> AcquirePooledTexture(CONST MXRender::RHI::TextureDesc& desc);
+void ReturnPooledTexture(std::unique_ptr<MXRender::RHI::Texture> texture, CONST MXRender::RHI::TextureDesc& desc);
+std::unique_ptr<MXRender::RHI::Buffer> AcquirePooledBuffer(CONST MXRender::RHI::BufferDesc& desc);
+void ReturnPooledBuffer(std::unique_ptr<MXRender::RHI::Buffer> buffer, CONST MXRender::RHI::BufferDesc& desc);
+
+// Global resource pool pointer — defined in VK_ResourcePool.cpp, set in VK_Device::Init().
+extern void* g_resource_pool; // Opaque pointer; actual type is VK_ResourcePool* in ::MXRender::RHI::Vulkan
 
 class RenderGraphPassBase;
+
+// Describes the access pattern of a pass on a resource.
+struct PassResourceAccess
+{
+	CONST RenderGraphPassBase* pass = nullptr;
+	MXRender::ENUM_RESOURCE_STATE required_state = MXRender::ENUM_RESOURCE_STATE::Undefined;
+	bool is_write = false;
+};
 
 MYRENDERER_BEGIN_CLASS(RenderGraphResourceBase)
 
@@ -29,6 +59,18 @@ public:
 	CONST String& METHOD(GetName)() CONST;
 	void METHOD(SetName)(CONST String& in_name);
 	Bool METHOD(GetIsTransient)() CONST;
+
+	VIRTUAL bool IsTextureResource() CONST { return false; }
+	VIRTUAL bool IsBufferResource() CONST { return false; }
+
+	// Get the actual RHI resource pointers. Returns nullptr if not applicable.
+	VIRTUAL MXRender::RHI::Texture* GetAsTexture() CONST { return nullptr; }
+	VIRTUAL MXRender::RHI::Buffer* GetAsBuffer() CONST { return nullptr; }
+
+	// Track the current resource state for automatic barrier generation.
+	MXRender::ENUM_RESOURCE_STATE tracked_state = MXRender::ENUM_RESOURCE_STATE::Undefined;
+	// Access sequence of passes on this resource (ordered by pass execution).
+	Vector<PassResourceAccess> access_sequence;
 
 protected:
 	VIRTUAL void METHOD(Realize)() PURE;
@@ -91,6 +133,21 @@ public:
 	{
 		return std::holds_alternative<std::unique_ptr<actual_type>>(actual) ? std::get<std::unique_ptr<actual_type>>(actual).get() : std::get<actual_type*>(actual);
 	}
+
+	// Override type-specific accessors.
+	VIRTUAL MXRender::RHI::Texture* GetAsTexture() CONST override
+	{
+		if constexpr (std::is_same<actual_type, MXRender::RHI::Texture>::value)
+			return std::holds_alternative<std::unique_ptr<actual_type>>(actual) ? std::get<std::unique_ptr<actual_type>>(actual).get() : std::get<actual_type*>(actual);
+		return nullptr;
+	}
+	VIRTUAL MXRender::RHI::Buffer* GetAsBuffer() CONST override
+	{
+		if constexpr (std::is_same<actual_type, MXRender::RHI::Buffer>::value)
+			return std::holds_alternative<std::unique_ptr<actual_type>>(actual) ? std::get<std::unique_ptr<actual_type>>(actual).get() : std::get<actual_type*>(actual);
+		return nullptr;
+	}
+
 protected:
 	VIRTUAL void METHOD(Realize)() override
 	{
@@ -103,7 +160,28 @@ protected:
 	{
 		if (GetIsTransient())
 		{
-			std::get<std::unique_ptr<actual_type>>(actual).reset();
+			// Defer destruction to RenderEnd: the command buffer referencing this
+			// resource has not been submitted yet, so we must keep it alive.
+			auto& ptr = std::get<std::unique_ptr<actual_type>>(actual);
+			if (ptr)
+			{
+				if constexpr (std::is_same<actual_type, MXRender::RHI::Texture>::value)
+				{
+					PushDeferredDestruction([captured = std::move(ptr), desc = description]() mutable {
+						ReturnPooledTexture(std::move(captured), desc);
+					});
+				}
+				else if constexpr (std::is_same<actual_type, MXRender::RHI::Buffer>::value)
+				{
+					PushDeferredDestruction([captured = std::move(ptr), desc = description]() mutable {
+						ReturnPooledBuffer(std::move(captured), desc);
+					});
+				}
+				else
+				{
+					PushDeferredDestruction([captured = std::move(ptr)]() mutable { captured.reset(); });
+				}
+			}
 		}
 	}
 private:
@@ -128,4 +206,3 @@ MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 
 #endif
-

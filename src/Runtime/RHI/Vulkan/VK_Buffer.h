@@ -11,8 +11,8 @@ MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 
 class VK_CommandBuffer;
 
-MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_Buffer,  public Buffer)
-
+class VK_Buffer : public Buffer, public VK_Evictable
+{
 friend class VK_BufferManager;
 
 #pragma region METHOD
@@ -20,13 +20,18 @@ public:
 	VK_Buffer(VK_Device* in_device, CONST BufferDesc& in_buffer_desc);
 	VIRTUAL ~VK_Buffer();
 
-	VIRTUAL void* METHOD(Map)(CONST ENUM_MAP_TYPE& map_type, CONST ENUM_MAP_FLAG& map_flag) OVERRIDE FINAL;
-	VIRTUAL void METHOD(Unmap)()  OVERRIDE FINAL;
+	VIRTUAL void* METHOD(Map)(CONST ENUM_MAP_TYPE& map_type, CONST ENUM_MAP_FLAG& map_flag) FINAL;
+	VIRTUAL void METHOD(Unmap)()  FINAL;
 	VkBuffer METHOD(GetBuffer)() CONST;
 	void METHOD(Destroy)();
 	void METHOD(FlushMappedMemory)();
 	static void METHOD(GenerateBufferCreateInfo)(VkBufferCreateInfo& buffer_create_info, CONST BufferDesc& desc);
 	static ENUM_VulkanAllocationFlags METHOD(TranslateBufferTypeToVulkanAllocationFlags)(CONST ENUM_BUFFER_TYPE& buffer_usage);
+		// VK_Evictable overrides
+		VIRTUAL Bool METHOD(CanMove)() CONST OVERRIDE;
+		VIRTUAL void METHOD(Move)(VK_Device& device, VK_CommandBuffer* cmd, VK_Allocation& new_allocation) OVERRIDE;
+		VIRTUAL VkBuffer METHOD(GetVkBuffer)() CONST OVERRIDE;
+		VIRTUAL UInt32 METHOD(GetMemorySize)() CONST OVERRIDE;
 protected:
 	void AllocateMemory();
 

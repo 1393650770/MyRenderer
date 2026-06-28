@@ -13,6 +13,8 @@
 #include "VK_FrameBuffer.h"
 #include "VK_DescriptorSets.h"
 #include "VK_Extension.h"
+#include "VK_ResourcePool.h"
+#include "Render/Core/RenderGraphResource.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -95,13 +97,8 @@ void VK_Device::CreateDevice(Bool enable_validation_layers, CONST Vector<UniqueP
 	create_info.enabledExtensionCount = static_cast<uint32_t>(device_extensions.size());
 	create_info.ppEnabledExtensionNames = device_extensions.data();
 
-	if (enable_validation_layers) {
-		create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
-		create_info.ppEnabledLayerNames = validation_layers.data();
-	}
-	else {
-		create_info.enabledLayerCount = 0;
-	}
+	// Device layers are deprecated since Vulkan 1.0; only instance layers are valid.
+	create_info.enabledLayerCount = 0;
 
 	CHECK_WITH_LOG(vkCreateDevice(gpu, &create_info, nullptr, &(device)) != VK_SUCCESS,"RHI Error: failed to create logical device!");
 	CreateQueue(queue_family_indices);
@@ -313,6 +310,12 @@ void VK_Device::Destroy()
 		delete descriptset_allocator;
 		descriptset_allocator=nullptr;
 	}
+		if (resource_pool)
+		{
+			MXRender::Render::g_resource_pool = nullptr;
+			delete resource_pool;
+			resource_pool = nullptr;
+		}
 	if (device)
 	{
 		vkDestroyDevice(device, VULKAN_CPU_ALLOCATOR);
@@ -338,6 +341,10 @@ VK_FrameBufferManager* VK_Device::GetFrameBufferManager()
 VK_DescriptsetAllocator* VK_Device::GetDescriptsetAllocator()
 {
 	return descriptset_allocator;
+}
+VK_ResourcePool* VK_Device::GetResourcePool()
+{
+	return resource_pool;
 }
 
 Vector<UniquePtr<MXRender::RHI::Vulkan::VK_Extension>> VK_Device::EnableDefaultFeature()

@@ -4,6 +4,8 @@
 #include "VK_Utils.h"
 #include "Core/ConstGlobals.h"
 #include "Core/TypeHash.h"
+#include "VK_CommandBuffer.h"
+#include "VK_Queue.h"
 #include <xutility>
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -21,7 +23,7 @@ enum
 };
 
 UInt32 g_vulkan_budget_percentage_scale = 100;
-Int g_vulkan_use_buffer_binning = 0;
+Int g_vulkan_use_buffer_binning = 1;
 static VkMemoryPropertyFlags GetMemoryPropertyFlags(ENUM_VulkanAllocationFlags alloc_flags, Bool is_has_unified_memory)
 {
 	VkMemoryPropertyFlags mem_flags = 0;
@@ -479,10 +481,10 @@ void VK_DeviceMemoryManager::TrimMemory(Bool is_full_trim)
 {
 /*
 
-Õâ¸öº¯ÊýÊÇVulkanäÖÈ¾ÒýÇæµÄÉè±¸ÄÚ´æ¹ÜÀíÆ÷µÄÒ»¸öº¯Êý£¬ÓÃÓÚÔÚÄÚ´æ²»×ãÊ±ÊÍ·ÅÒ»Ð©ÄÚ´æ¡£¸Ãº¯ÊýÊ×ÏÈ¶ÔÄÚ´æ¿é½øÐÐ±éÀú£¬¶ÔÓÚÃ¿¸öÄÚ´æ¿é£¬Ëü»á¼ÆËã³öÒ»¸ö²¿·ÖÊÍ·ÅµÄãÐÖµ£¬È»ºó±éÀú¸ÃÄÚ´æ¿éÖÐµÄÃ¿¸ö·ÖÅä¿é¡£
-Èç¹ûÒ»¸ö·ÖÅä¿éÒÑ¾­±»±£Áô³¬¹ýÒ»¸öÖ¸¶¨µÄÖ¡Êý£¨FrameThresholdFull£©£¬»òÕßÊÇÒª½øÐÐÈ«ÃæµÄÄÚ´æÊÍ·Å£¨bFullTrim£©£¬ÄÇÃ´¸Ã·ÖÅä¿é½«±»ÊÍ·Å£¬·ñÔòÈç¹û¸Ã·ÖÅä¿éÒÑ¾­±»±£Áô³¬¹ý²¿·ÖÊÍ·ÅµÄãÐÖµ£¨FrameThresholdPartial£©£¬
-Ôò¼ÆÊýÆ÷AbovePartialThreshold½«»áÔö¼Ó¡£Èç¹ûAbovePartialThresholdµÄÊýÁ¿³¬¹ýÁË²¿·ÖÊÍ·ÅµÄãÐÖµ£¨ThresholdPartial£©£¬Ôò»á´Ó¸ÃÄÚ´æ¿éÖÐÉ¾³ýÒ»Ð©·ÖÅä¿é£¬Ö±µ½AbovePartialThresholdµÄÊýÁ¿µÈÓÚ²¿·ÖÊÍ·ÅµÄãÐÖµ£¬
-ÒÔÊÍ·ÅÒ»Ð©ÄÚ´æ¡£ÔÚÊÍ·ÅÒ»¸ö·ÖÅä¿éÊ±£¬¸Ãº¯Êý½«¼õÉÙÏàÓ¦ÄÚ´æÀàÐÍµÄ¼ÆÊýÆ÷ÒÔ¼°×ÜÄÚ´æ¼ÆÊýÆ÷¡£¸Ãº¯ÊýÊµÏÖÁËÔÚÄÚ´æ²»×ãÊ±ÊÍ·ÅÄÚ´æµÄ¹¦ÄÜ£¬²¢ÇÒ¿¼ÂÇÁËÄÚ´æ¿éµÄ´óÐ¡ºÍ±£ÁôÊ±¼äµÈÒòËØ£¬ÒÔÓÅ»¯ÄÚ´æÊÍ·ÅµÄÐ§ÂÊºÍÐÔÄÜ¡£
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Vulkanï¿½ï¿½È¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½è±¸ï¿½Ú´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú´æ²»ï¿½ï¿½Ê±ï¿½Í·ï¿½Ò»Ð©ï¿½Ú´æ¡£ï¿½Ãºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¶ï¿½ï¿½Ú´ï¿½ï¿½ï¿½ï¿½Ð±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã¿ï¿½ï¿½ï¿½Ú´ï¿½é£¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í·Åµï¿½ï¿½ï¿½Öµï¿½ï¿½È»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú´ï¿½ï¿½ï¿½Ðµï¿½Ã¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é¡£
+ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½Ö¸ï¿½ï¿½ï¿½ï¿½Ö¡ï¿½ï¿½ï¿½ï¿½FrameThresholdFullï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½Ú´ï¿½ï¿½Í·Å£ï¿½bFullTrimï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã´ï¿½Ã·ï¿½ï¿½ï¿½é½«ï¿½ï¿½ï¿½Í·Å£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã·ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í·Åµï¿½ï¿½ï¿½Öµï¿½ï¿½FrameThresholdPartialï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½AbovePartialThresholdï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¡ï¿½ï¿½ï¿½ï¿½AbovePartialThresholdï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë²ï¿½ï¿½ï¿½ï¿½Í·Åµï¿½ï¿½ï¿½Öµï¿½ï¿½ThresholdPartialï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¸ï¿½ï¿½Ú´ï¿½ï¿½ï¿½ï¿½É¾ï¿½ï¿½Ò»Ð©ï¿½ï¿½ï¿½ï¿½é£¬Ö±ï¿½ï¿½AbovePartialThresholdï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú²ï¿½ï¿½ï¿½ï¿½Í·Åµï¿½ï¿½ï¿½Öµï¿½ï¿½
+ï¿½ï¿½ï¿½Í·ï¿½Ò»Ð©ï¿½Ú´æ¡£ï¿½ï¿½ï¿½Í·ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½Ãºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½Ú´ï¿½ï¿½ï¿½ï¿½ÍµÄ¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¼ï¿½ï¿½ï¿½ï¿½Ú´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ãºï¿½ï¿½ï¿½Êµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú´æ²»ï¿½ï¿½Ê±ï¿½Í·ï¿½ï¿½Ú´ï¿½Ä¹ï¿½ï¿½Ü£ï¿½ï¿½ï¿½ï¿½Ò¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú´ï¿½ï¿½Ä´ï¿½Ð¡ï¿½Í±ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø£ï¿½ï¿½ï¿½ï¿½Å»ï¿½ï¿½Ú´ï¿½ï¿½Í·Åµï¿½Ð§ï¿½Êºï¿½ï¿½ï¿½ï¿½Ü¡ï¿½
 */
     //blocks are always freed after being reserved for FrameThresholdFull frames.
 	CONST UInt32 frame_threshold_full = 100;
@@ -701,10 +703,11 @@ Bool VK_MemoryManager::AllocateBufferPooled(VK_Allocation& out_allocation, UInt3
 	CONST UInt32 buffer_size = std::max(in_size, BufferSizes[pool_size]);
 
 	VkBuffer buffer;
-	VkBufferCreateInfo buffer_create_info;
+	VkBufferCreateInfo buffer_create_info{};
 	buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	buffer_create_info.size = buffer_size;
-	buffer_create_info.usage = in_buffer_usage_flags;
+	buffer_create_info.usage = in_buffer_usage_flags | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	// For descriptors buffers
 	if (device->GetOptionalExtensions().HasBufferDeviceAddress)
 	{
@@ -1106,6 +1109,11 @@ Bool VK_MemoryResourceFragmentAllocator::TryAllocate(VK_Allocation& out_allocati
 			alloc_calls++;
 			num_sub_allocations++;
 
+			// Register back-reference for defrag
+			if (allocation_refs.size() <= (size_t)extra_offset)
+				allocation_refs.resize(extra_offset + 1, nullptr);
+			allocation_refs[extra_offset] = &out_allocation;
+
 			is_defragging = false;
 			return true;
 		}
@@ -1116,6 +1124,10 @@ Bool VK_MemoryResourceFragmentAllocator::TryAllocate(VK_Allocation& out_allocati
 UInt8 VK_MemoryResourceFragmentAllocator::GetSubresourceAllcatorFlags()
 {
     return subresource_allocator_flags;
+}
+void VK_MemoryResourceFragmentAllocator::SetAllocationOwner(UInt32 alloc_index, VK_Evictable* owner)
+{
+	internal_data[alloc_index].allocation_owner = owner;
 }
 
 void VK_MemoryResourceFragmentAllocator::Free(VK_Allocation& allocation)
@@ -1138,6 +1150,8 @@ void VK_MemoryResourceFragmentAllocator::Free(VK_Allocation& allocation)
 				memory_used[(UInt32)allocation.meta_type] -= allocation_size;
 			}
 			data.state = VK_AllocationInternalInfo::ENUM_VK_AllocationState::EFREED;
+			if (allocation.allocation_index < (Int)allocation_refs.size())
+				allocation_refs[allocation.allocation_index] = nullptr;
 			FreeInternalData(allocation.allocation_index);
             allocation.allocation_index = -1;
 			if (is_was_discarded)
@@ -1228,10 +1242,224 @@ void VK_MemoryManager::Destroy()
 	}
 	resource_heaps.clear();
 }
+// ============================================================
+// Defrag implementation
+// ============================================================
+
+Bool VK_MemoryResourceFragmentAllocator::CanDefrag() CONST
+{
+	if (is_locked || is_evicting || is_defragging) return false;
+	if (num_sub_allocations == 0) return false;
+	// Only pooled buffer pages can be defragged (they have a valid backing VkBuffer + usage flags).
+	// Image pages and non-pooled buffer pages need vkCmdCopyImage / individual buffer moves (V2).
+	if (type != ENUM_VK_AllocationType::EVulkanAllocationPooledBuffer) return false;
+	if (buffer == VK_NULL_HANDLE || buffer_usage_flags == 0) return false;
+	return true;
+}
+
+Bool VK_MemoryResourceHeap::TryRealloc(VK_Allocation& out_allocation, VK_Evictable* allocation_owner,
+	ENUM_VK_HeapAllocationType type, UInt32 size, UInt32 alignment, ENUM_VK_AllocationMetaType meta_type)
+{
+	VK_VulkanPageSizeBucket bucket;
+	UInt32 bucket_id = GetPageSizeBucket(bucket, type, size, false);
+	if (bucket_id >= MAX_BUCKETS) return false;
+
+	for (VK_MemoryResourceFragmentAllocator* page : active_pages[bucket_id])
+	{
+		if (page->is_locked || page->is_evicting || page->is_defragging)
+			continue;
+		if (page->TryAllocate(out_allocation, allocation_owner, size, alignment, meta_type))
+			return true;
+	}
+	return false;
+}
+
+UInt32 VK_MemoryResourceFragmentAllocator::DefragTick(VK_Device& device, VK_CommandBuffer* cmd,
+	VK_MemoryResourceHeap* heap, UInt32 max_count)
+{
+	last_defrag_frame = (UInt32)g_frame_number_render_thread;
+	is_locked = true;
+
+	UInt32 moved = 0;
+	// Use the page's own backing buffer (all sub-allocations share this VkBuffer)
+	VkBuffer old_buffer = buffer;
+	if (old_buffer == VK_NULL_HANDLE) { is_locked = false; return 0; }
+
+	// Create destination buffer with same properties
+	VkBufferCreateInfo buf_info{};
+	buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	buf_info.size = max_size;
+	buf_info.usage = buffer_usage_flags | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	buf_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VkBuffer new_buffer = VK_NULL_HANDLE;
+	if (vkCreateBuffer(device.GetDevice(), &buf_info, VULKAN_CPU_ALLOCATOR, &new_buffer) != VK_SUCCESS)
+	{
+		is_locked = false;
+		return 0;
+	}
+
+	// Allocate memory for new backing buffer
+	VK_DeviceMemoryManager* mem_mgr = owner_memory_manager->GetDeviceMemoryManager();
+	VkMemoryRequirements mem_reqs;
+	vkGetBufferMemoryRequirements(device.GetDevice(), new_buffer, &mem_reqs);
+
+	UInt32 type_index = memory_type_index;
+	if (!mem_mgr->GetMemoryTypeFromProperties(mem_reqs.memoryTypeBits, memory_property_flags, &type_index))
+	{
+		vkDestroyBuffer(device.GetDevice(), new_buffer, VULKAN_CPU_ALLOCATOR);
+		is_locked = false;
+		return 0;
+	}
+
+	VK_DeviceMemoryAllocation* new_mem = mem_mgr->Alloc(max_size, type_index, nullptr, 1.0f, false);
+	if (!new_mem)
+	{
+		vkDestroyBuffer(device.GetDevice(), new_buffer, VULKAN_CPU_ALLOCATOR);
+		is_locked = false;
+		return 0;
+	}
+
+	vkBindBufferMemory(device.GetDevice(), new_buffer, new_mem->GetMemory(), 0);
+
+	// Copy live allocations
+	cmd->Begin();
+	UInt32 new_offset = 0;
+	for (UInt32 i = 0; i < internal_data.size() && moved < max_count; ++i)
+	{
+		auto& info = internal_data[i];
+		if (info.state != VK_AllocationInternalInfo::ENUM_VK_AllocationState::EALLOCATED)
+			continue;
+
+		// Align new offset
+		UInt32 aligned = (new_offset + info.alignment - 1) & ~(info.alignment - 1);
+		VkBufferCopy region{};
+		region.srcOffset = info.allocation_offset;
+		region.dstOffset = aligned;
+		region.size = info.allocation_size;
+		cmd->CopyBuffer(old_buffer, new_buffer, 1, &region);
+
+		// Update the VK_Allocation to point to new buffer/offset
+		if (i < allocation_refs.size() && allocation_refs[i])
+		{
+			allocation_refs[i]->vulkan_handle = (UInt64)new_buffer;
+			allocation_refs[i]->offset = aligned;
+		}
+		new_offset = aligned + info.allocation_size;
+		++moved;
+	}
+	cmd->MemoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT);
+	cmd->End();
+	device.GetQueue(ENUM_QUEUE_TYPE::TRANSFER)->Submit(cmd);
+
+	// Swap in the new buffer
+	buffer = new_buffer;
+	max_size = (UInt32)new_mem->GetSize();
+
+	// Free old backing memory (deferred)
+	// The old buffer's allocations now point to new_buffer, old buffer can be destroyed
+	vkDestroyBuffer(device.GetDevice(), old_buffer, VULKAN_CPU_ALLOCATOR);
+
+	is_locked = false;
+	return moved;
+}
+
+void VK_MemoryResourceHeap::DefragTick(VK_Device& device, UInt32 count)
+{
+	if (count == 0) return;
+
+	// Scan for candidate pages â€” pick the most fragmented one
+	VK_MemoryResourceFragmentAllocator* best = nullptr;
+	Float32 best_frag = 0.0f;
+
+	UInt32 num_buckets = (UInt32)page_size_buckets.size();
+	for (UInt32 b = 0; b < num_buckets; ++b)
+	{
+		if (page_size_buckets[b].max_allocation == 0) continue;
+		for (auto* page : active_pages[b])
+		{
+			if (page->is_locked || page->is_defragging || page->is_evicting)
+				continue;
+			if (page->num_sub_allocations == 0)
+				continue;
+			if (g_frame_number_render_thread - page->last_defrag_frame < 100)
+				continue;
+			if (!page->CanDefrag())
+				continue;
+
+			Float32 used = (Float32)page->used_size;
+			Float32 max_sz = (Float32)page->max_size;
+			if (max_sz == 0) continue;
+			Float32 free_ratio = 1.0f - used / max_sz;
+			if (free_ratio < 0.3f) continue; // not fragmented enough
+
+			if (free_ratio > best_frag)
+			{
+				best_frag = free_ratio;
+				best = page;
+			}
+		}
+	}
+
+	if (!best) return;
+
+	// Lock and defrag
+	best->is_defragging = true;
+	best->is_locked = true;
+
+	VK_CommandBuffer* cmd = owner->device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::TRANSFER);
+	UInt32 moved = best->DefragTick(device, cmd, this, count);
+
+	if (moved > 0)
+		defrag_count_down = 3;
+	else
+	{
+		if (defrag_count_down > 0)
+			--defrag_count_down;
+		if (defrag_count_down == 0)
+		{
+			best->is_defragging = false;
+			best->is_locked = false;
+		}
+	}
+}
+
+void VK_MemoryResourceHeap::SetDefragging(VK_MemoryResourceFragmentAllocator* page)
+{
+	for (UInt32 b = 0; b < MAX_BUCKETS; ++b)
+	{
+		for (UInt32 i = 0; i < active_pages[b].size(); ++i)
+		{
+			if (active_pages[b][i] == page)
+			{
+				page->is_defragging = true;
+				// Move to end so other pages are tried first for new allocations
+				if (i < active_pages[b].size() - 1)
+				{
+					std::swap(active_pages[b][i], active_pages[b].back());
+				}
+				return;
+			}
+		}
+	}
+}
+
+void VK_MemoryManager::DefragTick()
+{
+	VK_Device* vk_device = device;
+	for (VK_MemoryResourceHeap* heap : resource_heaps)
+	{
+		if (!heap) continue;
+		heap->DefragTick(*vk_device, 1);
+	}
+}
+
 void VK_MemoryManager::ReleaseFreedPages()
 {
 	ReleaseFreedResources(false);
 	device_memory_manager->TrimMemory(false);
+	DefragTick();
 }
 
 void VK_MemoryManager::DestroyResourceAllocations()
