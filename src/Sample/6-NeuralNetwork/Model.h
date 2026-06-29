@@ -1,7 +1,4 @@
 #pragma once
-#include <vector>
-#include <memory>
-#include <cstdint>
 #include "Layer.h"
 #include "Optimizer.h"
 #include "RHI/RenderCommandList.h"
@@ -13,38 +10,47 @@ using namespace MXRender::RHI;
 // ============================================================
 // SequentialModel — a stack of layers + loss function
 // ============================================================
-class SequentialModel {
+MYRENDERER_BEGIN_CLASS(SequentialModel)
+#pragma region MATHOD
 public:
-	SequentialModel(uint32_t max_batch_size);
+	explicit SequentialModel(UInt32 in_max_batch_size);
+	~SequentialModel();
 
-	void AddLayer(std::unique_ptr<ILayer> layer);
-	void SetOptimizer(std::unique_ptr<IOptimizer> opt);
+	void AddLayer(UniquePtr<ILayer> in_layer);
+	void SetOptimizer(UniquePtr<IOptimizer> in_opt);
 
 	// One training step: zero grads → forward all → backward all → update all
 	// Input: [active_batch_size x input_dim] raw float data on GPU
 	// labels: per-sample class index [0..num_classes-1]
 	// Returns: average loss for the batch
-	float TrainStep(CommandList* cmd, Tensor& input,
-					const std::vector<uint8_t>& labels, uint32_t active_batch_size);
+	Float32 TrainStep(CommandList* in_cmd, Tensor& in_input,
+		CONST Vector<UInt8>& in_labels, UInt32 in_active_batch_size);
 
 	// Inference only (no backward, no update)
-	std::vector<uint8_t> Predict(CommandList* cmd, Tensor& input, uint32_t batch_size);
+	Vector<UInt8> Predict(CommandList* in_cmd, Tensor& in_input, UInt32 in_batch_size);
 
-	uint32_t MaxBatchSize() const { return max_batch_size_; }
-
+	UInt32 MaxBatchSize() CONST { return max_batch_size_; }
+protected:
 private:
-	void ZeroAllGradients(CommandList* cmd);
-	void UpdateAllWeights(CommandList* cmd, float inv_batch_size, uint32_t step);
+	void ZeroAllGradients(CommandList* in_cmd);
+	void UpdateAllWeights(CommandList* in_cmd, Float32 in_inv_batch_size, UInt32 in_step);
+#pragma endregion
 
-	std::vector<std::unique_ptr<ILayer>> layers_;
-	std::unique_ptr<IOptimizer> optimizer_;
-	uint32_t max_batch_size_;
-	uint32_t step_count_ = 0;
+#pragma region MEMBER
+public:
+protected:
+private:
+	Vector<UniquePtr<ILayer>> layers_;
+	UniquePtr<IOptimizer> optimizer_;
+	UInt32 max_batch_size_;
+	UInt32 step_count_ = 0;
 
 	RenderPipelineState* zero_grad_pipeline_ = nullptr;
 	ShaderResourceBinding* zero_grad_srb_ = nullptr;
-	Tensor zg_pc_buf_; // zero-grad param buffer
-	Tensor label_buf_;
-};
+	Vector<ShaderResourceBinding*> zg_temp_srbs_; // temp SRBs, freed in dtor
+	Tensor zg_pc_buf_;  // zero-grad param buffer
+	Tensor label_buf_;  // GPU label buffer
+#pragma endregion
+MYRENDERER_END_CLASS
 
 } // namespace MXNN
