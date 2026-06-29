@@ -1,0 +1,22 @@
+#version 460
+layout(local_size_x=64)in;
+#define MD 256
+layout(set=0,binding=0)readonly buffer B0_Buf{float d[];}b0;
+layout(set=0,binding=1)readonly buffer B1_Buf{float d[];}b1;
+layout(set=0,binding=2)readonly buffer B2_Buf{float d[];}b2;
+layout(set=0,binding=3)readonly buffer B3_Buf{float d[];}b3;
+layout(set=0,binding=4)buffer B4_Buf{int d[];}b4;
+layout(set=0,binding=5)buffer B5_Buf{int d[];}b5;
+layout(set=0,binding=6)buffer B6_Buf{float d[];}b6;
+layout(set=0,binding=10)readonly buffer B10_Buf{float d[];}b10;
+shared float sd[MD];
+void main(){uint s=gl_WorkGroupID.x;uint t=gl_LocalInvocationID.x;
+if(s>=uint(b10.d[3]))return;uint oo=s*uint(b10.d[1]);uint io=s*uint(b10.d[0]);
+for(uint i=t;i<uint(b10.d[1]);i+=64u){float z=b3.d[oo+i];
+if(b10.d[4]!=0.0&&b1.d[oo+i]<=0.0)z=0.0;sd[i]=z;
+{uint e=uint(b5.d[i]);uint w;do{w=floatBitsToInt(uintBitsToFloat(e)+z);
+uint o=atomicCompSwap(b5.d[i],int(e),int(w));if(o==e)break;e=o;}while(true);}
+uint wr=i*uint(b10.d[0]);for(uint j=0u;j<uint(b10.d[0]);j++){float a=z*b0.d[io+j];
+uint e=uint(b4.d[wr+j]);uint w;do{w=floatBitsToInt(uintBitsToFloat(e)+a);
+uint o=atomicCompSwap(b4.d[wr+j],int(e),int(w));if(o==e)break;e=o;}while(true);}}barrier();
+for(uint j=t;j<uint(b10.d[0]);j+=64u){float su=0;for(uint i=0u;i<uint(b10.d[1]);i++)su+=b2.d[i*uint(b10.d[0])+j]*sd[i];b6.d[io+j]=su;}}

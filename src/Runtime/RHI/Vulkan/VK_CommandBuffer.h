@@ -217,6 +217,7 @@ public:
 	__forceinline VIRTUAL void METHOD(SetShaderResourceBinding)(ShaderResourceBinding* srb) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(Draw)(CONST DrawAttribute& draw_attr) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(Dispatch)(UInt32 groupX, UInt32 groupY, UInt32 groupZ) OVERRIDE FINAL;
+	__forceinline VIRTUAL void METHOD(SetPushConstants)(UInt32 offset, UInt32 size, const void* data) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(TransitionTextureState)(Texture* texture, CONST ENUM_RESOURCE_STATE& required_state) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(ClearTexture)(Texture* texture, Vector<float> clear_value = Vector<float>(4, 0.0f)) OVERRIDE FINAL;
 

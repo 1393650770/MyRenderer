@@ -134,14 +134,19 @@ function MoveResource(target)
     local root_taget_shader_path = root_taget_path .. "/Shader"
     local root_taget_texture_path = root_taget_path .. "/Texture"
     local root_taget_editor_path = root_taget_path .. "/Editor"
+    local root_taget_dataset_path = root_taget_path .. "/Dataset"
     local root_taget_lib_path = root_taget_path
-    os.mkdir(root_taget_shader_path)--, root_taget_texture_path,root_taget_editor_path,root_taget_lib_path)
+    os.mkdir(root_taget_shader_path)
+    os.mkdir(root_taget_dataset_path)
     for _, gen_shader_pth in ipairs(os.files("$(projectdir)/resource/Shader/**.spv")) do
         print("[copy shader] done :"..gen_shader_pth)
         os.cp(gen_shader_pth, root_taget_shader_path)
     end
     os.cp("$(projectdir)/resource/Texture", root_taget_texture_path)
     os.cp("$(projectdir)/resource/Editor", root_taget_editor_path)
+    if os.isdir("$(projectdir)/resource/Dataset") then
+        os.cp("$(projectdir)/resource/Dataset", root_taget_dataset_path)
+    end
     os.cp("$(projectdir)/libs/*", root_taget_lib_path)
     
 end
@@ -236,6 +241,12 @@ target("RendererSample-Bindless")
 target("RendererSample-NeuralNetwork")
     CommonProjectSetting()
     add_files("src/Sample/6-NeuralNetwork/NeuralNetwork.cpp")
+    add_files("src/Sample/6-NeuralNetwork/Tensor.cpp")
+    add_files("src/Sample/6-NeuralNetwork/Layer.cpp")
+    add_files("src/Sample/6-NeuralNetwork/Optimizer.cpp")
+    add_files("src/Sample/6-NeuralNetwork/Model.cpp")
+    add_files("src/Sample/6-NeuralNetwork/MNISTDataLoader.cpp")
+    add_files("src/Sample/6-NeuralNetwork/Trainer.cpp")
     set_group("Sample")
     after_build(MoveResource)
 

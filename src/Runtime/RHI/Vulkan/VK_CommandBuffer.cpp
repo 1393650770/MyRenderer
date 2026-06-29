@@ -545,6 +545,7 @@ void VK_CommandBuffer::SetComputePipeline(RenderPipelineState* pipeline_state)
 	{
 		state_cache.compute_pipeline = compute_pipeline;
 		state_cache.pipeline_layout = pipeline_layout;
+		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, compute_pipeline);
 	}
 }
 
@@ -559,10 +560,18 @@ void VK_CommandBuffer::Dispatch(UInt32 groupX, UInt32 groupY, UInt32 groupZ)
 	// Flush any deferred descriptor writes before binding
 	if (state_cache.srb)
 		state_cache.srb->FlushDescriptorWrites();
-	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, state_cache.compute_pipeline);
+	// Pipeline already bound in SetComputePipeline
 	if (state_cache.descriptor_sets != nullptr)
 		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, state_cache.pipeline_layout, state_cache.first_set, state_cache.descriptor_sets_count, state_cache.descriptor_sets, 0, nullptr);
 	vkCmdDispatch(command_buffer, groupX, groupY, groupZ);
+}
+
+void VK_CommandBuffer::SetPushConstants(UInt32 offset, UInt32 size, const void* data)
+{
+	if (state_cache.pipeline_layout == VK_NULL_HANDLE)
+		return;
+	vkCmdPushConstants(command_buffer, state_cache.pipeline_layout,
+		VK_SHADER_STAGE_COMPUTE_BIT, offset, size, data);
 }
 void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, CONST Vector<ClearValue>& clear_values, Bool has_dsv_clear_value)
 {

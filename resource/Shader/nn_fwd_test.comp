@@ -1,0 +1,56 @@
+#version 460
+
+// Simple MLP forward pass: 2 -> 4 -> 1 (XOR demo)
+// Each workgroup processes one input sample
+
+layout(local_size_x = 1) in;
+
+const int INPUT_SIZE = 2;
+const int HIDDEN_SIZE = 4;
+const int OUTPUT_SIZE = 1;
+
+// Layer 1: input -> hidden
+layout(set = 0, binding = 0) readonly buffer W0_Buf {
+	float data[]; // INPUT_SIZE * HIDDEN_SIZE = 8
+} w0;
+
+layout(set = 0, binding = 1) readonly buffer B0_Buf {
+	float data[]; // HIDDEN_SIZE = 4
+} b0;
+
+// Layer 2: hidden -> output
+layout(set = 0, binding = 2) readonly buffer W1_Buf {
+	float data[]; // HIDDEN_SIZE * OUTPUT_SIZE = 4
+} w1;
+
+layout(set = 0, binding = 3) readonly buffer B1_Buf {
+	float data[]; // OUTPUT_SIZE = 1
+} b1;
+
+// Input and output buffers
+layout(set = 0, binding = 4) readonly buffer In_Buf {
+	float data[]; // INPUT_SIZE = 2
+} in_buf;
+
+layout(set = 0, binding = 5) buffer Out_Buf {
+	float data[]; // OUTPUT_SIZE = 1
+} out_buf;
+
+void main() {
+	// Hidden layer: h = ReLU(W0 * x + b0)
+	float hidden[HIDDEN_SIZE];
+	for (int i = 0; i < HIDDEN_SIZE; i++) {
+		float sum = b0.data[i];
+		for (int j = 0; j < INPUT_SIZE; j++) {
+			sum += w0.data[i * INPUT_SIZE + j] * in_buf.data[j];
+		}
+		hidden[i] = max(0.0, sum); // ReLU
+	}
+
+	// Output layer: y = sigmoid(W1 * h + b1)
+	float out_sum = b1.data[0];
+	for (int i = 0; i < HIDDEN_SIZE; i++) {
+		out_sum += w1.data[i] * hidden[i];
+	}
+	out_buf.data[0] = 1.0 / (1.0 + exp(-out_sum)); // sigmoid
+}
