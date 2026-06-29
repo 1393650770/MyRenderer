@@ -203,7 +203,12 @@ ENUM_VulkanAllocationFlags VK_Buffer::TranslateBufferTypeToVulkanAllocationFlags
 		break;
 	}
 	default:
-		CHECK_WITH_LOG(true, "RHI Error :  Not support this buffer usage type !")
+		// Storage and Indirect buffers: device-local, auto-bind (no host visibility needed)
+		if (EnumHasAnyFlags(buffer_usage, ENUM_BUFFER_TYPE::Storage) ||
+			EnumHasAnyFlags(buffer_usage, ENUM_BUFFER_TYPE::Indirect))
+			allocation_flags = allocation_flags | ENUM_VulkanAllocationFlags::AutoBind;
+		else
+			CHECK_WITH_LOG(true, "RHI Error :  Not support this buffer usage type !")
 		break;
 	}
 	return allocation_flags;

@@ -534,6 +534,36 @@ void VK_CommandBuffer::SetGraphicsPipeline(RenderPipelineState* pipeline_state)
 		state_cache.pipeline_layout = pipeline_layout;
 	}
 }
+
+void VK_CommandBuffer::SetComputePipeline(RenderPipelineState* pipeline_state)
+{
+	CHECK(pipeline_state == nullptr);
+	VK_PipelineState* vk_pipeline_state = STATIC_CAST(pipeline_state, VK_PipelineState);
+	VkPipeline compute_pipeline = vk_pipeline_state->GetPipeline();
+	VkPipelineLayout pipeline_layout = vk_pipeline_state->GetPipelineLayout();
+	if (state_cache.compute_pipeline != compute_pipeline)
+	{
+		state_cache.compute_pipeline = compute_pipeline;
+		state_cache.pipeline_layout = pipeline_layout;
+	}
+}
+
+void VK_CommandBuffer::Dispatch(UInt32 groupX, UInt32 groupY, UInt32 groupZ)
+{
+	// Compute dispatches must happen outside an active render pass
+	if (state_cache.render_pass != VK_NULL_HANDLE)
+	{
+		EndRenderPass();
+	}
+	FlushBarriers();
+	// Flush any deferred descriptor writes before binding
+	if (state_cache.srb)
+		state_cache.srb->FlushDescriptorWrites();
+	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, state_cache.compute_pipeline);
+	if (state_cache.descriptor_sets != nullptr)
+		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, state_cache.pipeline_layout, state_cache.first_set, state_cache.descriptor_sets_count, state_cache.descriptor_sets, 0, nullptr);
+	vkCmdDispatch(command_buffer, groupX, groupY, groupZ);
+}
 void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, CONST Vector<ClearValue>& clear_values, Bool has_dsv_clear_value)
 {
 	CHECK_WITH_LOG(command_state < EState::IsInsideBegin, "RHI Error: SetRenderTarget must be called between Begin and End");

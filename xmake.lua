@@ -233,3 +233,9 @@ target("RendererSample-Bindless")
     set_group("Sample")
     after_build(MoveResource)
 
+target("RendererSample-NeuralNetwork")
+    CommonProjectSetting()
+    add_files("src/Sample/6-NeuralNetwork/NeuralNetwork.cpp")
+    set_group("Sample")
+    after_build(MoveResource)
+

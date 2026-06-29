@@ -22,6 +22,7 @@ public:
 
 	VkPipeline METHOD(GetPipeline)() CONST;
 	VkPipelineLayout METHOD(GetPipelineLayout)() CONST;
+	Bool METHOD(IsComputePipeline)() CONST { return is_compute_pipeline; }
 	VIRTUAL void CreateShaderResourceBinding(ShaderResourceBinding*& out_srb, Bool init_static_resource = false) OVERRIDE FINAL;
 protected:
 	VkPipelineLayout METHOD(CreatePipelineLayout)(CONST RenderGraphiPipelineStateDesc& in_desc);
@@ -38,6 +39,7 @@ protected:
 	VK_Device* device;
 	Map<String, ReflectedBinding> compacted_bindings;
 	UInt64 last_used_frame = 0;
+	Bool is_compute_pipeline = false;
 private:
 
 #pragma endregion

@@ -26,9 +26,11 @@ public:
 	CommandList() MYDEFAULT;
 	VIRTUAL ~CommandList() MYDEFAULT;
 	VIRTUAL void METHOD(SetGraphicsPipeline)(RenderPipelineState* pipeline_state) PURE;
+	VIRTUAL void METHOD(SetComputePipeline)(RenderPipelineState* pipeline_state) PURE;
 	VIRTUAL void METHOD(SetRenderTarget)(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, CONST Vector<ClearValue>& clear_values, Bool has_dsv_clear_value) PURE;
 	VIRTUAL void METHOD(SetShaderResourceBinding)(ShaderResourceBinding* srb) PURE;
 	VIRTUAL void METHOD(Draw)(CONST DrawAttribute& draw_attr) PURE;
+	VIRTUAL void METHOD(Dispatch)(UInt32 groupX, UInt32 groupY, UInt32 groupZ) PURE;
 	VIRTUAL void METHOD(TransitionTextureState)(Texture* texture, CONST ENUM_RESOURCE_STATE& required_state) PURE;
 	VIRTUAL void METHOD(ClearTexture)(Texture* texture,Vector<float> clear_value= Vector<float>(4,0.0f)) PURE;
 
@@ -55,4 +57,3 @@ MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 
 #endif
-

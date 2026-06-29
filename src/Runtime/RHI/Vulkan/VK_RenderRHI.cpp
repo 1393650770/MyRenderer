@@ -107,6 +107,15 @@ Texture* VulkanRHI::CreateTexture(const TextureDesc& texture_desc)
 
 RenderPipelineState* VulkanRHI::CreateRenderPipelineState(CONST RenderGraphiPipelineStateDesc& desc)
 {
+	// Compute-only pipeline: no render targets, no depth stencil, no render pass needed
+	Bool is_compute = (desc.shaders[ENUM_SHADER_STAGE::Shader_Compute] != nullptr
+					&& desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] == nullptr
+					&& desc.shaders[ENUM_SHADER_STAGE::Shader_Pixel] == nullptr);
+	if (is_compute)
+	{
+		return device->GetPipelineStateManager()->GetPipelineState(desc, nullptr);
+	}
+
 	Vector<ENUM_TEXTURE_FORMAT> rtv_formats;
 	for (auto& rtv : desc.render_targets)
 	{
