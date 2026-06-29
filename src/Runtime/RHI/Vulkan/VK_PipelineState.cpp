@@ -396,8 +396,11 @@ VK_PipelineState* VK_PipelineStateManager::GetPipelineState(CONST RenderGraphiPi
 	auto it = pipeline_states_map.find(hash);
 	if (it != pipeline_states_map.end())
 	{
-		it->second->last_used_frame = g_frame_number_render_thread;
-		return it->second;
+		// Verify desc matches (hash=0 bug could cause false cache hits)
+		if (it->second->desc == in_desc) {
+			it->second->last_used_frame = g_frame_number_render_thread;
+			return it->second;
+		}
 	}
 	else
 	{

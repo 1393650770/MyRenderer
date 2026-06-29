@@ -247,8 +247,7 @@ void VK_ShaderResourceBinding::SetResource(CONST String& name, CONST RenderResou
 	}
 	else
 	{
-		
-		CHECK_WITH_LOG(is_static_resource==false, "RHI Error : fail to find binding name in shader");
+		CHECK_WITH_LOG(is_static_resource==false, ("RHI Error : fail to find binding name in shader: " + name).c_str());
 	}
 }
 
