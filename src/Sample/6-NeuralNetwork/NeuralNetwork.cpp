@@ -149,9 +149,8 @@ int main()
 
 			Float32 loss = model.TrainStep(cmd, input_buf, labels, n);
 
-			vk_cmd->End();
 			device->GetQueue(ENUM_QUEUE_TYPE::COMPUTE)->Submit(vk_cmd);
-
+			vk_cmd->command_state = MXRender::RHI::Vulkan::VK_CommandBuffer::EState::NeedReset;
 			std::cout << "[Epoch " << epoch << " Batch " << batch_count
 				<< "] loss=" << loss << std::endl;
 

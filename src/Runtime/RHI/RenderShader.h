@@ -49,6 +49,19 @@ public:
 	VIRTUAL ~Shader();
 
 	CONST ShaderDesc& GetDesc() CONST;
+	constexpr Bool operator == (CONST Shader& rhs) CONST
+	{
+		return this->GetDesc().debug_name == rhs.GetDesc().debug_name &&
+			this->GetDesc().entry_name == rhs.GetDesc().entry_name &&
+			this->GetDesc().shader_name == rhs.GetDesc().shader_name &&
+			this->GetDesc().shader_type == rhs.GetDesc().shader_type;
+	};
+
+	constexpr Bool operator != (CONST Shader& rhs) CONST
+	{
+		return !(*this == rhs);
+	};
+
 protected:
 private:
 

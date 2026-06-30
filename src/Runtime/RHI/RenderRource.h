@@ -10,6 +10,7 @@
 #include "Core/BaseObject.h"
 #include <algorithm>
 #include <utility>
+#include "Core/ConstDefine.h"
 
 
 
@@ -484,6 +485,8 @@ public:
 	}
 
 	UInt64 GetHash() CONST;
+private:
+	mutable UInt64 hash = 0;
 MYRENDERER_END_CLASS
 
 

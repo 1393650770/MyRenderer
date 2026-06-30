@@ -51,7 +51,7 @@ SGD::SGD(Float32 in_lr, Float32 in_momentum, Float32 in_weight_decay)
 	Shader* shader = LoadComputeShader("Shader/nn_update_sgd.comp.spv");
 	update_pipeline_ = CreateComputePipeline(shader);
 	update_pipeline_->CreateShaderResourceBinding(update_srb_, false);
-	update_srb_->SetResource("pcc", pc_buf_.GetBuffer());
+	update_srb_->SetResource("pc", pc_buf_.GetBuffer());
 	delete shader;
 }
 
@@ -78,7 +78,7 @@ void SGD::Update(CommandList* in_cmd, Tensor& in_params, Tensor& in_grads,
 	temp_srb->SetResource("p0", in_params.GetBuffer());
 	temp_srb->SetResource("g0", in_grads.GetBuffer());
 	temp_srb->SetResource("v0", in_velocity.GetBuffer());
-	temp_srb->SetResource("pcc", pc_buf_.GetBuffer());
+	temp_srb->SetResource("pc", pc_buf_.GetBuffer());
 	STATIC_CAST(temp_srb, Vulkan::VK_ShaderResourceBinding)->FlushDescriptorWrites();
 
 	in_cmd->SetComputePipeline(update_pipeline_);

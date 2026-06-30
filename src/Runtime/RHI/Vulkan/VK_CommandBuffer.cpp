@@ -545,7 +545,8 @@ void VK_CommandBuffer::SetComputePipeline(RenderPipelineState* pipeline_state)
 	{
 		state_cache.compute_pipeline = compute_pipeline;
 		state_cache.pipeline_layout = pipeline_layout;
-		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, compute_pipeline);
+		// -- [AI] removed immediate vkCmdBindPipeline -- deferred to Dispatch(),
+		// matching the SetGraphicsPipeline pattern where binding happens in Draw().
 	}
 }
 
@@ -560,10 +561,13 @@ void VK_CommandBuffer::Dispatch(UInt32 groupX, UInt32 groupY, UInt32 groupZ)
 	// Flush any deferred descriptor writes before binding
 	if (state_cache.srb)
 		state_cache.srb->FlushDescriptorWrites();
-	// Pipeline already bound in SetComputePipeline
+	// -- [AI] bind pipeline here (deferred from SetComputePipeline), matching Draw() pattern
+	if (state_cache.compute_pipeline != VK_NULL_HANDLE)
+		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, state_cache.compute_pipeline);
 	if (state_cache.descriptor_sets != nullptr)
 		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, state_cache.pipeline_layout, state_cache.first_set, state_cache.descriptor_sets_count, state_cache.descriptor_sets, 0, nullptr);
 	vkCmdDispatch(command_buffer, groupX, groupY, groupZ);
+
 }
 
 void VK_CommandBuffer::SetPushConstants(UInt32 offset, UInt32 size, const void* data)

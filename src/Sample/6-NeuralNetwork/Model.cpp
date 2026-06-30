@@ -62,7 +62,7 @@ SequentialModel::SequentialModel(UInt32 in_max_batch_size)
 	Shader* zg_shader = LoadComputeShader("Shader/nn_zero_grad.comp.spv");
 	zero_grad_pipeline_ = CreateComputePipeline(zg_shader);
 	zero_grad_pipeline_->CreateShaderResourceBinding(zero_grad_srb_, false);
-	zero_grad_srb_->SetResource("pcc", zg_pc_buf_.GetBuffer());
+	zero_grad_srb_->SetResource("pc", zg_pc_buf_.GetBuffer());
 	delete zg_shader;
 }
 
@@ -101,7 +101,7 @@ void SequentialModel::ZeroAllGradients(CommandList* in_cmd)
 			zg_pc_buf_.Upload(&zp.num_elements);
 
 			temp_srb->SetResource("g0", grads->GetBuffer());
-			temp_srb->SetResource("pcc", zg_pc_buf_.GetBuffer());
+			temp_srb->SetResource("pc", zg_pc_buf_.GetBuffer());
 
 			// Flush writes BEFORE binding (update→bind order is valid)
 			STATIC_CAST(temp_srb, Vulkan::VK_ShaderResourceBinding)->FlushDescriptorWrites();
@@ -152,7 +152,7 @@ Float32 SequentialModel::TrainStep(CommandList* in_cmd, Tensor& in_input,
 		zp.num_elements = 1.0f;
 		zg_pc_buf_.Upload(&zp.num_elements);
 		temp_srb->SetResource("g0", loss_layer->GetLossBuffer());
-		temp_srb->SetResource("pcc", zg_pc_buf_.GetBuffer());
+		temp_srb->SetResource("pc", zg_pc_buf_.GetBuffer());
 		STATIC_CAST(temp_srb, Vulkan::VK_ShaderResourceBinding)->FlushDescriptorWrites();
 
 		in_cmd->SetShaderResourceBinding(temp_srb);

@@ -412,23 +412,27 @@ VkPipelineCache VK_PipelineStateManager::GetPipelineCache() CONST
 
 VK_PipelineState* VK_PipelineStateManager::GetPipelineState(CONST RenderGraphiPipelineStateDesc& in_desc, CONST VK_RenderPass* render_pass)
 {
-	UInt64 hash = HashCombine(in_desc.GetHash(), std::hash< CONST VK_RenderPass*>{}(render_pass));
+	UInt64 hash = render_pass? HashCombine(in_desc.GetHash(), std::hash< CONST VK_RenderPass*>{}(render_pass)) : in_desc.GetHash();
 	auto it = pipeline_states_map.find(hash);
 	if (it != pipeline_states_map.end())
 	{
 		// Verify desc matches (hash=0 bug could cause false cache hits)
 		if (it->second->desc == in_desc) {
 			it->second->last_used_frame = g_frame_number_render_thread;
+			std::cout << "use cache PipelineState:" << in_desc.shaders[ENUM_SHADER_STAGE::Shader_Compute]->GetDesc().shader_name << std::endl;
 			return it->second;
 		}
+
+		// Hash collision or stale pointer match -- evict the old entry
+		// and fall through to create a new one. The else-before was
+		// causing undefined return value on hash hit with mismatched desc.
+		pipeline_states_map.erase(it);
 	}
-	else
-	{
-		VK_PipelineState* pipeline_state = new VK_PipelineState(device, in_desc, pipeline_cache, render_pass);
-		pipeline_states_map[hash] = pipeline_state;
-		EvictLRU();
-		return pipeline_state;
-	}
+	// removed else -- hash collision now handled correctly
+	VK_PipelineState* pipeline_state = new VK_PipelineState(device, in_desc, pipeline_cache, render_pass);
+	pipeline_states_map[hash] = pipeline_state;
+	EvictLRU();
+	return pipeline_state;
 }
 
 void VK_PipelineStateManager::EvictLRU() {}

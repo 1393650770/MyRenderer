@@ -1,24 +1,102 @@
 #version 460
+
 layout(local_size_x = 64) in;
+
 layout(set = 0, binding = 0) readonly buffer H0_Buf { float d[]; } h0;
-layout(set = 0, binding = 1) readonly buffer W2_Buf{ float d[]; } w2;
-layout(set = 0, binding = 2) readonly buffer B2_Buf{ float d[]; } b2;
-layout(set = 0, binding = 3) readonly buffer LB_Buf{ float d[]; } lb;
-layout(set = 0, binding = 4) buffer DZ_Buf{ float d[]; } dz;
-layout(set = 0, binding = 5) buffer LS_Buf{ int d[]; } ls;
-layout(set = 0, binding = 10) readonly buffer PC_Buf{ float d[]; } pc;
-shared float sm[64]; shared float ss[64];
+layout(set = 0, binding = 1) readonly buffer W2_Buf { float d[]; } w2;
+layout(set = 0, binding = 2) readonly buffer B2_Buf { float d[]; } b2;
+layout(set = 0, binding = 3) readonly buffer LB_Buf { float d[]; } lb;
+layout(set = 0, binding = 4) buffer DZ_Buf { float d[]; } dz;
+layout(set = 0, binding = 5) buffer LS_Buf { int d[]; } ls;
+layout(set = 0, binding = 10) readonly buffer PC_Buf { float d[]; } pc;
+
+shared float sm[64];
+shared float ss[64];
+
+// -- [AI] formatted main function
 void main() {
-	uint s = gl_WorkGroupID.x; uint t = gl_LocalInvocationID.x;
-	if (s >= uint(pc.d[3])) return;
-	float v=0; if(t<uint(pc.d[1])){v=b2.d[t];uint io=s*uint(pc.d[0]);uint wo=t*uint(pc.d[0]);
-	for(uint j=0u;j<uint(pc.d[0]);j++)v+=w2.d[wo+j]*h0.d[io+j];}sm[t]=v;barrier();
-	if(t==0u){float m=-1e30;for(uint i=0u;i<uint(pc.d[1]);i++)m=max(m,sm[i]);sm[0]=m;}barrier();float mx=sm[0];
-	float ev=0;if(t<uint(pc.d[1]))ev=exp(v-mx);sm[t]=ev;barrier();
-	if(t==0u){float su=0;for(uint i=0u;i<uint(pc.d[1]);i++)su+=sm[i];ss[0]=su;}barrier();float se=ss[0];
-	if(t<uint(pc.d[1])){float p=ev/se;uint l=uint(lb.d[s]);float g=p;if(t==l)g-=1.0;dz.d[s*uint(pc.d[1])+t]=g;}
-	if(t==0u){uint l=uint(lb.d[s]);float ll=b2.d[l];uint io=s*uint(pc.d[0]);uint wo=l*uint(pc.d[0]);
-	for(uint j=0u;j<uint(pc.d[0]);j++)ll+=w2.d[wo+j]*h0.d[io+j];float ce=-(ll-mx-log(se));
-	uint e=uint(ls.d[0]);uint w;do{w=floatBitsToInt(uintBitsToFloat(e)+ce);
-	uint o=atomicCompSwap(ls.d[0],int(e),int(w));if(o==e)break;e=o;}while(true);}
+	uint s = gl_WorkGroupID.x;
+	uint t = gl_LocalInvocationID.x;
+
+	if (s >= uint(pc.d[3])) {
+		return;
+	}
+
+	// step 1: compute logits v = w2 * h0 + b2
+	float v = 0.0;
+	if (t < uint(pc.d[1])) {
+		v = b2.d[t];
+		uint io = s * uint(pc.d[0]);
+		uint wo = t * uint(pc.d[0]);
+		for (uint j = 0u; j < uint(pc.d[0]); j++) {
+			v += w2.d[wo + j] * h0.d[io + j];
+		}
+	}
+	sm[t] = v;
+	barrier();
+
+	// step 2: find max logit
+	if (t == 0u) {
+		float m = -1e30;
+		for (uint i = 0u; i < uint(pc.d[1]); i++) {
+			m = max(m, sm[i]);
+		}
+		sm[0] = m;
+	}
+	barrier();
+	float mx = sm[0];
+
+	// step 3: compute exp(v - max)
+	float ev = 0.0;
+	if (t < uint(pc.d[1])) {
+		ev = exp(v - mx);
+	}
+	sm[t] = ev;
+	barrier();
+
+	// step 4: sum of exps
+	if (t == 0u) {
+		float su = 0.0;
+		for (uint i = 0u; i < uint(pc.d[1]); i++) {
+			su += sm[i];
+		}
+		ss[0] = su;
+	}
+	barrier();
+	float se = ss[0];
+
+	// step 5: compute softmax gradient dz = p - one_hot(label)
+	if (t < uint(pc.d[1])) {
+		float p = ev / se;
+		uint l = uint(lb.d[s]);
+		float g = p;
+		if (t == l) {
+			g -= 1.0;
+		}
+		dz.d[s * uint(pc.d[1]) + t] = g;
+	}
+
+	// step 6: compute cross-entropy loss (thread 0 only)
+	if (t == 0u) {
+		uint l = uint(lb.d[s]);
+		float ll = b2.d[l];
+		uint io = s * uint(pc.d[0]);
+		uint wo = l * uint(pc.d[0]);
+		for (uint j = 0u; j < uint(pc.d[0]); j++) {
+			ll += w2.d[wo + j] * h0.d[io + j];
+		}
+		float ce = -(ll - mx - log(se));
+
+		// atomic add to total loss
+		uint e = uint(ls.d[0]);
+		uint w;
+		do {
+			w = floatBitsToInt(uintBitsToFloat(e) + ce);
+			uint o = atomicCompSwap(ls.d[0], int(e), int(w));
+			if (o == e) {
+				break;
+			}
+			e = o;
+		} while (true);
+	}
 }

@@ -112,7 +112,13 @@ void* VK_Buffer::Map(CONST ENUM_MAP_TYPE& map_type, CONST ENUM_MAP_FLAG& map_fla
 	else 
 	{
 		UInt32 alignment = allocation.GetBufferAlignment(device);
-		UInt32 size_after_alig = Align(buffer_desc.size, alignment);
+		// -- [AI:BEGIN] guard-alignment-and-size
+		// Alignment must be at least 1 for Align() to work correctly.
+		// The fragment allocator may return 0 for dedicated allocations.
+		if (alignment < 1) { alignment = 1; }
+		// Staging buffer must be at least as large as the data we copy.
+		UInt32 size_after_alig = std::max(Align(buffer_desc.size, alignment), buffer_desc.size);
+		// -- [AI:END]
 		VK_Buffer* staging_buffer = device->GetStagingBufferManager()->GetStagingBuffer(size_after_alig);
 		VK_CommandBuffer* command_buffer = device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::TRANSFER);
 		command_buffer->Begin();
@@ -122,6 +128,18 @@ void* VK_Buffer::Map(CONST ENUM_MAP_TYPE& map_type, CONST ENUM_MAP_FLAG& map_fla
 		// For dedicated buffers (fallback), this is 0 (offset baked into vkBindBufferMemory).
 		region.srcOffset = GetOffset();
 		region.dstOffset = 0;
+		// -- [AI:BEGIN] verify-staging-size
+		if (staging_buffer->GetBufferDesc().size < region.size)
+		{
+			std::cout << "[Map Error] staging buffer too small, recreating" << std::endl;
+			device->GetStagingBufferManager()->ReleaseStagingBuffer(staging_buffer, nullptr);
+			BufferDesc dedicated_desc;
+			dedicated_desc.size = region.size;
+			dedicated_desc.stride = 4;
+			dedicated_desc.type = ENUM_BUFFER_TYPE::Staging;
+			staging_buffer = new VK_Buffer(device, dedicated_desc);
+		}
+		// -- [AI:END]
 		command_buffer->CopyBuffer(buffer, staging_buffer->GetBuffer(), 1, &region);
 		command_buffer->MemoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_HOST_READ_BIT);
 		command_buffer->End();
@@ -150,7 +168,14 @@ void VK_Buffer::Unmap()
 		else if (mapping.map_staging_buffer != nullptr && mapping.map_type == ENUM_MAP_TYPE::Write)
 		{
 			UInt32 alignment = allocation.GetBufferAlignment(device);
+			// -- [AI:BEGIN] guard-alignment-and-size
+			// Alignment must be at least 1 for Align() to work correctly.
+			// The fragment allocator may return 0 for dedicated allocations.
+			if (alignment < 1) { alignment = 1; }
+			// Staging buffer must be at least as large as the data we copy.
 			UInt32 size_after_alig = Align(buffer_desc.size, alignment);
+			size_after_alig = std::max(size_after_alig, buffer_desc.size);
+			// -- [AI:END]
 			VK_CommandBuffer* command_buffer = device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::TRANSFER);
 			command_buffer->Begin();
 			VkBufferCopy region;
@@ -324,18 +349,19 @@ void VK_StagingBufferManager::ReleaseStagingBuffer(VK_Buffer*& buffer, VK_Comman
 
 VK_Buffer* VK_StagingBufferManager::GetStagingBuffer(UInt64 size)
 {
-
-	for (auto& stagingbuffer : free_buffers)
+	// -- [AI:BEGIN] fix-staging-remove
+	// Use iterator instead of range-for + std::remove. std::remove reorders
+	// elements which would invalidate a range-for reference mid-iteration.
+	for (auto it = free_buffers.begin(); it != free_buffers.end(); ++it)
 	{
-		if (stagingbuffer.buffer->GetBufferDesc().size == size)
+		if (it->buffer->GetBufferDesc().size >= size)
 		{
-			//��free_buffers���Ƴ���std::vectorû��remove������������erase
-		    free_buffers.erase(std::remove(free_buffers.begin(), free_buffers.end(), stagingbuffer), free_buffers.end());
-			return stagingbuffer.buffer;
+			VK_Buffer* result = it->buffer;
+			free_buffers.erase(it);
+			return result;
 		}
 	}
-
-	
+	// -- [AI:END]
 	BufferDesc staging_buffer_desc;
 
 	staging_buffer_desc.size = size;

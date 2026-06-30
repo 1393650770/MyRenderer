@@ -89,7 +89,7 @@ function CompileFunc()
     -- 遍历$(projectdir)/engine/shaders/中除了.spv后缀的所有文件
     for _, shader_path in ipairs(os.files("$(projectdir)/resource/Shader/**|**.spv|**.bat|**.exe|**.h|**.glsl")) do
         print("[compile shader] : "..shader_path)
-        os.runv(glslang_validator_dir,{"-V", shader_path,"-o", shader_path..".spv"}) --执行系统命令
+        os.runv(glslang_validator_dir,{"-V", "-g", shader_path,"-o", shader_path..".spv"}) --执行系统命令
     end
 
     print("----\n")

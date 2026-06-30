@@ -34,7 +34,7 @@ static Shader* LoadComputeShader(CONST String& in_filename)
 	ShaderDesc desc;
 	desc.shader_type = ENUM_SHADER_STAGE::Shader_Compute;
 	desc.entry_name = "main";
-
+	desc.shader_name = in_filename;
 	ShaderDataPayload payload;
 	payload.data = ReadShader(in_filename);
 
