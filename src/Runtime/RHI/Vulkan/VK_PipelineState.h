@@ -45,6 +45,39 @@ private:
 #pragma endregion
 MYRENDERER_END_CLASS
 
+// -- [AI:BEGIN]
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_ComputePipelineState, public ComputePipelineState)
+friend class VK_PipelineStateManager;
+#pragma region METHOD
+public:
+    VK_ComputePipelineState() MYDEFAULT;
+    VK_ComputePipelineState(VK_Device* in_device, CONST ComputePipelineStateDesc& in_desc, VkPipelineCache pipeline_cache);
+    VIRTUAL ~VK_ComputePipelineState();
+
+    VkPipeline METHOD(GetPipeline)() CONST;
+    VkPipelineLayout METHOD(GetPipelineLayout)() CONST;
+    VIRTUAL void CreateShaderResourceBinding(ShaderResourceBinding*& out_srb, Bool init_static_resource = false) OVERRIDE FINAL;
+protected:
+    VkPipelineLayout METHOD(CreatePipelineLayout)();
+private:
+
+#pragma endregion
+
+#pragma region MEMBER
+public:
+protected:
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+    Array<VkDescriptorSetLayout, MYRENDER_MAX_BINDING_SET_NUM> descriptorset_layouts{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE };
+    VK_Device* device = nullptr;
+    Map<String, ReflectedBinding> compacted_bindings;
+    UInt64 last_used_frame = 0;
+private:
+
+#pragma endregion
+MYRENDERER_END_CLASS
+// -- [AI:END]
+
 MYRENDERER_BEGIN_CLASS(VK_PipelineStateManager)
 #pragma region METHOD
 public:
@@ -55,6 +88,8 @@ public:
 	VkPipelineCache METHOD(GetPipelineCache)() CONST;
 
 	VK_PipelineState* METHOD(GetPipelineState)(CONST RenderGraphiPipelineStateDesc& in_desc, CONST VK_RenderPass* render_pass);
+	// -- [AI]
+	VK_ComputePipelineState* METHOD(GetComputePipelineState)(CONST ComputePipelineStateDesc& in_desc);
 	void METHOD(ProcessPendingDestruction)();
 	static constexpr UInt32 MaxPipelines = 1024;
 protected:
@@ -71,6 +106,7 @@ protected:
 	VK_Device* device;
 	VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
 	Map<UInt64,VK_PipelineState*> pipeline_states_map;
+	Map<UInt64, VK_ComputePipelineState*> compute_pipeline_states_map;
 	Vector<VkPipeline> pending_destruction;
 private:
 

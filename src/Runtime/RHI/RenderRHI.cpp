@@ -52,6 +52,12 @@ MXRender::RHI::RenderPipelineState* RHICreateRenderPipelineState(CONST MXRender:
 	return g_render_rhi->CreateRenderPipelineState(desc);
 }
 
+// -- [AI]
+MXRender::RHI::ComputePipelineState* RHICreateComputePipelineState(CONST MXRender::RHI::ComputePipelineStateDesc& desc)
+{
+	return g_render_rhi->CreateComputePipelineState(desc);
+}
+
 MXRender::RHI::RenderPass* RHICreateRenderPass(CONST MXRender::RHI::RenderPassDesc& desc)
 {
 	return g_render_rhi->CreateRenderPass(desc);
@@ -67,9 +73,21 @@ MXRender::RHI::CommandList* RHIGetImmediateCommandList()
  	return g_render_rhi->GetImmediateCommandList();
 }
 
+// -- [AI]
+MXRender::RHI::CommandList* RHIGetCommandListForQueue(MXRender::ENUM_QUEUE_TYPE queue_type)
+{
+	return g_render_rhi->GetCommandListForQueue(queue_type);
+}
+
 void RHISubmitCommandList(MXRender::RHI::CommandList* command_list)
 {
 	g_render_rhi->SubmitCommandList(command_list);
+}
+
+// -- [AI]
+void RHISubmitCommandListForQueue(MXRender::RHI::CommandList* cmd_list, MXRender::ENUM_QUEUE_TYPE queue_type)
+{
+	g_render_rhi->SubmitCommandListForQueue(cmd_list, queue_type);
 }
 
 void RHIRenderEnd()

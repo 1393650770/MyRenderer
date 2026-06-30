@@ -124,6 +124,12 @@ RenderPipelineState* VulkanRHI::CreateRenderPipelineState(CONST RenderGraphiPipe
 	RenderPassCacheKey key(desc.render_targets.size(), rtv_formats.data(), desc.depth_stencil_view->GetTextureDesc().format, desc.depth_stencil_view->GetTextureDesc().samples, false, false);
 	return device->GetPipelineStateManager()->GetPipelineState(desc, device->GetRenderPassManager()->GetRenderPass(key));
 }
+
+// -- [AI]
+ComputePipelineState* VulkanRHI::CreateComputePipelineState(CONST ComputePipelineStateDesc& desc)
+{
+	return device->GetPipelineStateManager()->GetComputePipelineState(desc);
+}
 RenderPass* VulkanRHI::CreateRenderPass(CONST RenderPassDesc& desc)
 {
 	return device->GetRenderPassManager()->GetRenderPass(desc);
@@ -333,6 +339,21 @@ CommandList* VulkanRHI::GetImmediateCommandList()
 {
 	immediate_command_buffer->Begin();
 	return immediate_command_buffer;
+}
+
+// -- [AI]
+CommandList* VulkanRHI::GetCommandListForQueue(ENUM_QUEUE_TYPE queue_type)
+{
+	return device->GetCommandBufferManager()->GetOrCreateCommandBuffer(queue_type);
+}
+// -- [AI]
+// -- [AI]
+void VulkanRHI::SubmitCommandListForQueue(CommandList* cmd_list, ENUM_QUEUE_TYPE queue_type)
+{
+	auto* vk_cmd = STATIC_CAST(cmd_list, VK_CommandBuffer);
+	device->GetQueue(queue_type)->Submit(vk_cmd);
+	// -- [AI] Auto-reset command buffer state after submit so upper layers don't need to
+	vk_cmd->command_state = VK_CommandBuffer::EState::NeedReset;
 }
 
 void VulkanRHI::SubmitCommandList(CommandList* command_list)

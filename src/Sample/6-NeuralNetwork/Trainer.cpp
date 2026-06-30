@@ -2,10 +2,7 @@
 #include <iostream>
 #include <chrono>
 #include "RHI/RenderRHI.h"
-#include "RHI/Vulkan/VK_RenderRHI.h"
-#include "RHI/Vulkan/VK_Device.h"
-#include "RHI/Vulkan/VK_CommandBuffer.h"
-#include "RHI/Vulkan/VK_Queue.h"
+// -- [AI] Vulkan includes removed - using RHI globals
 
 using namespace MXRender;
 using namespace MXRender::RHI;
@@ -19,8 +16,6 @@ Trainer::Trainer(SequentialModel& model, MNISTDataLoader& train_loader,
 	  cmd_(cmd), epochs_(epochs), log_interval_(log_interval) {}
 
 void Trainer::Train(ProgressCallback on_progress) {
-	auto* vk_rhi = static_cast<Vulkan::VulkanRHI*>(g_render_rhi);
-	auto* device = vk_rhi->GetDevice();
 	uint32_t total_batches_per_epoch = (train_loader_.NumImages() + model_.MaxBatchSize() - 1)
 									   / model_.MaxBatchSize();
 
@@ -43,14 +38,13 @@ void Trainer::Train(ProgressCallback on_progress) {
 			// Upload batch to GPU
 			input_buf.Upload(images.data());
 
-			// Record training step
-			auto* vk_cmd = static_cast<Vulkan::VK_CommandBuffer*>(cmd_);
-			vk_cmd->Begin();
+			// Record training step -- [AI] using RHI lifecycle
+			cmd_->Begin();
 
 			float loss = model_.TrainStep(cmd_, input_buf, labels, n);
 
-			vk_cmd->End();
-			device->GetQueue(ENUM_QUEUE_TYPE::COMPUTE)->Submit(vk_cmd);
+			cmd_->End();
+			RHISubmitCommandListForQueue(cmd_, ENUM_QUEUE_TYPE::COMPUTE);
 
 			epoch_loss += loss;
 			batch_count++;
@@ -80,10 +74,6 @@ float Trainer::Evaluate() {
 
 	test_loader_.Reset();
 
-	auto* vk_cmd = static_cast<Vulkan::VK_CommandBuffer*>(cmd_);
-	auto* vk_rhi = static_cast<Vulkan::VulkanRHI*>(g_render_rhi);
-	auto* device = vk_rhi->GetDevice();
-
 	while (true) {
 		std::vector<float> images;
 		std::vector<uint8_t> labels;
@@ -93,10 +83,11 @@ float Trainer::Evaluate() {
 		Tensor input_buf({n, test_loader_.ImageSize()});
 		input_buf.Upload(images.data());
 
-		vk_cmd->Begin();
+		// -- [AI] using RHI lifecycle
+		cmd_->Begin();
 		auto preds = model_.Predict(cmd_, input_buf, n);
-		vk_cmd->End();
-		device->GetQueue(ENUM_QUEUE_TYPE::COMPUTE)->Submit(vk_cmd);
+		cmd_->End();
+		RHISubmitCommandListForQueue(cmd_, ENUM_QUEUE_TYPE::COMPUTE);
 
 		for (uint32_t i = 0; i < n; ++i) {
 			if (preds[i] == labels[i]) correct++;

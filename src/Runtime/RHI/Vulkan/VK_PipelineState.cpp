@@ -385,6 +385,173 @@ void VK_PipelineState::CreateShaderResourceBinding(ShaderResourceBinding*& out_s
 	}
 }
 
+// -- [AI:BEGIN] VK_ComputePipelineState implementation
+
+VK_ComputePipelineState::~VK_ComputePipelineState()
+{
+        if (pipeline != VK_NULL_HANDLE)
+        {
+                vkDestroyPipeline(device->GetDevice(), pipeline, nullptr);
+                pipeline = VK_NULL_HANDLE;
+        }
+        if (pipeline_layout != VK_NULL_HANDLE)
+        {
+                vkDestroyPipelineLayout(device->GetDevice(), pipeline_layout, nullptr);
+                pipeline_layout = VK_NULL_HANDLE;
+        }
+        for (auto& it : descriptorset_layouts)
+        {
+                if (it != VK_NULL_HANDLE)
+                {
+                        VK_BindlessManager* bindless = device->GetBindlessManager();
+                        if (bindless && bindless->IsEnabled() && it == bindless->GetLayout())
+                        {
+                                it = VK_NULL_HANDLE;
+                        }
+                        else
+                        {
+                                vkDestroyDescriptorSetLayout(device->GetDevice(), it, nullptr);
+                                it = VK_NULL_HANDLE;
+                        }
+                }
+        }
+}
+
+VkPipeline VK_ComputePipelineState::GetPipeline() CONST
+{
+        return pipeline;
+}
+
+VkPipelineLayout VK_ComputePipelineState::GetPipelineLayout() CONST
+{
+        return pipeline_layout;
+}
+
+VK_ComputePipelineState::VK_ComputePipelineState(VK_Device* in_device, CONST ComputePipelineStateDesc& in_desc, VkPipelineCache pipeline_cache)
+        : ComputePipelineState(in_desc), device(in_device)
+{
+        VK_Shader* vk_shader = static_cast<VK_Shader*>(desc.compute_shader);
+
+        VkPipelineShaderStageCreateInfo stage_info = {};
+        stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stage_info.stage = VK_Utils::Translate_ShaderTypeEnum_To_Vulkan(vk_shader->GetDesc().shader_type);
+        stage_info.module = vk_shader->GetShaderModule();
+        stage_info.pName = vk_shader->GetDesc().entry_name.c_str();
+
+        VkComputePipelineCreateInfo pipeline_info{};
+        pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        pipeline_info.stage = stage_info;
+        pipeline_info.layout = CreatePipelineLayout();
+        pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+        pipeline_info.pNext = nullptr;
+        CHECK_WITH_LOG(vkCreateComputePipelines(device->GetDevice(), pipeline_cache, 1, &pipeline_info, nullptr, &pipeline) != VK_SUCCESS,
+                "RHI Error: Failed to create compute pipeline");
+}
+
+VkPipelineLayout VK_ComputePipelineState::CreatePipelineLayout()
+{
+        if (pipeline_layout != VK_NULL_HANDLE)
+                return pipeline_layout;
+
+        Array<DescriptorSetLayoutData, MYRENDER_MAX_BINDING_SET_NUM> merged_layouts;
+        VK_Shader* vk_shader = static_cast<VK_Shader*>(desc.compute_shader);
+        auto& reflect_info = vk_shader->GetReflectedInfo();
+
+        for (UInt32 i = 0; i < MYRENDER_MAX_BINDING_SET_NUM; i++)
+        {
+                DescriptorSetLayoutData& ly = merged_layouts[i];
+                ly.set_number = i;
+                ly.create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+
+                for (auto& s : reflect_info.setlayouts)
+                {
+                        if (s.set_number == i)
+                        {
+                                ly.bindings = s.bindings;
+                                break;
+                        }
+                }
+
+                std::sort(ly.bindings.begin(), ly.bindings.end(), [](VkDescriptorSetLayoutBinding& a, VkDescriptorSetLayoutBinding& b) {
+                        return a.binding < b.binding;
+                });
+
+                ly.is_bindless = (i == VK_BindlessManager::BINDLESS_SET_INDEX && ly.bindings.size() > 0);
+                ly.create_info.bindingCount = (uint32_t)ly.bindings.size();
+                ly.create_info.pBindings = ly.bindings.data();
+                ly.create_info.flags = 0;
+                ly.create_info.pNext = 0;
+
+                if (ly.is_bindless && device->GetBindlessManager() && device->GetBindlessManager()->IsEnabled())
+                {
+                        descriptorset_layouts[i] = device->GetBindlessManager()->GetLayout();
+                }
+                else if (ly.create_info.bindingCount > 0)
+                {
+                        CHECK_WITH_LOG(vkCreateDescriptorSetLayout(device->GetDevice(), &ly.create_info, nullptr, &descriptorset_layouts[i]) != VK_SUCCESS,
+                                "RHI Error: Failed to create compute descriptor set layout");
+                }
+                else
+                {
+                        descriptorset_layouts[i] = VK_NULL_HANDLE;
+                }
+        }
+
+        Vector<VkPushConstantRange> constant_ranges;
+        for (auto& s : reflect_info.constant_ranges)
+                constant_ranges.push_back(s.constant);
+
+        VkPipelineLayoutCreateInfo pipeline_layout_info = VK_Utils::Pipeline_Layout_Create_Info();
+        pipeline_layout_info.pPushConstantRanges = constant_ranges.data();
+        pipeline_layout_info.pushConstantRangeCount = (uint32_t)constant_ranges.size();
+
+        Array<VkDescriptorSetLayout, MYRENDER_MAX_BINDING_SET_NUM> compacted_layouts;
+        UInt32 compact_count = 0;
+        for (UInt32 i = 0; i < MYRENDER_MAX_BINDING_SET_NUM; i++)
+        {
+                if (descriptorset_layouts[i] != VK_NULL_HANDLE)
+                        compacted_layouts[compact_count++] = descriptorset_layouts[i];
+        }
+        pipeline_layout_info.setLayoutCount = compact_count;
+        pipeline_layout_info.pSetLayouts = compacted_layouts.data();
+
+        CHECK_WITH_LOG(vkCreatePipelineLayout(device->GetDevice(), &pipeline_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS,
+                "RHI Error: Failed to create compute pipeline layout");
+
+        for (auto& [name, binding] : reflect_info.bindings)
+                compacted_bindings[name] = binding;
+
+        return pipeline_layout;
+}
+
+void VK_ComputePipelineState::CreateShaderResourceBinding(ShaderResourceBinding*& out_srb, Bool init_static_resource)
+{
+        if (out_srb == nullptr)
+                out_srb = new VK_ShaderResourceBinding(device, compacted_bindings, init_static_resource);
+        VK_ShaderResourceBinding* vk_srb = STATIC_CAST(out_srb, VK_ShaderResourceBinding);
+        VK_DescriptsetAllocator* allocator = device->GetDescriptsetAllocator();
+        for (UInt32 i = 0; i < 4; i++)
+        {
+                if (descriptorset_layouts[i] != VK_NULL_HANDLE)
+                {
+                        if (device->GetBindlessManager() && device->GetBindlessManager()->IsEnabled()
+                                && descriptorset_layouts[i] == device->GetBindlessManager()->GetLayout())
+                        {
+                                vk_srb->descriptorset[i] = device->GetBindlessManager()->GetDescriptorSet();
+                        }
+                        else
+                        {
+                                allocator->AllocateDescriptorset(descriptorset_layouts[i], vk_srb->descriptorset[i]);
+                        }
+                }
+                else
+                {
+                        vk_srb->descriptorset[i] = VK_NULL_HANDLE;
+                }
+        }
+}
+// -- [AI:END]
+
 VK_PipelineStateManager::VK_PipelineStateManager(VK_Device* in_device):device(in_device)
 {
 	FILE* f = fopen("PipelineCache.bin", "rb");
@@ -403,6 +570,8 @@ VK_PipelineStateManager::~VK_PipelineStateManager()
 	ProcessPendingDestruction();
 	for(auto& it:pipeline_states_map) delete it.second;
 	pipeline_states_map.clear();
+	for(auto& it:compute_pipeline_states_map) delete it.second;
+	compute_pipeline_states_map.clear();
 }
 
 VkPipelineCache VK_PipelineStateManager::GetPipelineCache() CONST
@@ -433,6 +602,22 @@ VK_PipelineState* VK_PipelineStateManager::GetPipelineState(CONST RenderGraphiPi
 	pipeline_states_map[hash] = pipeline_state;
 	EvictLRU();
 	return pipeline_state;
+}
+
+// -- [AI]
+VK_ComputePipelineState* VK_PipelineStateManager::GetComputePipelineState(CONST ComputePipelineStateDesc& in_desc)
+{
+        UInt64 hash = std::hash<const void*>{}(in_desc.compute_shader);
+        auto it = compute_pipeline_states_map.find(hash);
+        if (it != compute_pipeline_states_map.end())
+        {
+                it->second->last_used_frame = g_frame_number_render_thread;
+                return it->second;
+        }
+        VK_ComputePipelineState* pipeline_state = new VK_ComputePipelineState(device, in_desc, pipeline_cache);
+        compute_pipeline_states_map[hash] = pipeline_state;
+        EvictLRU();
+        return pipeline_state;
 }
 
 void VK_PipelineStateManager::EvictLRU() {}

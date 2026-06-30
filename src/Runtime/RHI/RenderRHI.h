@@ -18,6 +18,7 @@ class Shader;
 class RenderPipelineState;
 class RenderPass;
 class FrameBuffer;
+class ComputePipelineState;
 class CommandList;
 MYRENDERER_BEGIN_CLASS(RenderFactory)
 public:
@@ -48,6 +49,8 @@ public:
 	VIRTUAL Buffer* METHOD(CreateBuffer)(CONST BufferDesc& buffer_desc) PURE;
 	VIRTUAL Texture* METHOD(CreateTexture)(CONST TextureDesc& texture_desc) PURE;
 	VIRTUAL RenderPipelineState* METHOD(CreateRenderPipelineState)(CONST RenderGraphiPipelineStateDesc& desc) PURE;
+	// -- [AI]
+	VIRTUAL ComputePipelineState* METHOD(CreateComputePipelineState)(CONST ComputePipelineStateDesc& desc) { return nullptr; }
 	VIRTUAL RenderPass* METHOD(CreateRenderPass)(CONST RenderPassDesc& desc) PURE;
 	VIRTUAL FrameBuffer* METHOD(CreateFrameBuffer)(CONST FrameBufferDesc& desc) PURE;
 
@@ -58,7 +61,11 @@ public:
 
 #pragma region DRAW
 	VIRTUAL	CommandList* METHOD(GetImmediateCommandList)() PURE;
+	// -- [AI]
+	VIRTUAL CommandList* METHOD(GetCommandListForQueue)(ENUM_QUEUE_TYPE queue_type) { return nullptr; }
 	VIRTUAL void METHOD(SubmitCommandList)(CommandList* command_list) PURE;
+	// -- [AI]
+	VIRTUAL void METHOD(SubmitCommandListForQueue)(CommandList* cmd_list, ENUM_QUEUE_TYPE queue_type) {}
 
 	VIRTUAL void METHOD(RenderEnd)() PURE;
 #pragma endregion
@@ -87,7 +94,10 @@ extern CORE_API MXRender::RHI::RenderPipelineState* METHOD(RHICreateRenderPipeli
 extern CORE_API MXRender::RHI::RenderPass* METHOD(RHICreateRenderPass)(CONST MXRender::RHI::RenderPassDesc& desc);
 extern CORE_API MXRender::RHI::FrameBuffer* METHOD(RHICreateFrameBuffer)(CONST MXRender::RHI::FrameBufferDesc& desc);
 extern CORE_API MXRender::RHI::CommandList* METHOD(RHIGetImmediateCommandList)();
-extern CORE_API MXRender::RHI::CommandList* METHOD(RHIGetImmediateCommandList)();
+// -- [AI]
+extern CORE_API MXRender::RHI::ComputePipelineState* METHOD(RHICreateComputePipelineState)(CONST MXRender::RHI::ComputePipelineStateDesc& desc);
+extern CORE_API MXRender::RHI::CommandList* METHOD(RHIGetCommandListForQueue)(MXRender::ENUM_QUEUE_TYPE queue_type);
+extern CORE_API void METHOD(RHISubmitCommandListForQueue)(MXRender::RHI::CommandList* cmd_list, MXRender::ENUM_QUEUE_TYPE queue_type);
 extern CORE_API void METHOD(RHIRenderEnd)();
 extern CORE_API void METHOD(RHISubmitCommandList)(MXRender::RHI::CommandList* command_list);
 extern CORE_API void* METHOD(RHIMapBuffer)(MXRender::RHI::Buffer* buffer, MXRender::ENUM_MAP_TYPE map_type, MXRender::ENUM_MAP_FLAG map_flag);

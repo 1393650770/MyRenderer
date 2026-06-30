@@ -490,6 +490,25 @@ private:
 MYRENDERER_END_CLASS
 
 
+// -- [AI:BEGIN]
+// Lightweight compute pipeline descriptor - only needs a compute shader,
+// no graphics state (blend/raster/depth/vertex input)
+MYRENDERER_BEGIN_STRUCT(ComputePipelineStateDesc)
+public:
+    Shader* compute_shader = nullptr;
+
+    constexpr Bool operator == (CONST ComputePipelineStateDesc& rhs) CONST
+    {
+        return compute_shader == rhs.compute_shader;
+    }
+    constexpr Bool operator != (CONST ComputePipelineStateDesc& rhs) CONST
+    {
+        return !(*this == rhs);
+    }
+MYRENDERER_END_STRUCT
+// -- [AI:END]
+
+
 MYRENDERER_BEGIN_STRUCT(RenderPassCacheKey)
 	public:
 		RenderPassCacheKey() {}

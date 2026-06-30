@@ -3,11 +3,8 @@
 #include <random>
 #include "Application/Window.h"
 #include "Core/ConstDefine.h"
+// -- [AI] All Vulkan includes removed - RHI-only interface
 #include "RHI/RenderRHI.h"
-#include "RHI/Vulkan/VK_RenderRHI.h"
-#include "RHI/Vulkan/VK_CommandBuffer.h"
-#include "RHI/Vulkan/VK_Device.h"
-#include "RHI/Vulkan/VK_Queue.h"
 #include "Tensor.h"
 #include "Layer.h"
 #include "Optimizer.h"
@@ -105,9 +102,6 @@ int main()
 	Window window;
 	window.InitWindow();
 
-	auto* vk_rhi = STATIC_CAST(g_render_rhi, Vulkan::VulkanRHI);
-	auto* device = vk_rhi->GetDevice();
-
 	// Build model: 2 → 64(ReLU) → 3(Softmax)
 	CONST UInt32 kMaxBatchSize = 32;
 	SequentialModel model(kMaxBatchSize);
@@ -118,9 +112,8 @@ int main()
 	// Create dataset
 	SpiralDataset dataset(600, 3);
 
-	// Get compute command buffer
-	auto* cmd = device->GetCommandBufferManager()->GetOrCreateCommandBuffer(
-		ENUM_QUEUE_TYPE::COMPUTE, false);
+	// Get compute command buffer -- [AI] using RHI global function
+	auto* cmd = RHIGetCommandListForQueue(ENUM_QUEUE_TYPE::COMPUTE);
 
 	// Input buffer
 	Tensor input_buf({kMaxBatchSize, dataset.InputDim()});
@@ -144,13 +137,13 @@ int main()
 
 			input_buf.Upload(images.data());
 
-			auto* vk_cmd = STATIC_CAST(cmd, Vulkan::VK_CommandBuffer);
-			vk_cmd->Begin();
+			// -- [AI] Using RHI Begin/End lifecycle + queue submission
+			cmd->Begin();
 
 			Float32 loss = model.TrainStep(cmd, input_buf, labels, n);
 
-			device->GetQueue(ENUM_QUEUE_TYPE::COMPUTE)->Submit(vk_cmd);
-			vk_cmd->command_state = MXRender::RHI::Vulkan::VK_CommandBuffer::EState::NeedReset;
+			cmd->End();
+			RHISubmitCommandListForQueue(cmd, ENUM_QUEUE_TYPE::COMPUTE);
 			std::cout << "[Epoch " << epoch << " Batch " << batch_count
 				<< "] loss=" << loss << std::endl;
 

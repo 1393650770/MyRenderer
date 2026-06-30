@@ -5,8 +5,7 @@
 #include "Core/ConstDefine.h"
 #include "RHI/RenderRHI.h"
 #include "RHI/RenderShader.h"
-#include "RHI/Vulkan/VK_CommandBuffer.h"
-#include "RHI/Vulkan/VK_Shader.h"
+// -- [AI] Vulkan includes removed - using clean RHI barrier + FlushDescriptorWrites
 
 using namespace MXRender::RHI;
 using namespace MXRender;
@@ -104,7 +103,7 @@ void SequentialModel::ZeroAllGradients(CommandList* in_cmd)
 			temp_srb->SetResource("pc", zg_pc_buf_.GetBuffer());
 
 			// Flush writes BEFORE binding (update→bind order is valid)
-			STATIC_CAST(temp_srb, Vulkan::VK_ShaderResourceBinding)->FlushDescriptorWrites();
+			temp_srb->FlushDescriptorWrites(); // -- [AI]
 
 			in_cmd->SetShaderResourceBinding(temp_srb);
 			in_cmd->Dispatch(
@@ -138,8 +137,7 @@ Float32 SequentialModel::TrainStep(CommandList* in_cmd, Tensor& in_input,
 	label_buf_.Upload(label_floats.data());
 	loss_layer->GetFwdLossSRB()->SetResource("lb", label_buf_.GetBuffer());
 
-	auto* vk_cmd = STATIC_CAST(in_cmd, Vulkan::VK_CommandBuffer);
-
+	
 	// 1. Zero all gradients (GPU compute)
 	ZeroAllGradients(in_cmd);
 
@@ -153,7 +151,7 @@ Float32 SequentialModel::TrainStep(CommandList* in_cmd, Tensor& in_input,
 		zg_pc_buf_.Upload(&zp.num_elements);
 		temp_srb->SetResource("g0", loss_layer->GetLossBuffer());
 		temp_srb->SetResource("pc", zg_pc_buf_.GetBuffer());
-		STATIC_CAST(temp_srb, Vulkan::VK_ShaderResourceBinding)->FlushDescriptorWrites();
+		temp_srb->FlushDescriptorWrites(); // -- [AI]
 
 		in_cmd->SetShaderResourceBinding(temp_srb);
 		in_cmd->Dispatch(1, 1, 1);
@@ -161,11 +159,12 @@ Float32 SequentialModel::TrainStep(CommandList* in_cmd, Tensor& in_input,
 	}
 
 	// Barrier: zero writes → forward reads
-	vk_cmd->MemoryBarrier(
-		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		VK_ACCESS_SHADER_WRITE_BIT,
-		VK_ACCESS_SHADER_READ_BIT);
+	// -- [AI] using RHI barrier API
+	in_cmd->MemoryBarrier(
+		ENUM_SHADER_STAGE::Shader_Compute,
+		ENUM_SHADER_STAGE::Shader_Compute,
+		ENUM_RESOURCE_STATE::UnorderedAccess,
+		ENUM_RESOURCE_STATE::ShaderResource);
 
 	// 3. Forward pass: input → hidden → output (with loss)
 	Tensor* current = &in_input;
@@ -176,11 +175,12 @@ Float32 SequentialModel::TrainStep(CommandList* in_cmd, Tensor& in_input,
 	}
 
 	// Barrier: forward writes → backward reads
-	vk_cmd->MemoryBarrier(
-		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		VK_ACCESS_SHADER_WRITE_BIT,
-		VK_ACCESS_SHADER_READ_BIT);
+	// -- [AI] using RHI barrier API
+	in_cmd->MemoryBarrier(
+		ENUM_SHADER_STAGE::Shader_Compute,
+		ENUM_SHADER_STAGE::Shader_Compute,
+		ENUM_RESOURCE_STATE::UnorderedAccess,
+		ENUM_RESOURCE_STATE::ShaderResource);
 
 	// 4. Backward pass: output → hidden → input
 	for (Int i = static_cast<Int>(layers_.size()) - 1; i >= 0; --i)
@@ -207,11 +207,12 @@ Float32 SequentialModel::TrainStep(CommandList* in_cmd, Tensor& in_input,
 	}
 
 	// Barrier: backward writes → optimizer reads
-	vk_cmd->MemoryBarrier(
-		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		VK_ACCESS_SHADER_WRITE_BIT,
-		VK_ACCESS_SHADER_READ_BIT);
+	// -- [AI] using RHI barrier API
+	in_cmd->MemoryBarrier(
+		ENUM_SHADER_STAGE::Shader_Compute,
+		ENUM_SHADER_STAGE::Shader_Compute,
+		ENUM_RESOURCE_STATE::UnorderedAccess,
+		ENUM_RESOURCE_STATE::ShaderResource);
 
 	// 5. Weight update
 	Float32 inv_bs = 1.0f / static_cast<Float32>(in_active_batch_size);

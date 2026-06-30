@@ -14,6 +14,17 @@ RenderPipelineState::~RenderPipelineState()
 
 }
 
-MYRENDERER_END_NAMESPACE
-MYRENDERER_END_NAMESPACE
+// -- [AI:BEGIN]
+ComputePipelineState::ComputePipelineState(CONST ComputePipelineStateDesc& in_desc) :
+	desc(in_desc)
+{
+}
 
+ComputePipelineState::~ComputePipelineState()
+{
+
+}
+// -- [AI:END]
+
+MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE

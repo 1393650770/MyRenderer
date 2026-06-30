@@ -510,6 +510,55 @@ void VK_CommandBuffer::MemoryBarrier(VkPipelineStageFlags srcStageMask, VkPipeli
 	pipeline_barrier.memory_dst_access |= dstAccessMask;
 }
 
+// -- [AI:BEGIN] RHI barrier API implementations
+
+void VK_CommandBuffer::ResourceBarrier(ENUM_RESOURCE_STATE src_state, ENUM_RESOURCE_STATE dst_state)
+{
+    if (state_cache.render_pass != VK_NULL_HANDLE)
+    {
+        EndRenderPass();
+    }
+
+    VkPipelineStageFlags srcStage = VK_Utils::Translate_ReourceState_To_VulkanPipelineStage(src_state);
+    VkPipelineStageFlags dstStage = VK_Utils::Translate_ReourceState_To_VulkanPipelineStage(dst_state);
+
+    VkAccessFlags srcAccess = VK_Utils::Check_ResourceState_Has_WriteAccess(src_state)
+        ? VK_ACCESS_SHADER_WRITE_BIT
+        : VK_ACCESS_SHADER_READ_BIT;
+    VkAccessFlags dstAccess = VK_Utils::Check_ResourceState_Has_WriteAccess(dst_state)
+        ? VK_ACCESS_SHADER_WRITE_BIT
+        : VK_ACCESS_SHADER_READ_BIT;
+
+    pipeline_barrier.memory_src_stages |= srcStage;
+    pipeline_barrier.memory_dst_stages |= dstStage;
+    pipeline_barrier.memory_src_access |= srcAccess;
+    pipeline_barrier.memory_dst_access |= dstAccess;
+}
+
+void VK_CommandBuffer::MemoryBarrier(ENUM_SHADER_STAGE src_stage, ENUM_SHADER_STAGE dst_stage, ENUM_RESOURCE_STATE src_access, ENUM_RESOURCE_STATE dst_access)
+{
+    if (state_cache.render_pass != VK_NULL_HANDLE)
+    {
+        EndRenderPass();
+    }
+
+    VkShaderStageFlagBits vkSrcStage = VK_Utils::Translate_ShaderTypeEnum_To_Vulkan(src_stage);
+    VkShaderStageFlagBits vkDstStage = VK_Utils::Translate_ShaderTypeEnum_To_Vulkan(dst_stage);
+
+    VkAccessFlags vkSrcAccess = VK_Utils::Check_ResourceState_Has_WriteAccess(src_access)
+        ? VK_ACCESS_SHADER_WRITE_BIT
+        : VK_ACCESS_SHADER_READ_BIT;
+    VkAccessFlags vkDstAccess = VK_Utils::Check_ResourceState_Has_WriteAccess(dst_access)
+        ? VK_ACCESS_SHADER_WRITE_BIT
+        : VK_ACCESS_SHADER_READ_BIT;
+
+    pipeline_barrier.memory_src_stages |= vkSrcStage;
+    pipeline_barrier.memory_dst_stages |= vkDstStage;
+    pipeline_barrier.memory_src_access |= vkSrcAccess;
+    pipeline_barrier.memory_dst_access |= vkDstAccess;
+}
+// -- [AI:END]
+
 void VK_CommandBuffer::CopyBufferToImage(VkBuffer buffer, VkImage image, VkImageLayout imageLayout,UInt32 region_count, CONST VkBufferImageCopy* region)
 {
 	if (state_cache.render_pass != VK_NULL_HANDLE)
@@ -572,11 +621,34 @@ void VK_CommandBuffer::Dispatch(UInt32 groupX, UInt32 groupY, UInt32 groupZ)
 
 void VK_CommandBuffer::SetPushConstants(UInt32 offset, UInt32 size, const void* data)
 {
-	if (state_cache.pipeline_layout == VK_NULL_HANDLE)
-		return;
-	vkCmdPushConstants(command_buffer, state_cache.pipeline_layout,
-		VK_SHADER_STAGE_COMPUTE_BIT, offset, size, data);
+        if (state_cache.pipeline_layout == VK_NULL_HANDLE)
+                return;
+        // -- [AI] Auto-detect stage: compute vs graphics pipeline
+        VkShaderStageFlagBits stage = (state_cache.compute_pipeline != VK_NULL_HANDLE)
+                ? VK_SHADER_STAGE_COMPUTE_BIT
+                : VkShaderStageFlagBits(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        vkCmdPushConstants(command_buffer, state_cache.pipeline_layout,
+                stage, offset, size, data);
 }
+
+// -- [AI] Stage-aware push constants overload
+void VK_CommandBuffer::SetPushConstants(UInt32 offset, UInt32 size, const void* data, ENUM_SHADER_STAGE stage)
+{
+        if (state_cache.pipeline_layout == VK_NULL_HANDLE)
+                return;
+        VkShaderStageFlagBits vk_stage = VK_Utils::Translate_ShaderTypeEnum_To_Vulkan(stage);
+        vkCmdPushConstants(command_buffer, state_cache.pipeline_layout,
+                vk_stage, offset, size, data);
+}
+
+// -- [AI] Combined compute dispatch: pipeline + SRB + dispatch in one call
+void VK_CommandBuffer::ComputeDispatch(RenderPipelineState* pipeline, ShaderResourceBinding* srb, UInt32 groupX, UInt32 groupY, UInt32 groupZ)
+{
+        SetComputePipeline(pipeline);
+        SetShaderResourceBinding(srb);
+        Dispatch(groupX, groupY, groupZ);
+}
+
 void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, CONST Vector<ClearValue>& clear_values, Bool has_dsv_clear_value)
 {
 	CHECK_WITH_LOG(command_state < EState::IsInsideBegin, "RHI Error: SetRenderTarget must be called between Begin and End");

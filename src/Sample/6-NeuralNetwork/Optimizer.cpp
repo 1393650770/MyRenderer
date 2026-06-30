@@ -7,7 +7,7 @@
 #include "RHI/RenderRHI.h"
 #include "RHI/RenderShader.h"
 #include "RHI/RenderRource.h"
-#include "RHI/Vulkan/VK_Shader.h"
+// -- [AI] VK_Shader.h removed - FlushDescriptorWrites now on RHI base class
 
 using namespace MXRender::RHI;
 using namespace MXRender;
@@ -79,7 +79,7 @@ void SGD::Update(CommandList* in_cmd, Tensor& in_params, Tensor& in_grads,
 	temp_srb->SetResource("g0", in_grads.GetBuffer());
 	temp_srb->SetResource("v0", in_velocity.GetBuffer());
 	temp_srb->SetResource("pc", pc_buf_.GetBuffer());
-	STATIC_CAST(temp_srb, Vulkan::VK_ShaderResourceBinding)->FlushDescriptorWrites();
+	temp_srb->FlushDescriptorWrites(); // -- [AI] virtual dispatch — no Vulkan cast needed
 
 	in_cmd->SetComputePipeline(update_pipeline_);
 	in_cmd->SetShaderResourceBinding(temp_srb);

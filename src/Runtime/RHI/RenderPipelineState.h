@@ -28,6 +28,30 @@ private:
 #pragma endregion
 MYRENDERER_END_CLASS
 
+// -- [AI:BEGIN]
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(ComputePipelineState, public RenderResource)
+#pragma region METHOD
+public:
+    ComputePipelineState() MYDEFAULT;
+    ComputePipelineState(CONST ComputePipelineStateDesc& in_desc);
+    VIRTUAL ~ComputePipelineState();
+    VIRTUAL void CreateShaderResourceBinding(ShaderResourceBinding*& out_srb, Bool init_static_resource = false) PURE;
+    CONST ComputePipelineStateDesc& GetDesc() CONST { return desc; }
+protected:
+private:
+
+#pragma endregion
+
+#pragma region MEMBER
+public:
+protected:
+    ComputePipelineStateDesc desc;
+private:
+
+#pragma endregion
+MYRENDERER_END_CLASS
+// -- [AI:END]
+
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 #endif //_RENDERSTATE_
