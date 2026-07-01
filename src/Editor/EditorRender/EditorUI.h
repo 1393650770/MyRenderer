@@ -1,4 +1,3 @@
-
 #pragma once
 #ifndef _EDITORUI_
 #define _EDITORUI_
@@ -15,6 +14,7 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 class BasePanel;
+class RenderGraphPanel;
 MYRENDERER_END_NAMESPACE
 
 MYRENDERER_BEGIN_NAMESPACE(Application)
@@ -31,6 +31,14 @@ public:
 	void METHOD(Init)(Window* in_window);
 	void METHOD(AddPass)(Render::RenderGraph* in_graph);
 	void METHOD(Release)();
+
+	// RenderGraph bridge
+	void METHOD(SetRenderGraph)(Render::RenderGraph* g) { graph_ptr = g; }
+	Render::RenderGraph* METHOD(GetRenderGraph)() { return graph_ptr; }
+
+	// Panel access (for OutlinePanel etc.)
+	UI::RenderGraphPanel* METHOD(GetRenderGraphPanel)();
+
 protected:
 	void AddPanelUI(CONST String& name);
 	void AddPanelUI(UI::BasePanel* in_panel);
@@ -45,6 +53,8 @@ public:
 	Window* window = nullptr;
 protected:
 	Vector<UI::BasePanel*> panels;
+	Render::RenderGraph* graph_ptr = nullptr;
+	UI::RenderGraphPanel* rg_panel = nullptr; // cached reference
 private:
 #pragma endregion
 

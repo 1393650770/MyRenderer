@@ -14,6 +14,7 @@
 #include "RHI/RenderRource.h"
 #include "RHI/RenderBuffer.h"
 #include "RHI/RenderUtils.h"
+#include "UI/RenderGraphEditor/RenderGraphPanel.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
@@ -195,8 +196,12 @@ void EditorRenderPipeline::BeginRender()
 		}
 	});
 
+	editor_ui.SetRenderGraph(&graph);
 	editor_ui.AddPass(&graph);
 	graph.Compile();
+		// Sync runtime graph to editor visualization
+		if (auto* rgp = editor_ui.GetRenderGraphPanel())
+			rgp->SyncRuntimeToEditor(&graph);
 }
 
 void EditorRenderPipeline::EndRender()

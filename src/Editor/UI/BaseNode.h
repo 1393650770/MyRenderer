@@ -32,7 +32,12 @@ public:
 
 
 	BasePin* METHOD(GetPin)(UInt64 id);
+	BasePin* METHOD(GetPinByName)(CONST String& name);
 	void METHOD(SetSetNeedRecalcSize)();
+
+	// Pin access for property inspectors
+	Vector<BasePin*>& METHOD(GetInputPins)() { return input_pins; }
+	Vector<BasePin*>& METHOD(GetOutputPins)() { return output_pins; }
 protected:
 	VIRTUAL void METHOD(RecalcSize)();
 private:

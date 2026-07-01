@@ -82,5 +82,13 @@
 #include  "D:/Project/GameDevelop/MyRenderer/src/Editor/UI/BaseNode.h"
 #include  "D:/Project/GameDevelop/MyRenderer/src/Editor/UI/BasePanel.h"
 #include  "D:/Project/GameDevelop/MyRenderer/src/Editor/UI/BasePin.h"
+#include  "D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/OutlinePanel.h"
+#include  "D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/PropertiesPanel.h"
+#include  "D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/RenderGraphBuilder.h"
+#include  "D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/RenderGraphConnectionValidator.h"
+#include  "D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/RenderGraphNodeColors.h"
 #include  "D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/RenderGraphPanel.h"
+#include  "D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/RenderGraphPassNode.h"
+#include  "D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/RenderGraphResourceNode.h"
+#include  "D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/RenderGraphSerializer.h"
 #endif

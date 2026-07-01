@@ -12,6 +12,8 @@
 #include <imgui_internal.h>
 #include "UI/BasePanel.h"
 #include "UI/RenderGraphEditor/RenderGraphPanel.h"
+#include "UI/RenderGraphEditor/PropertiesPanel.h"
+#include "UI/RenderGraphEditor/OutlinePanel.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
@@ -48,11 +50,31 @@ void EditorUI::Init(Window* in_window)
 
 	CHECK_WITH_LOG(ImGui_ImplGlfw_InitForVulkan(glfw_window, true) == false, "Failed to init ImGui for Vulkan!");
 	in_window->GetViewport()->AttachUiLayer(this);
-	
-	AddPanelUI(RenderGraphPanel::GetTypeName());
-	//auto it = UI::BasePanel::CreatePanel(RenderGraphPanel::GetTypeName(),"test");
 
-	//AddPanelUI(it);
+	// Register all panels (DockSpace will auto-arrange them)
+	AddPanelUI(RenderGraphPanel::GetTypeName());
+	AddPanelUI(PropertiesPanel::GetTypeName());
+	AddPanelUI(OutlinePanel::GetTypeName());
+
+	// Cache the RenderGraphPanel reference and wire up data sources
+	for (auto* p : panels)
+	{
+		if (auto* rg = dynamic_cast<UI::RenderGraphPanel*>(p))
+		{
+			rg_panel = rg;
+		}
+	}
+	// Wire OutlinePanel to access RenderGraphPanel's node list
+	if (rg_panel)
+	{
+		for (auto* p : panels)
+		{
+			if (auto* outline = dynamic_cast<UI::OutlinePanel*>(p))
+				outline->SetDataSource(rg_panel);
+			if (auto* props = dynamic_cast<UI::PropertiesPanel*>(p))
+				props->SetDataSource(rg_panel);
+		}
+	}
 }
 
 void EditorUI::AddPass(RenderGraph* in_graph)
@@ -73,7 +95,7 @@ void EditorUI::AddPass(RenderGraph* in_graph)
 	in_graph->AddRenderPass<UIPassData>("UIPass", in_graph, cmd_list,
 		[&](UIPassData& data, RenderGraphPassBuilder& builder, CommandList* in_cmd_list)
 	{
-		
+
 	},
 		[=](CONST UIPassData& data, CommandList* in_cmd_list)
 	{
@@ -93,10 +115,34 @@ void EditorUI::AddPass(RenderGraph* in_graph)
 		cmd_list->BeginUI();
 
 		//ImGui::SliderFloat("transparency", &(cmd_list->z), 0.0f, 1.0f);
+
+		// Build dockspace for the main viewport
+		ImGuiViewport* viewport = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(viewport->WorkPos);
+		ImGui::SetNextWindowSize(viewport->WorkSize);
+		ImGui::SetNextWindowViewport(viewport->ID);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+		ImGuiWindowFlags dockspace_flags = ImGuiWindowFlags_NoDocking
+			| ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse
+			| ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
+			| ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus
+			| ImGuiWindowFlags_NoBackground;
+
+		ImGui::Begin("MainDockSpace", nullptr, dockspace_flags);
+		ImGui::PopStyleVar(2);
+
+		ImGuiID dockspace_id = ImGui::GetID("EditorDockSpace");
+		ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+
+		// Draw each panel in its own window
 		for (auto& panel : panels)
 		{
 			panel->Draw();
 		}
+
+		ImGui::End();
 
 		cmd_list->EndUI();
 	});
@@ -141,6 +187,11 @@ void EditorUI::OpenRanelUI(CONST String& name)
 			return;
 		}
 	}
+}
+
+UI::RenderGraphPanel* EditorUI::GetRenderGraphPanel()
+{
+	return rg_panel;
 }
 
 MYRENDERER_END_NAMESPACE

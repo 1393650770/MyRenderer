@@ -64,6 +64,10 @@ public:
 	// Buffer aliasing: compute offsets for transient buffers to share one VkDeviceMemory block.
 	void METHOD(CompileAliasingPlan)();
 
+	// Accessors for editor introspection
+	Vector<std::unique_ptr<RenderGraphPassBase>>& METHOD(GetPasses)() { return passes; }
+	Vector<std::unique_ptr<RenderGraphResourceBase>>& METHOD(GetResources)() { return resources; }
+
 	bool METHOD(Searilize)(CONST String& filename);
 
 	bool METHOD(Desearilize)(CONST String& filename);
