@@ -108,8 +108,14 @@ void VK_Viewport::AttachUiLayer(UI::UIBase* ui_layer)
 
 	//VkFramebuffer framebuffer = vk_framebuffer->GetFramebuffer();
 
-	//init_info.UseDynamicRendering = false;
-	//init_info.RenderPass = render_pass;
+	init_info.UseDynamicRendering = device->GetOptionalExtensions().HasKHRDynamicRendering;
+	init_info.ColorAttachmentFormat = VK_Utils::Translate_Texture_Format_To_Vulkan(rtvs[0]->GetTextureDesc().format);
+
+	// Load Vulkan function pointers for ImGui (required when imgui is built with IMGUI_IMPL_VULKAN_NO_PROTOTYPES)
+	ImGui_ImplVulkan_LoadFunctions([](const char* function_name, void* user_data) {
+		return vkGetInstanceProcAddr(static_cast<VkInstance>(user_data), function_name);
+	}, static_cast<void*>(init_info.Instance));
+
 	CHECK_WITH_LOG( ImGui_ImplVulkan_Init(&init_info, render_pass)==false ,"Failed to init ImGui for Vulkan!");
 	 
 	VK_CommandBuffer* command_buffer= device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::GRAPHICS, true);

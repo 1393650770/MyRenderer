@@ -90,7 +90,7 @@ VkDescriptorPool VK_DescriptorPoolManager::CreatePool()
 	pool_info.maxSets = max_descriptorsets;
 	pool_info.pNext = 0U;
 	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-	VkDescriptorPool temp_descriptor_pool;
+	VkDescriptorPool temp_descriptor_pool = VK_NULL_HANDLE;
 	CHECK_WITH_LOG(vkCreateDescriptorPool(device->GetDevice(), &pool_info, nullptr, &temp_descriptor_pool) != VK_SUCCESS,
 		("failed to create descriptor pool!"));
 	

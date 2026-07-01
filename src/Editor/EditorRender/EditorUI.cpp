@@ -45,6 +45,7 @@ void EditorUI::Init(Window* in_window)
 	//ImFont* font1 = io.Fonts->AddFontDefault();
 
 	GLFWwindow* glfw_window = window->GetWindow();
+
 	CHECK_WITH_LOG(ImGui_ImplGlfw_InitForVulkan(glfw_window, true) == false, "Failed to init ImGui for Vulkan!");
 	in_window->GetViewport()->AttachUiLayer(this);
 	
