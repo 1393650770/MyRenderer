@@ -258,9 +258,10 @@ int main()
         test_input.Upload(test_data.data());
 
         cmd->Begin();
-        Vector<UInt8> preds = loaded_model.Predict(cmd, test_input, kMaxBatch);
+        loaded_model.PredictForward(cmd, test_input);
         cmd->End();
         RHISubmitCommandListForQueue(cmd, ENUM_QUEUE_TYPE::COMPUTE);
+        Vector<UInt8> preds = loaded_model.GetPredictions(kMaxBatch);
 
         std::cout << "Loaded model predictions (all " << kMaxBatch << " samples): ";
         for (UInt32 i = 0; i < kMaxBatch; ++i)

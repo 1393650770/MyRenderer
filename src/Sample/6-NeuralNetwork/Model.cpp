@@ -206,9 +206,15 @@ Float32 SequentialModel::TrainStep(CommandList* in_cmd, Tensor& in_input,
 
 Vector<UInt8> SequentialModel::Predict(CommandList* in_cmd, Tensor& in_input, UInt32 in_batch_size)
 {
+	PredictForward(in_cmd, in_input);
+	return GetPredictions(in_batch_size);
+}
+
+void SequentialModel::PredictForward(CommandList* in_cmd, Tensor& in_input)
+{
 	// -- [AI] N-layer generic forward with eval mode
 	// Bind zero labels for SoftmaxCE inference
-	{ Vector<Float32> zeros(in_batch_size, 0.0f); label_buf_.Upload(zeros.data()); }
+	{ Vector<Float32> zeros(max_batch_size_, 0.0f); label_buf_.Upload(zeros.data()); }
 	for (auto& layer : layers_) { layer->SetTrainingMode(false); if (layer->GetLayerTypeName() == "SoftmaxCrossEntropyOutputLayer") { STATIC_CAST(layer.get(), SoftmaxCrossEntropyOutputLayer)->GetFwdLossSRB()->SetResource("lb", label_buf_.GetBuffer()); } }
 	Tensor* current = &in_input;
 	for (size_t i = 0; i < layers_.size(); ++i)
@@ -216,25 +222,42 @@ Vector<UInt8> SequentialModel::Predict(CommandList* in_cmd, Tensor& in_input, UI
 		layers_[i]->Forward(in_cmd, *current);
 		current = &layers_[i]->GetOutput();
 	}
+}
 
+Vector<UInt8> SequentialModel::GetPredictions(UInt32 in_batch_size)
+{
 	Tensor& probs = layers_.back()->GetOutput();
 	Vector<Float32> prob_data(probs.ElementCount());
 	probs.Download(prob_data.data());
 
 	// -- [AI] Infer num_classes from output shape (last dim)
 	UInt32 num_classes = probs.Shape().back();
+	// Output rows: CNN [B,C] one row per sample; Transformer [B*T,C] one row per token
+	UInt32 num_output_rows = static_cast<UInt32>(probs.ElementCount()) / num_classes;
 	Vector<UInt8> predictions(in_batch_size);
+
+	// rows_per_sample = 1 (no pooling needed); >1 (average pool tokens then argmax)
+	UInt32 rows_per_sample = (std::max)(1u, num_output_rows / in_batch_size);
 
 	for (UInt32 s = 0; s < in_batch_size; ++s)
 	{
 		Float32 best = -1e30f;
 		UInt8 best_class = 0;
+		UInt32 base_row = s * rows_per_sample;
 		for (UInt32 c = 0; c < num_classes; ++c)
 		{
-			Float32 value = prob_data[s * num_classes + c];
-			if (value > best)
+			// Average pool across all tokens for this sample
+			Float32 avg_prob = 0.0f;
+			for (UInt32 t = 0; t < rows_per_sample; ++t)
 			{
-				best = value;
+				UInt32 idx = (base_row + t) * num_classes + c;
+				if (idx < prob_data.size()) // bounds check
+					avg_prob += prob_data[idx];
+			}
+			avg_prob /= static_cast<Float32>(rows_per_sample);
+			if (avg_prob > best)
+			{
+				best = avg_prob;
 				best_class = static_cast<UInt8>(c);
 			}
 		}

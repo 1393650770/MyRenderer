@@ -142,7 +142,8 @@ void MultiHeadAttentionLayer::CreatePipelinesAndSRBs()
 
 void MultiHeadAttentionLayer::Forward(CommandList* in_cmd, Tensor& in_input)
 {
-	UInt32 active_batch = in_input.Shape()[0];
+	// B = total_tokens / T, works for both [B,T,d] and [B*T,d] input shapes
+	UInt32 active_batch = static_cast<UInt32>(in_input.ElementCount()) / d_model_ / max_seq_len_;
 
 	// Update per-call bindings + pc, then flush BEFORE bind (NV driver rule)
 	AttnParams pc;
@@ -164,7 +165,8 @@ void MultiHeadAttentionLayer::Forward(CommandList* in_cmd, Tensor& in_input)
 void MultiHeadAttentionLayer::Backward(CommandList* in_cmd,
 	CONST Tensor& in_dL_dout, CONST Tensor& in_input_act)
 {
-	UInt32 active_batch = in_input_act.Shape()[0];
+	// B = total_tokens / T, works for both [B,T,d] and [B*T,d] input shapes
+	UInt32 active_batch = static_cast<UInt32>(in_input_act.ElementCount()) / d_model_ / max_seq_len_;
 
 	AttnParams pc;
 	pc.B = static_cast<Float32>(active_batch);

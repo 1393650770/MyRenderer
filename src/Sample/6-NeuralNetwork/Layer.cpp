@@ -10,6 +10,7 @@
 #include "RHI/RenderCommandList.h"
 // -- [AI]
 #include "ShaderHelper.h"
+#include "Initializer.h"
 
 using namespace MXRender::RHI;
 using namespace MXRender;
@@ -53,6 +54,8 @@ LinearLayer::LinearLayer(UInt32 in_in_dim, UInt32 in_out_dim, UInt32 in_max_batc
 	, dL_dx_({max_batch_size_, in_dim_})
 	, pc_buf_({5})
 {
+	InitializeWeights(weight_, in_dim_, out_dim_, ENUM_INIT_METHOD::GlorotUniform);
+	InitializeBias(bias_, 0.0f);
 	CreatePipelineAndSRB();
 }
 
@@ -68,6 +71,7 @@ void LinearLayer::CreatePipelineAndSRB()
 	fwd_srb_->SetResource("p0", z_preact_.GetBuffer());
 	fwd_srb_->SetResource("a0", output_.GetBuffer());
 	fwd_srb_->SetResource("pc", pc_buf_.GetBuffer());
+	fwd_srb_->FlushDescriptorWrites();
 
 	// Backward pipeline & SRB
 	Shader* bwd_shader = LoadComputeShader("Shader/nn_backward_linear.comp.spv");
@@ -79,6 +83,7 @@ void LinearLayer::CreatePipelineAndSRB()
 	bwd_srb_->SetResource("b5", grad_b_.GetBuffer());
 	bwd_srb_->SetResource("b6", dL_dx_.GetBuffer());
 	bwd_srb_->SetResource("b10", pc_buf_.GetBuffer());
+	bwd_srb_->FlushDescriptorWrites();
 		delete fwd_shader;
 		delete bwd_shader;
 }
@@ -89,11 +94,12 @@ void LinearLayer::Forward(CommandList* in_cmd, Tensor& in_input)
 	params.in_dim = static_cast<Float32>(in_dim_);
 	params.out_dim = static_cast<Float32>(out_dim_);
 	params.max_batch_size = static_cast<Float32>(max_batch_size_);
-	params.active_batch_size = static_cast<Float32>(in_input.Shape()[0]);
+	params.active_batch_size = static_cast<Float32>(in_input.ElementCount() / in_dim_);
 	params.has_relu = has_relu_ ? 1.0f : 0.0f;
 	pc_buf_.Upload(&params.in_dim);
 
 	fwd_srb_->SetResource("i0", in_input.GetBuffer());
+	fwd_srb_->FlushDescriptorWrites();
 
 	in_cmd->SetComputePipeline(fwd_pipeline_);
 	in_cmd->SetShaderResourceBinding(fwd_srb_);
@@ -106,13 +112,14 @@ void LinearLayer::Backward(CommandList* in_cmd, CONST Tensor& in_dL_dout, CONST 
 	params.in_dim = static_cast<Float32>(in_dim_);
 	params.out_dim = static_cast<Float32>(out_dim_);
 	params.max_batch_size = static_cast<Float32>(max_batch_size_);
-	params.active_batch_size = static_cast<Float32>(in_input_act.Shape()[0]);
+	params.active_batch_size = static_cast<Float32>(in_input_act.ElementCount() / in_dim_);
 	params.has_relu = has_relu_ ? 1.0f : 0.0f;
 	pc_buf_.Upload(&params.in_dim);
 
 	bwd_srb_->SetResource("b0", in_input_act.GetBuffer());
 	bwd_srb_->SetResource("b1", z_preact_.GetBuffer());
 	bwd_srb_->SetResource("b3", in_dL_dout.GetBuffer());
+	bwd_srb_->FlushDescriptorWrites();
 
 	in_cmd->SetComputePipeline(bwd_pipeline_);
 	in_cmd->SetShaderResourceBinding(bwd_srb_);
@@ -169,6 +176,8 @@ SoftmaxCrossEntropyOutputLayer::SoftmaxCrossEntropyOutputLayer(
 	, dL_dhidden_({max_batch_size_, in_dim_})
 	, pc_buf_({4})
 {
+	InitializeWeights(weight_, in_dim_, num_classes_, ENUM_INIT_METHOD::GlorotUniform);
+	InitializeBias(bias_, 0.0f);
 	// Forward + loss pipeline & SRB
 	Shader* fwd_shader = LoadComputeShader("Shader/nn_forward_softmax_loss.comp.spv");
 	fwd_loss_pipeline_ = CreateComputePipeline(fwd_shader);
@@ -179,6 +188,7 @@ SoftmaxCrossEntropyOutputLayer::SoftmaxCrossEntropyOutputLayer(
 	fwd_loss_srb_->SetResource("dz", dL_dz_.GetBuffer());
 	fwd_loss_srb_->SetResource("ls", loss_buf_.GetBuffer());
 	fwd_loss_srb_->SetResource("pc", pc_buf_.GetBuffer());
+	fwd_loss_srb_->FlushDescriptorWrites();
 
 	// Backward pipeline & SRB (load BEFORE deleting fwd_shader to avoid pointer reuse)
 	Shader* bwd_shader = LoadComputeShader("Shader/nn_backward_linear.comp.spv");
@@ -190,6 +200,7 @@ SoftmaxCrossEntropyOutputLayer::SoftmaxCrossEntropyOutputLayer(
 	bwd_srb_->SetResource("b5", grad_b_.GetBuffer());
 	bwd_srb_->SetResource("b6", dL_dhidden_.GetBuffer());
 	bwd_srb_->SetResource("b10", pc_buf_.GetBuffer());
+	bwd_srb_->FlushDescriptorWrites();
 
 	// Now safe to delete both shaders
 	delete fwd_shader;
@@ -202,10 +213,11 @@ void SoftmaxCrossEntropyOutputLayer::Forward(CommandList* in_cmd, Tensor& in_hid
 	params.in_dim = static_cast<Float32>(in_dim_);
 	params.out_dim = static_cast<Float32>(num_classes_);
 	params.max_batch_size = static_cast<Float32>(max_batch_size_);
-	params.active_batch_size = static_cast<Float32>(in_hidden_act.Shape()[0]);
+	params.active_batch_size = static_cast<Float32>(in_hidden_act.ElementCount() / in_dim_);
 	pc_buf_.Upload(&params.in_dim);
 
 	fwd_loss_srb_->SetResource("h0", in_hidden_act.GetBuffer());
+	fwd_loss_srb_->FlushDescriptorWrites();
 
 	in_cmd->SetComputePipeline(fwd_loss_pipeline_);
 	in_cmd->SetShaderResourceBinding(fwd_loss_srb_);
@@ -226,6 +238,7 @@ void SoftmaxCrossEntropyOutputLayer::Backward(
 	bwd_srb_->SetResource("b0", in_input_act.GetBuffer());
 	bwd_srb_->SetResource("b1", in_input_act.GetBuffer()); // preact unused (ReLU off)
 	bwd_srb_->SetResource("b3", dL_dz_.GetBuffer());
+	bwd_srb_->FlushDescriptorWrites();
 
 	in_cmd->SetComputePipeline(bwd_pipeline_);
 	in_cmd->SetShaderResourceBinding(bwd_srb_);

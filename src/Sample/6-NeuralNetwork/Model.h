@@ -28,6 +28,9 @@ public:
 
 	// Inference only (no backward, no update)
 	Vector<UInt8> Predict(CommandList* in_cmd, Tensor& in_input, UInt32 in_batch_size);
+	// -- [AI] Split predict: record forward, then download after GPU flush
+	void PredictForward(CommandList* in_cmd, Tensor& in_input);
+	Vector<UInt8> GetPredictions(UInt32 in_batch_size);
 	// -- [AI]
 	void Save(CONST String& in_filepath);
 	void Load(CONST String& in_filepath);
