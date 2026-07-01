@@ -101,6 +101,13 @@ void BaseNode::Init()
 
 void BaseNode::Draw()
 {
+	// Apply deferred position (set by SyncRuntimeToEditor before first draw)
+	if (has_pending_pos)
+	{
+		ed::SetNodePosition(self_id, ImVec2(pending_pos_x, pending_pos_y));
+		has_pending_pos = false;
+	}
+
 	ed::BeginNode(self_id);
 	ImGui::Text(name.c_str());
 	Int maxpin_size = max(input_pins.size(), output_pins.size());

@@ -95,7 +95,13 @@ void EditorUI::AddPass(RenderGraph* in_graph)
 	in_graph->AddRenderPass<UIPassData>("UIPass", in_graph, cmd_list,
 		[&](UIPassData& data, RenderGraphPassBuilder& builder, CommandList* in_cmd_list)
 	{
-
+		// UIPass: reads the rendered image, draws ImGui on top, writes back
+		auto* rt_resource = in_graph->GetRetainedResource<RHI::TextureDesc, RHI::Texture>("BackBuffer");
+		if (rt_resource)
+		{
+			builder.Read(rt_resource);
+			builder.Write(rt_resource);
+		}
 	},
 		[=](CONST UIPassData& data, CommandList* in_cmd_list)
 	{

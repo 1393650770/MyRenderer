@@ -38,6 +38,15 @@ public:
 	// Pin access for property inspectors
 	Vector<BasePin*>& METHOD(GetInputPins)() { return input_pins; }
 	Vector<BasePin*>& METHOD(GetOutputPins)() { return output_pins; }
+
+	// Deferred position (set before first Draw, applied inside Draw)
+	Bool has_pending_pos = false;
+	Float32 pending_pos_x = 0, pending_pos_y = 0;
+	void METHOD(SetPendingPosition)(Float32 x, Float32 y)
+	{
+		has_pending_pos = true; pending_pos_x = x; pending_pos_y = y;
+	}
+
 protected:
 	VIRTUAL void METHOD(RecalcSize)();
 private:

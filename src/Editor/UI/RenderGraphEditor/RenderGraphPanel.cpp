@@ -727,11 +727,13 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 {
 	if (!graph) return;
 
-	// Sync runtime passes
+	Int pass_idx = 0;
+	Int res_idx = 0;
+
+	// Sync runtime passes (top row, staggered left to right)
 	for (auto& pass : graph->GetPasses())
 	{
 		String pass_name = pass->GetName();
-		// Check if already exists
 		bool exists = false;
 		for (auto* n : nodes)
 		{
@@ -748,14 +750,15 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 			node->AddOutputPin(res->GetName(), PinAccess::Write);
 		for (auto* res : pass->GetCreateResources())
 			node->AddOutputPin(res->GetName(), PinAccess::Create);
+		node->SetPendingPosition(150.0f + pass_idx * 280.0f, 100.0f);
 		nodes.push_back(node);
+		pass_idx++;
 	}
 
-	// Sync runtime resources
+	// Sync runtime resources (bottom row, staggered left to right)
 	for (auto& res : graph->GetResources())
 	{
 		String res_name = res->GetName();
-		// Check if already exists
 		bool exists = false;
 		for (auto* n : nodes)
 		{
@@ -771,7 +774,76 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 		node->BindResource(res.get());
 		node->AddInputPin("Input", PinAccess::Write);
 		node->AddOutputPin("Output", PinAccess::Read);
+		node->SetPendingPosition(150.0f + res_idx * 300.0f, 420.0f);
 		nodes.push_back(node);
+		res_idx++;
+	}
+
+	// Build name -> node map for link creation
+	Map<String, BaseNode*> name_to_node;
+	for (auto* n : nodes)
+		name_to_node[n->GetName()] = n;
+
+	// Create links: Pass <-> Resource
+	for (auto& pass : graph->GetPasses())
+	{
+		BaseNode* pass_node = name_to_node[pass->GetName()];
+		if (!pass_node) continue;
+
+		// Read resources: Resource Output -> Pass Input
+		for (auto* res : pass->GetReadResources())
+		{
+			BaseNode* res_node = name_to_node[res->GetName()];
+			if (!res_node) continue;
+
+			BasePin* res_out = res_node->GetPinByName("Output");
+			BasePin* pass_in = pass_node->GetPinByName(res->GetName());
+			if (!res_out || !pass_in) continue;
+
+			// Check if link already exists
+			bool link_exists = false;
+			for (auto* l : links)
+			{
+				if (l->GetStartID() == res_out->GetSelfID() && l->GetEndID() == pass_in->GetSelfID())
+				{ link_exists = true; break; }
+			}
+			if (link_exists) continue;
+
+			BaseLink* link = new BaseLink("Link");
+			link->Init(res_out->GetSelfID(), pass_in->GetSelfID());
+			link->SetLinkAccess(PinAccess::Read);
+			links.push_back(link);
+		}
+
+		// Write/Create resources: Pass Output -> Resource Input
+		auto add_pass_to_res_links = [&](const Vector<const Render::RenderGraphResourceBase*>& res_list, PinAccess access)
+		{
+			for (auto* res : res_list)
+			{
+				BaseNode* res_node = name_to_node[res->GetName()];
+				if (!res_node) continue;
+
+				BasePin* pass_out = pass_node->GetPinByName(res->GetName());
+				BasePin* res_in = res_node->GetPinByName("Input");
+				if (!pass_out || !res_in) continue;
+
+				bool link_exists = false;
+				for (auto* l : links)
+				{
+					if (l->GetStartID() == pass_out->GetSelfID() && l->GetEndID() == res_in->GetSelfID())
+					{ link_exists = true; break; }
+				}
+				if (link_exists) continue;
+
+				BaseLink* link = new BaseLink("Link");
+				link->Init(pass_out->GetSelfID(), res_in->GetSelfID());
+				link->SetLinkAccess(access);
+				links.push_back(link);
+			}
+		};
+
+		add_pass_to_res_links(pass->GetWriteResources(), PinAccess::Write);
+		add_pass_to_res_links(pass->GetCreateResources(), PinAccess::Create);
 	}
 }
 
