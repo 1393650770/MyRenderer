@@ -1,0 +1,96 @@
+// -- [AI] Conv2D backward: gradient computation, NHWC layout
+// binding[0]=dL_dout  [1]=dL_dx  [2]=weight  [3]=grad_w  [4]=grad_b  [5]=inp  [10]=pc
+// Dispatch over output grid: threads map to (oc, oh, obw)
+// grad_b/grad_w/dL_dx: atomic accumulate from each output pixel
+#version 460
+layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
+
+layout(set = 0, binding = 0) readonly buffer GradOut { float d[]; } dL_dout;
+layout(set = 0, binding = 1) buffer GradInp   { int d[]; } dL_dx;
+layout(set = 0, binding = 2) readonly buffer Wgt   { float d[]; } weight;
+layout(set = 0, binding = 3) buffer GradW  { int d[]; } grad_w;
+layout(set = 0, binding = 4) buffer GradB  { int d[]; } grad_b;
+layout(set = 0, binding = 5) readonly buffer Inp   { float d[]; } inp;
+layout(set = 0, binding = 10) readonly buffer PC { float d[]; } pc;
+// pc.d[0]=B  [1]=IC  [2]=OC  [3]=H  [4]=W  [5]=KH  [6]=KW  [7]=stride  [8]=padding  [9]=OH*OW
+
+void main() {
+	uint oc = gl_GlobalInvocationID.x * 4u + gl_LocalInvocationID.x;
+	uint oh = gl_GlobalInvocationID.y * 4u + gl_LocalInvocationID.y;
+	uint box = gl_GlobalInvocationID.z * 4u + gl_LocalInvocationID.z;
+
+	uint B  = uint(pc.d[0]);
+	uint IC = uint(pc.d[1]);
+	uint OC = uint(pc.d[2]);
+	uint H  = uint(pc.d[3]);
+	uint W  = uint(pc.d[4]);
+	uint KH = uint(pc.d[5]);
+	uint KW = uint(pc.d[6]);
+	uint S  = uint(pc.d[7]);
+	uint P  = uint(pc.d[8]);
+	uint OH = (H + 2u*P - KH) / S + 1u;
+	uint OW = (W + 2u*P - KW) / S + 1u;
+
+	uint b = box / OW;
+	uint ow = box % OW;
+
+	if (oc >= OC || oh >= OH || b >= B || ow >= OW) return;
+
+	uint out_idx = ((b * OH + oh) * OW + ow) * OC + oc;
+	float dy = dL_dout.d[out_idx];
+
+	// --- 1. Atomic add to grad_b[oc] ---
+	{
+		uint e = uint(grad_b.d[oc]);
+		uint w;
+		do {
+			w = floatBitsToUint(uintBitsToFloat(e) + dy);
+			uint prev = atomicCompSwap(grad_b.d[oc], int(e), int(w));
+			if (prev == e) break;
+			e = prev;
+		} while (true);
+	}
+
+	// --- 2. Accumulate grad_w and dL_dx ---
+	for (uint kh = 0u; kh < KH; ++kh) {
+		for (uint kw = 0u; kw < KW; ++kw) {
+			int ih = int(oh * S + kh) - int(P);
+			int iw = int(ow * S + kw) - int(P);
+			if (ih < 0 || ih >= int(H) || iw < 0 || iw >= int(W)) continue;
+
+			uint inp_base = ((b * H + uint(ih)) * W + uint(iw)) * IC;
+			uint wgt_base = ((oc * KH + kh) * KW + kw) * IC;
+
+			for (uint ic = 0u; ic < IC; ++ic) {
+				float inp_val = inp.d[inp_base + ic];
+				float wgt_val = weight.d[wgt_base + ic];
+
+				// grad_w[oc,kh,kw,ic] += dy * inp_val
+				{
+					float a = dy * inp_val;
+					uint e = uint(grad_w.d[wgt_base + ic]);
+					uint w;
+					do {
+						w = floatBitsToUint(uintBitsToFloat(e) + a);
+						uint prev = atomicCompSwap(grad_w.d[wgt_base + ic], int(e), int(w));
+						if (prev == e) break;
+						e = prev;
+					} while (true);
+				}
+
+				// dL_dx[b,ih,iw,ic] += dy * wgt_val
+				{
+					float a = dy * wgt_val;
+					uint e = uint(dL_dx.d[inp_base + ic]);
+					uint w;
+					do {
+						w = floatBitsToUint(uintBitsToFloat(e) + a);
+						uint prev = atomicCompSwap(dL_dx.d[inp_base + ic], int(e), int(w));
+						if (prev == e) break;
+						e = prev;
+					} while (true);
+				}
+			}
+		}
+	}
+}

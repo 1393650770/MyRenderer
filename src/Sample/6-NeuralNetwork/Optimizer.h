@@ -60,4 +60,27 @@ private:
 #pragma endregion
 MYRENDERER_END_CLASS
 
+// -- [AI:BEGIN] Adam / AdamW optimizers
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Adam, public MXNN::IOptimizer)
+public:
+	struct Params { Float32 lr, beta1, beta2, eps, wd; };
+	Adam(Params in_p);
+	~Adam();
+	VIRTUAL void Update(CommandList* in_cmd, Tensor& in_params, Tensor& in_grads,
+		Tensor& in_velocity, Float32 in_inv_batch_size, UInt32 in_step) OVERRIDE FINAL;
+protected:
+	Params p_;
+	Tensor pc_buf_{{9}};
+	RenderPipelineState* pipeline_ = nullptr;
+	ShaderResourceBinding* srb_ = nullptr;
+	Vector<ShaderResourceBinding*> temp_srbs_;
+	Map<Tensor*, Tensor*> v_map_;
+MYRENDERER_END_CLASS
+
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(AdamW, public Adam)
+public:
+	AdamW(Params in_p) : Adam(in_p) {}
+MYRENDERER_END_CLASS
+// -- [AI:END]
+
 } // namespace MXNN

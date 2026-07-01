@@ -7,6 +7,10 @@ namespace MXNN {
 
 using namespace MXRender::RHI;
 
+// -- [AI] Tensor serialization helpers (impl in Layer.cpp)
+void WriteTensor(std::ostream& os, const Tensor& t);
+void ReadTensor(std::istream& is, Tensor& t);
+
 // Param buffer layouts (must match shader binding 10)
 struct FwdParams  { Float32 in_dim, out_dim, max_batch_size, active_batch_size, has_relu; };
 struct LossParams { Float32 in_dim, out_dim, max_batch_size, active_batch_size; };
@@ -30,7 +34,14 @@ public:
 	VIRTUAL Tensor& METHOD(GetOutput)() PURE;
 	VIRTUAL Tensor& METHOD(GetInputGradient)() PURE;
 	VIRTUAL Vector<std::tuple<Tensor*, Tensor*, Tensor*>> METHOD(GetParamTriples)() PURE;
-protected:
+		// -- [AI]
+		VIRTUAL Vector<std::tuple<Tensor*, Tensor*, Tensor*, Tensor*>> METHOD(GetParamQuads)() { return {}; }
+		VIRTUAL void METHOD(SetTrainingMode)(Bool in_training) {}
+		VIRTUAL String METHOD(GetLayerTypeName)() CONST { return ""; }
+		VIRTUAL void METHOD(SaveParameters)(std::ostream& os) CONST {}
+		VIRTUAL void METHOD(LoadParameters)(std::istream& is) {}
+		VIRTUAL void METHOD(ClearTempSRBs)() {} // -- [AI]
+	protected:
 private:
 #pragma endregion
 
@@ -55,7 +66,11 @@ public:
 	VIRTUAL Tensor& GetOutput() OVERRIDE FINAL { return output_; }
 	VIRTUAL Tensor& GetInputGradient() OVERRIDE FINAL { return dL_dx_; }
 	VIRTUAL Vector<std::tuple<Tensor*, Tensor*, Tensor*>> GetParamTriples() OVERRIDE FINAL;
-protected:
+		// -- [AI] Persistence
+		VIRTUAL String GetLayerTypeName() CONST OVERRIDE FINAL;
+		VIRTUAL void SaveParameters(std::ostream& os) CONST OVERRIDE FINAL;
+		VIRTUAL void LoadParameters(std::istream& is) OVERRIDE FINAL;
+	protected:
 private:
 	void CreatePipelineAndSRB();
 #pragma endregion
@@ -90,6 +105,11 @@ public:
 	VIRTUAL Tensor& GetOutput() OVERRIDE FINAL { return dL_dz_; }
 	VIRTUAL Tensor& GetInputGradient() OVERRIDE FINAL { return dL_dhidden_; }
 	VIRTUAL Vector<std::tuple<Tensor*, Tensor*, Tensor*>> GetParamTriples() OVERRIDE FINAL;
+
+	// -- [AI] Persistence
+	VIRTUAL String GetLayerTypeName() CONST OVERRIDE FINAL;
+	VIRTUAL void SaveParameters(std::ostream& os) CONST OVERRIDE FINAL;
+	VIRTUAL void LoadParameters(std::istream& is) OVERRIDE FINAL;
 
 	Float32 GetLoss() CONST;
 	void ZeroLossBuffer() { loss_buf_.Zero(); }

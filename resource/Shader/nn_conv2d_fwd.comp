@@ -1,0 +1,57 @@
+// -- [AI] Conv2D forward: tiled direct convolution, NHWC layout
+#version 460
+layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
+
+layout(set = 0, binding = 0) readonly buffer InpBuf  { float d[]; } inp;
+layout(set = 0, binding = 1) readonly buffer WgtBuf  { float d[]; } weight;
+layout(set = 0, binding = 2) readonly buffer BiasBuf { float d[]; } bias;
+layout(set = 0, binding = 3) buffer OutBuf  { float d[]; } out_buf;
+layout(set = 0, binding = 10) readonly buffer PC { float d[]; } pc;
+// pc.d[0]=B  [1]=IC  [2]=OC  [3]=H  [4]=W  [5]=KH  [6]=KW  [7]=stride  [8]=padding  [9]=OH*OW
+
+void main() {
+	uint oc4 = gl_GlobalInvocationID.x; // oc / 4
+	uint oh4 = gl_GlobalInvocationID.y; // oh / 4
+	uint box4 = gl_GlobalInvocationID.z; // (b*OW + ow) / 4
+
+	uint B  = uint(pc.d[0]);
+	uint IC = uint(pc.d[1]);
+	uint OC = uint(pc.d[2]);
+	uint H  = uint(pc.d[3]);
+	uint W  = uint(pc.d[4]);
+	uint KH = uint(pc.d[5]);
+	uint KW = uint(pc.d[6]);
+	uint S  = uint(pc.d[7]);
+	uint P  = uint(pc.d[8]);
+	uint OH = (H + 2u*P - KH) / S + 1u;
+	uint OW = (W + 2u*P - KW) / S + 1u;
+
+	uint oc = oc4 * 4u + gl_LocalInvocationID.x;
+	uint oh = oh4 * 4u + gl_LocalInvocationID.y;
+	uint box = box4 * 4u + gl_LocalInvocationID.z;
+
+	if (oc >= OC || oh >= OH) return;
+
+	uint b = box / OW;
+	uint ow = box % OW;
+	if (b >= B || ow >= OW) return;
+
+	float val = bias.d[oc];
+
+	// Convolve: sum over ic, kh, kw
+	for (uint kh = 0u; kh < KH; ++kh) {
+		for (uint kw = 0u; kw < KW; ++kw) {
+			int ih = int(oh * S + kh) - int(P);
+			int iw = int(ow * S + kw) - int(P);
+			if (ih < 0 || ih >= int(H) || iw < 0 || iw >= int(W)) continue;
+			uint inp_base = ((b * H + uint(ih)) * W + uint(iw)) * IC;
+			uint wgt_base = ((oc * KH + kh) * KW + kw) * IC;
+			for (uint ic = 0u; ic < IC; ++ic) {
+				val += inp.d[inp_base + ic] * weight.d[wgt_base + ic];
+			}
+		}
+	}
+
+	uint out_idx = ((b * OH + oh) * OW + ow) * OC + oc;
+	out_buf.d[out_idx] = val;
+}

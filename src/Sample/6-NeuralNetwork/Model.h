@@ -28,6 +28,10 @@ public:
 
 	// Inference only (no backward, no update)
 	Vector<UInt8> Predict(CommandList* in_cmd, Tensor& in_input, UInt32 in_batch_size);
+	// -- [AI]
+	void Save(CONST String& in_filepath);
+	void Load(CONST String& in_filepath);
+	void ClearTempSRBs();
 
 	UInt32 MaxBatchSize() CONST { return max_batch_size_; }
 protected:

@@ -1,0 +1,14 @@
+// -- [AI] Element-wise tensor addition (for ResidualBlock skip connection)
+#version 460
+layout(local_size_x = 256) in;
+layout(set = 0, binding = 0) readonly buffer A { float d[]; } a;
+layout(set = 0, binding = 1) readonly buffer B { float d[]; } b;
+layout(set = 0, binding = 2) buffer C { float d[]; } c;
+layout(set = 0, binding = 10) readonly buffer PC { float d[]; } pc;
+// pc.d[0]=n_elem
+
+void main() {
+    uint g = gl_GlobalInvocationID.x;
+    if (g >= uint(pc.d[0])) return;
+    c.d[g] = a.d[g] + b.d[g];
+}

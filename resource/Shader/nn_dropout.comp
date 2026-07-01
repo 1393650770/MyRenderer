@@ -1,0 +1,32 @@
+// -- [AI] Dropout shader (fwd=0, bwd=1, eval=2 via pc.d[1])
+#version 460
+layout(local_size_x = 256) in;
+layout(set = 0, binding = 0) readonly buffer InBuf { float d[]; } inp;
+layout(set = 0, binding = 1) buffer OutBuf { float d[]; } out_buf;
+layout(set = 0, binding = 2) buffer MaskBuf { float d[]; } mask;
+layout(set = 0, binding = 10) readonly buffer PC { float d[]; } pc;
+// pc.d[0]=n_elem pc.d[1]=mode(0=fwd,1=bwd,2=eval) pc.d[2]=keep_prob pc.d[3]=seed
+
+uint lcg_rand(uint g, uint seed) {
+    uint s = (g + 1u) * 1664525u + seed;
+    s = s * 1664525u + 1013904223u;
+    return s & 0x00FFFFFFu;
+}
+
+void main() {
+    uint g = gl_GlobalInvocationID.x;
+    if (g >= uint(pc.d[0])) return;
+    uint mode = uint(pc.d[1]);
+    float kp = pc.d[2];
+
+    if (mode == 0u) { // forward
+        uint r = lcg_rand(g, uint(pc.d[3]));
+        float rnd = float(r) / 16777216.0;
+        mask.d[g] = (rnd < kp) ? 1.0 : 0.0;
+        out_buf.d[g] = (rnd < kp) ? (inp.d[g] / kp) : 0.0;
+    } else if (mode == 1u) { // backward
+        out_buf.d[g] = (mask.d[g] > 0.5) ? (inp.d[g] / kp) : 0.0;
+    } else { // eval — passthrough
+        out_buf.d[g] = inp.d[g];
+    }
+}

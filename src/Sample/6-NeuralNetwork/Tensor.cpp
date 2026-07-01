@@ -8,8 +8,9 @@ using namespace MXRender;
 
 namespace MXNN {
 
-Tensor::Tensor(CONST Vector<UInt32>& in_shape)
+Tensor::Tensor(CONST Vector<UInt32>& in_shape, ENUM_TENSOR_DTYPE in_dtype) // -- [AI]
 	: shape_(in_shape)
+	, dtype_(in_dtype)
 {
 	element_count_ = 1;
 	for (auto d : shape_)
@@ -19,8 +20,14 @@ Tensor::Tensor(CONST Vector<UInt32>& in_shape)
 
 	BufferDesc desc;
 	desc.type = ENUM_BUFFER_TYPE::Storage;
-	desc.stride = 4;
-	desc.size = static_cast<UInt32>(element_count_ * sizeof(Float32));
+	// -- [AI] FP16 support: allocate half-size buffer
+	if (in_dtype == ENUM_TENSOR_DTYPE::Float16) {
+		desc.stride = (UInt32)element_count_ * 2u;
+		desc.size = (UInt32)element_count_ * 2u;
+	} else {
+		desc.stride = (UInt32)element_count_ * sizeof(Float32);
+		desc.size = (UInt32)element_count_ * sizeof(Float32);
+	}
 	buffer_ = RHICreateBuffer(desc);
 }
 
@@ -37,6 +44,7 @@ Tensor::Tensor(Tensor&& in_other) noexcept
 	: buffer_(in_other.buffer_)
 	, shape_(std::move(in_other.shape_))
 	, element_count_(in_other.element_count_)
+	, dtype_(in_other.dtype_) // -- [AI]
 {
 	in_other.buffer_ = nullptr;
 	in_other.element_count_ = 0;
@@ -53,6 +61,7 @@ Tensor& Tensor::operator=(Tensor&& in_other) noexcept
 		buffer_ = in_other.buffer_;
 		shape_ = std::move(in_other.shape_);
 		element_count_ = in_other.element_count_;
+		dtype_ = in_other.dtype_; // -- [AI]
 		in_other.buffer_ = nullptr;
 		in_other.element_count_ = 0;
 	}

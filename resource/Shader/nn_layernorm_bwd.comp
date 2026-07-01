@@ -1,0 +1,61 @@
+// -- [AI] LayerNorm backward -- 4 reductions in shared memory, per-sample gradients
+#version 460
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) readonly buffer GradIn { float d[]; } dL_dout;
+layout(set = 0, binding = 1) buffer GradOut { float d[]; } dL_dx;
+layout(set = 0, binding = 2) readonly buffer InBuf { float d[]; } inp;
+layout(set = 0, binding = 3) readonly buffer Gamma { float d[]; } gamma;
+layout(set = 0, binding = 4) readonly buffer SavedMu { float d[]; } saved_mu;
+layout(set = 0, binding = 5) readonly buffer SavedStd { float d[]; } saved_std;
+layout(set = 0, binding = 6) buffer GradGamma { float d[]; } grad_gamma;
+layout(set = 0, binding = 7) buffer GradBeta { float d[]; } grad_beta;
+layout(set = 0, binding = 10) readonly buffer PC { float d[]; } pc;
+
+shared float sg[256];
+
+void main() {
+    uint lid = gl_LocalInvocationID.x;
+    uint sid = gl_WorkGroupID.x;
+    uint N = uint(pc.d[0]);
+    uint base = sid * N;
+    float mu = saved_mu.d[sid];
+    float ivar = 1.0 / saved_std.d[sid];
+
+    float gg = 0.0, gb = 0.0, dxs = 0.0, dxhs = 0.0;
+    for (uint i = lid; i < N; i += 256u) {
+        float dy = dL_dout.d[base + i];
+        float xh = (inp.d[base + i] - mu) * ivar;
+        gg  += dy * xh;
+        gb  += dy;
+        dxs += dy * gamma.d[i];
+        dxhs += dy * gamma.d[i] * xh;
+    }
+
+    sg[lid] = gg; barrier(); memoryBarrierShared();
+    if (lid == 0u) { float t = 0.0; for (uint k = 0u; k < 256u; ++k) t += sg[k]; sg[0] = t; }
+    barrier(); memoryBarrierShared(); float full_gg = sg[0];
+
+    sg[lid] = gb; barrier(); memoryBarrierShared();
+    if (lid == 0u) { float t = 0.0; for (uint k = 0u; k < 256u; ++k) t += sg[k]; sg[0] = t; }
+    barrier(); memoryBarrierShared(); float full_gb = sg[0];
+
+    sg[lid] = dxs; barrier(); memoryBarrierShared();
+    if (lid == 0u) { float t = 0.0; for (uint k = 0u; k < 256u; ++k) t += sg[k]; sg[0] = t; }
+    barrier(); memoryBarrierShared(); float full_dxs = sg[0];
+
+    sg[lid] = dxhs; barrier(); memoryBarrierShared();
+    if (lid == 0u) { float t = 0.0; for (uint k = 0u; k < 256u; ++k) t += sg[k]; sg[0] = t; }
+    barrier(); memoryBarrierShared(); float full_dxhs = sg[0];
+
+    if (lid == 0u) {
+        grad_gamma.d[sid] = full_gg;
+        grad_beta.d[sid] = full_gb;
+    }
+
+    float Nf = float(N);
+    for (uint i = lid; i < N; i += 256u) {
+        float xh = (inp.d[base + i] - mu) * ivar;
+        dL_dx.d[base + i] = (gamma.d[i] * dL_dout.d[base + i] - full_dxs / Nf - xh * full_dxhs / Nf) * ivar;
+    }
+}

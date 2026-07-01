@@ -1,0 +1,145 @@
+#version 460
+// -- [AI:BEGIN] Multi-Head Attention forward pass
+// Dispatch: (B * num_heads, 1, 1) -- one WG per sample per head
+// local_size_x = 64, one thread per sequence position (T <= 64)
+//
+// W_qkv layout: [d_model, 3*d_model]
+//   Q weights: columns [0, d_model)
+//   K weights: columns [d_model, 2*d_model)
+//   V weights: columns [2*d_model, 3*d_model)
+// Per-head slice: head h uses columns [h*dk, h*dk+dk] within each block
+//   Q col start = h*dk
+//   K col start = d + h*dk
+//   V col start = 2*d + h*dk
+//
+// pc layout: pc.d[0]=B, pc.d[1]=T, pc.d[2]=d, pc.d[3]=num_heads, pc.d[4]=d_k
+//
+// Extra output: binding[6] = attn_weights [B*H*T*T] softmax output for backward
+// -- [AI:END]
+
+layout(local_size_x = 64) in;
+
+layout(set = 0, binding = 0) readonly buffer inp_Buf  { float d[]; } inp;    // [B*T*d]
+layout(set = 0, binding = 1) readonly buffer Wqkv_Buf { float d[]; } W_qkv;  // [d, 3*d]
+layout(set = 0, binding = 2) readonly buffer bqkv_Buf { float d[]; } b_qkv;  // [3*d]
+layout(set = 0, binding = 3) readonly buffer Wo_Buf   { float d[]; } W_o;    // [d, d]
+layout(set = 0, binding = 4) readonly buffer bo_Buf   { float d[]; } b_o;    // [d]
+layout(set = 0, binding = 5) buffer out_Buf           { float d[]; } out_buf;      // [B*T*d]
+layout(set = 0, binding = 6) buffer attn_Buf          { float d[]; } attn_weights;  // [B*H*T*T] softmax output
+layout(set = 0, binding = 10) readonly buffer pc_Buf  { float d[]; } pc;
+
+// -- [AI] Shared memory for K and V vectors (all positions)
+shared float sK[64 * 64];  // [T, d_k] row-major
+shared float sV[64 * 64];  // [T, d_k]
+
+void main() {
+	uint gid = gl_WorkGroupID.x;  // 0 .. B*num_heads-1
+	uint tid = gl_LocalInvocationID.x;  // 0..63
+
+	uint B  = uint(pc.d[0]);
+	uint T  = uint(pc.d[1]);
+	uint d  = uint(pc.d[2]);
+	uint H  = uint(pc.d[3]);
+	uint dk = uint(pc.d[4]);
+
+	if (gid >= B * H) return;
+
+	uint b = gid / H;   // sample index
+	uint hr = gid % H;  // head index (use hr to avoid shadowing H)
+
+	uint q_col_start = hr * dk;
+	uint k_col_start = d + hr * dk;
+	uint v_col_start = 2u * d + hr * dk;
+	uint stride_w = 3u * d;
+
+	uint inp_base = b * (T * d);
+
+	float Q_vec[64];
+	float K_vec[64];
+	float V_vec[64];
+
+	// -- [AI] Step 1: Q,K,V projection for this position
+	uint pos = tid;
+	if (pos < T) {
+		for (uint k = 0u; k < dk; k++) {
+			Q_vec[k] = b_qkv.d[q_col_start + k];
+			K_vec[k] = b_qkv.d[k_col_start + k];
+			V_vec[k] = b_qkv.d[v_col_start + k];
+		}
+		for (uint j = 0u; j < d; j++) {
+			float inp_val = inp.d[inp_base + pos * d + j];
+			uint wr = j * stride_w;
+			for (uint k = 0u; k < dk; k++) {
+				Q_vec[k] += inp_val * W_qkv.d[wr + q_col_start + k];
+				K_vec[k] += inp_val * W_qkv.d[wr + k_col_start + k];
+				V_vec[k] += inp_val * W_qkv.d[wr + v_col_start + k];
+			}
+		}
+	}
+
+	// -- [AI] Step 2: Store K, V in shared memory
+	if (pos < T) {
+		for (uint k = 0u; k < dk; k++) {
+			sK[pos * dk + k] = K_vec[k];
+			sV[pos * dk + k] = V_vec[k];
+		}
+	}
+	barrier();
+	memoryBarrierShared();
+
+	if (pos >= T) return;
+
+	// -- [AI] Step 3: Attention scores
+	float scale = 1.0 / sqrt(float(dk));
+	float scores[64];
+	float max_score = -1e30;
+	for (uint tk = 0u; tk < T; tk++) {
+		float dot = 0.0;
+		for (uint k = 0u; k < dk; k++) {
+			dot += Q_vec[k] * sK[tk * dk + k];
+		}
+		dot *= scale;
+		scores[tk] = dot;
+		max_score = max(max_score, dot);
+	}
+
+	// -- [AI] Step 4: Softmax
+	float exp_sum = 0.0;
+	for (uint tk = 0u; tk < T; tk++) {
+		float ev = exp(scores[tk] - max_score);
+		scores[tk] = ev;
+		exp_sum += ev;
+	}
+	float inv_sum = 1.0 / exp_sum;
+
+	// -- [AI] Save softmax weights for backward pass
+	uint attn_base = gid * (T * T);  // offset for this (sample, head)
+	for (uint tk = 0u; tk < T; tk++) {
+		float w = scores[tk] * inv_sum;
+		// Also reuse for V weighting below
+		scores[tk] = w;
+		attn_weights.d[attn_base + pos * T + tk] = w;
+	}
+
+	// -- [AI] Step 5: Weighted sum of V
+	float attn_vec[64];
+	for (uint k = 0u; k < dk; k++) {
+		attn_vec[k] = 0.0;
+	}
+	for (uint tk = 0u; tk < T; tk++) {
+		float w = scores[tk];
+		for (uint k = 0u; k < dk; k++) {
+			attn_vec[k] += w * sV[tk * dk + k];
+		}
+	}
+
+	// -- [AI] Step 6: Output projection
+	uint out_base = b * (T * d);
+	for (uint j = 0u; j < d; j++) {
+		float val = b_o.d[j];
+		for (uint k = 0u; k < dk; k++) {
+			val += attn_vec[k] * W_o.d[k * d + j];
+		}
+		out_buf.d[out_base + pos * d + j] = val;
+	}
+}

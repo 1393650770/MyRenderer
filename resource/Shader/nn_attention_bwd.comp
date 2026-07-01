@@ -1,0 +1,234 @@
+#version 460
+// -- [AI:BEGIN] Multi-Head Attention backward pass
+// Dispatch: (B * num_heads, 1, 1) -- one WG per sample per head
+// local_size_x = 64, one thread per sequence position
+//
+// pc layout: pc.d[0]=B, pc.d[1]=T, pc.d[2]=d, pc.d[3]=num_heads, pc.d[4]=d_k
+//
+// Bindings:
+//   [0] inp          [B*T*d]   readonly (for QKV recomputation)
+//   [1] dL_dout      [B*T*d]   readonly (upstream gradient)
+//   [2] W_qkv        [d, 3*d]  readonly
+//   [3] W_o          [d, d]    readonly
+//   [4] b_qkv        [3*d]     readonly (for QKV recomputation)
+//   [5] attn_weights [B*H*T*T] readonly
+//   [6] grad_W_qkv   [d, 3*d]  buffer (int for atomic)
+//   [7] grad_b_qkv   [3*d]     buffer (int for atomic)
+//   [8] grad_W_o     [d, d]    buffer (int for atomic)
+//   [9] grad_b_o     [d]       buffer (int for atomic)
+//  [10] pc           readonly  (standard NN convention)
+//  [11] dL_dx         [B*T*d]  buffer (output gradient)
+// -- [AI:END]
+
+layout(local_size_x = 64) in;
+
+layout(set = 0, binding = 0)  readonly buffer B0  { float d[]; } inp;
+layout(set = 0, binding = 1)  readonly buffer B1  { float d[]; } dL_dout;
+layout(set = 0, binding = 2)  readonly buffer B2  { float d[]; } W_qkv;
+layout(set = 0, binding = 3)  readonly buffer B3  { float d[]; } W_o;
+layout(set = 0, binding = 4)  readonly buffer B4  { float d[]; } b_qkv;
+layout(set = 0, binding = 5)  readonly buffer B5  { float d[]; } attn_weights;
+layout(set = 0, binding = 6)  buffer B6  { int d[]; } grad_W_qkv;
+layout(set = 0, binding = 7)  buffer B7  { int d[]; } grad_b_qkv;
+layout(set = 0, binding = 8)  buffer B8  { int d[]; } grad_W_o;
+layout(set = 0, binding = 9)  buffer B9  { int d[]; } grad_b_o;
+layout(set = 0, binding = 10) readonly buffer B10 { float d[]; } pc;
+layout(set = 0, binding = 11) buffer B11 { float d[]; } dL_dx;
+
+// Shared memory: K + V for all positions
+shared float smem[64 * 64 * 2];  // 32KB
+
+void main() {
+	uint gid = gl_WorkGroupID.x;
+	uint tid = gl_LocalInvocationID.x;
+
+	uint B  = uint(pc.d[0]);
+	uint T  = uint(pc.d[1]);
+	uint d  = uint(pc.d[2]);
+	uint H  = uint(pc.d[3]);
+	uint dk = uint(pc.d[4]);
+
+	if (gid >= B * H) return;
+
+	uint b = gid / H;
+	uint hr = gid % H;
+
+	uint qc = hr * dk;
+	uint kc = d + hr * dk;
+	uint vc = 2u * d + hr * dk;
+	uint sw = 3u * d;
+
+	uint ibase = b * (T * d);
+	uint pos = tid;
+
+	float Qv[64], Kv[64], Vv[64];
+
+	if (pos < T) {
+		for (uint k = 0u; k < dk; k++) {
+			Qv[k] = b_qkv.d[qc + k];
+			Kv[k] = b_qkv.d[kc + k];
+			Vv[k] = b_qkv.d[vc + k];
+		}
+		for (uint j = 0u; j < d; j++) {
+			float iv = inp.d[ibase + pos * d + j];
+			uint wr = j * sw;
+			for (uint k = 0u; k < dk; k++) {
+				Qv[k] += iv * W_qkv.d[wr + qc + k];
+				Kv[k] += iv * W_qkv.d[wr + kc + k];
+				Vv[k] += iv * W_qkv.d[wr + vc + k];
+			}
+		}
+	}
+
+	if (pos < T) {
+		for (uint k = 0u; k < dk; k++) {
+			smem[pos * dk + k] = Kv[k];
+			smem[T * dk + pos * dk + k] = Vv[k];
+		}
+	}
+	barrier();
+	memoryBarrierShared();
+
+	if (pos >= T) return;
+
+	// d_attn[pos,k] = sum_j dL_dout[pos,j] * W_o[k,j]
+	float d_attn[64];
+	uint doff = b * (T * d);
+	for (uint k = 0u; k < dk; k++) {
+		d_attn[k] = 0.0;
+		for (uint j = 0u; j < d; j++) {
+			d_attn[k] += dL_dout.d[doff + pos * d + j] * W_o.d[k * d + j];
+		}
+	}
+
+	// Softmax gradient:
+	// e[pos,tk] = sum_k d_attn[pos,k] * V[tk,k]
+	// ew = sum_tk attn[pos,tk] * e[pos,tk]
+	// dS[pos,tk] = attn[pos,tk] * (e[pos,tk] - ew) / sqrt(dk)
+	float scale = 1.0 / sqrt(float(dk));
+	float ev[64];
+	float ew = 0.0;
+	uint agb = gid * T * T;
+
+	for (uint tk = 0u; tk < T; tk++) {
+		float e = 0.0;
+		for (uint k = 0u; k < dk; k++) {
+			e += d_attn[k] * smem[T * dk + tk * dk + k];
+		}
+		ev[tk] = e;
+		ew += attn_weights.d[agb + pos * T + tk] * e;
+	}
+
+	float dS[64];
+	for (uint tk = 0u; tk < T; tk++) {
+		float aw = attn_weights.d[agb + pos * T + tk];
+		dS[tk] = aw * (ev[tk] - ew) * scale;
+	}
+
+	// dQ[pos,k] = sum_tk dS[pos,tk] * K[tk,k]
+	float dQ[64];
+	for (uint k = 0u; k < dk; k++) {
+		dQ[k] = 0.0;
+		for (uint tk = 0u; tk < T; tk++) {
+			dQ[k] += dS[tk] * smem[tk * dk + k];
+		}
+	}
+
+	// Share dS and d_attn via smem
+	for (uint tk = 0u; tk < T; tk++) smem[pos * T + tk] = dS[tk];
+	for (uint k = 0u; k < dk; k++) smem[T * dk + pos * dk + k] = d_attn[k];
+	barrier();
+	memoryBarrierShared();
+
+	// dK[pos,k] = sum_tq dS[tq,pos] * Q[tq,k]  (recompute Q[tq] inline)
+	float dK[64];
+	for (uint k = 0u; k < dk; k++) dK[k] = 0.0;
+	for (uint tq = 0u; tq < T; tq++) {
+		float ds = smem[tq * T + pos];
+		float qt[64];
+		for (uint k = 0u; k < dk; k++) qt[k] = b_qkv.d[qc + k];
+		uint tqi = ibase + tq * d;
+		for (uint j = 0u; j < d; j++) {
+			float iv = inp.d[tqi + j];
+			uint wr = j * sw;
+			for (uint k = 0u; k < dk; k++) qt[k] += iv * W_qkv.d[wr + qc + k];
+		}
+		for (uint k = 0u; k < dk; k++) dK[k] += ds * qt[k];
+	}
+
+	// dV[pos,k] = sum_tq attn[tq,pos] * d_attn[tq,k]
+	float dV[64];
+	for (uint k = 0u; k < dk; k++) dV[k] = 0.0;
+	for (uint tq = 0u; tq < T; tq++) {
+		float aw = attn_weights.d[agb + tq * T + pos];
+		for (uint k = 0u; k < dk; k++) dV[k] += aw * smem[T * dk + tq * dk + k];
+	}
+
+	// Recompute attn_out for grad_W_o
+	float ao[64];
+	for (uint k = 0u; k < dk; k++) ao[k] = 0.0;
+	for (uint tk = 0u; tk < T; tk++) {
+		float aw = attn_weights.d[agb + pos * T + tk];
+		float vt[64];
+		for (uint k = 0u; k < dk; k++) vt[k] = b_qkv.d[vc + k];
+		uint tki = ibase + tk * d;
+		for (uint j = 0u; j < d; j++) {
+			float iv = inp.d[tki + j];
+			uint wr = j * sw;
+			for (uint k = 0u; k < dk; k++) vt[k] += iv * W_qkv.d[wr + vc + k];
+		}
+		for (uint k = 0u; k < dk; k++) ao[k] += aw * vt[k];
+	}
+
+	// Atomic gradients
+	for (uint k = 0u; k < dk; k++) {
+		float a = ao[k];
+		for (uint j = 0u; j < d; j++) {
+			float g = a * dL_dout.d[doff + pos * d + j];
+			uint idx = k * d + j;
+			uint e = uint(grad_W_o.d[idx]);
+			uint w;
+			do { w = floatBitsToInt(uintBitsToFloat(e) + g); uint o = atomicCompSwap(grad_W_o.d[idx], int(e), int(w)); if (o == e) break; e = o; } while (true);
+		}
+	}
+
+	for (uint j = 0u; j < d; j++) {
+		float g = dL_dout.d[doff + pos * d + j];
+		uint e = uint(grad_b_o.d[j]); uint w;
+		do { w = floatBitsToInt(uintBitsToFloat(e) + g); uint o = atomicCompSwap(grad_b_o.d[j], int(e), int(w)); if (o == e) break; e = o; } while (true);
+	}
+
+	for (uint j = 0u; j < d; j++) {
+		float iv = inp.d[ibase + pos * d + j];
+		uint wr = j * sw;
+		for (uint k = 0u; k < dk; k++) {
+			{ uint idx = wr + qc + k; float g = iv * dQ[k]; uint e = uint(grad_W_qkv.d[idx]); uint w;
+			  do { w = floatBitsToInt(uintBitsToFloat(e) + g); uint o = atomicCompSwap(grad_W_qkv.d[idx], int(e), int(w)); if (o == e) break; e = o; } while (true); }
+			{ uint idx = wr + kc + k; float g = iv * dK[k]; uint e = uint(grad_W_qkv.d[idx]); uint w;
+			  do { w = floatBitsToInt(uintBitsToFloat(e) + g); uint o = atomicCompSwap(grad_W_qkv.d[idx], int(e), int(w)); if (o == e) break; e = o; } while (true); }
+			{ uint idx = wr + vc + k; float g = iv * dV[k]; uint e = uint(grad_W_qkv.d[idx]); uint w;
+			  do { w = floatBitsToInt(uintBitsToFloat(e) + g); uint o = atomicCompSwap(grad_W_qkv.d[idx], int(e), int(w)); if (o == e) break; e = o; } while (true); }
+		}
+	}
+
+	for (uint k = 0u; k < dk; k++) {
+		{ uint idx = qc + k; float g = dQ[k]; uint e = uint(grad_b_qkv.d[idx]); uint w;
+		  do { w = floatBitsToInt(uintBitsToFloat(e) + g); uint o = atomicCompSwap(grad_b_qkv.d[idx], int(e), int(w)); if (o == e) break; e = o; } while (true); }
+		{ uint idx = kc + k; float g = dK[k]; uint e = uint(grad_b_qkv.d[idx]); uint w;
+		  do { w = floatBitsToInt(uintBitsToFloat(e) + g); uint o = atomicCompSwap(grad_b_qkv.d[idx], int(e), int(w)); if (o == e) break; e = o; } while (true); }
+		{ uint idx = vc + k; float g = dV[k]; uint e = uint(grad_b_qkv.d[idx]); uint w;
+		  do { w = floatBitsToInt(uintBitsToFloat(e) + g); uint o = atomicCompSwap(grad_b_qkv.d[idx], int(e), int(w)); if (o == e) break; e = o; } while (true); }
+	}
+
+	// dL/dx[pos,j] = sum_k (dQ[k]*W_qkv[j,qc+k] + dK[k]*W_qkv[j,kc+k] + dV[k]*W_qkv[j,vc+k])
+	for (uint j = 0u; j < d; j++) {
+		float dx = 0.0;
+		uint wr = j * sw;
+		for (uint k = 0u; k < dk; k++) {
+			dx += dQ[k] * W_qkv.d[wr + qc + k];
+			dx += dK[k] * W_qkv.d[wr + kc + k];
+			dx += dV[k] * W_qkv.d[wr + vc + k];
+		}
+		dL_dx.d[ibase + pos * d + j] = dx;
+	}
+}

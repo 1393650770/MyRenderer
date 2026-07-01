@@ -5,49 +5,19 @@
 #include "Core/ConstDefine.h"
 #include "RHI/RenderRHI.h"
 #include "RHI/RenderShader.h"
-// -- [AI] Vulkan includes removed - using clean RHI barrier + FlushDescriptorWrites
+// -- [AI]
+#include "Normalization.h"
+#include "Activation.h"
+#include "ConvLayer.h"
+#include "AttentionLayer.h"
+#include "ResidualBlock.h"
+// -- [AI]
+#include "ShaderHelper.h"
 
 using namespace MXRender::RHI;
 using namespace MXRender;
 
 namespace MXNN {
-
-// ---- shared shader helpers ----
-
-static Vector<UInt32> ReadShader(CONST String& in_filename)
-{
-	std::ifstream file(in_filename, std::ios::ate | std::ios::binary);
-	CHECK_WITH_LOG(!file.is_open(), " App Error: fail to open the shader file! ")
-
-	size_t file_size = (size_t)file.tellg();
-	Vector<UInt32> buffer(file_size / sizeof(UInt32));
-	file.seekg(0);
-	file.read((char*)buffer.data(), file_size);
-	file.close();
-	return std::move(buffer);
-}
-
-static Shader* LoadComputeShader(CONST String& in_filename)
-{
-	ShaderDesc desc;
-	desc.shader_type = ENUM_SHADER_STAGE::Shader_Compute;
-	desc.entry_name = "main";
-
-	ShaderDataPayload payload;
-	payload.data = ReadShader(in_filename);
-
-	return RHICreateShader(desc, payload);
-}
-
-static RenderPipelineState* CreateComputePipeline(Shader* in_cs)
-{
-	RenderGraphiPipelineStateDesc desc{};
-	desc.shaders[ENUM_SHADER_STAGE::Shader_Compute] = in_cs;
-	desc.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
-	desc.raster_state.sample_count = 1;
-
-	return RHICreateRenderPipelineState(desc);
-}
 
 // ============================================================
 // SequentialModel
@@ -68,8 +38,7 @@ SequentialModel::SequentialModel(UInt32 in_max_batch_size)
 SequentialModel::~SequentialModel()
 {
 	if (zero_grad_srb_) delete zero_grad_srb_;
-	if (zero_grad_pipeline_) delete zero_grad_pipeline_;
-	for (auto* srb : zg_temp_srbs_) delete srb;
+		for (auto* srb : zg_temp_srbs_) delete srb;
 }
 
 void SequentialModel::AddLayer(UniquePtr<ILayer> in_layer)
@@ -112,6 +81,19 @@ void SequentialModel::ZeroAllGradients(CommandList* in_cmd)
 			// Defer deletion to avoid freeing while CB is recording
 			zg_temp_srbs_.push_back(temp_srb);
 		}
+		// -- [AI] Also zero v buffers from GetParamQuads
+		for (auto& q : layer->GetParamQuads()) {
+			ShaderResourceBinding* ts = nullptr;
+			zero_grad_pipeline_->CreateShaderResourceBinding(ts, false);
+			zp.num_elements = static_cast<Float32>(std::get<3>(q)->ElementCount());
+			zg_pc_buf_.Upload(&zp.num_elements);
+			ts->SetResource("g0", std::get<3>(q)->GetBuffer());
+			ts->SetResource("pc", zg_pc_buf_.GetBuffer());
+			ts->FlushDescriptorWrites();
+			in_cmd->SetShaderResourceBinding(ts);
+			in_cmd->Dispatch((static_cast<UInt32>(zp.num_elements) + 255u) / 256u, 1, 1);
+			zg_temp_srbs_.push_back(ts);
+		}
 	}
 }
 
@@ -139,6 +121,7 @@ Float32 SequentialModel::TrainStep(CommandList* in_cmd, Tensor& in_input,
 
 	
 	// 1. Zero all gradients (GPU compute)
+	for (auto& layer : layers_) layer->SetTrainingMode(true); // -- [AI]
 	ZeroAllGradients(in_cmd);
 
 	// 2. Zero loss buffer (GPU compute, reuse zero_grad pipeline)
@@ -223,21 +206,23 @@ Float32 SequentialModel::TrainStep(CommandList* in_cmd, Tensor& in_input,
 
 Vector<UInt8> SequentialModel::Predict(CommandList* in_cmd, Tensor& in_input, UInt32 in_batch_size)
 {
-	layers_[0]->Forward(in_cmd, in_input);
-	Tensor& hidden_output = layers_[0]->GetOutput();
+	// -- [AI] N-layer generic forward with eval mode
+	// Bind zero labels for SoftmaxCE inference
+	{ Vector<Float32> zeros(in_batch_size, 0.0f); label_buf_.Upload(zeros.data()); }
+	for (auto& layer : layers_) { layer->SetTrainingMode(false); if (layer->GetLayerTypeName() == "SoftmaxCrossEntropyOutputLayer") { STATIC_CAST(layer.get(), SoftmaxCrossEntropyOutputLayer)->GetFwdLossSRB()->SetResource("lb", label_buf_.GetBuffer()); } }
+	Tensor* current = &in_input;
+	for (size_t i = 0; i < layers_.size(); ++i)
+	{
+		layers_[i]->Forward(in_cmd, *current);
+		current = &layers_[i]->GetOutput();
+	}
 
-	Vector<Float32> zero_labels(in_batch_size, 0.0f);
-	label_buf_.Upload(zero_labels.data());
-	auto* loss_layer = STATIC_CAST(layers_.back().get(), SoftmaxCrossEntropyOutputLayer);
-	loss_layer->GetFwdLossSRB()->SetResource("lb", label_buf_.GetBuffer());
-
-	layers_[1]->Forward(in_cmd, hidden_output);
-
-	Tensor& probs = loss_layer->GetOutput();
+	Tensor& probs = layers_.back()->GetOutput();
 	Vector<Float32> prob_data(probs.ElementCount());
 	probs.Download(prob_data.data());
 
-	UInt32 num_classes = loss_layer->NumClasses();
+	// -- [AI] Infer num_classes from output shape (last dim)
+	UInt32 num_classes = probs.Shape().back();
 	Vector<UInt8> predictions(in_batch_size);
 
 	for (UInt32 s = 0; s < in_batch_size; ++s)
@@ -259,4 +244,84 @@ Vector<UInt8> SequentialModel::Predict(CommandList* in_cmd, Tensor& in_input, UI
 	return predictions;
 }
 
+// -- [AI:BEGIN] Model Save/Load
+void SequentialModel::Save(CONST String& in_filepath) {
+	std::ofstream ofs(in_filepath, std::ios::binary);
+	if (!ofs) return;
+	UInt32 magic = 0x01454E4Eu;
+	UInt32 version = 1u;
+	UInt32 count = (UInt32)layers_.size();
+	ofs.write((char*)&magic, 4); ofs.write((char*)&version, 4); ofs.write((char*)&count, 4);
+	for (auto& layer : layers_) {
+		String name = layer->GetLayerTypeName();
+		UInt16 nlen = (UInt16)name.length();
+		ofs.write((char*)&nlen, 2); ofs.write(name.data(), nlen);
+		layer->SaveParameters(ofs);
+	}
+}
+void SequentialModel::Load(CONST String& in_filepath) {
+	std::ifstream ifs(in_filepath, std::ios::binary);
+	if (!ifs) return;
+	UInt32 magic, version, count;
+	ifs.read((char*)&magic, 4); ifs.read((char*)&version, 4); ifs.read((char*)&count, 4);
+	if (magic != 0x01454E4Eu) return;
+	layers_.clear();
+	for (UInt32 i = 0; i < count; ++i) {
+		UInt16 nlen; ifs.read((char*)&nlen, 2);
+		String name(nlen, ' '); ifs.read(&name[0], nlen);
+		if (name == "LinearLayer") {
+			UInt32 a,b,c; Bool d; ifs.read((char*)&a,4);ifs.read((char*)&b,4);ifs.read((char*)&c,4);ifs.read((char*)&d,1);
+			auto l = std::make_unique<LinearLayer>(a,b,c,d); l->LoadParameters(ifs); layers_.push_back(std::move(l));
+		} else if (name == "SoftmaxCrossEntropyOutputLayer") {
+			UInt32 a,b,c; ifs.read((char*)&a,4);ifs.read((char*)&b,4);ifs.read((char*)&c,4);
+			auto l = std::make_unique<SoftmaxCrossEntropyOutputLayer>(a,b,c); l->LoadParameters(ifs); layers_.push_back(std::move(l));
+		} else if (name == "LayerNorm") {
+			UInt32 nf,mb; Float32 e; ifs.read((char*)&nf,4);ifs.read((char*)&mb,4);ifs.read((char*)&e,4);
+			auto l = std::make_unique<LayerNorm>(nf,mb,e); l->LoadParameters(ifs); layers_.push_back(std::move(l));
+		} else if (name == "BatchNorm1D") {
+			UInt32 nf,mb; Float32 mo,e; ifs.read((char*)&nf,4);ifs.read((char*)&mb,4);ifs.read((char*)&mo,4);ifs.read((char*)&e,4);
+			auto l = std::make_unique<BatchNorm1DLayer>(nf,mb,mo,e); l->LoadParameters(ifs); layers_.push_back(std::move(l));
+		} else if (name == "Dropout") {
+			Float32 p; UInt32 ne; ifs.read((char*)&p,4);ifs.read((char*)&ne,4);
+			auto l = std::make_unique<DropoutLayer>(p,ne); l->LoadParameters(ifs); layers_.push_back(std::move(l));
+		} else if (name == "Conv2DLayer") {
+			UInt32 in_c,out_c,k_h,k_w,in_h,in_w,mb,s,p;
+			ifs.read((char*)&in_c,4);ifs.read((char*)&out_c,4);
+			ifs.read((char*)&k_h,4);ifs.read((char*)&k_w,4);
+			ifs.read((char*)&in_h,4);ifs.read((char*)&in_w,4);
+			ifs.read((char*)&mb,4);ifs.read((char*)&s,4);ifs.read((char*)&p,4);
+			auto l = std::make_unique<Conv2DLayer>(in_c,out_c,k_h,k_w,in_h,in_w,mb,s,p);
+			l->LoadParameters(ifs); layers_.push_back(std::move(l));
+		} else if (name == "MultiHeadAttention") {
+			UInt32 dm,nh,mb,ml;
+			ifs.read((char*)&dm,4);ifs.read((char*)&nh,4);
+			ifs.read((char*)&mb,4);ifs.read((char*)&ml,4);
+			auto l = std::make_unique<MultiHeadAttentionLayer>(dm,nh,mb,ml);
+			l->LoadParameters(ifs); layers_.push_back(std::move(l));
+		} else if (name == "ResidualBlock") {
+			UInt32 ne; ifs.read((char*)&ne,4);
+			auto l = std::make_unique<ResidualBlock>(ne);
+			l->LoadParameters(ifs); layers_.push_back(std::move(l));
+		} else if (name == "ReLU") {
+			UInt32 r; ifs.read((char*)&r,4); Vector<UInt32> sh(r); ifs.read((char*)sh.data(),r*4);
+			UInt32 ne=1; for(auto d:sh) ne*=d;
+			auto l = std::make_unique<ReLULayer>(sh); layers_.push_back(std::move(l));
+		} else if (name == "LeakyReLU" || name == "Sigmoid" || name == "Tanh" || name == "GELU" || name == "SiLU") {
+			UInt32 r; ifs.read((char*)&r,4); Vector<UInt32> sh(r); ifs.read((char*)sh.data(),r*4);
+			UniquePtr<ILayer> l;
+			if (name == "LeakyReLU") l = std::make_unique<LeakyReLULayer>(sh);
+			else if (name == "Sigmoid") l = std::make_unique<SigmoidLayer>(sh);
+			else if (name == "Tanh") l = std::make_unique<TanhLayer>(sh);
+			else if (name == "GELU") l = std::make_unique<GELULayer>(sh);
+			else l = std::make_unique<SiLULayer>(sh);
+			layers_.push_back(std::move(l));
+		}
+	}
+}
+// -- [AI:END]
+
+
+void SequentialModel::ClearTempSRBs() {
+	for (auto& layer : layers_) layer->ClearTempSRBs();
+}
 } // namespace MXNN

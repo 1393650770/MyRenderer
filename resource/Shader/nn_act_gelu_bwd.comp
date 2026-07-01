@@ -1,0 +1,15 @@
+// -- [AI] gelu backward
+#version 460
+layout(local_size_x = 256) in;
+layout(set = 0, binding = 0) readonly buffer GradBuf { float d[]; } dL_dout;
+layout(set = 0, binding = 1) buffer OutBuf { float d[]; } dL_dx;
+layout(set = 0, binding = 2) readonly buffer SavedBuf { float d[]; } saved;
+layout(set = 0, binding = 10) readonly buffer PC { float d[]; } pc;
+void main()
+{
+    uint g = gl_GlobalInvocationID.x;
+    if (g >= uint(pc.d[0])) return;
+    float grad = dL_dout.d[g];
+    float x = saved.d[g];
+    float a2 = 0.7978845608; float y2 = a2 * (x + 0.044715 * x * x * x); float th = tanh(y2); dL_dx.d[g] = grad * (0.5*(1.0+th) + 0.5*a2*(1.0-th*th)*(x+0.134145*x*x*x));
+}

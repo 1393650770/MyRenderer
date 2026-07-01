@@ -1,0 +1,15 @@
+// -- [AI] silu backward
+#version 460
+layout(local_size_x = 256) in;
+layout(set = 0, binding = 0) readonly buffer GradBuf { float d[]; } dL_dout;
+layout(set = 0, binding = 1) buffer OutBuf { float d[]; } dL_dx;
+layout(set = 0, binding = 2) readonly buffer SavedBuf { float d[]; } saved;
+layout(set = 0, binding = 10) readonly buffer PC { float d[]; } pc;
+void main()
+{
+    uint g = gl_GlobalInvocationID.x;
+    if (g >= uint(pc.d[0])) return;
+    float grad = dL_dout.d[g];
+    float x = saved.d[g];
+    float ss = 1.0 / (1.0 + exp(-x)); dL_dx.d[g] = grad * (x * ss + ss * (1.0 - x * ss));
+}

@@ -1,0 +1,56 @@
+// -- [AI] BatchNorm1D forward — 1 WG per feature channel
+#version 460
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) readonly buffer InBuf { float d[]; } inp;
+layout(set = 0, binding = 1) buffer OutBuf { float d[]; } out_buf;
+layout(set = 0, binding = 2) readonly buffer Gamma { float d[]; } gamma;
+layout(set = 0, binding = 3) readonly buffer Beta { float d[]; } beta;
+layout(set = 0, binding = 4) buffer RMean { float d[]; } running_mean;
+layout(set = 0, binding = 5) buffer RVar { float d[]; } running_var;
+layout(set = 0, binding = 6) buffer SavedMu { float d[]; } saved_mu;
+layout(set = 0, binding = 7) buffer SavedStd { float d[]; } saved_std;
+layout(set = 0, binding = 10) readonly buffer PC { float d[]; } pc;
+// pc.d[0]=B(batch) pc.d[1]=F(features) pc.d[2]=eps pc.d[3]=momentum pc.d[4]=is_training
+
+shared float sdata[256];
+
+void main() {
+    uint lid = gl_LocalInvocationID.x;
+    uint fid = gl_WorkGroupID.x; // feature channel index
+    uint B = uint(pc.d[0]);
+    uint F = uint(pc.d[1]);
+    float eps = pc.d[2];
+    float mom = pc.d[3];
+    bool training = (pc.d[4] > 0.5);
+
+    if (fid >= F) return;
+
+    float sum = 0.0;
+    for (uint b = lid; b < B; b += 256u) sum += inp.d[b * F + fid];
+    sdata[lid] = (lid < B) ? sum : 0.0;
+    barrier(); memoryBarrierShared();
+    if (lid == 0u) { float t = 0.0; for (uint k = 0u; k < 256u && k < B; ++k) t += sdata[k]; sdata[0] = t / float(B); }
+    barrier(); memoryBarrierShared();
+    float mu = sdata[0];
+
+    float vsum = 0.0;
+    for (uint b = lid; b < B; b += 256u) { float d = inp.d[b * F + fid] - mu; vsum += d * d; }
+    sdata[lid] = (lid < B) ? vsum : 0.0;
+    barrier(); memoryBarrierShared();
+    if (lid == 0u) { float t = 0.0; for (uint k = 0u; k < 256u && k < B; ++k) t += sdata[k]; sdata[0] = sqrt(t / float(B) + eps); }
+    barrier(); memoryBarrierShared();
+    float std_val = sdata[0];
+    float ivar = 1.0 / std_val;
+
+    if (training) {
+        saved_mu.d[fid] = mu;
+        saved_std.d[fid] = std_val;
+        running_mean.d[fid] = mom * running_mean.d[fid] + (1.0 - mom) * mu;
+        running_var.d[fid] = mom * running_var.d[fid] + (1.0 - mom) * (std_val * std_val);
+    }
+
+    for (uint b = lid; b < B; b += 256u) {
+        out_buf.d[b * F + fid] = gamma.d[fid] * (inp.d[b * F + fid] - mu) * ivar + beta.d[fid];
+    }
+}

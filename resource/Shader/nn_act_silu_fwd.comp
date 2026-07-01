@@ -1,0 +1,15 @@
+// -- [AI] silu forward
+#version 460
+layout(local_size_x = 256) in;
+layout(set = 0, binding = 0) readonly buffer InBuf { float d[]; } inp;
+layout(set = 0, binding = 1) buffer OutBuf { float d[]; } out_buf;
+layout(set = 0, binding = 2) buffer SavedBuf { float d[]; } saved;
+layout(set = 0, binding = 10) readonly buffer PC { float d[]; } pc;
+void main()
+{
+    uint g = gl_GlobalInvocationID.x;
+    if (g >= uint(pc.d[0])) return;
+    float x = inp.d[g];
+    saved.d[g] = x;
+    out_buf.d[g] = x / (1.0 + exp(-x));
+}

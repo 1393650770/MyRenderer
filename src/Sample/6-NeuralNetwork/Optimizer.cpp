@@ -7,43 +7,14 @@
 #include "RHI/RenderRHI.h"
 #include "RHI/RenderShader.h"
 #include "RHI/RenderRource.h"
+// -- [AI]
+#include "ShaderHelper.h"
 // -- [AI] VK_Shader.h removed - FlushDescriptorWrites now on RHI base class
 
 using namespace MXRender::RHI;
 using namespace MXRender;
 
 namespace MXNN {
-
-static Vector<UInt32> ReadShader(CONST String& in_filename)
-{
-	std::ifstream file(in_filename, std::ios::ate | std::ios::binary);
-	CHECK_WITH_LOG(!file.is_open(), " App Error: fail to open the shader file! ")
-	size_t file_size = (size_t)file.tellg();
-	Vector<UInt32> buffer(file_size / sizeof(UInt32));
-	file.seekg(0);
-	file.read((char*)buffer.data(), file_size);
-	file.close();
-	return std::move(buffer);
-}
-
-static Shader* LoadComputeShader(CONST String& in_filename)
-{
-	ShaderDesc desc;
-	desc.shader_type = ENUM_SHADER_STAGE::Shader_Compute;
-	desc.entry_name = "main";
-	ShaderDataPayload payload;
-	payload.data = ReadShader(in_filename);
-	return RHICreateShader(desc, payload);
-}
-
-static RenderPipelineState* CreateComputePipeline(Shader* in_cs)
-{
-	RenderGraphiPipelineStateDesc desc{};
-	desc.shaders[ENUM_SHADER_STAGE::Shader_Compute] = in_cs;
-	desc.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
-	desc.raster_state.sample_count = 1;
-	return RHICreateRenderPipelineState(desc);
-}
 
 SGD::SGD(Float32 in_lr, Float32 in_momentum, Float32 in_weight_decay)
 	: lr_(in_lr), momentum_(in_momentum), weight_decay_(in_weight_decay), pc_buf_({5})
@@ -58,8 +29,7 @@ SGD::SGD(Float32 in_lr, Float32 in_momentum, Float32 in_weight_decay)
 SGD::~SGD()
 {
 	if (update_srb_) delete update_srb_;
-	if (update_pipeline_) delete update_pipeline_;
-	for (auto* srb : temp_srbs_) delete srb;
+		for (auto* srb : temp_srbs_) delete srb;
 }
 
 void SGD::Update(CommandList* in_cmd, Tensor& in_params, Tensor& in_grads,
@@ -87,5 +57,44 @@ void SGD::Update(CommandList* in_cmd, Tensor& in_params, Tensor& in_grads,
 
 	temp_srbs_.push_back(temp_srb);
 }
+
+// -- [AI:BEGIN] Adam implementation
+Adam::Adam(Params in_p) : p_(in_p) {
+	Shader* s = LoadComputeShader("Shader/nn_update_adam.comp.spv");
+	pipeline_ = CreateComputePipeline(s);
+	pipeline_->CreateShaderResourceBinding(srb_, false);
+	delete s;
+}
+Adam::~Adam() {
+	for (auto* s : temp_srbs_) delete s;
+	delete srb_;
+	delete pipeline_;
+	for (auto& kv : v_map_) delete kv.second;
+}
+void Adam::Update(CommandList* in_cmd, Tensor& in_params, Tensor& in_grads,
+	Tensor& in_velocity, Float32 in_inv_batch_size, UInt32 in_step)
+{
+	if (v_map_.find(&in_params) == v_map_.end()) {
+		v_map_[&in_params] = new Tensor(in_grads.Shape());
+	}
+	Tensor* v_tensor = v_map_[&in_params];
+	Float32 pc[9] = { p_.lr, p_.beta1, p_.beta2, p_.eps, p_.wd, in_inv_batch_size, (Float32)in_step, (Float32)in_grads.ElementCount(), 0.0f };
+	bool is_adamw = (typeid(*this) == typeid(AdamW));
+	if (is_adamw) pc[8] = 1.0f;
+	pc_buf_.Upload(pc);
+	ShaderResourceBinding* s = nullptr;
+	pipeline_->CreateShaderResourceBinding(s, false);
+	s->SetResource("p", in_params.GetBuffer());
+	s->SetResource("g", in_grads.GetBuffer());
+	s->SetResource("m", in_velocity.GetBuffer());
+	s->SetResource("v", v_tensor->GetBuffer());
+	s->SetResource("pc", pc_buf_.GetBuffer());
+	s->FlushDescriptorWrites();
+	in_cmd->SetComputePipeline(pipeline_);
+	in_cmd->SetShaderResourceBinding(s);
+	in_cmd->Dispatch((in_grads.ElementCount() + 255u) / 256u, 1u, 1u);
+	temp_srbs_.push_back(s);
+}
+// -- [AI:END]
 
 } // namespace MXNN

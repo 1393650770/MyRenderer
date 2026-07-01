@@ -9,6 +9,8 @@
 #include "Layer.h"
 #include "Optimizer.h"
 #include "Model.h"
+// -- [AI] New features
+#include "Activation.h"
 
 using namespace MXRender::RHI;
 using namespace MXRender::Application;
@@ -105,9 +107,10 @@ int main()
 	// Build model: 2 → 64(ReLU) → 3(Softmax)
 	CONST UInt32 kMaxBatchSize = 32;
 	SequentialModel model(kMaxBatchSize);
-	model.AddLayer(std::make_unique<LinearLayer>(2, 64, kMaxBatchSize, true));
+	model.AddLayer(std::make_unique<LinearLayer>(2, 64, kMaxBatchSize, false));
+	model.AddLayer(std::make_unique<ReLULayer>(Vector<UInt32>{kMaxBatchSize, 64})); // -- [AI]
 	model.AddLayer(std::make_unique<SoftmaxCrossEntropyOutputLayer>(64, 3, kMaxBatchSize));
-	model.SetOptimizer(std::make_unique<SGD>(0.1f, 0.9f));
+	model.SetOptimizer(std::make_unique<Adam>(Adam::Params{0.001f, 0.9f, 0.999f, 1e-8f, 0.0f})); // -- [AI]
 
 	// Create dataset
 	SpiralDataset dataset(600, 3);

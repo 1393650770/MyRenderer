@@ -8,47 +8,29 @@
 #include "RHI/RenderRHI.h"
 #include "RHI/RenderShader.h"
 #include "RHI/RenderCommandList.h"
+// -- [AI]
+#include "ShaderHelper.h"
 
 using namespace MXRender::RHI;
 using namespace MXRender;
 
 namespace MXNN {
 
-// ---- shared shader helpers (duplicated per-file per project convention) ----
-
-static Vector<UInt32> ReadShader(CONST String& in_filename)
-{
-	std::ifstream file(in_filename, std::ios::ate | std::ios::binary);
-	CHECK_WITH_LOG(!file.is_open(), " App Error: fail to open the shader file! ")
-
-	size_t file_size = (size_t)file.tellg();
-	Vector<UInt32> buffer(file_size / sizeof(UInt32));
-	file.seekg(0);
-	file.read((char*)buffer.data(), file_size);
-	file.close();
-	return std::move(buffer);
+// -- [AI] Tensor serialization helpers
+void WriteTensor(std::ostream& os, const Tensor& t) {
+	UInt32 rank = (UInt32)t.Shape().size();
+	os.write((char*)&rank, 4);
+	for (UInt32 v : t.Shape()) os.write((char*)&v, 4);
+	Vector<Float32> data(t.ElementCount());
+	t.Download(data.data());
+	os.write((char*)data.data(), data.size() * 4);
 }
-
-static Shader* LoadComputeShader(CONST String& in_filename)
-{
-	ShaderDesc desc;
-	desc.shader_type = ENUM_SHADER_STAGE::Shader_Compute;
-	desc.entry_name = "main";
-	desc.shader_name = in_filename;
-	ShaderDataPayload payload;
-	payload.data = ReadShader(in_filename);
-
-	return RHICreateShader(desc, payload);
-}
-
-static RenderPipelineState* CreateComputePipeline(Shader* in_cs)
-{
-	RenderGraphiPipelineStateDesc desc{};
-	desc.shaders[ENUM_SHADER_STAGE::Shader_Compute] = in_cs;
-	desc.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
-	desc.raster_state.sample_count = 1;
-
-	return RHICreateRenderPipelineState(desc);
+void ReadTensor(std::istream& is, Tensor& t) {
+	UInt32 rank; is.read((char*)&rank, 4);
+	Vector<UInt32> sh(rank); is.read((char*)sh.data(), rank * 4);
+	Vector<Float32> data(t.ElementCount());
+	is.read((char*)data.data(), data.size() * 4);
+	t.Upload(data.data());
 }
 
 // ============================================================
@@ -147,6 +129,17 @@ void LinearLayer::UpdateWeights(CommandList* in_cmd, IOptimizer& in_opt, Float32
 	in_opt.Update(in_cmd, weight_, grad_w_, v_w_, in_inv_bs, in_step);
 	in_opt.Update(in_cmd, bias_, grad_b_, v_b_, in_inv_bs, in_step);
 }
+
+// -- [AI:BEGIN] Persistence
+String LinearLayer::GetLayerTypeName() const { return "LinearLayer"; }
+void LinearLayer::SaveParameters(std::ostream& os) const {
+	os.write((char*)&in_dim_, 4); os.write((char*)&out_dim_, 4); os.write((char*)&max_batch_size_, 4); os.write((char*)&has_relu_, 1);
+	WriteTensor(os, weight_); WriteTensor(os, bias_);
+}
+void LinearLayer::LoadParameters(std::istream& is) {
+	ReadTensor(is, weight_); ReadTensor(is, bias_);
+}
+// -- [AI:END]
 
 Vector<std::tuple<Tensor*, Tensor*, Tensor*>> LinearLayer::GetParamTriples()
 {
@@ -257,6 +250,17 @@ Float32 SoftmaxCrossEntropyOutputLayer::GetLoss() CONST
 	loss_buf_.Download(&loss);
 	return loss;
 }
+
+// -- [AI:BEGIN] Persistence
+String SoftmaxCrossEntropyOutputLayer::GetLayerTypeName() const { return "SoftmaxCrossEntropyOutputLayer"; }
+void SoftmaxCrossEntropyOutputLayer::SaveParameters(std::ostream& os) const {
+	os.write((char*)&in_dim_, 4); os.write((char*)&num_classes_, 4); os.write((char*)&max_batch_size_, 4);
+	WriteTensor(os, weight_); WriteTensor(os, bias_);
+}
+void SoftmaxCrossEntropyOutputLayer::LoadParameters(std::istream& is) {
+	ReadTensor(is, weight_); ReadTensor(is, bias_);
+}
+// -- [AI:END]
 
 Vector<std::tuple<Tensor*, Tensor*, Tensor*>> SoftmaxCrossEntropyOutputLayer::GetParamTriples()
 {

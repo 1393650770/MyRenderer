@@ -1,0 +1,48 @@
+// -- [AI] LayerNorm forward — per-sample normalization
+#version 460
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) readonly buffer InBuf { float d[]; } inp;
+layout(set = 0, binding = 1) buffer OutBuf { float d[]; } out_buf;
+layout(set = 0, binding = 2) readonly buffer Gamma { float d[]; } gamma;
+layout(set = 0, binding = 3) readonly buffer Beta { float d[]; } beta;
+layout(set = 0, binding = 4) buffer SavedMu { float d[]; } saved_mu;
+layout(set = 0, binding = 5) buffer SavedStd { float d[]; } saved_std;
+layout(set = 0, binding = 10) readonly buffer PC { float d[]; } pc;
+// pc.d[0]=N(num_features) pc.d[1]=eps
+
+shared float smu[256];
+shared float svar[256];
+
+void main() {
+    uint lid = gl_LocalInvocationID.x;
+    uint sid = gl_WorkGroupID.x;    // sample index
+    uint N   = uint(pc.d[0]);
+    float eps = pc.d[1];
+    uint base = sid * N;
+
+    // Pass 1: compute mean
+    float sum = 0.0;
+    for (uint i = lid; i < N; i += 256u) sum += inp.d[base + i];
+    smu[lid] = (lid < N) ? sum : 0.0;
+    barrier(); memoryBarrierShared();
+    if (lid == 0u) { float t = 0.0; for (uint k = 0u; k < 256u && k < N; ++k) t += smu[k]; smu[0] = t / float(N); }
+    barrier(); memoryBarrierShared();
+    float mu = smu[0];
+    saved_mu.d[sid] = mu;
+
+    // Pass 2: compute std
+    float var_sum = 0.0;
+    for (uint i = lid; i < N; i += 256u) { float d = inp.d[base + i] - mu; var_sum += d * d; }
+    svar[lid] = (lid < N) ? var_sum : 0.0;
+    barrier(); memoryBarrierShared();
+    if (lid == 0u) { float t = 0.0; for (uint k = 0u; k < 256u && k < N; ++k) t += svar[k]; svar[0] = sqrt(t / float(N) + eps); }
+    barrier(); memoryBarrierShared();
+    float std_inv = 1.0 / svar[0];
+    saved_std.d[sid] = svar[0];
+
+    // Normalize + scale + shift
+    for (uint i = lid; i < N; i += 256u) {
+        out_buf.d[base + i] = gamma.d[i] * (inp.d[base + i] - mu) * std_inv + beta.d[i];
+    }
+}
