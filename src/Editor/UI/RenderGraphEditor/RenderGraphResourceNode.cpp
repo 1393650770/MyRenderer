@@ -35,6 +35,11 @@ void RenderGraphResourceNode::BindResource(Render::RenderGraphResourceBase* res)
 
 void RenderGraphResourceNode::Draw()
 {
+	if (has_pending_pos)
+	{
+		ed::SetNodePosition(self_id, ImVec2(pending_pos_x, pending_pos_y));
+		has_pending_pos = false;
+	}
 	ed::BeginNode(self_id);
 
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();

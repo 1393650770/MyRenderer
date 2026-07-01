@@ -727,56 +727,80 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 {
 	if (!graph) return;
 
-	Int pass_idx = 0;
-	Int res_idx = 0;
+	// --- Phase 1: collect new nodes ---
+	struct NewPassInfo { RenderGraphPassNode* node; Int index; };
+	struct NewResInfo  { RenderGraphResourceNode* node; String name; };
+	Vector<NewPassInfo> new_passes;
+	Vector<NewResInfo>  new_resources;
 
-	// Sync runtime passes (top row, staggered left to right)
 	for (auto& pass : graph->GetPasses())
 	{
 		String pass_name = pass->GetName();
 		bool exists = false;
-		for (auto* n : nodes)
-		{
-			if (n->GetName() == pass_name)
-			{ exists = true; break; }
-		}
+		for (auto* n : nodes) { if (n->GetName() == pass_name) { exists = true; break; } }
 		if (exists) continue;
 
 		auto* node = new RenderGraphPassNode(pass_name, PassNodeType::Custom);
 		node->BindPass(pass.get());
-		for (auto* res : pass->GetReadResources())
-			node->AddInputPin(res->GetName(), PinAccess::Read);
-		for (auto* res : pass->GetWriteResources())
-			node->AddOutputPin(res->GetName(), PinAccess::Write);
-		for (auto* res : pass->GetCreateResources())
-			node->AddOutputPin(res->GetName(), PinAccess::Create);
-		node->SetPendingPosition(150.0f + pass_idx * 280.0f, 100.0f);
+		for (auto* res : pass->GetReadResources())  node->AddInputPin(res->GetName(), PinAccess::Read);
+		for (auto* res : pass->GetWriteResources()) node->AddOutputPin(res->GetName(), PinAccess::Write);
+		for (auto* res : pass->GetCreateResources())node->AddOutputPin(res->GetName(), PinAccess::Create);
 		nodes.push_back(node);
-		pass_idx++;
+		new_passes.push_back({node, (Int)new_passes.size()});
 	}
 
-	// Sync runtime resources (bottom row, staggered left to right)
 	for (auto& res : graph->GetResources())
 	{
 		String res_name = res->GetName();
 		bool exists = false;
-		for (auto* n : nodes)
-		{
-			if (n->GetName() == res_name)
-			{ exists = true; break; }
-		}
+		for (auto* n : nodes) { if (n->GetName() == res_name) { exists = true; break; } }
 		if (exists) continue;
 
-		ResourceNodeType rtype = ResourceNodeType::Texture;
-		if (res->IsBufferResource()) rtype = ResourceNodeType::Buffer;
+		ResourceNodeType rtype = res->IsBufferResource() ? ResourceNodeType::Buffer : ResourceNodeType::Texture;
 		auto* node = new RenderGraphResourceNode(res_name, rtype);
 		node->SetIsTransient(res->GetIsTransient());
 		node->BindResource(res.get());
 		node->AddInputPin("Input", PinAccess::Write);
 		node->AddOutputPin("Output", PinAccess::Read);
-		node->SetPendingPosition(150.0f + res_idx * 300.0f, 420.0f);
 		nodes.push_back(node);
-		res_idx++;
+		new_resources.push_back({node, res_name});
+	}
+
+	// --- Phase 2: layout based on dependencies ---
+	if (!new_passes.empty() || !new_resources.empty())
+	{
+		Int pass_count = (Int)graph->GetPasses().size();
+		Int res_count  = (Int)graph->GetResources().size();
+		const Float32 pass_x_start = 100.0f;
+		const Float32 pass_x_step  = 280.0f;
+		const Float32 pass_y       = 100.0f;
+		const Float32 res_y        = 420.0f;
+
+		// Place passes left to right by insertion order (= execution order)
+		for (auto& pi : new_passes)
+			pi.node->SetPendingPosition(pass_x_start + pi.index * pass_x_step, pass_y);
+
+		// Place resources at the midpoint between their first writer and first reader
+		for (auto& ri : new_resources)
+		{
+			Int writer_idx = -1;
+			Int reader_idx = pass_count;
+			for (Int pi = 0; pi < pass_count; ++pi)
+			{
+				auto& pass = graph->GetPasses()[pi];
+				for (auto* w : pass->GetWriteResources())
+					if (w->GetName() == ri.name) { writer_idx = pi; break; }
+				for (auto* c : pass->GetCreateResources())
+					if (c->GetName() == ri.name) { writer_idx = pi; break; }
+				for (auto* r : pass->GetReadResources())
+					if (r->GetName() == ri.name && reader_idx == pass_count) { reader_idx = pi; }
+			}
+			if (writer_idx < 0) writer_idx = 0;
+			if (reader_idx >= pass_count) reader_idx = writer_idx + 1;
+
+			Float32 mid_x = pass_x_start + ((writer_idx + reader_idx) * 0.5f) * pass_x_step;
+			ri.node->SetPendingPosition(mid_x, res_y);
+		}
 	}
 
 	// Build name -> node map for link creation
