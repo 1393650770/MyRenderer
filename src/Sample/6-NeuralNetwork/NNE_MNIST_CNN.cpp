@@ -1,4 +1,3 @@
-// -- [AI:BEGIN]
 // NNE_MNIST_CNN.cpp - MNIST CNN demo showcasing NNE features:
 //   Conv2D, BatchNorm1D, ReLU, Dropout, Linear, SoftmaxCrossEntropy, AdamW, Save/Load
 // Uses synthetic random data (no external dataset files needed)
@@ -256,4 +255,3 @@ int main()
     system("pause");
     return 0;
 }
-// -- [AI:END]

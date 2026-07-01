@@ -1,5 +1,4 @@
 #pragma once
-// -- [AI:BEGIN]
 #ifndef _NN_NORMALIZATION_
 #define _NN_NORMALIZATION_
 #include "Layer.h"
@@ -32,7 +31,7 @@ protected:
 	Tensor pc_buf_{{4}};
 	RenderPipelineState* pipeline_ = nullptr;
 	ShaderResourceBinding* fwd_srb_ = nullptr;
-		ShaderResourceBinding* bwd_srb_ = nullptr; // -- [AI]
+		ShaderResourceBinding* bwd_srb_ = nullptr;
 	Vector<ShaderResourceBinding*> temp_srbs_;
 #pragma endregion
 MYRENDERER_END_CLASS
@@ -50,7 +49,6 @@ public:
 	VIRTUAL Vector<std::tuple<Tensor*,Tensor*,Tensor*>> METHOD(GetParamTriples)() OVERRIDE FINAL;
 	VIRTUAL Tensor& METHOD(GetOutput)() OVERRIDE FINAL { return output_; }
 	VIRTUAL Tensor& METHOD(GetInputGradient)() OVERRIDE FINAL { return dL_dx_; }
-	// -- [AI] Persistence
 	VIRTUAL String METHOD(GetLayerTypeName)() CONST OVERRIDE FINAL { return "LayerNorm"; }
 	VIRTUAL void METHOD(SaveParameters)(std::ostream& os) CONST OVERRIDE FINAL;
 	VIRTUAL void METHOD(LoadParameters)(std::istream& is) OVERRIDE FINAL;
@@ -98,5 +96,4 @@ protected:
 MYRENDERER_END_CLASS
 
 } // namespace MXNN
-// -- [AI:END]
 #endif

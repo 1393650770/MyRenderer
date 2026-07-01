@@ -1,4 +1,3 @@
-// -- [AI] BatchNorm1D forward — 1 WG per feature channel
 #version 460
 layout(local_size_x = 256) in;
 

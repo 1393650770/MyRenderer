@@ -1,5 +1,4 @@
 #pragma once
-// -- [AI:BEGIN]
 #ifndef _NN_INITIALIZER_
 #define _NN_INITIALIZER_
 #include "Tensor.h"
@@ -44,5 +43,4 @@ inline void InitializeBias(Tensor& in_b, Float32 in_v = 0.0f)
 }
 
 } // namespace MXNN
-// -- [AI:END]
 #endif

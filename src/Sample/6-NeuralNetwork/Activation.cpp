@@ -2,7 +2,6 @@
 #include "ShaderHelper.h"
 #include "RHI/RenderCommandList.h"
 #include "RHI/RenderPipelineState.h"
-// -- [AI:BEGIN]
 
 namespace MXNN {
 
@@ -30,7 +29,6 @@ ActivationLayer::ActivationLayer(CONST Vector<UInt32>& in_shape, CONST String& i
 
 ActivationLayer::~ActivationLayer()
 {
-	// -- [AI] temp_srbs_ removed; static SRBs deleted directly
 	if (bwd_srb_) delete bwd_srb_;
 	if (fwd_srb_) delete fwd_srb_;
 	//if (bwd_pipeline_) delete bwd_pipeline_;
@@ -39,7 +37,6 @@ ActivationLayer::~ActivationLayer()
 
 void ActivationLayer::Forward(CommandList* in_cmd, Tensor& in_input)
 {
-	// -- [AI] Re-bind per-call buffers on static fwd_srb_
 	fwd_srb_->SetResource("inp", in_input.GetBuffer());
 	fwd_srb_->SetResource("out_buf", output_.GetBuffer());
 	fwd_srb_->SetResource("saved", saved_input_.GetBuffer());
@@ -53,7 +50,6 @@ void ActivationLayer::Forward(CommandList* in_cmd, Tensor& in_input)
 
 void ActivationLayer::Backward(CommandList* in_cmd, CONST Tensor& in_dL_dout, CONST Tensor& /*input_act*/)
 {
-	// -- [AI] Re-bind per-call buffers on static bwd_srb_
 	bwd_srb_->SetResource("dL_dout", in_dL_dout.GetBuffer());
 	bwd_srb_->SetResource("dL_dx", dL_dx_.GetBuffer());
 	bwd_srb_->SetResource("saved", saved_input_.GetBuffer());
@@ -66,4 +62,3 @@ void ActivationLayer::Backward(CommandList* in_cmd, CONST Tensor& in_dL_dout, CO
 }
 
 } // namespace MXNN
-// -- [AI:END]

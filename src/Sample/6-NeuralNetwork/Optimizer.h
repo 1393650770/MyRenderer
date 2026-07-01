@@ -60,7 +60,6 @@ private:
 #pragma endregion
 MYRENDERER_END_CLASS
 
-// -- [AI:BEGIN] Adam / AdamW optimizers
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(Adam, public MXNN::IOptimizer)
 public:
 	struct Params { Float32 lr, beta1, beta2, eps, wd; };
@@ -81,6 +80,5 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(AdamW, public Adam)
 public:
 	AdamW(Params in_p) : Adam(in_p) {}
 MYRENDERER_END_CLASS
-// -- [AI:END]
 
 } // namespace MXNN

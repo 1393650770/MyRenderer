@@ -1,6 +1,5 @@
 #version 460
 
-// -- [AI] formatted layout declarations
 layout(local_size_x = 64) in;
 
 layout(set = 0, binding = 0) readonly buffer i0_Buf { float d[]; } i0;
@@ -10,7 +9,6 @@ layout(set = 0, binding = 3) buffer p0_Buf { float d[]; } p0;
 layout(set = 0, binding = 4) buffer a0_Buf { float d[]; } a0;
 layout(set = 0, binding = 10) readonly buffer pc_Buf { float d[]; } pc;
 
-// -- [AI] formatted main function
 void main() {
 	uint s = gl_WorkGroupID.x;
 	uint t = gl_LocalInvocationID.x;

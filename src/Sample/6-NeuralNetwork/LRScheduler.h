@@ -1,5 +1,4 @@
 #pragma once
-// -- [AI:BEGIN]
 #ifndef _NN_LRSCHEDULER_
 #define _NN_LRSCHEDULER_
 #include "Core/ConstDefine.h"
@@ -48,5 +47,4 @@ protected:
 MYRENDERER_END_CLASS
 
 } // namespace MXNN
-// -- [AI:END]
 #endif

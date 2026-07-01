@@ -7,7 +7,6 @@ namespace MXNN {
 
 using namespace MXRender::RHI;
 
-// -- [AI] Tensor serialization helpers (impl in Layer.cpp)
 void WriteTensor(std::ostream& os, const Tensor& t);
 void ReadTensor(std::istream& is, Tensor& t);
 
@@ -34,13 +33,12 @@ public:
 	VIRTUAL Tensor& METHOD(GetOutput)() PURE;
 	VIRTUAL Tensor& METHOD(GetInputGradient)() PURE;
 	VIRTUAL Vector<std::tuple<Tensor*, Tensor*, Tensor*>> METHOD(GetParamTriples)() PURE;
-		// -- [AI]
 		VIRTUAL Vector<std::tuple<Tensor*, Tensor*, Tensor*, Tensor*>> METHOD(GetParamQuads)() { return {}; }
 		VIRTUAL void METHOD(SetTrainingMode)(Bool in_training) {}
 		VIRTUAL String METHOD(GetLayerTypeName)() CONST { return ""; }
 		VIRTUAL void METHOD(SaveParameters)(std::ostream& os) CONST {}
 		VIRTUAL void METHOD(LoadParameters)(std::istream& is) {}
-		VIRTUAL void METHOD(ClearTempSRBs)() {} // -- [AI]
+		VIRTUAL void METHOD(ClearTempSRBs)() {}
 	protected:
 private:
 #pragma endregion
@@ -66,7 +64,6 @@ public:
 	VIRTUAL Tensor& GetOutput() OVERRIDE FINAL { return output_; }
 	VIRTUAL Tensor& GetInputGradient() OVERRIDE FINAL { return dL_dx_; }
 	VIRTUAL Vector<std::tuple<Tensor*, Tensor*, Tensor*>> GetParamTriples() OVERRIDE FINAL;
-		// -- [AI] Persistence
 		VIRTUAL String GetLayerTypeName() CONST OVERRIDE FINAL;
 		VIRTUAL void SaveParameters(std::ostream& os) CONST OVERRIDE FINAL;
 		VIRTUAL void LoadParameters(std::istream& is) OVERRIDE FINAL;
@@ -106,7 +103,6 @@ public:
 	VIRTUAL Tensor& GetInputGradient() OVERRIDE FINAL { return dL_dhidden_; }
 	VIRTUAL Vector<std::tuple<Tensor*, Tensor*, Tensor*>> GetParamTriples() OVERRIDE FINAL;
 
-	// -- [AI] Persistence
 	VIRTUAL String GetLayerTypeName() CONST OVERRIDE FINAL;
 	VIRTUAL void SaveParameters(std::ostream& os) CONST OVERRIDE FINAL;
 	VIRTUAL void LoadParameters(std::istream& is) OVERRIDE FINAL;

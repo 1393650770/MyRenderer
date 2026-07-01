@@ -5,13 +5,11 @@
 #include "Core/ConstDefine.h"
 #include "RHI/RenderRHI.h"
 #include "RHI/RenderShader.h"
-// -- [AI]
 #include "Normalization.h"
 #include "Activation.h"
 #include "ConvLayer.h"
 #include "AttentionLayer.h"
 #include "ResidualBlock.h"
-// -- [AI]
 #include "ShaderHelper.h"
 
 using namespace MXRender::RHI;
@@ -72,7 +70,7 @@ void SequentialModel::ZeroAllGradients(CommandList* in_cmd)
 			temp_srb->SetResource("pc", zg_pc_buf_.GetBuffer());
 
 			// Flush writes BEFORE binding (update→bind order is valid)
-			temp_srb->FlushDescriptorWrites(); // -- [AI]
+			temp_srb->FlushDescriptorWrites();
 
 			in_cmd->SetShaderResourceBinding(temp_srb);
 			in_cmd->Dispatch(
@@ -81,7 +79,6 @@ void SequentialModel::ZeroAllGradients(CommandList* in_cmd)
 			// Defer deletion to avoid freeing while CB is recording
 			zg_temp_srbs_.push_back(temp_srb);
 		}
-		// -- [AI] Also zero v buffers from GetParamQuads
 		for (auto& q : layer->GetParamQuads()) {
 			ShaderResourceBinding* ts = nullptr;
 			zero_grad_pipeline_->CreateShaderResourceBinding(ts, false);
@@ -121,7 +118,7 @@ Float32 SequentialModel::TrainStep(CommandList* in_cmd, Tensor& in_input,
 
 	
 	// 1. Zero all gradients (GPU compute)
-	for (auto& layer : layers_) layer->SetTrainingMode(true); // -- [AI]
+	for (auto& layer : layers_) layer->SetTrainingMode(true);
 	ZeroAllGradients(in_cmd);
 
 	// 2. Zero loss buffer (GPU compute, reuse zero_grad pipeline)
@@ -134,7 +131,7 @@ Float32 SequentialModel::TrainStep(CommandList* in_cmd, Tensor& in_input,
 		zg_pc_buf_.Upload(&zp.num_elements);
 		temp_srb->SetResource("g0", loss_layer->GetLossBuffer());
 		temp_srb->SetResource("pc", zg_pc_buf_.GetBuffer());
-		temp_srb->FlushDescriptorWrites(); // -- [AI]
+		temp_srb->FlushDescriptorWrites();
 
 		in_cmd->SetShaderResourceBinding(temp_srb);
 		in_cmd->Dispatch(1, 1, 1);
@@ -142,7 +139,6 @@ Float32 SequentialModel::TrainStep(CommandList* in_cmd, Tensor& in_input,
 	}
 
 	// Barrier: zero writes → forward reads
-	// -- [AI] using RHI barrier API
 	in_cmd->MemoryBarrier(
 		ENUM_SHADER_STAGE::Shader_Compute,
 		ENUM_SHADER_STAGE::Shader_Compute,
@@ -158,7 +154,6 @@ Float32 SequentialModel::TrainStep(CommandList* in_cmd, Tensor& in_input,
 	}
 
 	// Barrier: forward writes → backward reads
-	// -- [AI] using RHI barrier API
 	in_cmd->MemoryBarrier(
 		ENUM_SHADER_STAGE::Shader_Compute,
 		ENUM_SHADER_STAGE::Shader_Compute,
@@ -190,7 +185,6 @@ Float32 SequentialModel::TrainStep(CommandList* in_cmd, Tensor& in_input,
 	}
 
 	// Barrier: backward writes → optimizer reads
-	// -- [AI] using RHI barrier API
 	in_cmd->MemoryBarrier(
 		ENUM_SHADER_STAGE::Shader_Compute,
 		ENUM_SHADER_STAGE::Shader_Compute,
@@ -212,7 +206,6 @@ Vector<UInt8> SequentialModel::Predict(CommandList* in_cmd, Tensor& in_input, UI
 
 void SequentialModel::PredictForward(CommandList* in_cmd, Tensor& in_input)
 {
-	// -- [AI] N-layer generic forward with eval mode
 	// Bind zero labels for SoftmaxCE inference
 	{ Vector<Float32> zeros(max_batch_size_, 0.0f); label_buf_.Upload(zeros.data()); }
 	for (auto& layer : layers_) { layer->SetTrainingMode(false); if (layer->GetLayerTypeName() == "SoftmaxCrossEntropyOutputLayer") { STATIC_CAST(layer.get(), SoftmaxCrossEntropyOutputLayer)->GetFwdLossSRB()->SetResource("lb", label_buf_.GetBuffer()); } }
@@ -230,7 +223,6 @@ Vector<UInt8> SequentialModel::GetPredictions(UInt32 in_batch_size)
 	Vector<Float32> prob_data(probs.ElementCount());
 	probs.Download(prob_data.data());
 
-	// -- [AI] Infer num_classes from output shape (last dim)
 	UInt32 num_classes = probs.Shape().back();
 	// Output rows: CNN [B,C] one row per sample; Transformer [B*T,C] one row per token
 	UInt32 num_output_rows = static_cast<UInt32>(probs.ElementCount()) / num_classes;
@@ -267,7 +259,6 @@ Vector<UInt8> SequentialModel::GetPredictions(UInt32 in_batch_size)
 	return predictions;
 }
 
-// -- [AI:BEGIN] Model Save/Load
 void SequentialModel::Save(CONST String& in_filepath) {
 	std::ofstream ofs(in_filepath, std::ios::binary);
 	if (!ofs) return;
@@ -341,7 +332,6 @@ void SequentialModel::Load(CONST String& in_filepath) {
 		}
 	}
 }
-// -- [AI:END]
 
 
 void SequentialModel::ClearTempSRBs() {

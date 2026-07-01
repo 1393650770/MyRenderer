@@ -1,6 +1,7 @@
 #include "BaseNode.h"
 #include "ThirdParty/imgui_node_editor/imgui_node_editor.h"
 #include "BasePin.h"
+#include "UI/RenderGraphEditor/Core/RenderGraphNodeColors.h"
 
 
 namespace ed = ax::NodeEditor;
@@ -14,13 +15,13 @@ BaseNode::BaseNode(CONST String& in_name, Bool in_show /*= true*/) : BaseItem(in
 
 void BaseNode::AddInput(CONST String& in_name)
 {
-	input_pins.push_back(new BasePin(PinType::Input,this, in_name));
+	input_pins.push_back(new BasePin(PinType::Input, this, PinAccess::Read, in_name));
 	is_need_resize = true;
 }
 
 void BaseNode::AddOutput(CONST String& in_name)
 {
-	output_pins.push_back(new BasePin(PinType::Output, this, in_name));
+	output_pins.push_back(new BasePin(PinType::Output, this, PinAccess::Write, in_name));
 	is_need_resize = true;
 }
 
@@ -100,12 +101,19 @@ void BaseNode::Init()
 
 void BaseNode::Draw()
 {
+	// Apply deferred position (set by SyncRuntimeToEditor before first draw)
+	if (has_pending_pos)
+	{
+		ed::SetNodePosition(self_id, ImVec2(pending_pos_x, pending_pos_y));
+		has_pending_pos = false;
+	}
+
 	ed::BeginNode(self_id);
 	ImGui::Text(name.c_str());
 	Int maxpin_size = max(input_pins.size(), output_pins.size());
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 	ImVec2 p = ImGui::GetCursorScreenPos();
-	Float32 lineWidth = max( node_single_line_width+10 , ImGui::CalcTextSize(name.c_str()).x); // ÉèÖÃ·Ö¸ô·ûµÄ³¤¶È
+	Float32 lineWidth = max( node_single_line_width+10 , ImGui::CalcTextSize(name.c_str()).x); // ï¿½ï¿½ï¿½Ã·Ö¸ï¿½ï¿½ï¿½ï¿½Ä³ï¿½ï¿½ï¿½
 	draw_list->AddLine(ImVec2(p.x, p.y), ImVec2(p.x + lineWidth, p.y), IM_COL32(255, 255, 255, 255), 2.0f);
 	ImGui::Dummy(ImVec2(0, 5));
 	for (Int i = 0; i < maxpin_size; ++i)
@@ -152,6 +160,12 @@ void BaseNode::Release()
 		pin->Release();
 		delete pin;
 	}
+}
+BasePin* BaseNode::GetPinByName(CONST String& name)
+{
+	for (auto* p : input_pins) if (p->GetName() == name) return p;
+	for (auto* p : output_pins) if (p->GetName() == name) return p;
+	return nullptr;
 }
 
 MYRENDERER_END_NAMESPACE

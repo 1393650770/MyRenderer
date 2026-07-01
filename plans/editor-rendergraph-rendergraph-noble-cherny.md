@@ -1,544 +1,361 @@
-# 可视化 RenderGraph 管线编辑器 — 实现计划
+# 可视化 RenderGraph 管线编辑器 — 下一步计划
 
-## Context
+## 当前状态
 
-项目已有基础的节点图编辑器 (`RenderGraphPanel`)，使用 `ax::NodeEditor` 提供创建节点/Pin/连线的交互能力。同时运行时 `RenderGraph` 实现了 Pass/Resource DAG 调度。**但两者完全脱节** — 编辑器操作的是纯 UI 抽象，与运行时无关；序列化是空桩。
+Phase 1-4 已完成 ✅：
+- 专用 Pass/Resource 节点 + 彩色 Pin
+- 连线验证 (Pass↔Resource OK, Pass↔Pass 拒绝)
+- 属性面板 (内嵌在 RenderGraphPanel 右侧)
+- JSON Save/Load (硬编码路径)
+- RenderGraphDefinition 数据结构
+- RenderGraphBuilder stub
 
-本次计划聚焦**实际的管线编辑能力**：
-- 在编辑器中**新建 Pass 节点**，配置它的输入输出 RT
-- **新建 Resource 节点**（Texture/Buffer），编辑其属性（格式/尺寸等）
-- **连线编辑** — 把 Pass 的输出连到 Resource，Resource 连到 Pass 的输入
-- **完整的 Save/Load** — 把编辑好的管线保存到文件，再加载回来
-- 编辑器中的图结构能**同步到运行时 RenderGraph** 进行编译执行
+## 当前缺失（需要修复）
 
-参考：**Frostbite Frame Graph**（显式 Resource 节点位于 Pass 之间）、**Blender Shader Editor**（JSON 序列化节点树）、**Unity VFX Graph**（节点式管线编辑 UX）。
-
----
-
-## Phase 1: 管线编辑核心 — 专用节点 + 属性编辑
-
-> **这是整个计划的核心**。让用户能在编辑器中实际搭建渲染管线。
-
-### 1.1 专用节点类型
-
-**新建 [RenderGraphPassNode.h/.cpp](src/Editor/UI/RenderGraphEditor/RenderGraphPassNode.h)**
-- 继承 `BaseNode`，代表一个渲染 Pass
-- 持有 `RenderGraphPassBase* bound_pass`（可选弱引用，编辑模式下可为空）
-- **Input Pins**（左侧）：每个代表该 Pass 读取的资源（Read），Pin 名称 = 资源名，蓝色圆点
-- **Output Pins**（右侧）：每个代表该 Pass 写入/创建的资源（Write/Create），Pin 名称 = 资源名，黄色/绿色圆点
-- 右键菜单：「Add Input Pin」(读取一个 RT)、「Add Output Pin」(输出一个 RT)、「Rename Pass」、「Delete Pass」
-- Header 按 Pass 类型着色：Graphics=深蓝、Compute=深绿、Copy=深黄、UI=深紫、Custom=深灰
-
-**新建 [RenderGraphResourceNode.h/.cpp](src/Editor/UI/RenderGraphEditor/RenderGraphResourceNode.h)**
-- 继承 `BaseNode`，代表一个渲染资源（RenderTarget Texture / Buffer）
-- **Input Pins**（左侧）：谁写入这个资源（Write/Create 的来源），单个 Pin
-- **Output Pins**（右侧）：谁读取这个资源（Read 的目标），可以有多个 Pin
-- 资源类型图标：Texture 显示 🖼 图标色=青色，Buffer 显示 📊 图标色=橙色
-- Transient 资源（图内创建，生命周期由 RDG 管理）用虚线边框
-- External/Imported 资源（外部传入，如 BackBuffer）用实线边框 + 白色边框高亮
-- 右键菜单：「Edit Resource Properties」、「Delete Resource」
-
-**新建 [RenderGraphNodeColors.h](src/Editor/UI/RenderGraphEditor/RenderGraphNodeColors.h)**
-- 集中管理所有节点/连接的颜色常量
-- `GetPassColor(PassType)` / `GetResourceColor(ResourceType)` / `GetPinColor(PinAccess)`
-
-### 1.2 连线规则
-
-**新建 [RenderGraphConnectionValidator.h/.cpp](src/Editor/UI/RenderGraphEditor/RenderGraphConnectionValidator.h)**
-- 连线合法性检查（在 `BaseOperator()` 拖拽连线时调用）：
-  - **Pass Output Pin → Resource Input Pin**：✓ 允许（Pass 写入资源）
-  - **Resource Output Pin → Pass Input Pin**：✓ 允许（Pass 读取资源）
-  - **Resource Input Pin → Resource Input Pin**：✗ 禁止
-  - **Pass → Pass 直连**：✗ 禁止（必须经过 Resource 节点中转）
-  - **同节点自连接**：✗ 禁止
-  - **同名 Pin 重复连接**：✗ 禁止
-- 拖拽时实时显示错误提示（红色文字标签）
-
-### 1.3 属性编辑面板
-
-**新建 [PropertiesPanel.h/.cpp](src/Editor/UI/RenderGraphEditor/PropertiesPanel.h)**
-- 继承 `BasePanel`，注册为 `"PropertiesPanel"`
-- 接收共享的选中节点指针
-
-**选中 Pass 节点时显示**：
-```
-┌─ Pass Properties ─────────────┐
-│ Name:    [GBufferPass_______] │  ← 可编辑
-│ Type:    [Graphics       ▼]  │  ← 下拉选择
-│ Cullable: [✓]                 │  ← 复选框
-│                               │
-│ ▼ Input Resources (Read):     │
-│   📄 SceneDepth     [×]      │  ← 可删除
-│   📄 GBufferNormals [×]      │
-│   [+ Add Input Resource]      │  ← 添加按钮
-│                               │
-│ ▼ Output Resources (Write):   │
-│   📄 GBufferAlbedo   [×]     │
-│   📄 GBufferRoughness[×]     │
-│   [+ Add Output Resource]     │
-└───────────────────────────────┘
-```
-
-**选中 Resource 节点时显示**：
-```
-┌─ Resource Properties ─────────────┐
-│ Name:  [GBufferAlbedo__________]  │
-│ Type:  Texture ▼                   │
-│                                   │
-│ ── Texture Settings ──            │
-│ Format: [RGBA8            ▼]     │  ← 从 RenderGraph.fbs 枚举
-│ Width:  [1920]  Height: [1080]   │
-│ Mip:    [1]     Samples: [1]     │
-│ Usage:  ☑ ColorAttachment         │
-│         ☑ ShaderResource          │
-│         ☐ DepthAttachment         │
-│                                   │
-│ ── Resource Info ──               │
-│ Created by: GBufferPass           │  ← 只读
-│ Read by: LightingPass, SSAOPass  │  ← 只读
-│ Is Transient: ✓ (managed by RDG) │  ← 只读
-└───────────────────────────────────┘
-```
-
-### 1.4 修改 BasePin
-
-**[BasePin.h](src/Editor/UI/BasePin.h)** — 添加：
-- `enum class PinAccess { Read, Write, Create }` — Pin 的语义类型
-- `PinAccess access_type` 成员
-- `Draw()` 中按 access_type 显示不同颜色圆点
-
-### 1.5 修改 RenderGraphPanel
-
-**[RenderGraphPanel.cpp](src/Editor/UI/RenderGraphEditor/RenderGraphPanel.cpp)** 修改右键菜单：
-
-**画布空白处右键**：
-```
-┌──────────────────────┐
-│ ➕ Add Pass          │ → 子菜单选择 Pass 类型
-│    Graphics Pass     │
-│    Compute Pass      │
-│    Copy Pass         │
-│    Custom Pass       │
-│ ─────────────────── │
-│ ➕ Add Resource      │ → 子菜单选择资源类型
-│    RenderTarget (2D) │
-│    DepthStencil      │
-│    Buffer (Uniform)  │
-│    Buffer (Storage)  │
-│    External Texture  │ → 导入外部资源
-└──────────────────────┘
-```
-
-**Pass 节点右键**：Add Input Resource / Add Output Resource / Rename / Delete
-**Resource 节点右键**：Edit Properties / Delete
-
-### 验证
-1. 启动 Editor → 在画布空白处右键 → "Add Graphics Pass" → 节点出现
-2. 右键 "Add RenderTarget" → Resource 节点出现
-3. 从 Pass 的 Output Pin 拖线到 Resource 的 Input Pin → 连线成功（黄色线表示 Write）
-4. 从 Resource 的 Output Pin 拖线到另一个 Pass 的 Input Pin → 连线成功（蓝色线表示 Read）
-5. 尝试 Pass→Pass 直连 → 被拒绝，显示红色提示
-6. 点击 Resource 节点 → PropertiesPanel 显示格式/尺寸编辑器
-7. 修改 RT 格式 → 节点刷新显示
+1. **Save/Load 不保存连线拓扑** — `BuildDefinition()` 只记了 pass 的 read/write resource 名字，没有记哪些 pin 连到哪些 pin。`LoadDefinition()` 创建节点后没有创建 `BaseLink`。
+2. **Load 后连线丢失** — 加载 JSON 回来，节点出现但之间没有连线。
+3. **运行时 Graph 不可见** — 启动时 `EditorRenderPipeline` 构建了 ClearPass/TestPass/UIPass，但编辑器不显示。
+4. **PropertiesPanel 内嵌** — 当前用 `ImGui::BeginChild` 嵌在 RenderGraphPanel 右侧，不是独立面板。
+5. **OutlinePanel 未创建** — 大纲树形视图还没做。
+6. **Save/Load 路径硬编码** — 没有文件选择对话框。
+7. **Link 颜色未按 PinAccess 区分** — 所有连线都是白色。
 
 ---
 
-## Phase 2: 数据结构 — Graph 定义的中间表示
+## Phase 5: 编辑器体验完善（核心）
 
-> 编辑器和运行时之间的桥梁。编辑器产出 `RenderGraphDefinition`，运行时消费它。
+> 修复连线拓扑保存、DockSpace布局、OutlinePanel、Link着色
 
-### 2.1 新建 RenderGraphDefinition
+### 5.1 修复连线拓扑保存
 
-**新建 [RenderGraphDefinition.h/.cpp](src/Runtime/Render/Core/RenderGraphDefinition.h)**
+**问题**：`BuildDefinition()` 不保存 link 信息（哪个 pin 连到哪个 pin），`LoadDefinition()` 不恢复 link。
 
-这是纯数据结构，不包含任何 lambda/执行逻辑，专门用于序列化和编辑器交互：
+**方案**：在 `RenderGraphDefinition` 中增加 `RDGEdgeDef`，保存连线拓扑。
+
+**修改 [RenderGraphDefinition.h](src/Runtime/Render/Core/RenderGraphDefinition.h)**
+
+新增结构体：
 
 ```cpp
-// 资源描述
-struct ResourceDef {
-    String name;
-    enum Type { Texture, Buffer } type;
-    // Texture
-    TextureFomat texture_format;
-    UInt32 width, height;
-    UInt8 mip_level, samples;
-    TextureType texture_type;
-    TextureUsageType usage;
-    // Buffer
-    UInt64 buffer_size;
-    UInt32 buffer_stride;
-    UInt32 buffer_type; // Uniform/Storage/Vertex/Index
-    // Metadata
-    bool is_transient;       // 图内创建 vs 外部导入
-    bool is_depth_stencil;
-};
-
-// Pass 描述
-struct PassDef {
-    String name;
-    enum PassType { Graphics, Compute, Copy, Custom } type;
-    bool is_cullable = true;
-    Vector<String> read_resources;   // 资源名列表
-    Vector<String> write_resources;  // 资源名列表
-    Vector<String> create_resources; // 资源名列表
-};
-
-// 完整的图定义
-struct RenderGraphDefinition {
-    String graph_name;
-    Vector<PassDef> passes;
-    Vector<ResourceDef> resources;
-    // 编辑器元数据（布局信息）
-    struct NodeLayout { String name; float pos_x, pos_y; };
-    Vector<NodeLayout> node_layouts;
-};
-```
-
-### 2.2 编辑器 ↔ 定义 转换
-
-在 `RenderGraphPanel` 中：
-- **`BuildDefinition()`**：遍历 `nodes` 和 `links`，构建 `RenderGraphDefinition`
-- **`LoadDefinition(def)`**：根据定义创建 Pass/Resource 节点，恢复连线
-
-### 验证
-- 手动构造一个 `RenderGraphDefinition`（2 Pass + 3 Resource），调用 `LoadDefinition` → 节点图正确显示
-- 编辑后调用 `BuildDefinition` → 检查结构正确
-
----
-
-## Phase 3: 序列化 — Save/Load 管线文件
-
-> 这是你最关心的功能之一。让你编辑好管线后存盘，下次加载继续编辑。
-
-### 3.1 JSON 序列化器
-
-**新建 [RenderGraphSerializer.h/.cpp](src/Editor/UI/RenderGraphEditor/RenderGraphSerializer.h)**
-
-使用项目已有的 `nlohmann_json`，Save/Load `RenderGraphDefinition`：
-
-```json
+// Edge (link) connecting two pins
+struct RDGEdgeDef
 {
-  "graph_name": "MyDeferredPipeline",
-  "version": 1,
-  "resources": [
-    {
-      "name": "GBufferAlbedo",
-      "type": "Texture",
-      "format": "RGBA8",
-      "width": 1920,
-      "height": 1080,
-      "mip_level": 1,
-      "samples": 1,
-      "texture_type": "ENUM_TYPE_2D",
-      "usage": ["COLOR_ATTACHMENT", "SHADERRESOURCE"],
-      "is_transient": true
-    },
-    {
-      "name": "SceneDepth",
-      "type": "Texture",
-      "format": "D32F",
-      "width": 1920,
-      "height": 1080,
-      "is_depth_stencil": true,
-      "is_transient": true
-    },
-    {
-      "name": "BackBuffer",
-      "type": "Texture",
-      "format": "BGRA8",
-      "is_transient": false
-    }
-  ],
-  "passes": [
-    {
-      "name": "GBufferPass",
-      "type": "Graphics",
-      "is_cullable": true,
-      "read_resources": [],
-      "write_resources": ["GBufferAlbedo", "GBufferNormal", "SceneDepth"]
-    },
-    {
-      "name": "LightingPass",
-      "type": "Compute",
-      "is_cullable": true,
-      "read_resources": ["GBufferAlbedo", "GBufferNormal", "SceneDepth"],
-      "write_resources": ["BackBuffer"]
-    }
-  ],
-  "editor_state": {
-    "nodes": [
-      {"name": "GBufferPass", "x": 100, "y": 200},
-      {"name": "LightingPass", "x": 500, "y": 200},
-      {"name": "GBufferAlbedo", "x": 300, "y": 100}
-    ],
-    "zoom": 1.0,
-    "offset": [0, 0]
-  }
-}
-```
-
-核心 API：
-- `bool SaveGraph(RenderGraphDefinition& def, const String& filepath)` → 序列化为 JSON 写入文件
-- `bool LoadGraph(RenderGraphDefinition& out_def, const String& filepath)` → 从 JSON 反序列化
-- 使用枚举名而非数字（`"RGBA8"` 而非 `42`），便于手动编辑
-
-### 3.2 接入编辑器菜单
-
-**[RenderGraphPanel.cpp](src/Editor/UI/RenderGraphEditor/RenderGraphPanel.cpp)** `GraphMenu()` 接入：
-
-```
-Menu Bar:
-  File → New Graph     (清空画布)
-  File → Open...       (打开文件选择对话框，LoadGraph)
-  File → Save          (SaveGraph 到当前路径)
-  File → Save As...    (SaveGraph 到新路径)
-```
-
-使用 ImGui 文件对话框或系统原生对话框选择文件路径。
-
-### 3.3 实现 RenderGraph::Searilize/Desearilize
-
-**[RenderGraph.cpp](src/Runtime/Render/Core/RenderGraph.cpp)**
-- `Searilize(filename)`：将运行时 Graph 导出为 `RenderGraphDefinition` JSON（用于调试/导出运行时状态）
-- `Desearilize(filename)`：从 JSON 构建空的 Runtime Graph 结构（不含 lambda，仅供查看/编辑）
-
-### 验证
-1. 编辑器中搭建一个管线（3 Pass + 5 Resource + 连线）
-2. File → Save As `test_pipeline.rgraph.json`
-3. 用文本编辑器打开 JSON，确认结构正确、可读
-4. File → New（清空），File → Open 加载回来 → 节点位置/连线恢复
-5. 修改 JSON 中某个 RT 的 format，重新 Load → PropertiesPanel 显示更新后的值
-
----
-
-## Phase 4: 编辑器 → 运行时桥梁
-
-> 编辑器中的图结构同步到 RenderGraph 运行时，进行 Compile/Execute。
-
-### 4.1 运行时绑定
-
-**新建 [RenderGraphBuilder.h/.cpp](src/Editor/UI/RenderGraphEditor/RenderGraphBuilder.h)**
-
-根据 `RenderGraphDefinition` 构建运行时 RenderGraph：
-
-```cpp
-class RenderGraphBuilder {
-public:
-    // 从定义构建运行时 RenderGraph
-    // 注意：pass 的 execute lambda 为空（占位），资源描述完整
-    static void BuildRuntimeGraph(
-        const RenderGraphDefinition& def,
-        Render::RenderGraph* out_graph
-    );
-
-    // 可选：对已存在的 graph 做增量 Diff 更新
-    static void UpdateRuntimeGraph(
-        const RenderGraphDefinition& def,
-        Render::RenderGraph* existing_graph
-    );
+    String source_node_name;  // 源节点名
+    String source_pin_name;   // 源 Pin 名
+    String target_node_name;  // 目标节点名
+    String target_pin_name;   // 目标 Pin 名
+    Int edge_type = 0;        // 0=Read, 1=Write, 2=Create（PinAccess 值）
 };
+
+// 在 RenderGraphDefinition 中增加字段：
+Vector<RDGEdgeDef> edges;
 ```
 
-构建流程：
-1. 遍历 `def.resources` → 对每个 resource 调用 `graph->AddRetainedResource<TextureDesc/BufferDesc, Texture/Buffer>(...)` 或标记为 transient
-2. 遍历 `def.passes` → 对每个 pass 调用 `graph->AddRenderPass<EmptyPassData>(...)`，在 setup 中声明 read/write/create resource
-3. 调用 `graph->Compile()` 构建依赖关系和执行时间线
+**修改 [RenderGraphPanel.cpp](src/Editor/UI/RenderGraphEditor/RenderGraphPanel.cpp)**
 
-### 4.2 同步方向
-
-编辑器 → 运行时（编辑完成后手动触发）：
-- 点击 "Compile" 按钮 → `BuildRuntimeGraph(def, &graph)` → `graph.Compile()`
-- 在 PropertiesPanel 底部显示 Compile 结果（Pass 数量、Resource 数量、Culled Pass 数量）
-
-运行时 → 编辑器（已有运行时图时自动同步）：
-- 启动时如果 `EditorRenderPipeline` 已构建好 graph（如现有的 ClearPass/TestPass/UIPass）
-- 自动调用 `SyncRuntimeToEditor(graph, nodes, links)` 将运行时 Pass/Resource 反推显示为编辑器节点
-
-### 4.3 修改 EditorRenderPipeline
-
-**[Render.cpp](src/Editor/EditorRender/Render.cpp)**
-
-改为双模式：
-- **编辑模式**：不预建任何 Pass，提供空白画布给用户编辑管线
-- **运行模式**：加载编辑好的管线 JSON → 构建 Runtime Graph → Compile → 每帧 Execute
-
+`BuildDefinition()` 中遍历 `links`：
 ```cpp
-void EditorRenderPipeline::BeginRender() {
-    editor_ui.Init(window);
-    
-    if (load_from_file) {
-        // 从文件加载管线定义
-        RenderGraphDefinition def;
-        RenderGraphSerializer::LoadGraph(def, pipeline_file);
-        RenderGraphBuilder::BuildRuntimeGraph(def, &graph);
-        graph.Compile();
-    }
-    // else: 空白画布，用户手动编辑
-    
-    editor_ui.AddPass(&graph);
-    editor_ui.SetRenderGraph(&graph);
+for (auto* link : links)
+{
+    BasePin* start_pin = GetItemByID(link->GetStartID())->AsPin();
+    BasePin* end_pin   = GetItemByID(link->GetEndID())->AsPin();
+    if (!start_pin || !end_pin) continue;
+
+    Render::RDGEdgeDef edge;
+    edge.source_node_name = start_pin->GetBelongNode()->GetName();
+    edge.source_pin_name  = start_pin->GetName();
+    edge.target_node_name = end_pin->GetBelongNode()->GetName();
+    edge.target_pin_name  = end_pin->GetName();
+    edge.edge_type = (Int)end_pin->GetPinAccess();
+    def.edges.push_back(edge);
 }
 ```
 
-### 验证
-1. 在编辑器中搭建简单管线：1 ClearPass → 1 RT → 1 DrawPass
-2. 点击 "Build & Compile" 按钮
-3. 查看 Compile 输出日志：确认 Pass 数量、资源数量正确
-4. 确认剔除逻辑生效（没有 consumer 的 resource 被剔除）
+`LoadDefinition()` 中恢复连线：
+```cpp
+for (auto& ed : def.edges)
+{
+    BaseNode* src_node = name_to_node[ed.source_node_name];
+    BaseNode* tgt_node = name_to_node[ed.target_node_name];
+    if (!src_node || !tgt_node) continue;
 
----
+    BasePin* src_pin = src_node->GetPinByName(ed.source_pin_name);
+    BasePin* tgt_pin = tgt_node->GetPinByName(ed.target_pin_name);
+    if (!src_pin || !tgt_pin) continue;
 
-## Phase 5: DockSpace 布局 + 大纲面板
-
-> 完善编辑器多面板布局，让编辑体验更专业。
-
-### 5.1 DockSpace
-
-**[EditorUI.cpp](src/Editor/EditorRender/EditorUI.cpp)** — `Init()` 中构建布局：
-
-```
-┌──────────────────────────────────────┬───────────┐
-│           Menu Bar                   │           │
-├──────────────────────────────────────┤ Properties│
-│                                      │  Panel    │
-│        RenderGraphPanel              │           │
-│         (节点图编辑区)                 ├───────────┤
-│                                      │ Outline   │
-│                                      │  Panel    │
-│                                      │           │
-├──────────────────────────────────────┴───────────┤
-│               Status Bar / Compile Log           │
-└──────────────────────────────────────────────────┘
+    BaseLink* link = new BaseLink("Link");
+    link->Init(src_pin->GetSelfID(), tgt_pin->GetSelfID());
+    links.push_back(link);
+}
 ```
 
-使用 `ImGui::DockBuilder` API。
+**修改 [BaseNode.h](src/Editor/UI/BaseNode.h)** — 新增 `GetPinByName()` 方法：
+```cpp
+BasePin* GetPinByName(CONST String& name)
+{
+    for (auto* p : input_pins) if (p->GetName() == name) return p;
+    for (auto* p : output_pins) if (p->GetName() == name) return p;
+    return nullptr;
+}
+```
 
-### 5.2 大纲面板
+### 5.2 修改序列化器保存/加载 edge
+
+**修改 [RenderGraphSerializer.cpp](src/Editor/UI/RenderGraphEditor/RenderGraphSerializer.cpp)**
+
+Save:
+```json
+"edges": [
+    {"source_node": "GBufferPass", "source_pin": "GBufferAlbedo",
+     "target_node": "GBufferAlbedo", "target_pin": "Input", "edge_type": 1},
+    {"source_node": "GBufferAlbedo", "source_pin": "Output",
+     "target_node": "LightingPass", "target_pin": "GBufferAlbedo", "edge_type": 0}
+]
+```
+
+Load: 解析 edges 数组，填充 `def.edges`。
+
+### 5.3 Link 按 PinAccess 着色
+
+**修改 [BaseLink.cpp](src/Editor/UI/BaseLink.cpp)**
+
+当前 `BaseLink::Draw()` 只调 `ed::Link(self_id, start_id, end_id)` 没有颜色参数。
+
+新增 `access_type` 成员到 `BaseLink`：
+```cpp
+// BaseLink.h 增加
+PinAccess link_access = PinAccess::Read; // 默认 Read
+void SetLinkAccess(PinAccess a) { link_access = a; }
+
+// BaseLink.cpp Draw() 中
+ImColor color = RenderGraphColors::GetLinkColor(link_access);
+ed::Link(self_id, start_id, end_id, color);
+```
+
+**修改 [RenderGraphPanel.cpp](src/Editor/UI/RenderGraphEditor/RenderGraphPanel.cpp)** `BaseOperator()`
+
+创建 Link 时根据 PinAccess 设置 link 颜色：
+```cpp
+// 确定连接语义
+PinAccess link_access;
+// 如果 start_pin 是 Pass 的 Output → Write/Create
+// 如果 start_pin 是 Resource 的 Output → Read
+BaseNode* start_node = start_pin->GetBelongNode();
+if (dynamic_cast<RenderGraphPassNode*>(start_node))
+    link_access = start_pin->GetPinAccess(); // Pass output = Write or Create
+else
+    link_access = PinAccess::Read; // Resource output = Read
+
+link->SetLinkAccess(link_access);
+```
+
+### 5.4 DockSpace 多面板布局
+
+**修改 [EditorUI.cpp](src/Editor/EditorRender/EditorUI.cpp)**
+
+将 `Init()` 中的 `AddPanelUI(RenderGraphPanel::GetTypeName())` 改为 DockSpace 布局：
+
+```
+┌──────────────────────────────────┬───────────┐
+│           Menu Bar               │ Properties│
+├──────────────────────────────────┤  Panel    │
+│                                  ├───────────┤
+│      RenderGraphPanel            │ Outline   │
+│       (节点图主编辑区)             │  Panel    │
+│                                  │           │
+├──────────────────────────────────┴───────────┤
+│              Compile Log Output              │
+└──────────────────────────────────────────────┘
+```
+
+具体实现：
+```cpp
+void EditorUI::Init(Window* in_window)
+{
+    // ... existing ImGui/Vulkan init ...
+
+    // Build dockspace
+    ImGuiID dockspace_id = ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
+    // Or use explicit DockBuilder API for fixed layout
+
+    // Register all panels
+    AddPanelUI(RenderGraphPanel::GetTypeName());
+    AddPanelUI(PropertiesPanel::GetTypeName());
+    AddPanelUI(OutlinePanel::GetTypeName());
+}
+```
+
+**同时**，从 `RenderGraphPanel::Draw()` 中移除内嵌的 PropertiesPanel（`ImGui::BeginChild("PropertiesRegion"...)`），让它作为独立 DockSpace 面板工作。
+
+**修改 [RenderGraphPanel.h](src/Editor/UI/RenderGraphEditor/RenderGraphPanel.h)**
+
+- 移除 `PropertiesPanel* properties_panel` 成员
+- 选中状态通过全局/静态方式共享（`GetSelectedNode()/SetSelectedNode()` 保持 public）
+
+### 5.5 创建 OutlinePanel
 
 **新建 [OutlinePanel.h/.cpp](src/Editor/UI/RenderGraphEditor/OutlinePanel.h)**
+
 - 继承 `BasePanel`，注册为 `"OutlinePanel"`
+- 需要获取 `RenderGraphPanel` 的 nodes/links 引用（可通过 `EditorUI` 中转或全局访问）
 - 树形视图：
   ```
   📁 Passes (3)
-    ├─ 🎨 GBufferPass      (Graphics)
-    ├─ 🎨 LightingPass     (Compute)
-    └─ 🎨 PostProcessPass  (Graphics)
+    ├─ 🎨 GBufferPass
+    ├─ 🎨 LightingPass
+    └─ 🎨 PostProcessPass
   📁 Resources (5)
-    ├─ 🖼 GBufferAlbedo     (RT, 1920×1080, RGBA8)
-    ├─ 🖼 GBufferNormal     (RT, 1920×1080, RGBA16F)
-    ├─ 🖼 SceneDepth        (DS, 1920×1080, D32F)
-    ├─ 🖼 BackBuffer        (External, BGRA8)
-    └─ 📊 LightCB           (Buffer, 256B)
+    ├─ 🖼 GBufferAlbedo
+    ├─ 🖼 SceneDepth
+    └─ ...
   ```
-- 点击选中 → 同步高亮图中节点 + 更新 PropertiesPanel
+- 点击选中 → 同步选中状态（通过 `RenderGraphPanel::SetSelectedNode`）
 
-### 共享选中状态
+共享节点的方案：在 `EditorUI` 中持有 `RenderGraphPanel*` 引用，OutlinePanel 通过 `EditorUI` 拿到节点列表。
 
-`RenderGraphPanel` 维护 `BaseNode* selected_node`（公开访问），PropertiesPanel 和 OutlinePanel 在 `Draw()` 中读取。
+### 5.6 运行时 Graph → 编辑器同步
 
-### 验证
-- Editor 启动 → 四区域布局
-- 点击节点 → Properties 同步更新
-- Outline 树点击 → 图中节点高亮
+**修改 [EditorUI.h](src/Editor/EditorRender/EditorUI.h)**
+
+添加：
+```cpp
+Render::RenderGraph* GetRenderGraph() { return graph_ptr; }
+void SetRenderGraph(Render::RenderGraph* g) { graph_ptr = g; }
+```
+
+**修改 [Render.cpp](src/Editor/EditorRender/Render.cpp)**
+
+在 `BeginRender()` 构建完 graph 后：
+```cpp
+editor_ui.SetRenderGraph(&graph);
+```
+
+**新建方法** `SyncRuntimeToEditor` 在 `RenderGraphPanel` 中：
+```cpp
+void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
+{
+    // 遍历 graph->passes
+    for (auto& pass : graph->passes)
+    {
+        auto* node = new RenderGraphPassNode(pass->GetName(), PassNodeType::Custom);
+        for (auto* res : pass->read_resources)
+            node->AddInputPin(res->GetName(), PinAccess::Read);
+        for (auto* res : pass->write_resources)
+            node->AddOutputPin(res->GetName(), PinAccess::Write);
+        for (auto* res : pass->create_resources)
+            node->AddOutputPin(res->GetName(), PinAccess::Create);
+        node->BindPass(pass.get());
+        nodes.push_back(node);
+    }
+
+    // 遍历 graph->resources
+    for (auto& res : graph->resources)
+    {
+        // 确定资源类型
+        ResourceNodeType rtype = res->IsTextureResource() ? ResourceNodeType::Texture
+            : res->IsBufferResource() ? ResourceNodeType::Buffer
+            : ResourceNodeType::Texture;
+
+        auto* node = new RenderGraphResourceNode(res->GetName(), rtype);
+        node->SetIsTransient(res->GetIsTransient());
+        node->AddInputPin("Input", PinAccess::Write);
+        node->AddOutputPin("Output", PinAccess::Read);
+        node->BindResource(res.get());
+        nodes.push_back(node);
+    }
+
+    // 自动布局
+    AutoLayout();
+}
+```
 
 ---
 
-## Phase 6: 增强 — 节点模板库 + 快捷操作
+## Phase 6: 增强功能
 
-> 提升编辑效率的增量功能。
+### 6.1 文件选择对话框
 
-### 6.1 预设节点模板
+使用 ImGui 内置文件对话框或 TinyFileDialog 替代硬编码路径。
 
-**[RenderGraphPanel.cpp](src/Editor/UI/RenderGraphEditor/RenderGraphPanel.cpp)**
+方案一：使用 [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog)（需添加依赖）
+方案二：编写简单的 ImGui 文件浏览器（利用已有 `backup/UI/Editor_UI.cpp` 中被注释掉的 AssetBrowser 逻辑）
+方案三：使用 Windows 原生 `GetOpenFileNameA/GetSaveFileNameA`（简单但不可移植）
 
-定义常用 Pass 模板，右键创建时自动填充 Pins：
+**推荐方案二**：用 ImGui 列表 + `std::filesystem` 写一个轻量文件选择弹窗。
 
-| 模板名 | 自动创建的 Input Pins | 自动创建的 Output Pins |
-|--------|----------------------|------------------------|
-| GBufferPass | SceneDepth(Read) | GBufferAlbedo(Write), GBufferNormal(Write), GBufferRoughness(Write), SceneDepth(Write) |
-| DepthPrePass | — | SceneDepth(Write) |
-| LightingPass | GBufferAlbedo(Read), GBufferNormal(Read), SceneDepth(Read) | LightBuffer(Write) |
-| ShadowPass | — | ShadowMap(Write) |
-| PostProcessPass | BackBuffer(Read) | BackBuffer(Write) |
-| Empty Pass | — | — |
+### 6.2 节点模板
 
-右键空白处 → "Add from Template" → 选择模板 → 自动创建 Pass + 关联 Resource 节点
+**修改 [RenderGraphPanel.cpp](src/Editor/UI/RenderGraphEditor/RenderGraphPanel.cpp)**
 
-### 6.2 键盘快捷键
+右键空白处增加 "Add from Template" 子菜单：
 
-| 快捷键 | 操作 |
-|--------|------|
-| `Delete` | 删除选中的节点/连线 |
-| `Ctrl+S` | 保存 |
-| `Ctrl+O` | 打开 |
-| `Ctrl+N` | 新建图 |
-| `Ctrl+A` | 全选节点 |
-| `A` (在画布上) | 快速添加 Pass |
-| `R` (在画布上) | 快速添加 Resource |
-| `Ctrl+Z/Y` | Undo/Redo（可选，工作量较大） |
+| 模板 | Input Pins | Output Pins | 自动创建 Resource 节点 |
+|------|-----------|-------------|---------------------|
+| DepthPrePass | — | SceneDepth(Write) | SceneDepth(DS) |
+| GBufferPass | SceneDepth(Read) | GBufferAlbedo(Write), GBufferNormal(Write), GBufferRoughness(Write), SceneDepth(Write) | GBufferAlbedo, GBufferNormal, GBufferRoughness, SceneDepth |
+| ShadowPass | — | ShadowMap(Write) | ShadowMap |
+| LightingPass | GBufferAlbedo(Read), GBufferNormal(Read), SceneDepth(Read) | LightBuffer(Write) | LightBuffer |
 
-### 验证
-- 右键 → "DepthPrePass Template" → 自动生成 Pass + SceneDepth Resource 节点（已连线）
+### 6.3 编译/执行集成
+
+**修改 [RenderGraphPanel.cpp](src/Editor/UI/RenderGraphEditor/RenderGraphPanel.cpp)**
+
+在 GraphMenu 中增加 "Build" 菜单项：
+```cpp
+if (ImGui::MenuItem("Build & Compile"))
+{
+    auto def = BuildDefinition();
+    RenderGraph* runtime_graph = /* get from EditorUI */;
+    RenderGraphBuilder::BuildRuntimeGraph(def, runtime_graph);
+    runtime_graph->Compile();
+    // 显示编译结果
+}
+```
 
 ---
 
 ## 实现顺序
 
 ```
-Phase 1 (管线编辑核心)       ← 最重要，开始写
-  │  专用节点 + 属性面板 + 连线规则
+5.1 修复连线拓扑保存      ← 最核心的缺失功能
   │
-Phase 2 (数据中间表示)        ← 编辑器 ↔ 运行时的桥梁
-  │  RenderGraphDefinition
+5.2 序列化器更新          ← 依赖 5.1
   │
-Phase 3 (序列化 Save/Load)   ← 你关注的核心功能
-  │  JSON 序列化 + 菜单接入
+5.3 Link 着色             ← 独立，可并行
   │
-Phase 4 (编辑器→运行时)      ← 让编辑的管线可编译执行
-  │  RenderGraphBuilder
+5.4 DockSpace 布局        ← 改变EditorUI结构
   │
-Phase 5 (DockSpace + Outline) ← 编辑器体验完善
+5.5 OutlinePanel          ← 依赖 5.4
   │
-Phase 6 (模板 + 快捷键)       ← 提效增强
+5.6 运行时→编辑器同步      ← 依赖已有节点类型
+  │
+6.1 文件对话框            ← 独立增强
+  │
+6.2 节点模板              ← 独立增强
+  │
+6.3 编译/执行集成          ← 依赖 5.6 + Builder
 ```
-
-Phase 1-3 是最小可用版本（MVP），完成后你就可以在编辑器中搭建管线并保存/加载了。
 
 ---
 
-## 文件清单
+## 文件清单（本次）
 
-### 新建文件 (10 个)
+### 新建文件
 
 | 文件 | Phase | 说明 |
 |------|-------|------|
-| `src/Editor/UI/RenderGraphEditor/RenderGraphNodeColors.h` | 1 | 颜色常量 |
-| `src/Editor/UI/RenderGraphEditor/RenderGraphPassNode.h/.cpp` | 1 | Pass 节点 |
-| `src/Editor/UI/RenderGraphEditor/RenderGraphResourceNode.h/.cpp` | 1 | 资源节点 |
-| `src/Editor/UI/RenderGraphEditor/RenderGraphConnectionValidator.h/.cpp` | 1 | 连线规则 |
-| `src/Editor/UI/RenderGraphEditor/PropertiesPanel.h/.cpp` | 1 | 属性面板 |
-| `src/Runtime/Render/Core/RenderGraphDefinition.h/.cpp` | 2 | 图定义数据结构 |
-| `src/Editor/UI/RenderGraphEditor/RenderGraphSerializer.h/.cpp` | 3 | JSON 序列化 |
-| `src/Editor/UI/RenderGraphEditor/RenderGraphBuilder.h/.cpp` | 4 | 编辑器→运行时 |
-| `src/Editor/UI/RenderGraphEditor/OutlinePanel.h/.cpp` | 5 | 大纲面板 |
+| `src/Editor/UI/RenderGraphEditor/OutlinePanel.h/.cpp` | 5.5 | 大纲面板 |
 
-### 修改文件 (5 个)
+### 修改文件
 
 | 文件 | Phase | 改动 |
 |------|-------|------|
-| `src/Editor/UI/BasePin.h` | 1 | 添加 `PinAccess` 枚举和成员 |
-| `src/Editor/UI/BasePin.cpp` | 1 | Draw 中按 access 显示不同颜色 |
-| `src/Editor/UI/RenderGraphEditor/RenderGraphPanel.h` | 1,3,5 | 添加 `BuildDefinition/LoadDefinition`、`selected_node`、接入序列化菜单 |
-| `src/Editor/UI/RenderGraphEditor/RenderGraphPanel.cpp` | 1,3,5 | 右键菜单重做、GraphMenu 接入 Save/Load、编辑模式入口 |
-| `src/Editor/EditorRender/EditorUI.cpp` | 3,5 | 接入新面板注册、DockSpace 布局 |
-| `src/Editor/EditorRender/Render.cpp` | 4 | 双模式（编辑/运行） |
-| `src/Runtime/Render/Core/RenderGraph.cpp` | 3 | 实现 Searilize/Desearilize |
-
----
-
-## 关键技术决策
-
-1. **显式 Resource 节点**（Frostbite 风格）而非内联在 Pass 上（Unreal 风格）— 数据流更清晰，编辑更直观
-2. **JSON 序列化**用已有的 `nlohmann_json`，枚举值用字符串名（如 `"RGBA8"`），文件可手动编辑
-3. **RenderGraphDefinition** 纯数据结构作为编辑器 ↔ 运行时的中间表示，解耦 UI 和 Runtime
-4. **Pass 的 execute lambda 不可序列化**，Save/Load 保存的是管线拓扑 + 资源配置，执行逻辑仍需 C++ 编写
+| `src/Runtime/Render/Core/RenderGraphDefinition.h` | 5.1 | 增加 `RDGEdgeDef` + `edges` 字段 |
+| `src/Editor/UI/RenderGraphEditor/RenderGraphPanel.h` | 5.3,5.4,5.6 | 移除内嵌 PropertiesPanel, 增加 SyncRuntimeToEditor, Link access |
+| `src/Editor/UI/RenderGraphEditor/RenderGraphPanel.cpp` | 5.1,5.3,5.6 | BuildDefinition 保存 edges, LoadDefinition 恢复 edges, Link 着色, 运行时同步 |
+| `src/Editor/UI/RenderGraphEditor/RenderGraphSerializer.cpp` | 5.2 | 序列化/反序列化 edges |
+| `src/Editor/UI/BaseNode.h` | 5.1 | 增加 `GetPinByName()` |
+| `src/Editor/UI/BaseLink.h/.cpp` | 5.3 | 增加 `link_access` + `SetLinkAccess` + 着色 Draw |
+| `src/Editor/EditorRender/EditorUI.h` | 5.4,5.6 | 增加 DockSpace init, GetRenderGraph/SetRenderGraph |
+| `src/Editor/EditorRender/EditorUI.cpp` | 5.4,5.6 | DockSpace 布局, 注册所有面板 |
+| `src/Editor/EditorRender/Render.cpp` | 5.6 | 调用 SetRenderGraph |

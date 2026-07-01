@@ -1,5 +1,4 @@
 #pragma once
-// -- [AI:BEGIN]
 #ifndef _NN_ATTENTIONLAYER_
 #define _NN_ATTENTIONLAYER_
 #include "Layer.h"
@@ -36,7 +35,6 @@ public:
 	VIRTUAL Tensor& METHOD(GetInputGradient)() OVERRIDE FINAL { return dL_dx_; }
 	VIRTUAL Vector<std::tuple<Tensor*, Tensor*, Tensor*>> METHOD(GetParamTriples)() OVERRIDE FINAL;
 
-	// -- [AI] Persistence
 	VIRTUAL String METHOD(GetLayerTypeName)() CONST OVERRIDE FINAL { return "MultiHeadAttention"; }
 	VIRTUAL void METHOD(SaveParameters)(std::ostream& os) CONST OVERRIDE FINAL;
 	VIRTUAL void METHOD(LoadParameters)(std::istream& is) OVERRIDE FINAL;
@@ -59,34 +57,28 @@ private:
 	UInt32 max_batch_;
 	UInt32 max_seq_len_;
 
-	// -- [AI] Parameters
 	Tensor W_qkv_;       // [d_model, 3*d_model]
 	Tensor b_qkv_;       // [3*d_model]
 	Tensor W_o_;         // [d_model, d_model]
 	Tensor b_o_;         // [d_model]
 
-	// -- [AI] Gradients (stored as int for atomic compat; zeroed/converted as needed)
 	Tensor grad_W_qkv_;  // [d_model, 3*d_model]
 	Tensor grad_b_qkv_;  // [3*d_model]
 	Tensor grad_W_o_;    // [d_model, d_model]
 	Tensor grad_b_o_;    // [d_model]
 
-	// -- [AI] SGD momentum
 	Tensor v_W_qkv_;     // [d_model, 3*d_model]
 	Tensor v_b_qkv_;     // [3*d_model]
 	Tensor v_W_o_;       // [d_model, d_model]
 	Tensor v_b_o_;       // [d_model]
 
 
-	// -- [AI] Forward/backward activations and gradients
 	Tensor output_;      // [B, T, d_model]
 	Tensor dL_dx_;       // [B, T, d_model]
 	Tensor attn_weights_; // [B * num_heads, T, T]  saved softmax output
 
-	// -- [AI] Push-constant buffer
 	Tensor pc_buf_;      // 5 floats: B, T, d, num_heads, d_k
 
-	// -- [AI] Pipelines and SRBs
 	RenderPipelineState* fwd_pipeline_ = nullptr;
 	RenderPipelineState* bwd_pipeline_ = nullptr;
 	ShaderResourceBinding* fwd_srb_ = nullptr;
@@ -96,5 +88,4 @@ private:
 MYRENDERER_END_CLASS
 
 } // namespace MXNN
-// -- [AI:END]
 #endif

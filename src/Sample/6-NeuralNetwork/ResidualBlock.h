@@ -1,5 +1,4 @@
 #pragma once
-// -- [AI:BEGIN]
 #ifndef _NN_RESIDUALBLOCK_
 #define _NN_RESIDUALBLOCK_
 #include "Layer.h"
@@ -33,5 +32,4 @@ protected:
 MYRENDERER_END_CLASS
 
 } // namespace MXNN
-// -- [AI:END]
 #endif

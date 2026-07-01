@@ -1,10 +1,10 @@
-
 #pragma once
 #ifndef _BASELINK_
 #define _BASELINK_
 
 #include "Core/ConstDefine.h"
 #include "BaseItem.h"
+#include "UI/RenderGraphEditor/Core/RenderGraphNodeColors.h"
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -21,10 +21,16 @@ public:
 	BaseLink& operator=(CONST BaseLink& other) MYDELETE;
 	BaseLink& operator=(BaseLink&& other) MYDELETE;
 
-	VIRTUAL void METHOD(Init)( UInt32 start_id = 0, UInt32 end_id = 0);
+	VIRTUAL void METHOD(Init)( UInt64 start_id = 0, UInt64 end_id = 0);
 	VIRTUAL void METHOD(Draw)();
 	VIRTUAL void METHOD(Release)();
 	VIRTUAL BaseLink* METHOD(AsLink)() { return this; }
+	UInt64 METHOD(GetStartID)() CONST { return start_id; }
+	UInt64 METHOD(GetEndID)() CONST { return end_id; }
+
+	// Link color by access type
+	void METHOD(SetLinkAccess)(PinAccess a) { link_access = a; }
+	PinAccess METHOD(GetLinkAccess)() CONST { return link_access; }
 protected:
 
 private:
@@ -35,7 +41,8 @@ private:
 public:
 
 protected:
-		UInt64 start_id = 0, end_id = 0;
+	UInt64 start_id = 0, end_id = 0;
+	PinAccess link_access = PinAccess::Read;
 private:
 #pragma endregion
 

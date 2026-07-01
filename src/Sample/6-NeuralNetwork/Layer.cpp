@@ -8,7 +8,6 @@
 #include "RHI/RenderRHI.h"
 #include "RHI/RenderShader.h"
 #include "RHI/RenderCommandList.h"
-// -- [AI]
 #include "ShaderHelper.h"
 #include "Initializer.h"
 
@@ -17,7 +16,6 @@ using namespace MXRender;
 
 namespace MXNN {
 
-// -- [AI] Tensor serialization helpers
 void WriteTensor(std::ostream& os, const Tensor& t) {
 	UInt32 rank = (UInt32)t.Shape().size();
 	os.write((char*)&rank, 4);
@@ -137,7 +135,6 @@ void LinearLayer::UpdateWeights(CommandList* in_cmd, IOptimizer& in_opt, Float32
 	in_opt.Update(in_cmd, bias_, grad_b_, v_b_, in_inv_bs, in_step);
 }
 
-// -- [AI:BEGIN] Persistence
 String LinearLayer::GetLayerTypeName() const { return "LinearLayer"; }
 void LinearLayer::SaveParameters(std::ostream& os) const {
 	os.write((char*)&in_dim_, 4); os.write((char*)&out_dim_, 4); os.write((char*)&max_batch_size_, 4); os.write((char*)&has_relu_, 1);
@@ -146,7 +143,6 @@ void LinearLayer::SaveParameters(std::ostream& os) const {
 void LinearLayer::LoadParameters(std::istream& is) {
 	ReadTensor(is, weight_); ReadTensor(is, bias_);
 }
-// -- [AI:END]
 
 Vector<std::tuple<Tensor*, Tensor*, Tensor*>> LinearLayer::GetParamTriples()
 {
@@ -264,7 +260,6 @@ Float32 SoftmaxCrossEntropyOutputLayer::GetLoss() CONST
 	return loss;
 }
 
-// -- [AI:BEGIN] Persistence
 String SoftmaxCrossEntropyOutputLayer::GetLayerTypeName() const { return "SoftmaxCrossEntropyOutputLayer"; }
 void SoftmaxCrossEntropyOutputLayer::SaveParameters(std::ostream& os) const {
 	os.write((char*)&in_dim_, 4); os.write((char*)&num_classes_, 4); os.write((char*)&max_batch_size_, 4);
@@ -273,7 +268,6 @@ void SoftmaxCrossEntropyOutputLayer::SaveParameters(std::ostream& os) const {
 void SoftmaxCrossEntropyOutputLayer::LoadParameters(std::istream& is) {
 	ReadTensor(is, weight_); ReadTensor(is, bias_);
 }
-// -- [AI:END]
 
 Vector<std::tuple<Tensor*, Tensor*, Tensor*>> SoftmaxCrossEntropyOutputLayer::GetParamTriples()
 {

@@ -12,7 +12,6 @@
 
 #include <cmath>
 
-// -- [AI:BEGIN]
 
 
 
@@ -84,7 +83,6 @@ Conv2DLayer::Conv2DLayer(UInt32 in_in_channels, UInt32 in_out_channels,
 
 	weight_.RandomNormal(0.0f, std::sqrt(k));
 
-	// -- [AI] Use existing Zero() instead of InitializeBias which may not be available
 
 	bias_.Zero();
 
@@ -98,7 +96,6 @@ Conv2DLayer::~Conv2DLayer()
 
 {
 
-	// -- [AI] Static SRBs: no temp_srbs_ to clean up
 
 	if (bwd_srb_) delete bwd_srb_;
 
@@ -124,7 +121,7 @@ void Conv2DLayer::CreatePipelineAndSRB()
 
 {
 
-	// Forward pipeline & SRB -- [AI] static bindings for weight, bias, output, pc (same pattern as LinearLayer)
+	// Forward pipeline & SRB
 
 	Shader* fwd_shader = LoadComputeShader("Shader/nn_conv2d_fwd.comp.spv");
 
@@ -142,7 +139,7 @@ void Conv2DLayer::CreatePipelineAndSRB()
 	fwd_srb_->SetResource("pc", pc_buf_.GetBuffer());
 
 
-	// Backward pipeline & SRB -- [AI] static bindings for dL_dx, weight, grad_w, grad_b, pc (same pattern as LinearLayer)
+	// Backward pipeline & SRB
 
 	Shader* bwd_shader = LoadComputeShader("Shader/nn_conv2d_bwd.comp.spv");
 
@@ -199,7 +196,6 @@ void Conv2DLayer::Forward(CommandList* in_cmd, Tensor& in_input)
 	pc_buf_.Upload(pc);
 
 
-	// -- [AI] Use static fwd_srb_ -- only set per-call input, same pattern as LinearLayer
 
 	fwd_srb_->SetResource("inp", in_input.GetBuffer());
 
@@ -258,7 +254,6 @@ void Conv2DLayer::Backward(CommandList* in_cmd, CONST Tensor& in_dL_dout, CONST 
 	dL_dx_.Zero();
 
 
-	// -- [AI] Use static bwd_srb_ -- only set per-call inputs, same pattern as LinearLayer
 
 	bwd_srb_->SetResource("dL_dout", in_dL_dout.GetBuffer());
 
@@ -319,7 +314,6 @@ Vector<std::tuple<Tensor*, Tensor*, Tensor*>> Conv2DLayer::GetParamTriples()
 
 
 
-// -- [AI:BEGIN] Persistence
 
 void Conv2DLayer::SaveParameters(std::ostream& os) const {
 
@@ -341,11 +335,9 @@ void Conv2DLayer::LoadParameters(std::istream& is) {
 
 }
 
-// -- [AI:END]
 
 
 } // namespace MXNN
 
 
-// -- [AI:END]
 

@@ -46,7 +46,7 @@ MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_ShaderResourceBinding, public ShaderResourceBinding)
 friend class VK_PipelineState;
-	friend class VK_ComputePipelineState; // -- [AI]
+	friend class VK_ComputePipelineState;
 #pragma region METHOD
 public:
 	VK_ShaderResourceBinding(VK_Device* in_device,Map<String, ReflectedBinding>& in_bindings, Bool in_is_static_resource) ;

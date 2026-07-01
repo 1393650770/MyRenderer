@@ -31,26 +31,22 @@ public:
 	VIRTUAL void METHOD(SetShaderResourceBinding)(ShaderResourceBinding* srb) PURE;
 	VIRTUAL void METHOD(Draw)(CONST DrawAttribute& draw_attr) PURE;
 	VIRTUAL void METHOD(Dispatch)(UInt32 groupX, UInt32 groupY, UInt32 groupZ) PURE;
-	// -- [AI] Combined compute dispatch convenience
 	VIRTUAL void METHOD(ComputeDispatch)(RenderPipelineState* pipeline, ShaderResourceBinding* srb, UInt32 groupX, UInt32 groupY, UInt32 groupZ) {}
 	VIRTUAL void METHOD(SetPushConstants)(UInt32 offset, UInt32 size, const void* data) PURE;
-	// -- [AI] Stage-aware push constants overload
 	VIRTUAL void METHOD(SetPushConstants)(UInt32 offset, UInt32 size, const void* data, ENUM_SHADER_STAGE stage) {}
 	VIRTUAL void METHOD(TransitionTextureState)(Texture* texture, CONST ENUM_RESOURCE_STATE& required_state) PURE;
 	VIRTUAL void METHOD(ClearTexture)(Texture* texture,Vector<float> clear_value= Vector<float>(4,0.0f)) PURE;
 
-	// -- [AI:BEGIN] RHI barrier API
 	VIRTUAL void METHOD(ResourceBarrier)(ENUM_RESOURCE_STATE src_state, ENUM_RESOURCE_STATE dst_state) {}
 	VIRTUAL void METHOD(MemoryBarrier)(ENUM_SHADER_STAGE src_stage, ENUM_SHADER_STAGE dst_stage, ENUM_RESOURCE_STATE src_access, ENUM_RESOURCE_STATE dst_access) {}
-	// -- [AI:END]
 
-	// -- [AI:BEGIN] Command list lifecycle
 	VIRTUAL void METHOD(Begin)() PURE;
 	VIRTUAL void METHOD(End)() PURE;
-	// -- [AI:END]
 
 	VIRTUAL void METHOD(BeginUI)() PURE;
 	VIRTUAL void METHOD(EndUI)() PURE;
+
+	VIRTUAL void METHOD(WriteTimestamp)(UInt32 query_index) {}
 private:
 
 protected:

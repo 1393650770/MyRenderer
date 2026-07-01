@@ -53,7 +53,6 @@ public:
 	VIRTUAL Buffer* METHOD(CreateBuffer)(const BufferDesc& buffer_desc) OVERRIDE FINAL;
 	VIRTUAL Texture* METHOD(CreateTexture)(CONST TextureDesc& texture_desc) OVERRIDE FINAL;
 	VIRTUAL RenderPipelineState* METHOD(CreateRenderPipelineState)(CONST RenderGraphiPipelineStateDesc& desc) OVERRIDE FINAL;
-	// -- [AI]
 	VIRTUAL ComputePipelineState* METHOD(CreateComputePipelineState)(CONST ComputePipelineStateDesc& desc) OVERRIDE FINAL;
 	VIRTUAL RenderPass* METHOD(CreateRenderPass)(CONST RenderPassDesc& desc) OVERRIDE FINAL;
 	VIRTUAL FrameBuffer* METHOD(CreateFrameBuffer)(CONST FrameBufferDesc& desc) OVERRIDE FINAL;
@@ -64,10 +63,8 @@ public:
 
 #pragma region DRAW
 	VIRTUAL	CommandList* METHOD(GetImmediateCommandList)() OVERRIDE FINAL;
-	// -- [AI]
 	VIRTUAL CommandList* METHOD(GetCommandListForQueue)(ENUM_QUEUE_TYPE queue_type) OVERRIDE FINAL;
 	VIRTUAL void METHOD(SubmitCommandList)(CommandList* command_list) OVERRIDE FINAL;
-	// -- [AI]
 	VIRTUAL void METHOD(SubmitCommandListForQueue)(CommandList* cmd_list, ENUM_QUEUE_TYPE queue_type) OVERRIDE FINAL;
 	VIRTUAL void METHOD(RenderEnd)() OVERRIDE FINAL;
 	VK_BindlessManager* METHOD(GetBindlessManager)();

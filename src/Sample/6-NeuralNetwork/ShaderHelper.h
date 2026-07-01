@@ -1,5 +1,4 @@
 #pragma once
-// -- [AI:BEGIN]
 #ifndef _NN_SHADERHELPER_
 #define _NN_SHADERHELPER_
 #include <fstream>
@@ -43,5 +42,4 @@ inline MXRender::RHI::RenderPipelineState* CreateComputePipeline(MXRender::RHI::
 }
 
 } // namespace MXNN
-// -- [AI:END]
 #endif // _NN_SHADERHELPER_

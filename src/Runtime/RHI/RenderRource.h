@@ -396,7 +396,7 @@ public:
 
 	VertexInputLayout& operator= (CONST VertexInputLayout& rhs)
 	{
-		if (this != &rhs) // ×Ô¸³Öµ¼ì²é
+		if (this != &rhs) // ï¿½Ô¸ï¿½Öµï¿½ï¿½ï¿½
 		{
 			binding = rhs.binding;
 			location = rhs.location;
@@ -490,7 +490,6 @@ private:
 MYRENDERER_END_CLASS
 
 
-// -- [AI:BEGIN]
 // Lightweight compute pipeline descriptor - only needs a compute shader,
 // no graphics state (blend/raster/depth/vertex input)
 MYRENDERER_BEGIN_STRUCT(ComputePipelineStateDesc)
@@ -506,7 +505,6 @@ public:
         return !(*this == rhs);
     }
 MYRENDERER_END_STRUCT
-// -- [AI:END]
 
 
 MYRENDERER_BEGIN_STRUCT(RenderPassCacheKey)

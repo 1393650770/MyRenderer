@@ -141,6 +141,9 @@ void VK_Device::Init(Int device_index,Bool enable_validation_layers,CONST Vector
 	bindless_manager = new VK_BindlessManager(this);
 	resource_pool = new VK_ResourcePool();
 	MXRender::Render::g_resource_pool = resource_pool;
+
+	extern VkDevice g_debug_name_device;
+	g_debug_name_device = device;
 }
 
 VkDevice VK_Device::GetDevice()

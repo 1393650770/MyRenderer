@@ -1,4 +1,3 @@
-// -- [AI] Conv2D backward: gradient computation, NHWC layout
 // binding[0]=dL_dout  [1]=dL_dx  [2]=weight  [3]=grad_w  [4]=grad_b  [5]=inp  [10]=pc
 // Dispatch over output grid: threads map to (oc, oh, obw)
 // grad_b/grad_w/dL_dx: atomic accumulate from each output pixel

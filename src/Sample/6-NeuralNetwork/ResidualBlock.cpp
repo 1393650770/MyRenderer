@@ -3,7 +3,6 @@
 #include "Optimizer.h"
 #include "RHI/RenderCommandList.h"
 #include "RHI/RenderPipelineState.h"
-// -- [AI:BEGIN]
 
 namespace MXNN {
 
@@ -87,7 +86,6 @@ Vector<std::tuple<Tensor*,Tensor*,Tensor*>> ResidualBlock::GetParamTriples() {
     return r;
 }
 
-// -- [AI:BEGIN] Persistence
 void ResidualBlock::SaveParameters(std::ostream& os) const {
     os.write((char*)&n_elem_, 4);
     UInt32 count = (UInt32)sub_layers_.size();
@@ -107,7 +105,5 @@ void ResidualBlock::LoadParameters(std::istream& is) {
         if (i < sub_layers_.size()) sub_layers_[i]->LoadParameters(is);
     }
 }
-// -- [AI:END]
 
 } // namespace MXNN
-// -- [AI:END]

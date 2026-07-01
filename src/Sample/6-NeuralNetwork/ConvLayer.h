@@ -1,6 +1,5 @@
 #pragma once
 
-// -- [AI:BEGIN]
 
 #ifndef _NN_CONVLAYER_
 
@@ -50,7 +49,6 @@ public:
 
 	VIRTUAL Vector<std::tuple<Tensor*, Tensor*, Tensor*>> METHOD(GetParamTriples)() OVERRIDE FINAL;
 
-		// -- [AI] Persistence
 		VIRTUAL String METHOD(GetLayerTypeName)() CONST OVERRIDE FINAL { return "Conv2DLayer"; }
 		VIRTUAL void METHOD(SaveParameters)(std::ostream& os) CONST OVERRIDE FINAL;
 		VIRTUAL void METHOD(LoadParameters)(std::istream& is) OVERRIDE FINAL;
@@ -107,7 +105,6 @@ private:
 
 	ShaderResourceBinding* bwd_srb_ = nullptr;
 
-	// -- [AI] temp_srbs_ removed -- static SRB pattern used instead
 
 #pragma endregion
 
@@ -117,7 +114,6 @@ MYRENDERER_END_CLASS
 
 } // namespace MXNN
 
-// -- [AI:END]
 
 #endif
 

@@ -1,4 +1,3 @@
-// -- [AI] BatchNorm1D backward -- dy_sum/dyxh_sum without gamma, dL_dx with gamma*ivar factor
 #version 460
 layout(local_size_x = 256) in;
 

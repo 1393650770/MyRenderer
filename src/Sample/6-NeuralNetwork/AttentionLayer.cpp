@@ -4,7 +4,6 @@
 #include "Optimizer.h"
 #include "RHI/RenderCommandList.h"
 #include "RHI/RenderPipelineState.h"
-// -- [AI:BEGIN]
 
 namespace MXNN {
 
@@ -214,7 +213,6 @@ Vector<std::tuple<Tensor*, Tensor*, Tensor*>> MultiHeadAttentionLayer::GetParamT
 	};
 }
 
-// -- [AI] Persistence
 void MultiHeadAttentionLayer::SaveParameters(std::ostream& os) const {
     os.write((char*)&d_model_, 4); os.write((char*)&num_heads_, 4);
     os.write((char*)&max_batch_, 4); os.write((char*)&max_seq_len_, 4);
@@ -227,4 +225,3 @@ void MultiHeadAttentionLayer::LoadParameters(std::istream& is) {
 }
 
 } // namespace MXNN
-// -- [AI:END]

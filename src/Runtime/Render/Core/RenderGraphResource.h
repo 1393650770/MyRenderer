@@ -25,6 +25,12 @@ std::unique_ptr<MXRender::RHI::Buffer> AcquirePooledBuffer(CONST MXRender::RHI::
 void ReturnPooledBuffer(std::unique_ptr<MXRender::RHI::Buffer> buffer, CONST MXRender::RHI::BufferDesc& desc);
 
 // Global resource pool pointer — defined in VK_ResourcePool.cpp, set in VK_Device::Init().
+// Debug name bridge for RenderDoc/validation layers.
+// Sets VK_EXT_debug_utils object name on the underlying Vulkan resource.
+// Declared here (Render layer) so Execute() can set names.
+// Implemented in the VK layer (VK_ResourcePool.cpp).
+void SetDebugNameForRHIResource(MXRender::RHI::RenderResource* resource, CONST String& name);
+
 extern void* g_resource_pool; // Opaque pointer; actual type is VK_ResourcePool* in ::MXRender::RHI::Vulkan
 
 class RenderGraphPassBase;
@@ -35,7 +41,16 @@ struct PassResourceAccess
 	CONST RenderGraphPassBase* pass = nullptr;
 	MXRender::ENUM_RESOURCE_STATE required_state = MXRender::ENUM_RESOURCE_STATE::Undefined;
 	bool is_write = false;
+		UInt64 modification_stamp = 0;
 };
+
+	struct RHIBarrierDesc
+	{
+		class RenderGraphResourceBase* resource = nullptr;
+		ENUM_RESOURCE_STATE src_state = ENUM_RESOURCE_STATE::Undefined;
+		ENUM_RESOURCE_STATE dst_state = ENUM_RESOURCE_STATE::Undefined;
+		Bool is_prologue = true;
+	};
 
 MYRENDERER_BEGIN_CLASS(RenderGraphResourceBase)
 

@@ -1333,7 +1333,8 @@ namespace MXRender
 			ENUM_RESOURCE_STATE::ResolveDest |
 			ENUM_RESOURCE_STATE::BuildAsWrite;
 
-		return (state & write_access_states) == (ENUM_RESOURCE_STATE)1;
+		// -- [AI:FIX] Bitwise AND of multi-bit flags can never equal exactly 1; check non-zero instead
+			return (state & write_access_states) != ENUM_RESOURCE_STATE::Invalid;
 	}
 
 	VkFormat VK_Utils::Translate_API_DataTypeEnum_To_Vulkan(ENUM_RENDER_DATA_TYPE data_type)

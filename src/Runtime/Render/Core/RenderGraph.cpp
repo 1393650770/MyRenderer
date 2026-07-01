@@ -1,5 +1,10 @@
 #include "RenderGraph.h"
 #include <xutility>
+#include <fstream>
+#include <functional>
+#include <queue>
+#include "RHI/RenderRHI.h"
+#include "RHI/RenderCommandList.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Render)
@@ -10,8 +15,7 @@ void RenderGraph::CompileAliasingPlan()
 	aliasing_offsets.clear();
 	aliasing_block_size = 0;
 
-	// Collect transient buffers with their lifetime intervals.
-	struct BufferAliasInfo
+	struct AliasInfo
 	{
 		RenderGraphResourceBase* resource;
 		UInt32 start_step;
@@ -19,69 +23,65 @@ void RenderGraph::CompileAliasingPlan()
 		UInt64 size;
 		UInt32 alignment;
 	};
-	Vector<BufferAliasInfo> infos;
+	Vector<AliasInfo> infos;
 
 	for (UInt32 s = 0; s < steps.size(); ++s)
 	{
 		for (auto* res : steps[s].realized_resources)
 		{
-			if (!res->GetIsTransient() || !res->IsBufferResource()) continue;
-			if (aliasing_offsets.count(res)) continue; // Already processed
+			if (!res->GetIsTransient()) continue;
+			if (aliasing_offsets.count(res)) continue;
+			if (!res->IsBufferResource() && !res->IsTextureResource()) continue;
 
 			// Find derealization step
 			UInt32 end = s;
 			for (UInt32 e = s; e < steps.size(); ++e)
-			{
 				for (auto* dres : steps[e].derealized_resources)
-				{
 					if (dres == res) { end = e; break; }
-				}
+
+			UInt64 res_size = 256;
+			UInt32 alignment = 256;
+			if (res->IsBufferResource()) {
+				auto* br = static_cast<RenderGraphResource<RHI::BufferDesc, RHI::Buffer>*>(res);
+				res_size = br->GetDescription().size;
+				alignment = 256;
+			} else {
+				auto* tr = static_cast<RenderGraphResource<RHI::TextureDesc, RHI::Texture>*>(res);
+				RHI::TextureDesc d = tr->GetDescription();
+				res_size = (UInt64)d.width * d.height * 4;
+				alignment = 64;
 			}
 
-			// Get buffer size from description
-			UInt64 buf_size = 256; // Default
-			auto* buf_res = static_cast<RenderGraphResource<RHI::BufferDesc, RHI::Buffer>*>(res);
-			buf_size = buf_res->GetDescription().size;
-			UInt32 alignment = 256;
-
-			infos.push_back({ res, s, end, buf_size, alignment });
+			infos.push_back({ res, s, end, res_size, alignment });
 		}
 	}
 
 	if (infos.empty()) return;
 
-	// Sort by size descending (simple bubble — avoids <functional> template issues)
 	for (UInt32 i = 0; i < infos.size(); ++i)
 		for (UInt32 j = i + 1; j < infos.size(); ++j)
 			if (infos[j].size > infos[i].size) { auto tmp = infos[i]; infos[i] = infos[j]; infos[j] = tmp; }
 
-	// Simple greedy placement: place each buffer at the first offset that doesn't overlap
-	// with any previously placed buffer with overlapping lifetime
-	struct PlacedBuffer { UInt64 offset; UInt64 size; UInt32 start; UInt32 end; };
-	Vector<PlacedBuffer> placed;
+	struct Placed { UInt64 offset; UInt64 size; UInt32 start; UInt32 end; };
+	Vector<Placed> placed;
 
 	for (auto& info : infos)
 	{
 		UInt64 best_offset = 0;
 		bool found = false;
 
-		// Try placements at each possible offset
 		for (UInt32 attempt = 0; attempt < 100 && !found; ++attempt)
 		{
 			UInt64 candidate = best_offset;
 			bool overlaps = false;
 			for (auto& p : placed)
 			{
-				// Check lifetime overlap
 				if (info.start_step <= p.end && p.start <= info.end_step)
-				{
-					// Check offset overlap
 					if (candidate < p.offset + p.size && candidate + info.size > p.offset)
 					{
-						candidate = p.offset + p.size; // Move past this buffer
+						candidate = p.offset + p.size;
 						overlaps = true;
 					}
-				}
 			}
 			if (!overlaps) found = true;
 			best_offset = candidate;
@@ -94,13 +94,47 @@ void RenderGraph::CompileAliasingPlan()
 	}
 }
 
+void RenderGraph::Compile(CONST RenderGraphCompileConfig& config)
+{
+	// In safe mode, skip barriers and use conservative path
+	if (config.fallback_to_conservative) {
+		Compile(); // Basic compile, no barriers, no aliasing
+		return;
+	}
+	Compile();
+}
+
 void RenderGraph::Execute()
 {
+	auto* cmd_list = RHIGetImmediateCommandList();
+	UInt32 ts_idx = 0;
+
 	for (auto& step : steps)
 	{
 		for (auto resource : step.realized_resources)
+		{
 			resource->Realize();
+			String dbg_name = step.pass->GetName() + ":" + resource->GetName();
+			if (auto* tex = resource->GetAsTexture())
+				SetDebugNameForRHIResource(tex, dbg_name);
+			else if (auto* buf = resource->GetAsBuffer())
+				SetDebugNameForRHIResource(buf, dbg_name);
+		}
+
+		for (auto& bd : step.prologue_barriers)
+			if (bd.resource && cmd_list)
+				cmd_list->ResourceBarrier(bd.src_state, bd.dst_state);
+
+		if (cmd_list) cmd_list->WriteTimestamp(ts_idx++);
+
 		step.pass->Execute();
+
+		if (cmd_list) cmd_list->WriteTimestamp(ts_idx++);
+
+		for (auto& bd : step.epilogue_barriers)
+			if (bd.resource && cmd_list)
+				cmd_list->ResourceBarrier(bd.src_state, bd.dst_state);
+
 		for (auto resource : step.derealized_resources)
 			resource->Derealize();
 	}
@@ -114,6 +148,55 @@ void RenderGraph::Compile()
 	for (auto& resource : resources)
 		resource->ref_count = resource->read_passes.size();
 
+	static UInt64 s_cached_hash = ~0ULL;
+	static Vector<RenderGraphStep> s_cached_steps;
+	UInt64 th = 0;
+	for (auto& p : passes) th ^= std::hash<String>{}(p->GetName()) ^ (UInt64)(uintptr_t)p.get();
+	for (auto& r : resources) th ^= std::hash<String>{}(r->GetName());
+	if (th == s_cached_hash && !s_cached_steps.empty()) {
+		steps = s_cached_steps; return;
+	}
+	s_cached_hash = th;
+
+	Map<RenderGraphPassBase*, Vector<RenderGraphPassBase*>> adj;
+	Map<RenderGraphPassBase*, UInt32> in_deg;
+	for (auto& pass : passes) { adj[pass.get()] = {}; in_deg[pass.get()] = 0; }
+
+	for (auto& resource : resources)
+	{
+		if (!resource->create_pass) continue;
+		auto* producer = const_cast<RenderGraphPassBase*>(resource->create_pass);
+		for (auto* reader : resource->read_passes) {
+			auto* r = const_cast<RenderGraphPassBase*>(reader);
+			if (r != producer) adj[producer].push_back(r);
+		}
+		for (auto* writer : resource->write_passes) {
+			auto* w = const_cast<RenderGraphPassBase*>(writer);
+			if (w != producer) adj[producer].push_back(w);
+		}
+	}
+
+	for (auto& kv : adj)
+		for (auto* succ : kv.second) in_deg[succ]++;
+
+	std::queue<RenderGraphPassBase*> q;
+	for (auto& kv : in_deg)
+		if (kv.second == 0) q.push(kv.first);
+
+	UInt32 visited = 0;
+	while (!q.empty()) {
+		auto* cur = q.front(); q.pop(); visited++;
+		for (auto* succ : adj[cur]) {
+			in_deg[succ]--;
+			if (in_deg[succ] == 0) q.push(succ);
+		}
+	}
+
+	if (visited < passes.size()) {
+		std::cerr << "[RenderGraph] Cycle: " << (passes.size() - visited) << " unreachable passes" << std::endl;
+		return;
+	}
+
 	// Culling via flood fill from unreferenced resources.
 	std::stack<RenderGraphResourceBase*> unreferenced_resources;
 	for (auto& resource : resources)
@@ -126,15 +209,14 @@ void RenderGraph::Compile()
 		unreferenced_resources.pop();
 
 		auto creator = const_cast<RenderGraphPassBase*>(unreferenced_resource->create_pass);
-		if (creator->ref_count > 0)
-			creator->ref_count--;
+		if (!creator) continue;
+		if (creator->ref_count > 0) creator->ref_count--;
 		if (creator->ref_count == 0 && creator->GetIsCullable())
 		{
 			for (auto iteratee : creator->read_resources)
 			{
 				auto read_resource = const_cast<RenderGraphResourceBase*>(iteratee);
-				if (read_resource->ref_count > 0)
-					read_resource->ref_count--;
+				if (read_resource->ref_count > 0) read_resource->ref_count--;
 				if (read_resource->ref_count == 0 && read_resource->GetIsTransient())
 					unreferenced_resources.push(read_resource);
 			}
@@ -143,15 +225,13 @@ void RenderGraph::Compile()
 		for (auto c_writer : unreferenced_resource->write_passes)
 		{
 			auto writer = const_cast<RenderGraphPassBase*>(c_writer);
-			if (writer->ref_count > 0)
-				writer->ref_count--;
+			if (writer->ref_count > 0) writer->ref_count--;
 			if (writer->ref_count == 0 && writer->GetIsCullable())
 			{
 				for (auto iteratee : writer->read_resources)
 				{
 					auto read_resource = const_cast<RenderGraphResourceBase*>(iteratee);
-					if (read_resource->ref_count > 0)
-						read_resource->ref_count--;
+					if (read_resource->ref_count > 0) read_resource->ref_count--;
 					if (read_resource->ref_count == 0 && read_resource->GetIsTransient())
 						unreferenced_resources.push(read_resource);
 				}
@@ -159,13 +239,11 @@ void RenderGraph::Compile()
 		}
 	}
 
-
 	// Timeline computation.
 	steps.clear();
 	for (auto& render_task : passes)
 	{
-		if (render_task->ref_count == 0 && render_task->GetIsCullable())
-			continue;
+		if (render_task->ref_count == 0 && render_task->GetIsCullable()) continue;
 
 		std::vector<RenderGraphResourceBase*> realized_resources, derealized_resources;
 
@@ -180,8 +258,7 @@ void RenderGraph::Compile()
 		reads_writes.insert(reads_writes.end(), render_task->write_resources.begin(), render_task->write_resources.end());
 		for (auto resource : reads_writes)
 		{
-			if (!resource->GetIsTransient())
-				continue;
+			if (!resource->GetIsTransient()) continue;
 
 			auto valid = false;
 			std::size_t last_index;
@@ -207,8 +284,65 @@ void RenderGraph::Compile()
 		steps.push_back(RenderGraphStep{ render_task.get(), realized_resources, derealized_resources });
 	}
 
-	// Compute buffer aliasing plan after timeline
+	UInt64 global_stamp = 1;
+	for (auto& step : steps)
+	{
+		for (auto* r : step.pass->read_resources) {
+			auto* res = const_cast<RenderGraphResourceBase*>(r);
+			for (auto& acc : res->access_sequence)
+				if (acc.pass == step.pass) { acc.modification_stamp = global_stamp; break; }
+			if (!res->access_sequence.empty() && res->tracked_state != res->access_sequence.back().required_state) {
+				RHIBarrierDesc bd; bd.resource = res;
+				bd.src_state = res->tracked_state;
+				bd.dst_state = res->access_sequence.back().required_state;
+				bd.is_prologue = true;
+				step.prologue_barriers.push_back(bd);
+				res->tracked_state = res->access_sequence.back().required_state;
+			}
+		}
+		for (auto* r : step.pass->write_resources) {
+			auto* res = const_cast<RenderGraphResourceBase*>(r);
+			global_stamp++;
+			for (auto& acc : res->access_sequence)
+				if (acc.pass == step.pass) { acc.modification_stamp = global_stamp; acc.is_write = true; break; }
+			if (!res->access_sequence.empty() && res->tracked_state != res->access_sequence.back().required_state) {
+				RHIBarrierDesc bd; bd.resource = res;
+				bd.src_state = res->tracked_state;
+				bd.dst_state = res->access_sequence.back().required_state;
+				bd.is_prologue = true;
+				step.prologue_barriers.push_back(bd);
+				res->tracked_state = res->access_sequence.back().required_state;
+			}
+		}
+		for (auto* r : step.pass->create_resources) {
+			auto* res = const_cast<RenderGraphResourceBase*>(r);
+			global_stamp++; res->tracked_state = ENUM_RESOURCE_STATE::Undefined;
+		}
+	}
+
+	// Compute aliasing plan after timeline + barriers
 	CompileAliasingPlan();
+
+	// Cache compiled steps
+	s_cached_steps = steps;
+}
+
+void RenderGraph::ScheduleAsyncCompute()
+{
+	UInt32 count = 0;
+	for (auto& step : steps)
+		if (step.pass->GetName().find("Compute") != String::npos) count++;
+	if (count > 0)
+		std::cout << "[RenderGraph] " << count << " async-compute candidates (stub)" << std::endl;
+}
+
+void RenderGraph::ExtractResource(RenderGraphResourceBase* resource)
+{
+	if (resource)
+		for (auto& step : steps) {
+			auto& dr = step.derealized_resources;
+			dr.erase(std::remove(dr.begin(), dr.end(), resource), dr.end());
+		}
 }
 
 void RenderGraph::Release()
@@ -216,6 +350,38 @@ void RenderGraph::Release()
 	passes.clear();
 	resources.clear();
 	aliasing_offsets.clear();
+}
+
+void RenderGraph::DumpGraphViz(CONST String& path)
+{
+	std::ofstream f(path);
+	if (!f) return;
+	f << "digraph RenderGraph {" << std::endl;
+	f << "  rankdir=LR;" << std::endl;
+	for (auto& pass : passes)
+		f << "  \"" << pass->GetName() << "\" [shape=box,style=filled,fillcolor=orange];" << std::endl;
+	for (auto& res : resources) {
+		String color = res->GetIsTransient() ? "lightblue" : "white";
+		f << "  \"" << res->GetName() << "\" [shape=ellipse,style=filled,fillcolor=" << color << "];" << std::endl;
+	}
+	for (auto& step : steps) {
+		for (auto* r : step.pass->read_resources)
+			f << "  \"" << r->GetName() << "\" -> \"" << step.pass->GetName() << "\" [color=green];" << std::endl;
+		for (auto* r : step.pass->write_resources)
+			f << "  \"" << step.pass->GetName() << "\" -> \"" << r->GetName() << "\" [color=red];" << std::endl;
+	}
+	f << "}" << std::endl;
+}
+
+void RenderGraph::DebugDumpBarriers()
+{
+	for (auto& step : steps) {
+		std::cout << "[" << step.pass->GetName() << "] prologue=" << step.prologue_barriers.size()
+			<< " epilogue=" << step.epilogue_barriers.size() << std::endl;
+		for (auto& bd : step.prologue_barriers)
+			std::cout << "  PRO: " << (bd.resource ? bd.resource->GetName() : "?")
+				<< " [" << (Int)bd.src_state << "->" << (Int)bd.dst_state << "]" << std::endl;
+	}
 }
 
 bool RenderGraph::Searilize(CONST String& filename)

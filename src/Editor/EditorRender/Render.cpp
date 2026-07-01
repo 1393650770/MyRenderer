@@ -14,6 +14,7 @@
 #include "RHI/RenderRource.h"
 #include "RHI/RenderBuffer.h"
 #include "RHI/RenderUtils.h"
+#include "UI/RenderGraphEditor/Panels/RenderGraphPanel.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
@@ -42,6 +43,22 @@ void EditorRenderPipeline::BeginRender()
 	editor_ui.Init(window);
 	RHI::CommandList* cmd_list = RHIGetImmediateCommandList();
 
+	// Register backbuffer as retained (imported) resources so the RDG knows about them.
+	// This enables the editor to visualize pass-resource dependencies.
+	RHI::Texture* backbuffer_rtv = window->GetViewport()->GetCurrentBackBufferRTV();
+	RHI::Texture* backbuffer_dsv = window->GetViewport()->GetCurrentBackBufferDSV();
+
+	RHI::TextureDesc rt_desc = backbuffer_rtv->GetTextureDesc();
+	Render::RenderGraphResource<RHI::TextureDesc, RHI::Texture>* rt_resource =
+		graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>("BackBuffer", rt_desc, backbuffer_rtv);
+
+	Render::RenderGraphResource<RHI::TextureDesc, RHI::Texture>* ds_resource = nullptr;
+	if (backbuffer_dsv)
+	{
+		RHI::TextureDesc ds_desc = backbuffer_dsv->GetTextureDesc();
+		ds_resource = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>("DepthStencil", ds_desc, backbuffer_dsv);
+	}
+
 	struct ClearPassData :public  Render::RenderGraphPassDataBase
 	{
 		VIRTUAL ~ClearPassData()
@@ -56,7 +73,9 @@ void EditorRenderPipeline::BeginRender()
 	graph.AddRenderPass<ClearPassData>("ClearPass", &graph, cmd_list,
 		[&](ClearPassData& data, Render::RenderGraphPassBuilder& builder, RHI::CommandList* in_cmd_list)
 	{
-
+		// Declare: ClearPass writes to BackBuffer and DepthStencil
+		builder.Write(rt_resource);
+		if (ds_resource) builder.Write(ds_resource);
 	},
 		[=](CONST ClearPassData& data, RHI::CommandList* in_cmd_list)
 	{
@@ -117,6 +136,11 @@ void EditorRenderPipeline::BeginRender()
 	graph.AddRenderPass<TestData>("TestPass", &graph, cmd_list,
 		[&](TestData& data, Render::RenderGraphPassBuilder& builder, RHI::CommandList* in_cmd_list)
 	{
+		// TestPass: reads depth for testing, writes to backbuffer and depth
+		builder.Write(rt_resource);
+		if (ds_resource) builder.Read(ds_resource);
+		if (ds_resource) builder.Write(ds_resource);
+
 		RHI::Shader* vs_shader;
 		RHI::Shader* ps_shader;
 		RHI::ShaderDesc shader_desc;
@@ -195,8 +219,12 @@ void EditorRenderPipeline::BeginRender()
 		}
 	});
 
+	editor_ui.SetRenderGraph(&graph);
 	editor_ui.AddPass(&graph);
 	graph.Compile();
+	// Sync runtime graph to editor visualization
+	if (auto* rgp = editor_ui.GetRenderGraphPanel())
+		rgp->SyncRuntimeToEditor(&graph);
 }
 
 void EditorRenderPipeline::EndRender()

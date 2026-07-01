@@ -56,7 +56,7 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_CommandBuffer, public CommandList)
 friend VK_CommandBufferPool;
 friend VK_Queue;
 friend VK_CommandBufferManager;
-	friend class VulkanRHI; // -- [AI]
+	friend class VulkanRHI;
 #pragma region METHOD
 public:
 	VK_CommandBuffer(VK_Device* in_device, VK_CommandBufferPool* in_command_buffer_pool, Bool in_is_upload_only);
@@ -219,13 +219,10 @@ public:
 	__forceinline VIRTUAL void METHOD(Draw)(CONST DrawAttribute& draw_attr) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(Dispatch)(UInt32 groupX, UInt32 groupY, UInt32 groupZ) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(SetPushConstants)(UInt32 offset, UInt32 size, const void* data) OVERRIDE FINAL;
-	// -- [AI] Stage-aware push constants overload
 	__forceinline VIRTUAL void METHOD(SetPushConstants)(UInt32 offset, UInt32 size, const void* data, ENUM_SHADER_STAGE stage) OVERRIDE FINAL;
-	// -- [AI:BEGIN] RHI barrier + compute dispatch overrides
 	__forceinline VIRTUAL void METHOD(ResourceBarrier)(ENUM_RESOURCE_STATE src_state, ENUM_RESOURCE_STATE dst_state) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(MemoryBarrier)(ENUM_SHADER_STAGE src_stage, ENUM_SHADER_STAGE dst_stage, ENUM_RESOURCE_STATE src_access, ENUM_RESOURCE_STATE dst_access) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(ComputeDispatch)(RenderPipelineState* pipeline, ShaderResourceBinding* srb, UInt32 groupX, UInt32 groupY, UInt32 groupZ) OVERRIDE FINAL;
-	// -- [AI:END]
 	__forceinline VIRTUAL void METHOD(TransitionTextureState)(Texture* texture, CONST ENUM_RESOURCE_STATE& required_state) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(ClearTexture)(Texture* texture, Vector<float> clear_value = Vector<float>(4, 0.0f)) OVERRIDE FINAL;
 

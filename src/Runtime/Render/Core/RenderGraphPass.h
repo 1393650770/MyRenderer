@@ -57,6 +57,11 @@ public:
 	Bool METHOD(GetIsCullable)() CONST;
 	void METHOD(SetIsCullable)(Bool in_is_cullable);
 
+	// Accessors for editor introspection
+	Vector<CONST RenderGraphResourceBase*>& METHOD(GetReadResources)() { return read_resources; }
+	Vector<CONST RenderGraphResourceBase*>& METHOD(GetWriteResources)() { return write_resources; }
+	Vector<CONST RenderGraphResourceBase*>& METHOD(GetCreateResources)() { return create_resources; }
+
 protected:
 	friend class RenderGraphPassBuilder;
 	friend class RenderGraph;

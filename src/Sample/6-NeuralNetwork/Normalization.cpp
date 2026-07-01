@@ -4,7 +4,6 @@
 #include "Optimizer.h"
 #include "RHI/RenderCommandList.h"
 #include "RHI/RenderPipelineState.h"
-// -- [AI:BEGIN]
 
 namespace MXNN {
 
@@ -16,7 +15,7 @@ DropoutLayer::DropoutLayer(Float32 in_p, UInt32 in_n_elem)
 	Shader* s = LoadComputeShader("Shader/nn_dropout.comp.spv");
 	pipeline_ = CreateComputePipeline(s);
 	pipeline_->CreateShaderResourceBinding(fwd_srb_, false);
-	pipeline_->CreateShaderResourceBinding(bwd_srb_, false); // -- [AI]
+	pipeline_->CreateShaderResourceBinding(bwd_srb_, false);
 	delete s;
 }
 
@@ -33,7 +32,6 @@ void DropoutLayer::SetSeed(UInt32 in_seed) { seed_ = in_seed; }
 void DropoutLayer::Forward(CommandList* in_cmd, Tensor& in_input) {
 	Float32 pc[4] = { static_cast<Float32>(n_elem_), training_ ? 0.0f : 2.0f, keep_prob_, static_cast<Float32>(seed_) };
 	pc_buf_.Upload(pc);
-	// -- [AI:BEGIN] reuse static srb_
 	fwd_srb_->SetResource("inp", in_input.GetBuffer());
 	fwd_srb_->SetResource("out_buf", output_.GetBuffer());
 	fwd_srb_->SetResource("mask", mask_.GetBuffer());
@@ -42,13 +40,11 @@ void DropoutLayer::Forward(CommandList* in_cmd, Tensor& in_input) {
 	in_cmd->SetComputePipeline(pipeline_);
 	in_cmd->SetShaderResourceBinding(fwd_srb_);
 	in_cmd->Dispatch((n_elem_ + 255u) / 256u, 1u, 1u);
-	// -- [AI:END]
 }
 
 void DropoutLayer::Backward(CommandList* in_cmd, CONST Tensor& in_dL_dout, CONST Tensor& /*input_act*/) {
 	Float32 pc[4] = { static_cast<Float32>(n_elem_), 1.0f, keep_prob_, static_cast<Float32>(seed_) };
 	pc_buf_.Upload(pc);
-	// -- [AI:BEGIN] reuse static srb_
 	bwd_srb_->SetResource("inp", in_dL_dout.GetBuffer());
 	bwd_srb_->SetResource("out_buf", dL_dx_.GetBuffer());
 	bwd_srb_->SetResource("mask", mask_.GetBuffer());
@@ -57,10 +53,8 @@ void DropoutLayer::Backward(CommandList* in_cmd, CONST Tensor& in_dL_dout, CONST
 	in_cmd->SetComputePipeline(pipeline_);
 	in_cmd->SetShaderResourceBinding(bwd_srb_);
 	in_cmd->Dispatch((n_elem_ + 255u) / 256u, 1u, 1u);
-	// -- [AI:END]
 }
 
-// -- [AI] DropoutLayer Persistence
 void DropoutLayer::SaveParameters(std::ostream& os) const {
     os.write((char*)&p_, 4); os.write((char*)&n_elem_, 4);
 }
@@ -94,7 +88,6 @@ LayerNorm::~LayerNorm() {
 }
 
 void LayerNorm::Forward(CommandList* in_cmd, Tensor& in_input) {
-	// -- [AI:BEGIN] reuse static fwd_srb_
 	fwd_srb_->SetResource("inp", in_input.GetBuffer());
 	fwd_srb_->SetResource("out_buf", output_.GetBuffer());
 	fwd_srb_->SetResource("gamma", gamma_.GetBuffer());
@@ -106,11 +99,9 @@ void LayerNorm::Forward(CommandList* in_cmd, Tensor& in_input) {
 	in_cmd->SetComputePipeline(fwd_pipe_);
 	in_cmd->SetShaderResourceBinding(fwd_srb_);
 	in_cmd->Dispatch(max_batch_, 1u, 1u);
-	// -- [AI:END]
 }
 
 void LayerNorm::Backward(CommandList* in_cmd, CONST Tensor& in_dL_dout, CONST Tensor& in_input_act) {
-	// -- [AI:BEGIN] reuse static bwd_srb_
 	bwd_srb_->SetResource("dL_dout", in_dL_dout.GetBuffer());
 	bwd_srb_->SetResource("dL_dx", dL_dx_.GetBuffer());
 	bwd_srb_->SetResource("inp", in_input_act.GetBuffer());
@@ -124,7 +115,6 @@ void LayerNorm::Backward(CommandList* in_cmd, CONST Tensor& in_dL_dout, CONST Te
 	in_cmd->SetComputePipeline(bwd_pipe_);
 	in_cmd->SetShaderResourceBinding(bwd_srb_);
 	in_cmd->Dispatch(max_batch_, 1u, 1u);
-	// -- [AI:END]
 }
 
 void LayerNorm::ZeroGradients(CommandList* in_cmd) {
@@ -140,7 +130,6 @@ Vector<std::tuple<Tensor*,Tensor*,Tensor*>> LayerNorm::GetParamTriples() {
 	return {{&gamma_, &grad_gamma_, &v_gamma_}, {&beta_, &grad_beta_, &v_beta_}};
 }
 
-// -- [AI] LayerNorm Persistence
 void LayerNorm::SaveParameters(std::ostream& os) const {
     os.write((char*)&n_features_, 4); os.write((char*)&max_batch_, 4); os.write((char*)&eps_, 4);
     WriteTensor(os, gamma_); WriteTensor(os, beta_);
@@ -183,7 +172,6 @@ void BatchNorm1DLayer::SetTrainingMode(Bool in_training) {
 }
 
 void BatchNorm1DLayer::Forward(CommandList* in_cmd, Tensor& in_input) {
-	// -- [AI:BEGIN] reuse static fwd_srb_
 	fwd_srb_->SetResource("inp", in_input.GetBuffer());
 	fwd_srb_->SetResource("out_buf", output_.GetBuffer());
 	fwd_srb_->SetResource("gamma", gamma_.GetBuffer());
@@ -197,11 +185,9 @@ void BatchNorm1DLayer::Forward(CommandList* in_cmd, Tensor& in_input) {
 	in_cmd->SetComputePipeline(fwd_pipe_);
 	in_cmd->SetShaderResourceBinding(fwd_srb_);
 	in_cmd->Dispatch(n_features_, 1u, 1u);
-	// -- [AI:END]
 }
 
 void BatchNorm1DLayer::Backward(CommandList* in_cmd, CONST Tensor& in_dL_dout, CONST Tensor& in_input_act) {
-	// -- [AI:BEGIN] reuse static bwd_srb_
 	bwd_srb_->SetResource("dL_dout", in_dL_dout.GetBuffer());
 	bwd_srb_->SetResource("dL_dx", dL_dx_.GetBuffer());
 	bwd_srb_->SetResource("inp", in_input_act.GetBuffer());
@@ -215,7 +201,6 @@ void BatchNorm1DLayer::Backward(CommandList* in_cmd, CONST Tensor& in_dL_dout, C
 	in_cmd->SetComputePipeline(bwd_pipe_);
 	in_cmd->SetShaderResourceBinding(bwd_srb_);
 	in_cmd->Dispatch(n_features_, 1u, 1u);
-	// -- [AI:END]
 }
 
 void BatchNorm1DLayer::ZeroGradients(CommandList*) {}
@@ -228,7 +213,6 @@ Vector<std::tuple<Tensor*,Tensor*,Tensor*>> BatchNorm1DLayer::GetParamTriples() 
 	return {{&gamma_, &grad_gamma_, &v_gamma_}, {&beta_, &grad_beta_, &v_beta_}};
 }
 
-// -- [AI] BatchNorm1DLayer Persistence
 void BatchNorm1DLayer::SaveParameters(std::ostream& os) const {
     os.write((char*)&n_features_, 4); os.write((char*)&max_batch_, 4);
     os.write((char*)&momentum_, 4); os.write((char*)&eps_, 4);

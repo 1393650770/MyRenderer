@@ -1,5 +1,4 @@
 #pragma once
-// -- [AI:BEGIN]
 #ifndef _NN_ACTIVATION_
 #define _NN_ACTIVATION_
 #include "Layer.h"
@@ -55,5 +54,4 @@ public: SiLULayer(CONST Vector<UInt32>& in_shape) : ActivationLayer(in_shape, "S
 MYRENDERER_END_CLASS
 
 } // namespace MXNN
-// -- [AI:END]
 #endif

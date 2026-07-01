@@ -7,9 +7,7 @@
 #include "RHI/RenderRHI.h"
 #include "RHI/RenderShader.h"
 #include "RHI/RenderRource.h"
-// -- [AI]
 #include "ShaderHelper.h"
-// -- [AI] VK_Shader.h removed - FlushDescriptorWrites now on RHI base class
 
 using namespace MXRender::RHI;
 using namespace MXRender;
@@ -49,7 +47,7 @@ void SGD::Update(CommandList* in_cmd, Tensor& in_params, Tensor& in_grads,
 	temp_srb->SetResource("g0", in_grads.GetBuffer());
 	temp_srb->SetResource("v0", in_velocity.GetBuffer());
 	temp_srb->SetResource("pc", pc_buf_.GetBuffer());
-	temp_srb->FlushDescriptorWrites(); // -- [AI] virtual dispatch — no Vulkan cast needed
+	temp_srb->FlushDescriptorWrites();
 
 	in_cmd->SetComputePipeline(update_pipeline_);
 	in_cmd->SetShaderResourceBinding(temp_srb);
@@ -58,7 +56,6 @@ void SGD::Update(CommandList* in_cmd, Tensor& in_params, Tensor& in_grads,
 	temp_srbs_.push_back(temp_srb);
 }
 
-// -- [AI:BEGIN] Adam implementation
 Adam::Adam(Params in_p) : p_(in_p) {
 	Shader* s = LoadComputeShader("Shader/nn_update_adam.comp.spv");
 	pipeline_ = CreateComputePipeline(s);
@@ -95,6 +92,5 @@ void Adam::Update(CommandList* in_cmd, Tensor& in_params, Tensor& in_grads,
 	in_cmd->Dispatch((in_grads.ElementCount() + 255u) / 256u, 1u, 1u);
 	temp_srbs_.push_back(s);
 }
-// -- [AI:END]
 
 } // namespace MXNN

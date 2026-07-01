@@ -1,5 +1,4 @@
 #version 460
-// -- [AI:BEGIN] Multi-Head Attention forward pass
 // Dispatch: (B * num_heads, 1, 1) -- one WG per sample per head
 // local_size_x = 64, one thread per sequence position (T <= 64)
 //
@@ -15,7 +14,6 @@
 // pc layout: pc.d[0]=B, pc.d[1]=T, pc.d[2]=d, pc.d[3]=num_heads, pc.d[4]=d_k
 //
 // Extra output: binding[6] = attn_weights [B*H*T*T] softmax output for backward
-// -- [AI:END]
 
 layout(local_size_x = 64) in;
 
@@ -28,7 +26,6 @@ layout(set = 0, binding = 5) buffer out_Buf           { float d[]; } out_buf;   
 layout(set = 0, binding = 6) buffer attn_Buf          { float d[]; } attn_weights;  // [B*H*T*T] softmax output
 layout(set = 0, binding = 10) readonly buffer pc_Buf  { float d[]; } pc;
 
-// -- [AI] Shared memory for K and V vectors (all positions)
 shared float sK[64 * 64];  // [T, d_k] row-major
 shared float sV[64 * 64];  // [T, d_k]
 
@@ -58,7 +55,6 @@ void main() {
 	float K_vec[64];
 	float V_vec[64];
 
-	// -- [AI] Step 1: Q,K,V projection for this position
 	uint pos = tid;
 	if (pos < T) {
 		for (uint k = 0u; k < dk; k++) {
@@ -77,7 +73,6 @@ void main() {
 		}
 	}
 
-	// -- [AI] Step 2: Store K, V in shared memory
 	if (pos < T) {
 		for (uint k = 0u; k < dk; k++) {
 			sK[pos * dk + k] = K_vec[k];
@@ -89,7 +84,6 @@ void main() {
 
 	if (pos >= T) return;
 
-	// -- [AI] Step 3: Attention scores
 	float scale = 1.0 / sqrt(float(dk));
 	float scores[64];
 	float max_score = -1e30;
@@ -103,7 +97,6 @@ void main() {
 		max_score = max(max_score, dot);
 	}
 
-	// -- [AI] Step 4: Softmax
 	float exp_sum = 0.0;
 	for (uint tk = 0u; tk < T; tk++) {
 		float ev = exp(scores[tk] - max_score);
@@ -112,7 +105,6 @@ void main() {
 	}
 	float inv_sum = 1.0 / exp_sum;
 
-	// -- [AI] Save softmax weights for backward pass
 	uint attn_base = gid * (T * T);  // offset for this (sample, head)
 	for (uint tk = 0u; tk < T; tk++) {
 		float w = scores[tk] * inv_sum;
@@ -121,7 +113,6 @@ void main() {
 		attn_weights.d[attn_base + pos * T + tk] = w;
 	}
 
-	// -- [AI] Step 5: Weighted sum of V
 	float attn_vec[64];
 	for (uint k = 0u; k < dk; k++) {
 		attn_vec[k] = 0.0;
@@ -133,7 +124,6 @@ void main() {
 		}
 	}
 
-	// -- [AI] Step 6: Output projection
 	uint out_base = b * (T * d);
 	for (uint j = 0u; j < d; j++) {
 		float val = b_o.d[j];
