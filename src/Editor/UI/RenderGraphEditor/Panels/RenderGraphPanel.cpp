@@ -67,6 +67,16 @@ void RenderGraphPanel::Draw()
 
 			for (auto& node : nodes)
 			{
+				if (!show_resource_nodes && dynamic_cast<RenderGraphResourceNode*>(node))
+				{
+					// Draw minimal pin-only node for link connectivity
+					ed::BeginNode(node->GetSelfID());
+					ImGui::Dummy(ImVec2(4, 4)); // Tiny hitbox
+					for (auto* pin : node->GetInputPins()) pin->Draw();
+					for (auto* pin : node->GetOutputPins()) pin->Draw();
+					ed::EndNode();
+					continue;
+				}
 				node->Draw();
 			}
 			for (auto& link : links)
@@ -649,6 +659,8 @@ void RenderGraphPanel::GraphMenu()
 			{
 				ed::NavigateToContent();
 			}
+			ImGui::Separator();
+			ImGui::MenuItem("Show Resource Nodes", nullptr, &show_resource_nodes);
 			ImGui::EndMenu();
 		}
 
@@ -871,14 +883,14 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 		Int res_count  = (Int)graph->GetResources().size();
 		const Float32 pass_x_start = 100.0f;
 		const Float32 pass_x_step  = 280.0f;
-		const Float32 pass_y       = 100.0f;
-		const Float32 res_y        = 420.0f;
+		const Float32 pass_y       = 200.0f;
+		Int res_lane = 0;
 
-		// Place passes left to right by insertion order (= execution order)
+		// Place passes left to right
 		for (auto& pi : new_passes)
 			pi.node->SetPendingPosition(pass_x_start + pi.index * pass_x_step, pass_y);
 
-		// Place resources at the midpoint between their first writer and first reader
+		// -- [AI] Stagger resources above/below pass row
 		for (auto& ri : new_resources)
 		{
 			Int writer_idx = -1;
@@ -897,6 +909,7 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 			if (reader_idx >= pass_count) reader_idx = writer_idx + 1;
 
 			Float32 mid_x = pass_x_start + ((writer_idx + reader_idx) * 0.5f) * pass_x_step;
+			Float32 res_y = (res_lane++ % 2 == 0) ? 60.0f : 480.0f;
 			ri.node->SetPendingPosition(mid_x, res_y);
 		}
 	}
