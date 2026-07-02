@@ -4,7 +4,7 @@
 
 #include "Core/ConstDefine.h"
 #include "BaseItem.h"
-#include "UI/RenderGraphEditor/RenderGraphNodeColors.h"
+#include "UI/RenderGraphEditor/Core/RenderGraphNodeColors.h"
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)

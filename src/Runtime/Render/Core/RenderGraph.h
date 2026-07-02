@@ -4,6 +4,8 @@
 #include <memory>
 #include "RenderGraphPass.h"
 #include "RenderGraphResource.h"
+#include "RenderGraphBlackboard.h"
+#include "RenderGraphCompileConfig.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Render)
@@ -42,7 +44,7 @@ public:
 	}
 
 	template<typename description_type, typename actual_type>
-	RenderGraphResource<description_type, actual_type>* METHOD( GetRetainedResource)(const std::string& name)
+	RenderGraphResource<description_type, actual_type>* METHOD(GetRetainedResource)(const std::string& name)
 	{
 		for (auto& resource : resources)
 		{
@@ -54,19 +56,42 @@ public:
 		return nullptr;
 	}
 
-	//A directed acyclic graph is constructed to find the resource reference relationship
+	// -- [AI] Register an external resource into the graph (cross-frame history)
+	template<typename description_type, typename actual_type>
+	RenderGraphResource<description_type, actual_type>* METHOD(RegisterExternalResource)(CONST String& name, actual_type* existing)
+	{
+		description_type desc;
+		resources.emplace_back(std::make_unique<RenderGraphResource<description_type, actual_type>>(name, desc, existing));
+		return static_cast<RenderGraphResource<description_type, actual_type>*>(resources.back().get());
+	}
+
+	// A directed acyclic graph is constructed to find the resource reference relationship
 	void METHOD(Compile)();
+	void METHOD(Compile)(CONST RenderGraphCompileConfig& config);
 
 	void METHOD(Execute)();
 
 	void METHOD(Release)();
 
-	// Buffer aliasing: compute offsets for transient buffers to share one VkDeviceMemory block.
+	// Buffer and texture aliasing: compute offsets for transient resources to share one memory block.
 	void METHOD(CompileAliasingPlan)();
+
+	// -- [AI] Async compute scheduling: sort passes by queue type
+	void METHOD(ScheduleAsyncCompute)();
+
+	// -- [AI] Extract resource from graph (cross-frame history — survives Release)
+	void METHOD(ExtractResource)(RenderGraphResourceBase* resource);
+
+	// -- [AI] Debug output
+	void METHOD(DumpGraphViz)(CONST String& path);
+	void METHOD(DebugDumpBarriers)();
 
 	// Accessors for editor introspection
 	Vector<std::unique_ptr<RenderGraphPassBase>>& METHOD(GetPasses)() { return passes; }
 	Vector<std::unique_ptr<RenderGraphResourceBase>>& METHOD(GetResources)() { return resources; }
+
+	// -- [AI] Graph blackboard accessor
+	RenderGraphBlackboard& METHOD(GetBlackboard)() { return blackboard; }
 
 	bool METHOD(Searilize)(CONST String& filename);
 
@@ -89,6 +114,9 @@ protected:
 		RenderGraphPassBase* pass;
 		Vector<RenderGraphResourceBase*> realized_resources;
 		Vector<RenderGraphResourceBase*> derealized_resources;
+		// -- [AI] Split barrier lists (RHI-level, materialized by VK backend)
+		Vector<RHIBarrierDesc> prologue_barriers;
+		Vector<RHIBarrierDesc> epilogue_barriers;
 	MYRENDERER_END_STRUCT
 
 
@@ -96,7 +124,10 @@ protected:
 	Vector<std::unique_ptr<RenderGraphResourceBase>> resources;
 	Vector<RenderGraphStep> steps;
 
-	// Buffer aliasing plan: resource pointer -> byte offset within the shared block
+	// -- [AI] Graph blackboard for cross-pass CPU data sharing
+	RenderGraphBlackboard blackboard;
+
+	// Buffer and texture aliasing plan: resource pointer -> byte offset within the shared block
 	Map<RenderGraphResourceBase*, UInt64> aliasing_offsets;
 	UInt64 aliasing_block_size = 0;
 private:
@@ -136,4 +167,3 @@ MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 
 #endif
-

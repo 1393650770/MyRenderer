@@ -102,9 +102,14 @@ void VK_ResourcePool::ReturnBuffer(std::unique_ptr<VK_Buffer> buffer, CONST Buff
 	// else: pool full, buffer will be destroyed when unique_ptr goes out of scope
 }
 
+
+
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
+
+// -- [AI] Global VkDevice handle for RenderDoc debug object names
+VkDevice g_debug_name_device = VK_NULL_HANDLE;
 
 // ---------------------------------------------------------------------------
 // Bridge functions – declared in the Render layer, implemented here.
@@ -173,6 +178,34 @@ void ReturnPooledBuffer(std::unique_ptr<MXRender::RHI::Buffer> buffer, CONST MXR
 	auto* vk_raw = static_cast<MXRender::RHI::Vulkan::VK_Buffer*>(buffer.release());
 	pool->ReturnBuffer(std::unique_ptr<MXRender::RHI::Vulkan::VK_Buffer>(vk_raw), desc);
 }
+
+	// -- [AI:BEGIN] --
+	// g_debug_name_device is in global scope, declared extern in RenderGraphResource.h
+	void SetDebugNameForRHIResource(MXRender::RHI::RenderResource* resource, CONST String& name)
+	{
+		if (!resource || name.empty() || g_debug_name_device == VK_NULL_HANDLE) return;
+		if (auto* tex = dynamic_cast<MXRender::RHI::Texture*>(resource))
+		{
+			auto* vk_tex = static_cast<MXRender::RHI::Vulkan::VK_Texture*>(tex);
+			VkImage image = vk_tex->GetImage();
+			if (image == VK_NULL_HANDLE) return;
+			VkDebugUtilsObjectNameInfoEXT i{}; i.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			i.objectType = VK_OBJECT_TYPE_IMAGE; i.objectHandle = (UInt64)image; i.pObjectName = name.c_str();
+			PFN_vkSetDebugUtilsObjectNameEXT fn = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(g_debug_name_device, "vkSetDebugUtilsObjectNameEXT");
+			if (fn) fn(g_debug_name_device, &i);
+		}
+		else if (auto* buf = dynamic_cast<MXRender::RHI::Buffer*>(resource))
+		{
+			auto* vk_buf = static_cast<MXRender::RHI::Vulkan::VK_Buffer*>(buf);
+			VkBuffer h = vk_buf->GetBuffer();
+			if (h == VK_NULL_HANDLE) return;
+			VkDebugUtilsObjectNameInfoEXT i{}; i.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			i.objectType = VK_OBJECT_TYPE_BUFFER; i.objectHandle = (UInt64)h; i.pObjectName = name.c_str();
+			PFN_vkSetDebugUtilsObjectNameEXT fn = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(g_debug_name_device, "vkSetDebugUtilsObjectNameEXT");
+			if (fn) fn(g_debug_name_device, &i);
+		}
+	}
+	// -- [AI:END] --
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

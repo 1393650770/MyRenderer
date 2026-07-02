@@ -1,4 +1,4 @@
-#include "RenderGraphSerializer.h"
+#include "UI/RenderGraphEditor/Services/RenderGraphSerializer.h"
 #include "Render/Core/RenderGraphDefinition.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -58,7 +58,7 @@ Bool RenderGraphSerializer::SaveGraph(CONST Render::RenderGraphDefinition& def, 
 			json pj;
 			pj["name"] = pd.name;
 			pj["pass_kind"] = PassKindToString(pd.pass_kind);
-			pj["is_cullable"] = pd.is_cullable;
+			pj["pass_flags"] = (UInt32)pd.pass_flags;
 			pj["read_resources"] = pd.read_resources;
 			pj["write_resources"] = pd.write_resources;
 			pj["create_resources"] = pd.create_resources;
@@ -175,7 +175,7 @@ Bool RenderGraphSerializer::LoadGraph(Render::RenderGraphDefinition& out_def, CO
 				Render::RDGPassDef pd;
 				pd.name = pj.value("name", "Unnamed");
 				pd.pass_kind = StringToPassKind(pj.value("pass_kind", "Graphics"));
-				pd.is_cullable = pj.value("is_cullable", true);
+				pd.pass_flags = (Render::RDGPassFlags)pj.value("pass_flags", (UInt32)Render::RDGPassFlags::Raster);
 
 				if (pj.contains("read_resources") && pj["read_resources"].is_array())
 					for (auto& r : pj["read_resources"])

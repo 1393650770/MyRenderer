@@ -288,4 +288,5 @@ target("RendererSample-NNE_Transformer")
     add_files("src/Sample/6-NeuralNetwork/ConvLayer.cpp")
     set_group("Sample")
     after_build(MoveResource)
+after_build(MoveResource)
 

@@ -1,9 +1,10 @@
-#include "OutlinePanel.h"
+#include "UI/RenderGraphEditor/Panels/OutlinePanel.h"
 #include "UI/BaseNode.h"
-#include "RenderGraphPassNode.h"
-#include "RenderGraphResourceNode.h"
-#include "RenderGraphPanel.h"
-#include "RenderGraphNodeColors.h"
+#include "UI/RenderGraphEditor/Nodes/RenderGraphPassNode.h"
+#include "UI/RenderGraphEditor/Nodes/RenderGraphResourceNode.h"
+#include "UI/RenderGraphEditor/Panels/RenderGraphPanel.h"
+#include "UI/RenderGraphEditor/Services/EditorEventBus.h"
+#include "UI/RenderGraphEditor/Core/RenderGraphNodeColors.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
@@ -29,7 +30,9 @@ void OutlinePanel::Draw()
 		if (!rg_panel)
 		{
 			ImGui::TextColored(ImColor(150, 150, 150, 200), "No graph loaded.");
-			OnEnd();
+			// -- [AI] Poll EventBus for graph changes
+	EditorEventBus::Get().TickFireGraphModified();
+		OnEnd();
 			return;
 		}
 
@@ -105,6 +108,8 @@ void OutlinePanel::Draw()
 			}
 		}
 
+		// -- [AI] Poll EventBus for graph changes
+	EditorEventBus::Get().TickFireGraphModified();
 		OnEnd();
 	}
 }

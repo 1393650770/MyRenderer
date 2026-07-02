@@ -1,7 +1,7 @@
 #include "BasePin.h"
 #include "ThirdParty/imgui_node_editor/imgui_node_editor.h"
 #include "BaseNode.h"
-#include "UI/RenderGraphEditor/RenderGraphNodeColors.h"
+#include "UI/RenderGraphEditor/Core/RenderGraphNodeColors.h"
 
 namespace ed = ax::NodeEditor;
 MYRENDERER_BEGIN_NAMESPACE(MXRender)

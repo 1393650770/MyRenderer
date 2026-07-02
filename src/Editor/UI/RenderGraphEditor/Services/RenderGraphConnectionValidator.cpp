@@ -1,8 +1,8 @@
-#include "RenderGraphConnectionValidator.h"
+#include "UI/RenderGraphEditor/Services/RenderGraphConnectionValidator.h"
 #include "UI/BasePin.h"
 #include "UI/BaseNode.h"
-#include "RenderGraphPassNode.h"
-#include "RenderGraphResourceNode.h"
+#include "UI/RenderGraphEditor/Nodes/RenderGraphPassNode.h"
+#include "UI/RenderGraphEditor/Nodes/RenderGraphResourceNode.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)

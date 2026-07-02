@@ -3,7 +3,7 @@
 #define _PROPERTIESPANEL_
 
 #include "UI/BasePanel.h"
-#include "RenderGraphNodeColors.h"
+#include "UI/RenderGraphEditor/Core/RenderGraphNodeColors.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)

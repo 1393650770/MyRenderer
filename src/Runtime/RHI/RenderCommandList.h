@@ -51,6 +51,9 @@ public:
 
 	VIRTUAL void METHOD(BeginUI)() PURE;
 	VIRTUAL void METHOD(EndUI)() PURE;
+
+	// -- [AI] GPU timestamp query for per-pass timing
+	VIRTUAL void METHOD(WriteTimestamp)(UInt32 query_index) {}
 private:
 
 protected:

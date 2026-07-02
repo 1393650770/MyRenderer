@@ -11,9 +11,9 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_internal.h>
 #include "UI/BasePanel.h"
-#include "UI/RenderGraphEditor/RenderGraphPanel.h"
-#include "UI/RenderGraphEditor/PropertiesPanel.h"
-#include "UI/RenderGraphEditor/OutlinePanel.h"
+#include "UI/RenderGraphEditor/Panels/RenderGraphPanel.h"
+#include "UI/RenderGraphEditor/Panels/PropertiesPanel.h"
+#include "UI/RenderGraphEditor/Panels/OutlinePanel.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)

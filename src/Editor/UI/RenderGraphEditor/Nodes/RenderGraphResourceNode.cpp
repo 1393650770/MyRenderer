@@ -1,4 +1,4 @@
-#include "RenderGraphResourceNode.h"
+#include "UI/RenderGraphEditor/Nodes/RenderGraphResourceNode.h"
 #include "ThirdParty/imgui_node_editor/imgui_node_editor.h"
 #include "UI/BasePin.h"
 

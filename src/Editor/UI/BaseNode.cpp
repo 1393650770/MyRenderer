@@ -1,7 +1,7 @@
 #include "BaseNode.h"
 #include "ThirdParty/imgui_node_editor/imgui_node_editor.h"
 #include "BasePin.h"
-#include "UI/RenderGraphEditor/RenderGraphNodeColors.h"
+#include "UI/RenderGraphEditor/Core/RenderGraphNodeColors.h"
 
 
 namespace ed = ax::NodeEditor;

@@ -1,19 +1,30 @@
-#include "RenderGraphPanel.h"
+#include "UI/RenderGraphEditor/Panels/RenderGraphPanel.h"
 #include "UI/BasePanel.h"
 #include "ThirdParty/imgui_node_editor/imgui_node_editor.h"
 #include "ThirdParty/imgui_node_editor/imgui_node_editor_internal.h"
 #include "UI/BasePin.h"
 #include "UI/BaseNode.h"
 #include "UI/BaseLink.h"
-#include "RenderGraphPassNode.h"
-#include "RenderGraphResourceNode.h"
-#include "RenderGraphConnectionValidator.h"
-#include "PropertiesPanel.h"
+#include "UI/RenderGraphEditor/Nodes/RenderGraphPassNode.h"
+#include "UI/RenderGraphEditor/Nodes/RenderGraphResourceNode.h"
+#include "UI/RenderGraphEditor/Services/RenderGraphConnectionValidator.h"
+#include "UI/RenderGraphEditor/Panels/PropertiesPanel.h"
 #include "Render/Core/RenderGraphDefinition.h"
-#include "RenderGraphSerializer.h"
-#include "RenderGraphBuilder.h"
+#include "UI/RenderGraphEditor/Services/RenderGraphSerializer.h"
+#include "UI/RenderGraphEditor/Services/RenderGraphBuilder.h"
 #include <iostream>
 #include "Render/Core/RenderGraph.h"
+// -- [AI] Phase 1 services
+#include "UI/RenderGraphEditor/Services/GraphValidator.h"
+#include "UI/RenderGraphEditor/Services/EditorEventBus.h"
+#include "UI/RenderGraphEditor/Services/PassRegistry.h"
+#include "UI/RenderGraphEditor/RenderGraphSubGraphNode.h"
+#include <set>
+#include "UI/RenderGraphEditor/Services/GraphValidator.h"
+#include "UI/RenderGraphEditor/Services/EditorEventBus.h"
+#include "UI/RenderGraphEditor/Services/PassRegistry.h"
+#include "UI/RenderGraphEditor/RenderGraphSubGraphNode.h"
+#include <set>
 
 namespace ed = ax::NodeEditor;
 
@@ -72,6 +83,7 @@ void RenderGraphPanel::Draw()
 				if (node && node != selected_node)
 				{
 					selected_node = node;
+					EditorEventBus::Get().FireSelectionChanged(selected_node);
 				}
 			}
 
@@ -82,6 +94,7 @@ void RenderGraphPanel::Draw()
 				if (!hovered)
 				{
 					selected_node = nullptr;
+					EditorEventBus::Get().FireSelectionChanged(nullptr);
 				}
 			}
 
@@ -238,24 +251,31 @@ void RenderGraphPanel::CreateOperator()
 		{
 			if (ImGui::BeginMenu("Add Pass"))
 			{
-				if (ImGui::MenuItem("Graphics Pass"))
+				// -- [AI] Categorized from PassRegistry
+				for (auto& cat : PassRegistry::Get().GetCategories())
 				{
-					auto* node = new RenderGraphPassNode("GraphicsPass", PassNodeType::Graphics);
-					ed::SetNodePosition(node->GetSelfID(), mouse_pos);
-					nodes.push_back(node);
+					if (ImGui::BeginMenu(cat.c_str()))
+					{
+						for (auto& entry : PassRegistry::Get().GetByCategory(cat))
+						{
+							if (ImGui::MenuItem(entry.name.c_str()))
+							{
+								PassNodeType pt = PassNodeType::Custom;
+								switch (entry.pass_kind) {
+									case Render::RDGPassKind::Graphics: pt = PassNodeType::Graphics; break;
+									case Render::RDGPassKind::Compute:  pt = PassNodeType::Compute; break;
+									case Render::RDGPassKind::Copy:     pt = PassNodeType::Copy; break;
+									default: break;
+								}
+								auto* node = new RenderGraphPassNode(entry.name, pt);
+								ed::SetNodePosition(node->GetSelfID(), mouse_pos);
+								nodes.push_back(node);
+							}
+						}
+						ImGui::EndMenu();
+					}
 				}
-				if (ImGui::MenuItem("Compute Pass"))
-				{
-					auto* node = new RenderGraphPassNode("ComputePass", PassNodeType::Compute);
-					ed::SetNodePosition(node->GetSelfID(), mouse_pos);
-					nodes.push_back(node);
-				}
-				if (ImGui::MenuItem("Copy Pass"))
-				{
-					auto* node = new RenderGraphPassNode("CopyPass", PassNodeType::Copy);
-					ed::SetNodePosition(node->GetSelfID(), mouse_pos);
-					nodes.push_back(node);
-				}
+				ImGui::Separator();
 				if (ImGui::MenuItem("Custom Pass"))
 				{
 					auto* node = new RenderGraphPassNode("CustomPass", PassNodeType::Custom);
@@ -448,7 +468,77 @@ void RenderGraphPanel::BaseOperator()
 	}
 	ed::EndCreate();
 
-	// === Deletion ===
+	
+	// -- [AI] Copy/Paste
+	static Render::RenderGraphDefinition s_clipboard;
+	static Bool s_has_clipboard = false;
+	if (ImGui::IsKeyPressed(ImGuiKey_C) && ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift) {
+		Int sc = ed::GetSelectedObjectCount();
+		if (sc > 0) {
+			Vector<ed::NodeId> sel(sc); ed::GetSelectedNodes(sel.data(), sc);
+			s_clipboard = Render::RenderGraphDefinition(); s_has_clipboard = true;
+			Set<String> snames;
+			for (auto& nid : sel) { if (nid) { BaseNode* n = GetNode(nid.Get()); if (n) snames.insert(n->GetName()); } }
+			for (auto& nid : sel) {
+				if (!nid) continue; BaseNode* n = GetNode(nid.Get()); if (!n) continue;
+				if (auto* pn = dynamic_cast<RenderGraphPassNode*>(n)) {
+					Render::RDGPassDef pd; pd.name = pn->GetName();
+					pd.pass_kind = (Render::RDGPassKind)(Int)pn->GetPassType();
+					for (auto* p : pn->GetInputPins()) pd.read_resources.push_back(p->GetName());
+					for (auto* p : pn->GetOutputPins()) pd.write_resources.push_back(p->GetName());
+					s_clipboard.passes.push_back(pd);
+				} else if (auto* rn = dynamic_cast<RenderGraphResourceNode*>(n)) {
+					Render::RDGResourceDef rd; rd.name = rn->GetName();
+					s_clipboard.resources.push_back(rd);
+				}
+			}
+			for (auto* link : links) {
+				if (!link) continue;
+				BaseItem* si = GetItemByID(link->GetStartID()); BaseItem* ei = GetItemByID(link->GetEndID());
+				if (!si || !ei) continue; BasePin* sp = si->AsPin(); BasePin* ep = ei->AsPin();
+				if (!sp || !ep || !sp->GetBelongNode() || !ep->GetBelongNode()) continue;
+				if (snames.count(sp->GetBelongNode()->GetName()) && snames.count(ep->GetBelongNode()->GetName())) {
+					Render::RDGEdgeDef ed; ed.source_node_name=sp->GetBelongNode()->GetName();
+					ed.source_pin_name=sp->GetName(); ed.target_node_name=ep->GetBelongNode()->GetName();
+					ed.target_pin_name=ep->GetName(); ed.edge_type=(Int)ep->GetPinAccess();
+					s_clipboard.edges.push_back(ed);
+				}
+			}
+		}
+	}
+	if (ImGui::IsKeyPressed(ImGuiKey_V) && ImGui::GetIO().KeyCtrl && s_has_clipboard) {
+		static UInt32 pcnt = 0; Float32 ox=50+pcnt*20, oy=50+pcnt*20; pcnt++;
+		Map<String,String> nmap;
+		for (auto& rd : s_clipboard.resources) {
+			String nn=rd.name+"_C"; nmap[rd.name]=nn;
+			auto* node=new RenderGraphResourceNode(nn, ResourceNodeType::Texture);
+			ed::SetNodePosition(node->GetSelfID(), ImVec2(300+ox,200+oy));
+			nodes.push_back(node);
+		}
+		for (auto& pd : s_clipboard.passes) {
+			String nn=pd.name+"_C"; nmap[pd.name]=nn;
+			PassNodeType pt=PassNodeType::Custom;
+			switch(pd.pass_kind){case Render::RDGPassKind::Graphics:pt=PassNodeType::Graphics;break;case Render::RDGPassKind::Compute:pt=PassNodeType::Compute;break;default:break;}
+			auto* node=new RenderGraphPassNode(nn,pt);
+			for (auto& rn:pd.read_resources) node->AddInputPin(rn,PinAccess::Read);
+			for (auto& rn:pd.write_resources) node->AddOutputPin(rn,PinAccess::Write);
+			ed::SetNodePosition(node->GetSelfID(),ImVec2(300+ox,200+oy));
+			nodes.push_back(node);
+		}
+		for (auto& ed:s_clipboard.edges) {
+			String sn=nmap.count(ed.source_node_name)?nmap[ed.source_node_name]:ed.source_node_name;
+			String tn=nmap.count(ed.target_node_name)?nmap[ed.target_node_name]:ed.target_node_name;
+			BaseNode *ns=nullptr,*nt=nullptr;
+			for(auto* n:nodes){if(n->GetName()==sn)ns=n;if(n->GetName()==tn)nt=n;}
+			if(!ns||!nt)continue;
+			BasePin*sp=ns->GetPinByName(ed.source_pin_name);BasePin*tp=nt->GetPinByName(ed.target_pin_name);
+			if(!sp||!tp)continue;
+			BaseLink* l=new BaseLink("Link");l->Init(sp->GetSelfID(),tp->GetSelfID());l->SetLinkAccess((PinAccess)ed.edge_type);
+			links.push_back(l);
+		}
+		EditorEventBus::Get().FireGraphModified();
+	}
+// === Deletion ===
 	if (ed::BeginDelete())
 	{
 		ed::LinkId deleted_link_id;
@@ -505,6 +595,8 @@ void RenderGraphPanel::GraphMenu()
 				if (current_save_path.empty())
 					current_save_path = "render_graph.rgraph.json";
 				auto def = BuildDefinition();
+				auto vr = GraphValidator::Validate(def);
+				if(!vr.is_valid) std::cerr << "[RG] Save with " << vr.errors.size() << " validation issues" << std::endl;
 				if (RenderGraphSerializer::SaveGraph(def, current_save_path))
 					std::cout << "[RenderGraphEditor] Saved to: " << current_save_path << std::endl;
 				else
@@ -597,6 +689,9 @@ Render::RenderGraphDefinition RenderGraphPanel::BuildDefinition() CONST
 
 			Render::RDGNodeLayout nl;
 			nl.node_name = pass_node->GetName();
+			auto pass_pos = ed::GetNodePosition(pass_node->GetSelfID());
+			nl.pos_x = pass_pos.x;
+			nl.pos_y = pass_pos.y;
 			def.node_layouts.push_back(nl);
 		}
 		else if (auto* res_node = dynamic_cast<RenderGraphResourceNode*>(node))
@@ -618,6 +713,9 @@ Render::RenderGraphDefinition RenderGraphPanel::BuildDefinition() CONST
 
 			Render::RDGNodeLayout nl;
 			nl.node_name = res_node->GetName();
+			auto res_pos = ed::GetNodePosition(res_node->GetSelfID());
+			nl.pos_x = res_pos.x;
+			nl.pos_y = res_pos.y;
 			def.node_layouts.push_back(nl);
 		}
 	}

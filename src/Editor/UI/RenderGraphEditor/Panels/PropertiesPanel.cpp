@@ -1,9 +1,10 @@
-#include "PropertiesPanel.h"
+#include "UI/RenderGraphEditor/Panels/PropertiesPanel.h"
 #include "UI/BaseNode.h"
 #include "UI/BasePin.h"
-#include "RenderGraphPassNode.h"
-#include "RenderGraphResourceNode.h"
-#include "RenderGraphPanel.h"
+#include "UI/RenderGraphEditor/Nodes/RenderGraphPassNode.h"
+#include "UI/RenderGraphEditor/Nodes/RenderGraphResourceNode.h"
+#include "UI/RenderGraphEditor/Panels/RenderGraphPanel.h"
+#include "UI/RenderGraphEditor/Services/EditorEventBus.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
@@ -69,6 +70,8 @@ void PropertiesPanel::Draw()
 				ImGui::Text("Generic node — no editable properties.");
 			}
 		}
+		// -- [AI] Poll EventBus for graph changes
+	EditorEventBus::Get().TickFireGraphModified();
 		OnEnd();
 	}
 }
