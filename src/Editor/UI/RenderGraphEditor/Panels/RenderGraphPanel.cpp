@@ -709,7 +709,13 @@ Render::RenderGraphDefinition RenderGraphPanel::BuildDefinition() CONST
 		else if (auto* res_node = dynamic_cast<RenderGraphResourceNode*>(node))
 		{
 			Render::RDGResourceDef rd;
-			rd.name = res_node->GetName();
+			String _rn = res_node->GetName();
+			size_t _at = _rn.find("@");
+			if (_at != String::npos) _rn = _rn.substr(0, _at);
+			rd.name = _rn;
+			Bool _dup = false;
+			for (auto& r : def.resources) { if (r.name == _rn) { _dup = true; break; } }
+			if (_dup) continue;
 			rd.kind = (res_node->GetResourceType() == ResourceNodeType::Buffer)
 				? Render::RDGResourceKind::Buffer : Render::RDGResourceKind::Texture;
 			rd.texture_format = res_node->GetTextureFormat();
@@ -814,6 +820,7 @@ void RenderGraphPanel::LoadDefinition(CONST Render::RenderGraphDefinition& def)
 		auto it = name_to_node.find(nl.node_name);
 		if (it != name_to_node.end())
 		{
+			it->second->SetPendingPosition(nl.pos_x, nl.pos_y);
 		}
 	// Restore links from edges
 	for (auto& ed : def.edges)
@@ -859,21 +866,30 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 		new_passes.push_back({node, (Int)new_passes.size()});
 	}
 
+	// -- [AI] Multi-copy: one display node per (resource,pass) pair
 	for (auto& res : graph->GetResources())
 	{
 		String res_name = res->GetName();
-		bool exists = false;
-		for (auto* n : nodes) { if (n->GetName() == res_name) { exists = true; break; } }
-		if (exists) continue;
-
-		ResourceNodeType rtype = res->IsBufferResource() ? ResourceNodeType::Buffer : ResourceNodeType::Texture;
-		auto* node = new RenderGraphResourceNode(res_name, rtype);
-		node->SetIsTransient(res->GetIsTransient());
-		node->BindResource(res.get());
-		node->AddInputPin("Input", PinAccess::Write);
-		node->AddOutputPin("Output", PinAccess::Read);
-		nodes.push_back(node);
-		new_resources.push_back({node, res_name});
+		for (auto& pass : graph->GetPasses())
+		{
+			Bool used = false;
+			for (auto* rp : pass->GetReadResources())  if (rp->GetName() == res_name) { used = true; break; }
+			for (auto* wp : pass->GetWriteResources()) if (wp->GetName() == res_name) { used = true; break; }
+			for (auto* cp : pass->GetCreateResources())if (cp->GetName() == res_name) { used = true; break; }
+			if (!used) continue;
+			String display_key = res_name + "@" + pass->GetName();
+			bool exists = false;
+			for (auto* n : nodes) { if (n->GetName() == display_key) { exists = true; break; } }
+			if (exists) continue;
+			ResourceNodeType rtype = res->IsBufferResource() ? ResourceNodeType::Buffer : ResourceNodeType::Texture;
+			auto* node = new RenderGraphResourceNode(display_key, rtype);
+			node->SetIsTransient(res->GetIsTransient());
+			node->BindResource(res.get());
+			node->AddInputPin("Input", PinAccess::Write);
+			node->AddOutputPin("Output", PinAccess::Read);
+			nodes.push_back(node);
+			new_resources.push_back({node, res_name});
+		}
 	}
 
 	// --- Phase 2: layout based on dependencies ---
@@ -928,11 +944,14 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 		// Read resources: Resource Output -> Pass Input
 		for (auto* res : pass->GetReadResources())
 		{
-			BaseNode* res_node = name_to_node[res->GetName()];
+			String _k = res->GetName() + "@" + pass->GetName();
+			BaseNode* res_node = name_to_node[_k];
+			if (!res_node) res_node = name_to_node[res->GetName()];
 			if (!res_node) continue;
 
 			BasePin* res_out = res_node->GetPinByName("Output");
-			BasePin* pass_in = pass_node->GetPinByName(res->GetName());
+			BasePin* pass_in = nullptr;
+			for (auto* p : pass_node->GetInputPins()) if (p->GetName() == res->GetName()) { pass_in = p; break; }
 			if (!res_out || !pass_in) continue;
 
 			// Check if link already exists
@@ -955,10 +974,13 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 		{
 			for (auto* res : res_list)
 			{
-				BaseNode* res_node = name_to_node[res->GetName()];
+				String _wk = res->GetName() + "@" + pass->GetName();
+				BaseNode* res_node = name_to_node[_wk];
+				if (!res_node) res_node = name_to_node[res->GetName()];
 				if (!res_node) continue;
 
-				BasePin* pass_out = pass_node->GetPinByName(res->GetName());
+				BasePin* pass_out = nullptr;
+				for (auto* p : pass_node->GetOutputPins()) if (p->GetName() == res->GetName()) { pass_out = p; break; }
 				BasePin* res_in = res_node->GetPinByName("Input");
 				if (!pass_out || !res_in) continue;
 

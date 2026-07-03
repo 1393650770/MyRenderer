@@ -89,10 +89,10 @@ protected:
 	// Shared selection state
 	BaseNode* selected_node = nullptr;
 
-	// -- [AI] View toggles: false = hide resource nodes (edge-label mode)
-		Bool show_resource_nodes = true; // -- [AI] Default ON for compatibility; toggle in View menu
+	// -- [AI] View toggle (default ON)
+	Bool show_resource_nodes = true;
 
-		// Child panels
+	// Child panels
 private:
 #pragma endregion
 
