@@ -1002,6 +1002,39 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 		add_pass_to_res_links(pass->GetWriteResources(), PinAccess::Write);
 		add_pass_to_res_links(pass->GetCreateResources(), PinAccess::Create);
 	}
+
+	// -- [AI] Bridge copies: writer::Output -> reader::Input
+	for (auto& res : graph->GetResources()) {
+		String rn = res->GetName();
+		BaseNode* wc = nullptr; Vector<BaseNode*> rcs;
+		for (auto* n : nodes) {
+			auto* rno = dynamic_cast<RenderGraphResourceNode*>(n);
+			if (!rno) continue;
+			String nn = rno->GetName();
+			size_t at = nn.find('@');
+			if (at == String::npos) continue;
+			if (nn.substr(0, at) != rn) continue;
+			BasePin* ip = rno->GetPinByName("Input");
+			if (!ip) continue;
+			Bool hw = false;
+			for (auto* l : links) if (l->GetEndID() == ip->GetSelfID()) { hw = true; break; }
+			if (hw) wc = rno; else rcs.push_back(rno);
+		}
+		if (!wc || rcs.empty()) continue;
+		BasePin* wo = wc->GetPinByName("Output");
+		if (!wo) continue;
+		for (auto* rc : rcs) {
+			BasePin* ri = rc->GetPinByName("Input");
+			if (!ri) continue;
+			Bool dup = false;
+			for (auto* l : links) if (l->GetStartID() == wo->GetSelfID() && l->GetEndID() == ri->GetSelfID()) { dup = true; break; }
+			if (dup) continue;
+			BaseLink* bl = new BaseLink("Link");
+			bl->Init(wo->GetSelfID(), ri->GetSelfID());
+			bl->SetLinkAccess(PinAccess::Read);
+			links.push_back(bl);
+		}
+	}
 }
 
 
