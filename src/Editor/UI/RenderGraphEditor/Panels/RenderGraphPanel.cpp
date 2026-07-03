@@ -79,9 +79,40 @@ void RenderGraphPanel::Draw()
 				}
 				node->Draw();
 			}
-			for (auto& link : links)
-			{
-				link->Draw();
+			if (!show_resource_nodes) {
+				Map<String, UInt64> writer, reader;
+				for (auto* link : links) {
+					if (!link) continue;
+					BaseItem* s = GetItemByID(link->GetStartID());
+					BaseItem* e = GetItemByID(link->GetEndID());
+					if (!s || !e) continue;
+					BasePin* sp = s->AsPin(); BasePin* ep = e->AsPin();
+					if (!sp || !ep) continue;
+					BaseNode* sn = sp->GetBelongNode(); BaseNode* en = ep->GetBelongNode();
+					if (!sn || !en) continue;
+					Bool sr = dynamic_cast<RenderGraphResourceNode*>(sn) != nullptr;
+					Bool er = dynamic_cast<RenderGraphResourceNode*>(en) != nullptr;
+					if (!sr && !er) continue;
+					String rn = sr ? sn->GetName() : en->GetName();
+					UInt64 pid = sr ? en->GetSelfID() : sn->GetSelfID();
+					BasePin* pp = sr ? ep : sp;
+					if (pp && pp->GetPinAccess() != PinAccess::Read) writer[rn] = pid;
+					else reader[rn] = pid;
+				}
+				for (auto& kv : writer) {
+					if (!kv.second || !reader.count(kv.first)) continue;
+					UInt64 rid = reader[kv.first];
+					ImVec2 p1 = ed::GetNodePosition(ed::NodeId(kv.second));
+					ImVec2 p2 = ed::GetNodePosition(ed::NodeId(rid));
+					ImDrawList* dl = ImGui::GetForegroundDrawList();
+					dl->AddBezierCubic(p1, p1+ImVec2(60,0), p2-ImVec2(60,0), p2, IM_COL32(100,160,255,180), 2.5f);
+					ImVec2 mid((p1.x+p2.x)*0.5f,(p1.y+p2.y)*0.5f-10.f);
+					ImVec2 sz = ImGui::CalcTextSize(kv.first.c_str());
+					dl->AddRectFilled(ImVec2(mid.x-sz.x*0.5f-4,mid.y-2),ImVec2(mid.x+sz.x*0.5f+4,mid.y+sz.y+2),IM_COL32(25,25,45,230),3.f);
+					dl->AddText(ImVec2(mid.x-sz.x*0.5f,mid.y),IM_COL32(180,220,255,255),kv.first.c_str());
+				}
+			} else {
+				for (auto& link : links) { link->Draw(); }
 			}
 
 			// Handle node selection via click
