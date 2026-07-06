@@ -8,6 +8,9 @@
 #include "Render/Core/RenderGraphResource.h"
 #include "RHI/RenderRource.h"
 #include "RHI/RenderEnum.h"
+#include "RHI/RenderTexture.h"
+#include "RHI/RenderBuffer.h"
+#include "RHI/RenderCommandList.h"
 #include "UI/RenderGraphEditor/Services/PassRegistry.h"
 #include <iostream>
 
@@ -49,101 +52,80 @@ struct MinimalPassData : public Render::RenderGraphPassDataBase
 
 Bool RenderGraphBuilder::BuildRuntimeGraph(
 	CONST Render::RenderGraphDefinition& def,
-	Render::RenderGraph* out_graph)
+	Render::RenderGraph* out_graph,
+	CONST Vector<ExternalResourceBinding>& externals)
 {
 	s_last_error.clear();
-
-	if (!out_graph)
-	{
-		s_last_error = "BuildRuntimeGraph: out_graph is null";
-		return false;
-	}
-
-	// Release any previous graph state
+	if (!out_graph) { s_last_error = "BuildRuntimeGraph: out_graph is null"; return false; }
 	out_graph->Release();
 
-	// ---- Phase 1: Register retained (external) resources ----
+	// ---- Phase 1: Register resources ----
 	Map<String, Render::RenderGraphResourceBase*> resource_map;
-	for (auto& rd : def.resources)
-	{
-		if (rd.lifetime == Render::RDGResourceLifetime::External
-			|| !rd.is_transient)
-		{
-			// Retained/external resource — lives beyond the graph
-			if (rd.kind == Render::RDGResourceKind::Buffer)
-			{
+	for (auto& ext : externals) {
+		if (static_cast<RHI::Texture*>(ext.texture))
+			resource_map[ext.resource_name] = out_graph->RegisterExternalResource<RHI::TextureDesc, RHI::Texture>(ext.resource_name, static_cast<RHI::Texture*>(ext.texture));
+		else if (static_cast<RHI::Buffer*>(ext.buffer))
+			resource_map[ext.resource_name] = out_graph->RegisterExternalResource<RHI::BufferDesc, RHI::Buffer>(ext.resource_name, static_cast<RHI::Buffer*>(ext.buffer));
+	}
+	for (auto& rd : def.resources) {
+		if (resource_map.count(rd.name)) continue;
+		if (!rd.is_transient || rd.lifetime == Render::RDGResourceLifetime::External) {
+			if (rd.kind == Render::RDGResourceKind::Buffer) {
 				auto desc = BuildBufferDesc(rd);
-				auto* res = out_graph->AddRetainedResource<RHI::BufferDesc, RHI::Buffer>(
-					rd.name, desc, nullptr);
-				resource_map[rd.name] = res;
-			}
-			else // Texture, ExternalTexture, DepthStencil
-			{
+				resource_map[rd.name] = out_graph->AddRetainedResource<RHI::BufferDesc, RHI::Buffer>(rd.name, desc, nullptr);
+			} else {
 				auto desc = BuildTextureDesc(rd);
-				auto* res = out_graph->AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
-					rd.name, desc, nullptr);
-				resource_map[rd.name] = res;
+				resource_map[rd.name] = out_graph->AddRetainedResource<RHI::TextureDesc, RHI::Texture>(rd.name, desc, nullptr);
 			}
 		}
 	}
 
 	// ---- Phase 2: Build passes ----
 	UInt32 built_count = 0;
-	for (auto& pd : def.passes)
-	{
-		// Check if this pass type is known
+	for (auto& pd : def.passes) {
 		const PassRegistryEntry* reg = PassRegistry::Get().Find(pd.name);
-
-		// Create a minimal pass to declare topology
 		String pass_name = pd.name;
 		Render::RDGPassKind kind = pd.pass_kind;
 		if (reg) kind = reg->pass_kind;
 
-		// For registered passes with real execute callbacks, those would be wired here.
+		Vector<String> write_names = pd.write_resources;
+		Vector<String> read_names = pd.read_resources;
+		Map<String, Render::RenderGraphResourceBase*> res_copy = resource_map;
+
 		auto* pass = out_graph->AddRenderPass<MinimalPassData>(
 			pass_name,
-			[&](MinimalPassData& data, Render::RenderGraphPassBuilder& builder, RHI::CommandList*)
-			{
-				// Declare read dependencies
-				for (auto& rname : pd.read_resources)
-				{
+			[&](MinimalPassData& data, Render::RenderGraphPassBuilder& builder, RHI::CommandList*) {
+				for (auto& rname : pd.read_resources) {
 					auto it = resource_map.find(rname);
-					if (it != resource_map.end())
-						builder.Read(it->second);
+					if (it != resource_map.end()) builder.Read(it->second);
 				}
-				// Declare write dependencies
-				for (auto& rname : pd.write_resources)
-				{
+				for (auto& rname : pd.write_resources) {
 					auto it = resource_map.find(rname);
-					if (it != resource_map.end())
-						builder.Write(it->second);
+					if (it != resource_map.end()) builder.Write(it->second);
 				}
 			},
-			[](const MinimalPassData& data, RHI::CommandList* cmd)
-			{
-				// Stub execute — pass declares topology but has no render logic yet.
-				// Full implementation requires per-pass shader callbacks from PassRegistry.
+			[write_names, read_names, res_copy](const MinimalPassData& data, RHI::CommandList* cmd) {
+				for (auto& rn : write_names) {
+					auto it = res_copy.find(rn);
+					if (it == res_copy.end() || !it->second) continue;
+					if (auto* tex = it->second->GetAsTexture()) {
+						Vector<RHI::Texture*> rtvs = { tex };
+						RHI::ClearValue cv{0.2f, 0.2f, 0.3f, 1.0f};
+						Vector<RHI::ClearValue> cvs = { cv };
+						cmd->SetRenderTarget(rtvs, nullptr, cvs, false);
+						cmd->ClearTexture(tex);
+					}
+				}
 			}
 		);
 
-		// Apply pass flags from definition
 		if (static_cast<UInt32>(pd.pass_flags) & static_cast<UInt32>(Render::RDGPassFlags::NeverCull))
 			pass->SetIsCullable(false);
-
 		built_count++;
 	}
 
-	// ---- Phase 3: Build edges into resource access lists ----
-	// Edge direction: Pass output -> Resource input = Write
-	//                 Resource output -> Pass input = Read
-	// These are already handled by read_resources/write_resources in pass defs.
-	// Edge entries provide pin-level granularity for editor display but the
-	// fundamental pass-resource dependencies are already captured.
-
 	std::cout << "[RenderGraphBuilder] Built graph: " << def.graph_name
-		<< " (" << built_count << " passes, " << resource_map.size() << " resources)"
-		<< std::endl;
-
+		<< " (" << built_count << " passes, " << resource_map.size() << " resources)" << std::endl;
 	return true;
 }
 

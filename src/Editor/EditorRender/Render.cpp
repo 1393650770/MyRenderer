@@ -43,21 +43,17 @@ void EditorRenderPipeline::BeginRender()
 	editor_ui.Init(window);
 	RHI::CommandList* cmd_list = RHIGetImmediateCommandList();
 
-	// Register backbuffer as retained (imported) resources so the RDG knows about them.
-	// This enables the editor to visualize pass-resource dependencies.
+	// Register backbuffer/depth as external (imported) resources.
+	// The RDG tracks dependencies but does not own their lifetime.
 	RHI::Texture* backbuffer_rtv = window->GetViewport()->GetCurrentBackBufferRTV();
 	RHI::Texture* backbuffer_dsv = window->GetViewport()->GetCurrentBackBufferDSV();
 
-	RHI::TextureDesc rt_desc = backbuffer_rtv->GetTextureDesc();
 	Render::RenderGraphResource<RHI::TextureDesc, RHI::Texture>* rt_resource =
-		graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>("BackBuffer", rt_desc, backbuffer_rtv);
+		graph.RegisterExternalResource<RHI::TextureDesc, RHI::Texture>("BackBuffer", backbuffer_rtv);
 
 	Render::RenderGraphResource<RHI::TextureDesc, RHI::Texture>* ds_resource = nullptr;
 	if (backbuffer_dsv)
-	{
-		RHI::TextureDesc ds_desc = backbuffer_dsv->GetTextureDesc();
-		ds_resource = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>("DepthStencil", ds_desc, backbuffer_dsv);
-	}
+		ds_resource = graph.RegisterExternalResource<RHI::TextureDesc, RHI::Texture>("DepthStencil", backbuffer_dsv);
 
 	struct ClearPassData :public  Render::RenderGraphPassDataBase
 	{

@@ -692,6 +692,21 @@ void RenderGraphPanel::GraphMenu()
 			ImGui::EndMenu();
 		}
 
+		if (ImGui::BeginMenu("Build"))
+		{
+			if (ImGui::MenuItem("Build Runtime Graph"))
+			{
+				auto def = BuildDefinition();
+				Render::RenderGraph* runtime_graph = nullptr;
+				// Try to get graph from EditorUI (set during init)
+				// For now, log the definition
+				UInt32 pc = 0, rc = 0;
+				RenderGraphBuilder::GetBuildStats(def, pc, rc);
+				std::cout << "[Editor] Build definition: " << pc << " passes, " << rc << " resources" << std::endl;
+			}
+			ImGui::EndMenu();
+		}
+
 		ImGui::EndMenuBar();
 	}
 }
@@ -872,192 +887,175 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 {
 	if (!graph) return;
 
-	// --- Phase 1: collect new nodes ---
-	struct NewPassInfo { RenderGraphPassNode* node; Int index; };
-	struct NewResInfo  { RenderGraphResourceNode* node; String name; };
-	Vector<NewPassInfo> new_passes;
-	Vector<NewResInfo>  new_resources;
-
-	for (auto& pass : graph->GetPasses())
-	{
-		String pass_name = pass->GetName();
-		bool exists = false;
-		for (auto* n : nodes) { if (n->GetName() == pass_name) { exists = true; break; } }
-		if (exists) continue;
-
-		auto* node = new RenderGraphPassNode(pass_name, PassNodeType::Custom);
-		node->BindPass(pass.get());
-		for (auto* res : pass->GetReadResources())  node->AddInputPin(res->GetName(), PinAccess::Read);
-		for (auto* res : pass->GetWriteResources()) node->AddOutputPin(res->GetName(), PinAccess::Write);
-		for (auto* res : pass->GetCreateResources())node->AddOutputPin(res->GetName(), PinAccess::Create);
-		nodes.push_back(node);
-		new_passes.push_back({node, (Int)new_passes.size()});
+	// --- Phase 1: Collect per-resource writers and readers ---
+	Map<String, Set<String>> res_writers;
+	Map<String, Set<String>> res_readers;
+	Map<String, Render::RenderGraphResourceBase*> res_runtime;
+	Map<String, Int> pass_order;
+	Int pi = 0;
+	for (auto& pass : graph->GetPasses()) {
+		auto& pn = pass->GetName();
+		pass_order[pn] = pi++;
+		for (auto* r : pass->GetReadResources()) {
+			res_readers[r->GetName()].insert(pn);
+			res_runtime[r->GetName()] = const_cast<Render::RenderGraphResourceBase*>(r);
+		}
+		for (auto* r : pass->GetWriteResources()) {
+			res_writers[r->GetName()].insert(pn);
+			res_runtime[r->GetName()] = const_cast<Render::RenderGraphResourceBase*>(r);
+		}
+		for (auto* r : pass->GetCreateResources()) {
+			res_writers[r->GetName()].insert(pn);
+			res_runtime[r->GetName()] = const_cast<Render::RenderGraphResourceBase*>(r);
+		}
 	}
 
-	for (auto& res : graph->GetResources())
-	{
-		String res_name = res->GetName();
-		for (auto& pass : graph->GetPasses())
-		{
-			Bool used = false;
-			for (auto* rp : pass->GetReadResources())  if (rp->GetName() == res_name) { used = true; break; }
-			for (auto* wp : pass->GetWriteResources()) if (wp->GetName() == res_name) { used = true; break; }
-			for (auto* cp : pass->GetCreateResources())if (cp->GetName() == res_name) { used = true; break; }
-			if (!used) continue;
-			String display_key = res_name + "@" + pass->GetName();
-			bool exists = false;
-			for (auto* n : nodes) { if (n->GetName() == display_key) { exists = true; break; } }
-			if (exists) continue;
-			ResourceNodeType rtype = res->IsBufferResource() ? ResourceNodeType::Buffer : ResourceNodeType::Texture;
-			auto* node = new RenderGraphResourceNode(display_key, rtype);
-			node->SetIsTransient(res->GetIsTransient());
-			node->BindResource(res.get());
+	// --- Phase 2: Create pass nodes ---
+	Map<String, BaseNode*> name_to_node;
+	for (auto* n : nodes) name_to_node[n->GetName()] = n;
+	for (auto& pass : graph->GetPasses()) {
+		String pn = pass->GetName();
+		if (name_to_node.count(pn)) continue;
+		auto* node = new RenderGraphPassNode(pn, PassNodeType::Custom);
+		node->BindPass(pass.get());
+		for (auto* r : pass->GetReadResources())  node->AddInputPin(r->GetName(), PinAccess::Read);
+		for (auto* r : pass->GetWriteResources()) node->AddOutputPin(r->GetName(), PinAccess::Write);
+		for (auto* r : pass->GetCreateResources())node->AddOutputPin(r->GetName(), PinAccess::Create);
+		nodes.push_back(node);
+		name_to_node[pn] = node;
+	}
+
+	auto find_pin = [](Vector<BasePin*>& pins, const String& name) -> BasePin* {
+		for (auto* p : pins) if (p->GetName() == name) return p;
+		return nullptr;
+	};
+
+	Set<String> all_res;
+	for (auto& kv : res_readers) all_res.insert(kv.first);
+	for (auto& kv : res_writers) all_res.insert(kv.first);
+
+	Set<String> used_writers; // writers that were paired with a reader
+
+	// --- Phase 3a: Writer → Reader nodes ---
+	for (auto& rn : all_res) {
+		ResourceNodeType rtype = res_runtime.count(rn) && res_runtime[rn]->IsBufferResource()
+			? ResourceNodeType::Buffer : ResourceNodeType::Texture;
+
+		Vector<String> writers, readers;
+		if (res_writers.count(rn)) for (auto& w : res_writers[rn]) writers.push_back(w);
+		if (res_readers.count(rn)) for (auto& r : res_readers[rn]) readers.push_back(r);
+		std::sort(writers.begin(), writers.end(), [&](auto& a, auto& b) { return pass_order[a] < pass_order[b]; });
+		std::sort(readers.begin(), readers.end(), [&](auto& a, auto& b) { return pass_order[a] < pass_order[b]; });
+
+		for (auto& rd : readers) {
+			String writer;
+			for (Int i = (Int)writers.size() - 1; i >= 0; --i)
+				if (pass_order[writers[i]] < pass_order[rd]) { writer = writers[i]; break; }
+			if (writer.empty()) continue;
+
+			String node_name = rn + "@" + writer + "@" + rd;
+			if (name_to_node.count(node_name)) continue;
+			used_writers.insert(rn + "|" + writer);
+
+			auto* node = new RenderGraphResourceNode(node_name, rtype);
+			if (res_runtime.count(rn)) { node->SetIsTransient(res_runtime[rn]->GetIsTransient()); node->BindResource(res_runtime[rn]); }
 			node->AddInputPin("Input", PinAccess::Write);
 			node->AddOutputPin("Output", PinAccess::Read);
 			nodes.push_back(node);
-			new_resources.push_back({node, res_name});
+			name_to_node[node_name] = node;
 		}
 	}
 
-	// --- Phase 2: layout based on dependencies ---
-	if (!new_passes.empty() || !new_resources.empty())
-	{
-		Int pass_count = (Int)graph->GetPasses().size();
-		Int res_count  = (Int)graph->GetResources().size();
-		const Float32 pass_x_start = 100.0f;
-		const Float32 pass_x_step  = 280.0f;
-		const Float32 pass_y       = 200.0f;
-		Int res_lane = 0;
+	// --- Phase 3b: Terminal Writer nodes (Resource@Writer for orphaned/overwritten writes) ---
+	for (auto& rn : all_res) {
+		if (!res_writers.count(rn)) continue;
+		ResourceNodeType rtype = res_runtime.count(rn) && res_runtime[rn]->IsBufferResource()
+			? ResourceNodeType::Buffer : ResourceNodeType::Texture;
 
-		// Place passes left to right
-		for (auto& pi : new_passes)
-			pi.node->SetPendingPosition(pass_x_start + pi.index * pass_x_step, pass_y);
+		for (auto& w : res_writers[rn]) {
+			if (used_writers.count(rn + "|" + w)) continue; // already in a Writer→Reader pair
+			String node_name = rn + "@" + w;
+			if (name_to_node.count(node_name)) continue;
 
-		for (auto& ri : new_resources)
-		{
-			Int writer_idx = -1;
-			Int reader_idx = pass_count;
-			for (Int pi = 0; pi < pass_count; ++pi)
-			{
-				auto& pass = graph->GetPasses()[pi];
-				for (auto* w : pass->GetWriteResources())
-					if (w->GetName() == ri.name) { writer_idx = pi; break; }
-				for (auto* c : pass->GetCreateResources())
-					if (c->GetName() == ri.name) { writer_idx = pi; break; }
-				for (auto* r : pass->GetReadResources())
-					if (r->GetName() == ri.name && reader_idx == pass_count) { reader_idx = pi; }
-			}
-			if (writer_idx < 0) writer_idx = 0;
-			if (reader_idx >= pass_count) reader_idx = writer_idx + 1;
-
-			Float32 mid_x = pass_x_start + ((writer_idx + reader_idx) * 0.5f) * pass_x_step;
-			Float32 res_y = (res_lane++ % 2 == 0) ? 60.0f : 480.0f;
-			ri.node->SetPendingPosition(mid_x, res_y);
+			auto* node = new RenderGraphResourceNode(node_name, rtype);
+			if (res_runtime.count(rn)) { node->SetIsTransient(res_runtime[rn]->GetIsTransient()); node->BindResource(res_runtime[rn]); }
+			node->AddInputPin("Input", PinAccess::Write);  // pass writes here
+			// No Output pin — terminal
+			nodes.push_back(node);
+			name_to_node[node_name] = node;
 		}
 	}
 
-	// Build name -> node map for link creation
-	Map<String, BaseNode*> name_to_node;
-	for (auto* n : nodes)
-		name_to_node[n->GetName()] = n;
+	// --- Phase 4: Links ---
+	for (auto& rn : all_res) {
+		if (!res_readers.count(rn) || !res_writers.count(rn)) continue;
+		Vector<String> writers, readers;
+		for (auto& w : res_writers[rn]) writers.push_back(w);
+		for (auto& r : res_readers[rn]) readers.push_back(r);
+		std::sort(writers.begin(), writers.end(), [&](auto& a, auto& b) { return pass_order[a] < pass_order[b]; });
+		std::sort(readers.begin(), readers.end(), [&](auto& a, auto& b) { return pass_order[a] < pass_order[b]; });
 
-	// Create links: Pass <-> Resource
-	for (auto& pass : graph->GetPasses())
-	{
-		BaseNode* pass_node = name_to_node[pass->GetName()];
-		if (!pass_node) continue;
+		for (auto& rd : readers) {
+			String writer;
+			for (Int i = (Int)writers.size() - 1; i >= 0; --i)
+				if (pass_order[writers[i]] < pass_order[rd]) { writer = writers[i]; break; }
+			if (writer.empty()) continue;
 
-		// Read resources: Resource Output -> Pass Input
-		for (auto* res : pass->GetReadResources())
-		{
-			String _k = res->GetName() + "@" + pass->GetName();
-			BaseNode* res_node = name_to_node[_k];
-			if (!res_node) res_node = name_to_node[res->GetName()];
+			String node_name = rn + "@" + writer + "@" + rd;
+			BaseNode* res_node = name_to_node[node_name];
 			if (!res_node) continue;
 
-			BasePin* res_out = res_node->GetPinByName("Output");
-			BasePin* pass_in = nullptr;
-			for (auto* p : pass_node->GetInputPins()) if (p->GetName() == res->GetName()) { pass_in = p; break; }
-			if (!res_out || !pass_in) continue;
+			BasePin* wo = find_pin(name_to_node[writer]->GetOutputPins(), rn);
+			BasePin* ri = find_pin(res_node->GetInputPins(), "Input");
+			if (wo && ri) { bool dup = false; for (auto* l : links) if (l->GetStartID() == wo->GetSelfID() && l->GetEndID() == ri->GetSelfID()) dup = true; if (!dup) { auto* l = new BaseLink("Link"); l->Init(wo->GetSelfID(), ri->GetSelfID()); l->SetLinkAccess(PinAccess::Write); links.push_back(l); } }
 
-			// Check if link already exists
-			bool link_exists = false;
-			for (auto* l : links)
-			{
-				if (l->GetStartID() == res_out->GetSelfID() && l->GetEndID() == pass_in->GetSelfID())
-				{ link_exists = true; break; }
-			}
-			if (link_exists) continue;
-
-			BaseLink* link = new BaseLink("Link");
-			link->Init(res_out->GetSelfID(), pass_in->GetSelfID());
-			link->SetLinkAccess(PinAccess::Read);
-			links.push_back(link);
+			BasePin* ro = find_pin(res_node->GetOutputPins(), "Output");
+			BasePin* ci = find_pin(name_to_node[rd]->GetInputPins(), rn);
+			if (ro && ci) { bool dup = false; for (auto* l : links) if (l->GetStartID() == ro->GetSelfID() && l->GetEndID() == ci->GetSelfID()) dup = true; if (!dup) { auto* l = new BaseLink("Link"); l->Init(ro->GetSelfID(), ci->GetSelfID()); l->SetLinkAccess(PinAccess::Read); links.push_back(l); } }
 		}
-
-		// Write/Create resources: Pass Output -> Resource Input
-		auto add_pass_to_res_links = [&](const Vector<const Render::RenderGraphResourceBase*>& res_list, PinAccess access)
-		{
-			for (auto* res : res_list)
-			{
-				String _wk = res->GetName() + "@" + pass->GetName();
-				BaseNode* res_node = name_to_node[_wk];
-				if (!res_node) res_node = name_to_node[res->GetName()];
-				if (!res_node) continue;
-
-				BasePin* pass_out = nullptr;
-				for (auto* p : pass_node->GetOutputPins()) if (p->GetName() == res->GetName()) { pass_out = p; break; }
-				BasePin* res_in = res_node->GetPinByName("Input");
-				if (!pass_out || !res_in) continue;
-
-				bool link_exists = false;
-				for (auto* l : links)
-				{
-					if (l->GetStartID() == pass_out->GetSelfID() && l->GetEndID() == res_in->GetSelfID())
-					{ link_exists = true; break; }
-				}
-				if (link_exists) continue;
-
-				BaseLink* link = new BaseLink("Link");
-				link->Init(pass_out->GetSelfID(), res_in->GetSelfID());
-				link->SetLinkAccess(access);
-				links.push_back(link);
-			}
-		};
-
-		add_pass_to_res_links(pass->GetWriteResources(), PinAccess::Write);
-		add_pass_to_res_links(pass->GetCreateResources(), PinAccess::Create);
 	}
 
-	for (auto& res : graph->GetResources()) {
-		String rn = res->GetName();
-		BaseNode* wc = nullptr; Vector<BaseNode*> rcs;
-		for (auto* n : nodes) {
-			auto* rno = dynamic_cast<RenderGraphResourceNode*>(n);
-			if (!rno) continue;
-			String nn = rno->GetName();
-			size_t at = nn.find('@');
-			if (at == String::npos) continue;
-			if (nn.substr(0, at) != rn) continue;
-			BasePin* ip = rno->GetPinByName("Input");
-			if (!ip) continue;
-			Bool hw = false;
-			for (auto* l : links) if (l->GetEndID() == ip->GetSelfID()) { hw = true; break; }
-			if (hw) wc = rno; else rcs.push_back(rno);
+	// Terminal writer links: Writer.Output(rn) -> Resource@Writer.Input
+	for (auto& rn : all_res) {
+		if (!res_writers.count(rn)) continue;
+		for (auto& w : res_writers[rn]) {
+			if (used_writers.count(rn + "|" + w)) continue;
+			String node_name = rn + "@" + w;
+			BaseNode* res_node = name_to_node[node_name];
+			if (!res_node) continue;
+			BasePin* wo = find_pin(name_to_node[w]->GetOutputPins(), rn);
+			BasePin* ri = find_pin(res_node->GetInputPins(), "Input");
+			if (wo && ri) { bool dup = false; for (auto* l : links) if (l->GetStartID() == wo->GetSelfID() && l->GetEndID() == ri->GetSelfID()) dup = true; if (!dup) { auto* l = new BaseLink("Link"); l->Init(wo->GetSelfID(), ri->GetSelfID()); l->SetLinkAccess(PinAccess::Write); links.push_back(l); } }
 		}
-		if (!wc || rcs.empty()) continue;
-		BasePin* wo = wc->GetPinByName("Output");
-		if (!wo) continue;
-		for (auto* rc : rcs) {
-			BasePin* ri = rc->GetPinByName("Input");
-			if (!ri) continue;
-			Bool dup = false;
-			for (auto* l : links) if (l->GetStartID() == wo->GetSelfID() && l->GetEndID() == ri->GetSelfID()) { dup = true; break; }
-			if (dup) continue;
-			BaseLink* bl = new BaseLink("Link");
-			bl->Init(wo->GetSelfID(), ri->GetSelfID());
-			bl->SetLinkAccess(PinAccess::Read);
-			links.push_back(bl);
+	}
+
+	// --- Phase 5: Layout ---
+	const float px = 100.0f, sx = 280.0f, py = 250.0f, ry0 = 50.0f, ry1 = 450.0f;
+	for (auto* n : nodes) {
+		auto* pn = dynamic_cast<RenderGraphPassNode*>(n);
+		if (pn && pass_order.count(pn->GetName()) && !pn->has_pending_pos)
+			pn->SetPendingPosition(px + pass_order[pn->GetName()] * sx, py);
+	}
+	Int lane = 0;
+	for (auto& rn : all_res) {
+		float ry = (lane++ % 2 == 0) ? ry0 : ry1;
+		for (auto* n : nodes) {
+			auto* rgn = dynamic_cast<RenderGraphResourceNode*>(n);
+			if (!rgn || rgn->has_pending_pos) continue;
+			String nm = rgn->GetName();
+			if (nm.find(rn + "@") != 0) continue;
+			String rest = nm.substr(rn.size() + 1);
+			size_t at2 = rest.find('@');
+			if (at2 == String::npos) {
+				// Terminal: Resource@Writer — place near writer
+				if (pass_order.count(rest)) rgn->SetPendingPosition(px + pass_order[rest] * sx, ry);
+			} else {
+				// Bridge: Resource@Writer@Reader — place between
+				String w = rest.substr(0, at2);
+				String r = rest.substr(at2 + 1);
+				if (pass_order.count(w) && pass_order.count(r))
+					rgn->SetPendingPosition(px + (pass_order[w] + pass_order[r]) * 0.5f * sx, ry);
+			}
 		}
 	}
 }
