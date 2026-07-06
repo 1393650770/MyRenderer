@@ -53,6 +53,6 @@ using CFile = WindowsFile;
 
 #endif
 
-MYRENDERER_END_NAMESPACE // namespace Diligent
+MYRENDERER_END_NAMESPACE 
 
 #endif
