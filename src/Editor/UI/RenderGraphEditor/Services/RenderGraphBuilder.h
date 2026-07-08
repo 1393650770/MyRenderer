@@ -12,16 +12,27 @@ MYRENDERER_END_NAMESPACE
 
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
+// Maps a resource name to an actual GPU resource (e.g. swapchain images).
+// Use void* to avoid pulling RHI headers into every consumer.
+struct ExternalResourceBinding
+{
+	String resource_name;
+	void* texture = nullptr; // RHI::Texture*
+	void* buffer  = nullptr; // RHI::Buffer*
+};
+
 // Builds a runtime RenderGraph from a RenderGraphDefinition.
 // This bridges the editor's data representation to the runtime execution graph.
 MYRENDERER_BEGIN_CLASS(RenderGraphBuilder)
 
 #pragma region METHOD
 public:
-	// Build a complete runtime RenderGraph from a definition.
+	// Build a runtime graph. External bindings override resource creation
+	// (used for swapchain BackBuffer / DepthStencil).
 	static Bool METHOD(BuildRuntimeGraph)(
 		CONST Render::RenderGraphDefinition& def,
-		Render::RenderGraph* out_graph);
+		Render::RenderGraph* out_graph,
+		CONST Vector<ExternalResourceBinding>& externals = {});
 
 	// Get the count of passes/resources that would be built (for preview).
 	static void METHOD(GetBuildStats)(
