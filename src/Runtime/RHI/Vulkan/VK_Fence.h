@@ -23,6 +23,7 @@ public:
     VkFence METHOD(GetFence)() CONST;
     VK_FenceManager* METHOD(GetOwner)() CONST;
     Bool METHOD(GetIsSignaled)() CONST;
+    Bool METHOD(CheckSignaled)();
     void METHOD(ResetFence)();
 protected:
     

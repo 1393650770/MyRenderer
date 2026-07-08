@@ -7,7 +7,7 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Render)
 
-// -- [AI:BEGIN] --
+// --   --
 // Configuration flags for RenderGraph::Compile().
 // Controls which compile phases are enabled.
 // Safe mode (fallback_to_conservative) applies full barriers + no aliasing + serial.
@@ -22,7 +22,7 @@ public:
 	Bool debug_dump_graphviz = false;
 	Bool debug_log_transitions = false;
 MYRENDERER_END_STRUCT
-// -- [AI:END] --
+// --   --
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

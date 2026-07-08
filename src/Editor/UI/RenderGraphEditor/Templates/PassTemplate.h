@@ -9,7 +9,7 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
-// -- [AI] Template pin descriptor
+// --   Template pin descriptor
 MYRENDERER_BEGIN_STRUCT(TemplatePinDef)
 public:
 	String pin_name;
@@ -17,7 +17,7 @@ public:
 	Render::RDGResourceKind resource_kind = Render::RDGResourceKind::Texture;
 MYRENDERER_END_STRUCT
 
-// -- [AI] Reusable pass template definition
+// --   Reusable pass template definition
 MYRENDERER_BEGIN_STRUCT(PassTemplate)
 public:
 	String name;
@@ -26,7 +26,7 @@ public:
 	Render::RDGPassKind pass_kind = Render::RDGPassKind::Graphics;
 	Vector<TemplatePinDef> input_pins;
 	Vector<TemplatePinDef> output_pins;
-	// -- [AI] Auto-created resource nodes when applying this template
+	// --   Auto-created resource nodes when applying this template
 	Vector<Render::RDGResourceDef> auto_create_resources;
 MYRENDERER_END_STRUCT
 

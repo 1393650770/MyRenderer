@@ -1,4 +1,4 @@
-// -- [AI:BEGIN] --
+// --   --
 #include "UI/RenderGraphEditor/Services/SearchService.h"
 #include "UI/BaseNode.h"
 #include "UI/BasePin.h"
@@ -60,4 +60,4 @@ UInt64 SearchService::GetNextMatch(CONST String& query, UInt64 current_match) CO
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
-// -- [AI:END] --
+// --   --

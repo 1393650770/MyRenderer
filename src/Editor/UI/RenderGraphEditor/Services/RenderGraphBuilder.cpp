@@ -1,4 +1,4 @@
-// -- [AI:BEGIN] Rewrite --
+// --   Rewrite --
 // Full Builder implementation. Creates RHI resources from RDGResourceDef and
 // declares pass topology in the Runtime RenderGraph. Execute callbacks for
 // registered passes are wired through PassRegistry.
@@ -17,7 +17,7 @@ MYRENDERER_BEGIN_NAMESPACE(UI)
 
 String RenderGraphBuilder::s_last_error;
 
-// -- [AI] Helper: build a TextureDesc from an RDGResourceDef
+// --   Helper: build a TextureDesc from an RDGResourceDef
 static RHI::TextureDesc BuildTextureDesc(const Render::RDGResourceDef& rd)
 {
 	RHI::TextureDesc desc;
@@ -34,7 +34,7 @@ static RHI::TextureDesc BuildTextureDesc(const Render::RDGResourceDef& rd)
 	return desc;
 }
 
-// -- [AI] Helper: build a BufferDesc from an RDGResourceDef
+// --   Helper: build a BufferDesc from an RDGResourceDef
 static RHI::BufferDesc BuildBufferDesc(const Render::RDGResourceDef& rd)
 {
 	RHI::BufferDesc desc;
@@ -44,7 +44,7 @@ static RHI::BufferDesc BuildBufferDesc(const Render::RDGResourceDef& rd)
 	return desc;
 }
 
-// -- [AI] Minimal pass data: carries name and nothing else (stub pass)
+// --   Minimal pass data: carries name and nothing else (stub pass)
 // For registered passes, the PassRegistry provides actual execute logic.
 struct MinimalPassData : public Render::RenderGraphPassDataBase
 {
@@ -103,7 +103,7 @@ Bool RenderGraphBuilder::BuildRuntimeGraph(
 		Render::RDGPassKind kind = pd.pass_kind;
 		if (reg) kind = reg->pass_kind;
 
-		// -- [AI] Create a pass that at minimum declares its resource dependencies.
+		// --   Create a pass that at minimum declares its resource dependencies.
 		// For registered passes with real execute callbacks, those would be wired here.
 		auto* pass = out_graph->AddRenderPass<MinimalPassData>(
 			pass_name,
@@ -163,4 +163,4 @@ void RenderGraphBuilder::GetBuildStats(
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
-// -- [AI:END] Rewrite --
+// --   Rewrite --

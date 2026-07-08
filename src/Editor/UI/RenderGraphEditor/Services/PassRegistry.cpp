@@ -1,4 +1,4 @@
-// -- [AI:BEGIN] --
+// --   --
 #include "UI/RenderGraphEditor/Services/PassRegistry.h"
 #include <algorithm>
 
@@ -39,7 +39,7 @@ Vector<String> PassRegistry::GetCategories() const
 	return cats;
 }
 
-// -- [AI] Built-in pass registrations
+// --   Built-in pass registrations
 REGISTER_PASS(GBufferPass,     "Geometry",    Render::RDGPassKind::Graphics)
 REGISTER_PASS(DepthPrePass,    "Geometry",    Render::RDGPassKind::Graphics)
 REGISTER_PASS(ShadowPass,      "Geometry",    Render::RDGPassKind::Graphics)
@@ -56,4 +56,4 @@ REGISTER_PASS(CustomPass,      "Utility",     Render::RDGPassKind::Custom)
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
-// -- [AI:END] --
+// --   --

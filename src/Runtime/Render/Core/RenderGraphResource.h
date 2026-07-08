@@ -25,13 +25,13 @@ std::unique_ptr<MXRender::RHI::Buffer> AcquirePooledBuffer(CONST MXRender::RHI::
 void ReturnPooledBuffer(std::unique_ptr<MXRender::RHI::Buffer> buffer, CONST MXRender::RHI::BufferDesc& desc);
 
 // Global resource pool pointer — defined in VK_ResourcePool.cpp, set in VK_Device::Init().
-// -- [AI:BEGIN] --
+// --   --
 // Debug name bridge for RenderDoc/validation layers.
 // Sets VK_EXT_debug_utils object name on the underlying Vulkan resource.
 // Declared here (Render layer) so Execute() can set names.
 // Implemented in the VK layer (VK_ResourcePool.cpp).
 void SetDebugNameForRHIResource(MXRender::RHI::RenderResource* resource, CONST String& name);
-// -- [AI:END] --
+// --   --
 
 extern void* g_resource_pool; // Opaque pointer; actual type is VK_ResourcePool* in ::MXRender::RHI::Vulkan
 
@@ -43,11 +43,11 @@ struct PassResourceAccess
 	CONST RenderGraphPassBase* pass = nullptr;
 	MXRender::ENUM_RESOURCE_STATE required_state = MXRender::ENUM_RESOURCE_STATE::Undefined;
 	bool is_write = false;
-		// -- [AI] Modification stamp (Blender pattern)
+		// --   Modification stamp (Blender pattern)
 		UInt64 modification_stamp = 0;
 };
 
-	// -- [AI] RHI-level barrier descriptor (zero Vulkan dependency)
+	// --   RHI-level barrier descriptor (zero Vulkan dependency)
 	struct RHIBarrierDesc
 	{
 		class RenderGraphResourceBase* resource = nullptr;
@@ -177,7 +177,12 @@ protected:
 	{
 		if (GetIsTransient())
 		{
-			std::get<std::unique_ptr<actual_type>>(actual).reset();
+			auto& ptr = std::get<std::unique_ptr<actual_type>>(actual);
+			if (ptr)
+			{
+				PushDeferredDestruction(std::move(ptr));
+				ptr = nullptr;
+			}
 		}
 	}
 private:

@@ -1,4 +1,4 @@
-// -- [AI:BEGIN] --
+// --   --
 #include "RenderGraphSubGraphNode.h"
 #include "UI/RenderGraphEditor/Nodes/RenderGraphPassNode.h"
 #include "UI/RenderGraphEditor/Nodes/RenderGraphResourceNode.h"
@@ -142,4 +142,4 @@ void RenderGraphSubGraphNode::RecalcSize()
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
-// -- [AI:END] --
+// --   --

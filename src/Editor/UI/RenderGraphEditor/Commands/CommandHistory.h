@@ -13,7 +13,7 @@ public:
 	VIRTUAL ~Command() MYDEFAULT;
 	VIRTUAL void METHOD(Execute)() PURE;
 	VIRTUAL void METHOD(Undo)() PURE;
-	// -- [AI] Merge sequential same-type commands (drag operations)
+	// --   Merge sequential same-type commands (drag operations)
 	VIRTUAL Bool METHOD(CanMerge)(CONST Command& other) CONST { return false; }
 	VIRTUAL void METHOD(Merge)(std::unique_ptr<Command> other) {}
 MYRENDERER_END_CLASS

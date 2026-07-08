@@ -11,7 +11,7 @@ MYRENDERER_BEGIN_NAMESPACE(Render)
 // This is the intermediate representation between the editor and the runtime.
 // Used for serialization (JSON) and runtime graph construction.
 
-// -- [AI] Resource lifetime classification
+// --   Resource lifetime classification
 enum class RDGResourceLifetime : UInt8
 {
 	Transient,    // Created and consumed within graph; can alias memory
@@ -33,7 +33,7 @@ struct RDGResourceDef
 {
 	String name;
 	RDGResourceKind kind = RDGResourceKind::Texture;
-	// -- [AI] Lifetime classification
+	// --   Lifetime classification
 	RDGResourceLifetime lifetime = RDGResourceLifetime::Transient;
 
 	// Texture properties
@@ -41,7 +41,7 @@ struct RDGResourceDef
 	UInt32 width = 1920;
 	UInt32 height = 1080;
 	UInt8 mip_level = 1;
-	// -- [AI] Extended TextureDesc coverage
+	// --   Extended TextureDesc coverage
 	UInt8 layer_count = 1;
 	UInt8 samples = 1;
 	UInt8 texture_type = 0;       // ENUM_TEXTURE_TYPE (2D/3D/Cube/Array)
@@ -49,11 +49,11 @@ struct RDGResourceDef
 	// Buffer properties
 	UInt64 buffer_size = 256;
 	UInt32 buffer_stride = 16;
-	// -- [AI] Extended BufferDesc coverage
+	// --   Extended BufferDesc coverage
 	UInt8 buffer_type = 0;        // ENUM_BUFFER_TYPE
 
 	// Common
-	// -- [AI] ENUM_TEXTURE_USAGE_TYPE flags
+	// --   ENUM_TEXTURE_USAGE_TYPE flags
 	UInt32 usage = 0;
 	UInt16 depth = 1;
 
@@ -62,7 +62,7 @@ struct RDGResourceDef
 	Bool is_depth_stencil = false;
 };
 
-// -- [AI] Pass flags bitmask (replaces single Bool is_cullable)
+// --   Pass flags bitmask (replaces single Bool is_cullable)
 enum class RDGPassFlags : UInt32
 {
 	None           = 0,
@@ -90,9 +90,9 @@ struct RDGPassDef
 {
 	String name;
 	RDGPassKind pass_kind = RDGPassKind::Graphics;
-	// -- [AI] Bitmask flags (replaces Bool is_cullable)
+	// --   Bitmask flags (replaces Bool is_cullable)
 	RDGPassFlags pass_flags = RDGPassFlags::Raster;
-	// -- [AI] Shader reference
+	// --   Shader reference
 	String shader_path;
 
 	// Resource references (by name)
@@ -100,7 +100,7 @@ struct RDGPassDef
 	Vector<String> write_resources;
 	Vector<String> create_resources;
 
-	// -- [AI] Explicit ordering hints (no shared resources between passes)
+	// --   Explicit ordering hints (no shared resources between passes)
 	Vector<String> explicit_dependencies;
 };
 
@@ -122,7 +122,7 @@ struct RDGNodeLayout
 	float pos_y = 0.0f;
 };
 
-// -- [AI] Sub-graph definition
+// --   Sub-graph definition
 struct RDGSubGraphDef
 {
 	String name;
@@ -133,7 +133,7 @@ struct RDGSubGraphDef
 	UInt32 color = 0x80808080;
 };
 
-// -- [AI] Annotation / sticky note
+// --   Annotation / sticky note
 struct RDGAnnotationDef
 {
 	String text;
@@ -141,7 +141,7 @@ struct RDGAnnotationDef
 	UInt32 color = 0xFFFFFF80;
 };
 
-// -- [AI] Graph metadata
+// --   Graph metadata
 struct RDGGraphMetadata
 {
 	String author;
@@ -154,14 +154,14 @@ struct RDGGraphMetadata
 struct RenderGraphDefinition
 {
 	String graph_name = "RenderGraph";
-	UInt32 version = 2;  // -- [AI] Bumped from v1 to v2
+	UInt32 version = 2;  // --   Bumped from v1 to v2
 
 	Vector<RDGPassDef> passes;
 	Vector<RDGResourceDef> resources;
 	Vector<RDGEdgeDef> edges;
 	Vector<RDGNodeLayout> node_layouts;
 
-	// -- [AI] v2 additions
+	// --   v2 additions
 	Vector<RDGSubGraphDef> sub_graphs;
 	Vector<RDGAnnotationDef> annotations;
 	RDGGraphMetadata metadata;

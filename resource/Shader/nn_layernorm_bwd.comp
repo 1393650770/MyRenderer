@@ -1,4 +1,4 @@
-// -- [AI] LayerNorm backward -- 4 reductions in shared memory, per-sample gradients
+// --   LayerNorm backward -- 4 reductions in shared memory, per-sample gradients
 #version 460
 layout(local_size_x = 256) in;
 

@@ -12,7 +12,7 @@ MYRENDERER_BEGIN_NAMESPACE(UI)
 class RenderGraphPassNode;
 class RenderGraphResourceNode;
 
-// -- [AI] Sub-graph node for grouping passes/resources into collapsible units.
+// --   Sub-graph node for grouping passes/resources into collapsible units.
 // Collapsed: shows header + exposed pins (1:1 mapped to child pins).
 // Expanded: renders child nodes and internal connections inline.
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderGraphSubGraphNode, public BaseNode)
@@ -27,35 +27,35 @@ public:
 	VIRTUAL void METHOD(Release)() OVERRIDE;
 	VIRTUAL BaseNode* METHOD(AsNode)() OVERRIDE { return this; }
 
-	// -- [AI] Child node management
+	// --   Child node management
 	void METHOD(AddChildPass)(RenderGraphPassNode* pass);
 	void METHOD(AddChildResource)(RenderGraphResourceNode* resource);
 	void METHOD(RemoveChild)(UInt64 node_id);
 	Vector<BaseNode*>& METHOD(GetChildren)() { return m_children; }
 
-	// -- [AI] Pin exposure: exposed_pin_name -> child_node.child_pin_name (1:1)
+	// --   Pin exposure: exposed_pin_name -> child_node.child_pin_name (1:1)
 	// Uses BaseNode::AddInput/AddOutput to create pins on the subgraph node itself.
 	void METHOD(ExposeInput)(CONST String& exposed_name, BaseNode* child, CONST String& child_pin_name);
 	void METHOD(ExposeOutput)(CONST String& exposed_name, BaseNode* child, CONST String& child_pin_name);
 
-	// -- [AI] Collapse/expand
+	// --   Collapse/expand
 	Bool METHOD(GetIsCollapsed)() CONST { return m_collapsed; }
 	void METHOD(SetCollapsed)(Bool collapsed);
 	void METHOD(ToggleCollapsed)() { SetCollapsed(!m_collapsed); }
 
-	// -- [AI] Is this a subgraph node? Used by ConnectionValidator.
+	// --   Is this a subgraph node? Used by ConnectionValidator.
 	static Bool METHOD(IsSubGraphNode)(BaseNode* node);
 
-	// -- [AI] Subgraph color
+	// --   Subgraph color
 	ImU32 METHOD(GetColor)() CONST { return m_color; }
 	void METHOD(SetColor)(ImU32 color) { m_color = color; }
 
 protected:
 	VIRTUAL void METHOD(RecalcSize)() OVERRIDE;
 private:
-	// -- [AI] Draw the collapsed view (header + exposed pins only)
+	// --   Draw the collapsed view (header + exposed pins only)
 	void DrawCollapsed();
-	// -- [AI] Draw bound-box and header for expanded mode
+	// --   Draw bound-box and header for expanded mode
 	void DrawExpandedHeader();
 
 #pragma endregion
@@ -64,7 +64,7 @@ private:
 public:
 protected:
 	Vector<BaseNode*> m_children;
-	// -- [AI] Exposed pin mappings: pair<child_node_id, child_pin_name>
+	// --   Exposed pin mappings: pair<child_node_id, child_pin_name>
 	Vector<std::pair<UInt64, String>> m_exposed_inputs;
 	Vector<std::pair<UInt64, String>> m_exposed_outputs;
 	Bool m_collapsed = true;

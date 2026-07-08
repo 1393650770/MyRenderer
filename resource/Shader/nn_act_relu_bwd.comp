@@ -1,4 +1,4 @@
-// -- [AI] relu backward
+// --   relu backward
 #version 460
 layout(local_size_x = 256) in;
 layout(set = 0, binding = 0) readonly buffer GradBuf { float d[]; } dL_dout;

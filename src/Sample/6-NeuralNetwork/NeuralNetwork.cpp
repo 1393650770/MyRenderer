@@ -3,13 +3,13 @@
 #include <random>
 #include "Application/Window.h"
 #include "Core/ConstDefine.h"
-// -- [AI] All Vulkan includes removed - RHI-only interface
+// --   All Vulkan includes removed - RHI-only interface
 #include "RHI/RenderRHI.h"
 #include "Tensor.h"
 #include "Layer.h"
 #include "Optimizer.h"
 #include "Model.h"
-// -- [AI] New features
+// --   New features
 #include "Activation.h"
 
 using namespace MXRender::RHI;
@@ -108,14 +108,14 @@ int main()
 	CONST UInt32 kMaxBatchSize = 32;
 	SequentialModel model(kMaxBatchSize);
 	model.AddLayer(std::make_unique<LinearLayer>(2, 64, kMaxBatchSize, false));
-	model.AddLayer(std::make_unique<ReLULayer>(Vector<UInt32>{kMaxBatchSize, 64})); // -- [AI]
+	model.AddLayer(std::make_unique<ReLULayer>(Vector<UInt32>{kMaxBatchSize, 64})); // --  
 	model.AddLayer(std::make_unique<SoftmaxCrossEntropyOutputLayer>(64, 3, kMaxBatchSize));
-	model.SetOptimizer(std::make_unique<Adam>(Adam::Params{0.001f, 0.9f, 0.999f, 1e-8f, 0.0f})); // -- [AI]
+	model.SetOptimizer(std::make_unique<Adam>(Adam::Params{0.001f, 0.9f, 0.999f, 1e-8f, 0.0f})); // --  
 
 	// Create dataset
 	SpiralDataset dataset(600, 3);
 
-	// Get compute command buffer -- [AI] using RHI global function
+	// Get compute command buffer --   using RHI global function
 	auto* cmd = RHIGetCommandListForQueue(ENUM_QUEUE_TYPE::COMPUTE);
 
 	// Input buffer
@@ -140,7 +140,7 @@ int main()
 
 			input_buf.Upload(images.data());
 
-			// -- [AI] Using RHI Begin/End lifecycle + queue submission
+			// --   Using RHI Begin/End lifecycle + queue submission
 			cmd->Begin();
 
 			Float32 loss = model.TrainStep(cmd, input_buf, labels, n);

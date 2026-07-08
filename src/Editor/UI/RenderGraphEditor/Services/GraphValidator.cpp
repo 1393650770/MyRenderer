@@ -1,4 +1,4 @@
-// -- [AI:BEGIN] --
+// --   --
 #include "UI/RenderGraphEditor/Services/GraphValidator.h"
 #include "UI/BaseNode.h"
 #include "UI/BasePin.h"
@@ -202,4 +202,4 @@ ValidationResult GraphValidator::ValidateEditorGraph(
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
-// -- [AI:END] --
+// --   --

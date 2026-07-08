@@ -9,10 +9,10 @@ MYRENDERER_BEGIN_NAMESPACE(UI)
 
 class BaseNode;
 
-// -- [AI:BEGIN] --
+// --   --
 // Observer interface for editor panel communication.
 // Single-threaded: all calls must be from the ImGui main thread.
-// -- [AI:END] --
+// --   --
 MYRENDERER_BEGIN_CLASS(IEditorListener)
 public:
 	VIRTUAL ~IEditorListener() MYDEFAULT;
@@ -32,7 +32,7 @@ public:
 	void METHOD(AddListener)(IEditorListener* listener);
 	void METHOD(RemoveListener)(IEditorListener* listener);
 
-	// -- [AI] Fire events. Iterates a COPY of the listener list to prevent
+	// --   Fire events. Iterates a COPY of the listener list to prevent
 	// iterator invalidation when a listener callback triggers another event.
 	void METHOD(FireNodeRenamed)(UInt64 node_id, CONST String& old_name, CONST String& new_name);
 	void METHOD(FirePropertyChanged)(UInt64 node_id, CONST String& prop_name);
@@ -41,7 +41,7 @@ public:
 	void METHOD(FireNodeDeleted)(UInt64 node_id);
 	void METHOD(FireNodeAdded)(UInt64 node_id);
 
-	// -- [AI] Debounced graph-modified. Call per-frame from Draw().
+	// --   Debounced graph-modified. Call per-frame from Draw().
 	// Only actually fires if >= 3 frames since last fire.
 	void METHOD(TickFireGraphModified)();
 private:

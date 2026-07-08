@@ -1,4 +1,4 @@
-// -- [AI] Element-wise tensor addition (for ResidualBlock skip connection)
+// --   Element-wise tensor addition (for ResidualBlock skip connection)
 #version 460
 layout(local_size_x = 256) in;
 layout(set = 0, binding = 0) readonly buffer A { float d[]; } a;

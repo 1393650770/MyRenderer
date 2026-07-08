@@ -56,7 +56,7 @@ public:
 		return nullptr;
 	}
 
-	// -- [AI] Register an external resource into the graph (cross-frame history)
+	// --   Register an external resource into the graph (cross-frame history)
 	template<typename description_type, typename actual_type>
 	RenderGraphResource<description_type, actual_type>* METHOD(RegisterExternalResource)(CONST String& name, actual_type* existing)
 	{
@@ -76,13 +76,13 @@ public:
 	// Buffer and texture aliasing: compute offsets for transient resources to share one memory block.
 	void METHOD(CompileAliasingPlan)();
 
-	// -- [AI] Async compute scheduling: sort passes by queue type
+	// --   Async compute scheduling: sort passes by queue type
 	void METHOD(ScheduleAsyncCompute)();
 
-	// -- [AI] Extract resource from graph (cross-frame history — survives Release)
+	// --   Extract resource from graph (cross-frame history — survives Release)
 	void METHOD(ExtractResource)(RenderGraphResourceBase* resource);
 
-	// -- [AI] Debug output
+	// --   Debug output
 	void METHOD(DumpGraphViz)(CONST String& path);
 	void METHOD(DebugDumpBarriers)();
 
@@ -90,7 +90,7 @@ public:
 	Vector<std::unique_ptr<RenderGraphPassBase>>& METHOD(GetPasses)() { return passes; }
 	Vector<std::unique_ptr<RenderGraphResourceBase>>& METHOD(GetResources)() { return resources; }
 
-	// -- [AI] Graph blackboard accessor
+	// --   Graph blackboard accessor
 	RenderGraphBlackboard& METHOD(GetBlackboard)() { return blackboard; }
 
 	bool METHOD(Searilize)(CONST String& filename);
@@ -114,7 +114,7 @@ protected:
 		RenderGraphPassBase* pass;
 		Vector<RenderGraphResourceBase*> realized_resources;
 		Vector<RenderGraphResourceBase*> derealized_resources;
-		// -- [AI] Split barrier lists (RHI-level, materialized by VK backend)
+		// --   Split barrier lists (RHI-level, materialized by VK backend)
 		Vector<RHIBarrierDesc> prologue_barriers;
 		Vector<RHIBarrierDesc> epilogue_barriers;
 	MYRENDERER_END_STRUCT
@@ -124,7 +124,7 @@ protected:
 	Vector<std::unique_ptr<RenderGraphResourceBase>> resources;
 	Vector<RenderGraphStep> steps;
 
-	// -- [AI] Graph blackboard for cross-pass CPU data sharing
+	// --   Graph blackboard for cross-pass CPU data sharing
 	RenderGraphBlackboard blackboard;
 
 	// Buffer and texture aliasing plan: resource pointer -> byte offset within the shared block
@@ -150,6 +150,24 @@ resource_type* MXRender::Render::RenderGraphPassBuilder::Read(resource_type* res
 {
 	resource->read_passes.push_back(pass);
 	pass->read_resources.push_back(resource);
+	return resource;
+}
+
+template<typename resource_type>
+resource_type* MXRender::Render::RenderGraphPassBuilder::Read(resource_type* resource, ENUM_RESOURCE_STATE required_state)
+{
+	resource->read_passes.push_back(pass);
+	pass->read_resources.push_back(resource);
+	resource->access_sequence.push_back({ pass, required_state, false, 0 });
+	return resource;
+}
+
+template<typename resource_type>
+resource_type* MXRender::Render::RenderGraphPassBuilder::Write(resource_type* resource, ENUM_RESOURCE_STATE required_state)
+{
+	resource->write_passes.push_back(pass);
+	pass->write_resources.push_back(resource);
+	resource->access_sequence.push_back({ pass, required_state, true, 0 });
 	return resource;
 }
 

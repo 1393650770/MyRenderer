@@ -42,6 +42,15 @@ Bool VK_Fence::GetIsSignaled() CONST
 {
 	return state == ENUM_Fence_State::Signaled;
 }
+
+Bool VK_Fence::CheckSignaled()
+{
+	if (state == ENUM_Fence_State::Signaled) return true;
+	VkResult result = vkGetFenceStatus(device->GetDevice(), fence);
+	if (result == VK_SUCCESS) { state = ENUM_Fence_State::Signaled; return true; }
+	return false;
+}
+
 void VK_Fence::ResetFence()
 {
 	owner_fence_manager->ResetFence(this);

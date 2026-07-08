@@ -1333,7 +1333,7 @@ namespace MXRender
 			ENUM_RESOURCE_STATE::ResolveDest |
 			ENUM_RESOURCE_STATE::BuildAsWrite;
 
-		// -- [AI:FIX] Bitwise AND of multi-bit flags can never equal exactly 1; check non-zero instead
+		// --   Bitwise AND of multi-bit flags can never equal exactly 1; check non-zero instead
 			return (state & write_access_states) != ENUM_RESOURCE_STATE::Invalid;
 	}
 

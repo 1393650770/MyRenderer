@@ -24,7 +24,7 @@ public:
 	VIRTUAL ~ShaderResourceBinding();
 
 	VIRTUAL void METHOD(SetResource)(CONST String& name, CONST RenderResource* resource) PURE;
-	// -- [AI]
+	// --  
 	VIRTUAL void METHOD(FlushDescriptorWrites)() { /* default no-op */ }
 protected:
 private:

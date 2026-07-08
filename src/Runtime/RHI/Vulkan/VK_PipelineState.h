@@ -45,7 +45,7 @@ private:
 #pragma endregion
 MYRENDERER_END_CLASS
 
-// -- [AI:BEGIN]
+// --  
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_ComputePipelineState, public ComputePipelineState)
 friend class VK_PipelineStateManager;
 #pragma region METHOD
@@ -76,7 +76,7 @@ private:
 
 #pragma endregion
 MYRENDERER_END_CLASS
-// -- [AI:END]
+// --  
 
 MYRENDERER_BEGIN_CLASS(VK_PipelineStateManager)
 #pragma region METHOD
@@ -88,7 +88,7 @@ public:
 	VkPipelineCache METHOD(GetPipelineCache)() CONST;
 
 	VK_PipelineState* METHOD(GetPipelineState)(CONST RenderGraphiPipelineStateDesc& in_desc, CONST VK_RenderPass* render_pass);
-	// -- [AI]
+	// --  
 	VK_ComputePipelineState* METHOD(GetComputePipelineState)(CONST ComputePipelineStateDesc& in_desc);
 	void METHOD(ProcessPendingDestruction)();
 	static constexpr UInt32 MaxPipelines = 1024;

@@ -34,7 +34,7 @@ public:
 	Vector<ValidationError> errors;
 	Vector<ValidationWarning> warnings;
 
-	// -- [AI] Add all errors/warnings from another result
+	// --   Add all errors/warnings from another result
 	void Merge(CONST ValidationResult& other);
 MYRENDERER_END_STRUCT
 
@@ -56,27 +56,27 @@ public:
 		CONST Vector<class BaseLink*>& links);
 
 private:
-	// -- [AI] Kahn BFS topological sort + cycle detection
+	// --   Kahn BFS topological sort + cycle detection
 	static Bool METHOD(DetectCycles)(
 		CONST Render::RenderGraphDefinition& def,
 		ValidationResult& out_result);
 
-	// -- [AI] Check every Read pin has a source connection
+	// --   Check every Read pin has a source connection
 	static void METHOD(CheckPinConnectivity)(
 		CONST Render::RenderGraphDefinition& def,
 		ValidationResult& out_result);
 
-	// -- [AI] Check no Pass-Pass or Resource-Resource direct edges
+	// --   Check no Pass-Pass or Resource-Resource direct edges
 	static void METHOD(CheckBipartiteRule)(
 		CONST Render::RenderGraphDefinition& def,
 		ValidationResult& out_result);
 
-	// -- [AI] Check no duplicate node/pin names
+	// --   Check no duplicate node/pin names
 	static void METHOD(CheckNamingConflicts)(
 		CONST Render::RenderGraphDefinition& def,
 		ValidationResult& out_result);
 
-	// -- [AI] Check output pins have consumers (warnings only)
+	// --   Check output pins have consumers (warnings only)
 	static void METHOD(CheckOrphanedOutputs)(
 		CONST Render::RenderGraphDefinition& def,
 		ValidationResult& out_result);

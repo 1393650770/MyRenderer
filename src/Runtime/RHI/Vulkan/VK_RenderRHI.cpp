@@ -125,7 +125,7 @@ RenderPipelineState* VulkanRHI::CreateRenderPipelineState(CONST RenderGraphiPipe
 	return device->GetPipelineStateManager()->GetPipelineState(desc, device->GetRenderPassManager()->GetRenderPass(key));
 }
 
-// -- [AI]
+// --  
 ComputePipelineState* VulkanRHI::CreateComputePipelineState(CONST ComputePipelineStateDesc& desc)
 {
 	return device->GetPipelineStateManager()->GetComputePipelineState(desc);
@@ -341,18 +341,18 @@ CommandList* VulkanRHI::GetImmediateCommandList()
 	return immediate_command_buffer;
 }
 
-// -- [AI]
+// --  
 CommandList* VulkanRHI::GetCommandListForQueue(ENUM_QUEUE_TYPE queue_type)
 {
 	return device->GetCommandBufferManager()->GetOrCreateCommandBuffer(queue_type);
 }
-// -- [AI]
-// -- [AI]
+// --  
+// --  
 void VulkanRHI::SubmitCommandListForQueue(CommandList* cmd_list, ENUM_QUEUE_TYPE queue_type)
 {
 	auto* vk_cmd = STATIC_CAST(cmd_list, VK_CommandBuffer);
 	device->GetQueue(queue_type)->Submit(vk_cmd);
-	// -- [AI] Auto-reset command buffer state after submit so upper layers don't need to
+	// --   Auto-reset command buffer state after submit so upper layers don't need to
 	vk_cmd->command_state = VK_CommandBuffer::EState::NeedReset;
 }
 

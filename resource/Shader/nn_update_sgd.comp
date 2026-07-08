@@ -1,6 +1,6 @@
 #version 460
 
-// -- [AI] formatted layout declarations
+// --   formatted layout declarations
 layout(local_size_x = 256) in;
 
 layout(set = 0, binding = 0) buffer p0_Buf { float d[]; } p0;
@@ -8,7 +8,7 @@ layout(set = 0, binding = 1) readonly buffer g0_Buf { float d[]; } g0;
 layout(set = 0, binding = 2) buffer v0_Buf { float d[]; } v0;
 layout(set = 0, binding = 10) readonly buffer pc_Buf { float d[]; } pc;
 
-// -- [AI] formatted main function
+// --   formatted main function
 void main() {
 	uint g = gl_GlobalInvocationID.x;
 	if (g >= uint(pc.d[4])) {

@@ -28,7 +28,7 @@ private:
 #pragma endregion
 MYRENDERER_END_CLASS
 
-// -- [AI:BEGIN]
+// --  
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(ComputePipelineState, public RenderResource)
 #pragma region METHOD
 public:
@@ -50,7 +50,7 @@ private:
 
 #pragma endregion
 MYRENDERER_END_CLASS
-// -- [AI:END]
+// --  
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

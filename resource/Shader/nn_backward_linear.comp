@@ -1,6 +1,6 @@
 #version 460
 
-// -- [AI] formatted layout declarations
+// --   formatted layout declarations
 layout(local_size_x = 64) in;
 
 #define MD 256
@@ -16,7 +16,7 @@ layout(set = 0, binding = 10) readonly buffer B10_Buf { float d[]; } b10;
 
 shared float sd[MD];
 
-// -- [AI] formatted main function
+// --   formatted main function
 void main() {
 	uint s = gl_WorkGroupID.x;
 	uint t = gl_LocalInvocationID.x;

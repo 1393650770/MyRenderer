@@ -7,7 +7,7 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
-// -- [AI] Automatic save with atomic write (write to .tmp then rename)
+// --   Automatic save with atomic write (write to .tmp then rename)
 MYRENDERER_BEGIN_CLASS(AutoSaveService)
 public:
 	AutoSaveService() MYDEFAULT;
@@ -15,13 +15,13 @@ public:
 
 	void METHOD(Init)(CONST String& auto_save_path);
 
-	// -- [AI] Mark graph as dirty (call after any edit operation)
+	// --   Mark graph as dirty (call after any edit operation)
 	void METHOD(MarkDirty)();
 
-	// -- [AI] Call each frame; saves if dirty and interval elapsed
+	// --   Call each frame; saves if dirty and interval elapsed
 	void METHOD(Tick)(Float32 delta_seconds);
 
-	// -- [AI] Check if an auto-save file exists from a previous crash
+	// --   Check if an auto-save file exists from a previous crash
 	Bool METHOD(HasAutoSave)() CONST;
 	Bool METHOD(RecoverAutoSave)(struct Render::RenderGraphDefinition& out_def) CONST;
 

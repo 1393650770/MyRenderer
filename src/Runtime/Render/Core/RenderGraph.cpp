@@ -29,7 +29,7 @@ void RenderGraph::CompileAliasingPlan()
 	{
 		for (auto* res : steps[s].realized_resources)
 		{
-			// -- [AI] Skip non-transient and already-processed resources
+			// --   Skip non-transient and already-processed resources
 			if (!res->GetIsTransient()) continue;
 			if (aliasing_offsets.count(res)) continue;
 			if (!res->IsBufferResource() && !res->IsTextureResource()) continue;
@@ -40,7 +40,7 @@ void RenderGraph::CompileAliasingPlan()
 				for (auto* dres : steps[e].derealized_resources)
 					if (dres == res) { end = e; break; }
 
-			// -- [AI] Compute resource size for both buffer and texture
+			// --   Compute resource size for both buffer and texture
 			UInt64 res_size = 256;
 			UInt32 alignment = 256;
 			if (res->IsBufferResource()) {
@@ -96,7 +96,7 @@ void RenderGraph::CompileAliasingPlan()
 	}
 }
 
-// -- [AI] Compile with config (safe mode support)
+// --   Compile with config (safe mode support)
 void RenderGraph::Compile(CONST RenderGraphCompileConfig& config)
 {
 	// In safe mode, skip barriers and use conservative path
@@ -109,7 +109,7 @@ void RenderGraph::Compile(CONST RenderGraphCompileConfig& config)
 
 void RenderGraph::Execute()
 {
-	// -- [AI] Get command list for barrier submission
+	// --   Get command list for barrier submission
 	auto* cmd_list = RHIGetImmediateCommandList();
 	UInt32 ts_idx = 0;
 
@@ -118,7 +118,7 @@ void RenderGraph::Execute()
 		for (auto resource : step.realized_resources)
 		{
 			resource->Realize();
-			// -- [AI] Set debug object name for RenderDoc
+			// --   Set debug object name for RenderDoc
 			String dbg_name = step.pass->GetName() + ":" + resource->GetName();
 			if (auto* tex = resource->GetAsTexture())
 				SetDebugNameForRHIResource(tex, dbg_name);
@@ -126,27 +126,46 @@ void RenderGraph::Execute()
 				SetDebugNameForRHIResource(buf, dbg_name);
 		}
 
-		// -- [AI] Submit prologue barriers
+		// --   Submit prologue barriers
 		for (auto& bd : step.prologue_barriers)
-			if (bd.resource && cmd_list)
+		{
+			if (!bd.resource || !cmd_list) continue;
+			if (bd.src_state == bd.dst_state) continue;
+			if (auto* tex = bd.resource->GetAsTexture())
+				cmd_list->TransitionTextureState(tex, bd.dst_state);
+			else if (bd.resource->GetAsBuffer())
 				cmd_list->ResourceBarrier(bd.src_state, bd.dst_state);
+			else
+				cmd_list->ResourceBarrier(bd.src_state, bd.dst_state);
+		}
 
-		// -- [AI] GPU timing: timestamp before pass (if cmd_list available)
+		// --   GPU timing: timestamp before pass (if cmd_list available)
 		if (cmd_list) cmd_list->WriteTimestamp(ts_idx++);
 
 		step.pass->Execute();
 
-		// -- [AI] GPU timing: timestamp after pass
+		// --   GPU timing: timestamp after pass
 		if (cmd_list) cmd_list->WriteTimestamp(ts_idx++);
 
-		// -- [AI] Submit epilogue barriers
+		// --   Submit epilogue barriers
 		for (auto& bd : step.epilogue_barriers)
-			if (bd.resource && cmd_list)
+		{
+			if (!bd.resource || !cmd_list) continue;
+			if (bd.src_state == bd.dst_state) continue;
+			if (auto* tex = bd.resource->GetAsTexture())
+				cmd_list->TransitionTextureState(tex, bd.dst_state);
+			else if (bd.resource->GetAsBuffer())
 				cmd_list->ResourceBarrier(bd.src_state, bd.dst_state);
+			else
+				cmd_list->ResourceBarrier(bd.src_state, bd.dst_state);
+		}
 
 		for (auto resource : step.derealized_resources)
 			resource->Derealize();
 	}
+
+	// Process deferred destruction each frame
+	ProcessDeferredDestruction();
 }
 
 void RenderGraph::Compile()
@@ -157,7 +176,7 @@ void RenderGraph::Compile()
 	for (auto& resource : resources)
 		resource->ref_count = resource->read_passes.size();
 
-	// -- [AI:BEGIN] Compile cache — skip if topology unchanged
+	// --   Compile cache — skip if topology unchanged
 	static UInt64 s_cached_hash = ~0ULL;
 	static Vector<RenderGraphStep> s_cached_steps;
 	UInt64 th = 0;
@@ -168,7 +187,7 @@ void RenderGraph::Compile()
 	}
 	s_cached_hash = th;
 
-	// -- [AI] Topological sort + cycle detection (Kahn BFS)
+	// --   Topological sort + cycle detection (Kahn BFS)
 	Map<RenderGraphPassBase*, Vector<RenderGraphPassBase*>> adj;
 	Map<RenderGraphPassBase*, UInt32> in_deg;
 	for (auto& pass : passes) { adj[pass.get()] = {}; in_deg[pass.get()] = 0; }
@@ -207,7 +226,7 @@ void RenderGraph::Compile()
 		std::cerr << "[RenderGraph] Cycle: " << (passes.size() - visited) << " unreachable passes" << std::endl;
 		return;
 	}
-	// -- [AI:END] --
+	// --   --
 
 	// Culling via flood fill from unreferenced resources.
 	std::stack<RenderGraphResourceBase*> unreferenced_resources;
@@ -296,12 +315,51 @@ void RenderGraph::Compile()
 		steps.push_back(RenderGraphStep{ render_task.get(), realized_resources, derealized_resources });
 	}
 
-	// -- [AI:BEGIN] Barrier generation with stamp tracking
+	// --   Barrier generation with stamp tracking
+	// Auto-derive access_sequence for resources whose passes didn't explicitly
+	// declare required states via Read(res, state) / Write(res, state).
+	// This walks the compiled step order so that access_sequence entries are
+	// ordered by pass execution, which the barrier generation below relies on.
+	for (auto& step : steps)
+	{
+		for (auto* r : step.pass->create_resources) {
+			auto* res = const_cast<RenderGraphResourceBase*>(r);
+			Bool has_explicit = false;
+			for (auto& acc : res->access_sequence)
+				if (acc.pass == step.pass) { has_explicit = true; break; }
+			if (has_explicit) continue;
+			ENUM_RESOURCE_STATE init_state = ENUM_RESOURCE_STATE::ShaderResource;
+			for (auto* w : res->write_passes)
+				if (w == step.pass) { init_state = ENUM_RESOURCE_STATE::RenderTarget; break; }
+			res->access_sequence.push_back({ step.pass, init_state, false, 0 });
+			res->tracked_state = ENUM_RESOURCE_STATE::Undefined;
+		}
+		for (auto* r : step.pass->read_resources) {
+			auto* res = const_cast<RenderGraphResourceBase*>(r);
+			if (!res->GetIsTransient()) continue;
+			Bool has_explicit = false;
+			for (auto& acc : res->access_sequence)
+				if (acc.pass == step.pass) { has_explicit = true; break; }
+			if (has_explicit) continue;
+			res->access_sequence.push_back({ step.pass, ENUM_RESOURCE_STATE::ShaderResource, false, 0 });
+		}
+		for (auto* r : step.pass->write_resources) {
+			auto* res = const_cast<RenderGraphResourceBase*>(r);
+			if (!res->GetIsTransient()) continue;
+			Bool has_explicit = false;
+			for (auto& acc : res->access_sequence)
+				if (acc.pass == step.pass) { has_explicit = true; break; }
+			if (has_explicit) continue;
+			res->access_sequence.push_back({ step.pass, ENUM_RESOURCE_STATE::RenderTarget, true, 0 });
+		}
+	}
+
 	UInt64 global_stamp = 1;
 	for (auto& step : steps)
 	{
 		for (auto* r : step.pass->read_resources) {
 			auto* res = const_cast<RenderGraphResourceBase*>(r);
+			if (!res->GetIsTransient()) continue;
 			for (auto& acc : res->access_sequence)
 				if (acc.pass == step.pass) { acc.modification_stamp = global_stamp; break; }
 			if (!res->access_sequence.empty() && res->tracked_state != res->access_sequence.back().required_state) {
@@ -315,6 +373,7 @@ void RenderGraph::Compile()
 		}
 		for (auto* r : step.pass->write_resources) {
 			auto* res = const_cast<RenderGraphResourceBase*>(r);
+			if (!res->GetIsTransient()) continue;
 			global_stamp++;
 			for (auto& acc : res->access_sequence)
 				if (acc.pass == step.pass) { acc.modification_stamp = global_stamp; acc.is_write = true; break; }
@@ -332,7 +391,7 @@ void RenderGraph::Compile()
 			global_stamp++; res->tracked_state = ENUM_RESOURCE_STATE::Undefined;
 		}
 	}
-	// -- [AI:END] --
+	// --   --
 
 	// Compute aliasing plan after timeline + barriers
 	CompileAliasingPlan();
@@ -343,7 +402,7 @@ void RenderGraph::Compile()
 
 void RenderGraph::ScheduleAsyncCompute()
 {
-	// -- [AI] Stub: count async-capable passes (those with "Compute" in name)
+	// --   Stub: count async-capable passes (those with "Compute" in name)
 	UInt32 count = 0;
 	for (auto& step : steps)
 		if (step.pass->GetName().find("Compute") != String::npos) count++;
@@ -353,7 +412,7 @@ void RenderGraph::ScheduleAsyncCompute()
 
 void RenderGraph::ExtractResource(RenderGraphResourceBase* resource)
 {
-	// -- [AI] Remove from derealization so it survives graph Release
+	// --   Remove from derealization so it survives graph Release
 	if (resource)
 		for (auto& step : steps) {
 			auto& dr = step.derealized_resources;
@@ -402,7 +461,7 @@ void RenderGraph::DebugDumpBarriers()
 
 bool RenderGraph::Searilize(CONST String& filename)
 {
-	// -- [AI] Delegate to editor-side JSON serializer via Definition
+	// --   Delegate to editor-side JSON serializer via Definition
 	return false;
 }
 

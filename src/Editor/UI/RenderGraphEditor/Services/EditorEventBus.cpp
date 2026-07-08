@@ -1,4 +1,4 @@
-// -- [AI:BEGIN] --
+// --   --
 #include "UI/RenderGraphEditor/Services/EditorEventBus.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -73,4 +73,4 @@ void EditorEventBus::FireNodeAdded(UInt64 node_id)
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
-// -- [AI:END] --
+// --   --

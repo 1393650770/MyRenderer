@@ -2,7 +2,7 @@
 #include <iostream>
 #include <chrono>
 #include "RHI/RenderRHI.h"
-// -- [AI] Vulkan includes removed - using RHI globals
+// --   Vulkan includes removed - using RHI globals
 
 using namespace MXRender;
 using namespace MXRender::RHI;
@@ -38,7 +38,7 @@ void Trainer::Train(ProgressCallback on_progress) {
 			// Upload batch to GPU
 			input_buf.Upload(images.data());
 
-			// Record training step -- [AI] using RHI lifecycle
+			// Record training step --   using RHI lifecycle
 			cmd_->Begin();
 
 			float loss = model_.TrainStep(cmd_, input_buf, labels, n);
@@ -83,7 +83,7 @@ float Trainer::Evaluate() {
 		Tensor input_buf({n, test_loader_.ImageSize()});
 		input_buf.Upload(images.data());
 
-		// -- [AI] using RHI lifecycle
+		// --   using RHI lifecycle
 		cmd_->Begin();
 		auto preds = model_.Predict(cmd_, input_buf, n);
 		cmd_->End();

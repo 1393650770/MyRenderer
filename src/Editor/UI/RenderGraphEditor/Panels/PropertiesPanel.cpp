@@ -70,7 +70,7 @@ void PropertiesPanel::Draw()
 				ImGui::Text("Generic node — no editable properties.");
 			}
 		}
-		// -- [AI] Poll EventBus for graph changes
+		// --   Poll EventBus for graph changes
 	EditorEventBus::Get().TickFireGraphModified();
 		OnEnd();
 	}

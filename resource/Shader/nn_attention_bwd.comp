@@ -1,5 +1,5 @@
 #version 460
-// -- [AI:BEGIN] Multi-Head Attention backward pass
+// --   Multi-Head Attention backward pass
 // Dispatch: (B * num_heads, 1, 1) -- one WG per sample per head
 // local_size_x = 64, one thread per sequence position
 //
@@ -18,7 +18,7 @@
 //   [9] grad_b_o     [d]       buffer (int for atomic)
 //  [10] pc           readonly  (standard NN convention)
 //  [11] dL_dx         [B*T*d]  buffer (output gradient)
-// -- [AI:END]
+// --  
 
 layout(local_size_x = 64) in;
 

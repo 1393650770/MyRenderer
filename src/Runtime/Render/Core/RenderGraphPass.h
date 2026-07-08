@@ -2,6 +2,7 @@
 #ifndef _RENDERGRAPHPASS_
 #define _RENDERGRAPHPASS_
 #include "Core/ConstDefine.h"
+#include "RHI/RenderEnum.h"
 #include <functional>
 
 
@@ -171,7 +172,11 @@ public:
 	template<typename resource_type>
 	resource_type* METHOD(Read)(resource_type* resource);
 	template<typename resource_type>
+	resource_type* METHOD(Read)(resource_type* resource, ENUM_RESOURCE_STATE required_state);
+	template<typename resource_type>
 	resource_type* METHOD(Write)(resource_type* resource);
+	template<typename resource_type>
+	resource_type* METHOD(Write)(resource_type* resource, ENUM_RESOURCE_STATE required_state);
 protected:
 
 private:

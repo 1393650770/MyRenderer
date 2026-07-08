@@ -3,6 +3,7 @@
 #define _RENDERGRAPHPANNEL_
 #include <imgui.h>
 #include "UI/BasePanel.h"
+#include "UI/RenderGraphEditor/Commands/CommandHistory.h"
 
 MYRENDERER_BEGIN_NAMESPACE(ax)
 MYRENDERER_BEGIN_NAMESPACE(NodeEditor)
@@ -89,8 +90,17 @@ protected:
 	// Shared selection state
 	BaseNode* selected_node = nullptr;
 
-	// -- [AI] View toggle (default ON)
+	// --   View toggle (default ON)
 	Bool show_resource_nodes = true;
+
+	// Undo/Redo command history
+	CommandHistory command_history;
+
+	// Command-wrapped mutation helpers (replace raw push_back)
+	void METHOD(AddNodeWithCmd)(BaseNode* node, ImVec2 pos);
+	void METHOD(AddLinkWithCmd)(BaseLink* link);
+	void METHOD(DeleteNodeWithCmd)(UInt64 node_id);
+	void METHOD(DeleteLinkWithCmd)(UInt64 link_id);
 
 	// Child panels
 private:

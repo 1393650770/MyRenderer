@@ -142,7 +142,7 @@ void VK_Device::Init(Int device_index,Bool enable_validation_layers,CONST Vector
 	resource_pool = new VK_ResourcePool();
 	MXRender::Render::g_resource_pool = resource_pool;
 
-	// -- [AI] Set global device handle for RenderDoc debug object names
+	// --   Set global device handle for RenderDoc debug object names
 	extern VkDevice g_debug_name_device;
 	g_debug_name_device = device;
 }

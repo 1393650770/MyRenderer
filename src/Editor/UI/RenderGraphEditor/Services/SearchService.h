@@ -9,7 +9,7 @@ MYRENDERER_BEGIN_NAMESPACE(UI)
 
 class BaseNode;
 
-// -- [AI] Search index for node graph filtering
+// --   Search index for node graph filtering
 MYRENDERER_BEGIN_STRUCT(SearchEntry)
 public:
 	UInt64 node_id = 0;
@@ -22,13 +22,13 @@ public:
 	SearchService() MYDEFAULT;
 	~SearchService() MYDEFAULT;
 
-	// -- [AI] Rebuild search index from node list
+	// --   Rebuild search index from node list
 	void METHOD(RebuildIndex)(CONST Vector<BaseNode*>& nodes);
 
-	// -- [AI] Search with case-insensitive substring matching
+	// --   Search with case-insensitive substring matching
 	Vector<UInt64> METHOD(Search)(CONST String& query) CONST;
 
-	// -- [AI] Get next match after current
+	// --   Get next match after current
 	UInt64 METHOD(GetNextMatch)(CONST String& query, UInt64 current_match) CONST;
 
 private:

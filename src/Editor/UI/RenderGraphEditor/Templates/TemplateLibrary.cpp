@@ -1,4 +1,4 @@
-// -- [AI:BEGIN] --
+// --   --
 #include "UI/RenderGraphEditor/Templates/TemplateLibrary.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -23,7 +23,7 @@ static void InitBuiltins()
 		{"GBufferC", PinAccess::Write, Render::RDGResourceKind::Texture},
 		{"SceneDepth", PinAccess::Write, Render::RDGResourceKind::DepthStencil},
 	};
-	// -- [AI] Auto-create GBuffer resource nodes
+	// --   Auto-create GBuffer resource nodes
 	{
 		Render::RDGResourceDef gba;
 		gba.name = "GBufferA"; gba.kind = Render::RDGResourceKind::Texture;
@@ -100,9 +100,9 @@ void TemplateLibrary::RegisterUserTemplate(CONST PassTemplate& tmpl)
 
 void TemplateLibrary::LoadUserTemplates(CONST String& dir_path)
 {
-	// -- [AI] Placeholder: load .rgtemplate.json files from directory
+	// --   Placeholder: load .rgtemplate.json files from directory
 }
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
-// -- [AI:END] --
+// --   --

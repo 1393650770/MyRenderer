@@ -8,7 +8,7 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Render)
 
-// -- [AI] Graph-wide key-value store for pass-shared CPU data.
+// --   Graph-wide key-value store for pass-shared CPU data.
 // Passes can Set/Get named values that persist for the graph's lifetime.
 // Typical use: view/projection matrices, frame index, per-frame constants
 // that don't need to travel through GPU resource edges.

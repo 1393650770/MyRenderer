@@ -246,7 +246,7 @@ target("RendererSample-NeuralNetwork")
     add_files("src/Sample/6-NeuralNetwork/Layer.cpp")
     add_files("src/Sample/6-NeuralNetwork/Optimizer.cpp")
     add_files("src/Sample/6-NeuralNetwork/Model.cpp")
-    -- [AI]
+    --  
     add_files("src/Sample/6-NeuralNetwork/Activation.cpp")
     add_files("src/Sample/6-NeuralNetwork/Normalization.cpp")
     add_files("src/Sample/6-NeuralNetwork/MNISTDataLoader.cpp")
@@ -257,7 +257,7 @@ target("RendererSample-NeuralNetwork")
     set_group("Sample")
     after_build(MoveResource)
 
--- [AI] NNE MNIST CNN Demo
+--   NNE MNIST CNN Demo
 target("RendererSample-NNE_MNIST_CNN")
     CommonProjectSetting()
     add_files("src/Sample/6-NeuralNetwork/NNE_MNIST_CNN.cpp")
@@ -273,7 +273,7 @@ target("RendererSample-NNE_MNIST_CNN")
     set_group("Sample")
     after_build(MoveResource)
 
--- [AI] NNE Transformer Demo
+--   NNE Transformer Demo
 target("RendererSample-NNE_Transformer")
     CommonProjectSetting()
     add_files("src/Sample/6-NeuralNetwork/NNE_Transformer.cpp")

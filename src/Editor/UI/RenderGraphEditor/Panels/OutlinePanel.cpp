@@ -30,7 +30,7 @@ void OutlinePanel::Draw()
 		if (!rg_panel)
 		{
 			ImGui::TextColored(ImColor(150, 150, 150, 200), "No graph loaded.");
-			// -- [AI] Poll EventBus for graph changes
+			// --   Poll EventBus for graph changes
 	EditorEventBus::Get().TickFireGraphModified();
 		OnEnd();
 			return;
@@ -108,7 +108,7 @@ void OutlinePanel::Draw()
 			}
 		}
 
-		// -- [AI] Poll EventBus for graph changes
+		// --   Poll EventBus for graph changes
 	EditorEventBus::Get().TickFireGraphModified();
 		OnEnd();
 	}

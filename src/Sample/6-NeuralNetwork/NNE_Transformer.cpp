@@ -1,4 +1,4 @@
-// -- [AI:BEGIN]
+// --  
 // NNE_Transformer.cpp - Tiny Transformer demo showcasing NNE features:
 //   Linear, MultiHeadAttention, LayerNorm, ResidualBlock, GELU, SoftmaxCrossEntropy,
 //   CosineAnnealingLR, Adam, Save/Load
@@ -275,4 +275,4 @@ int main()
     system("pause");
     return 0;
 }
-// -- [AI:END]
+// --  

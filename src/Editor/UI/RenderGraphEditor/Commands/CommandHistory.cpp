@@ -1,4 +1,4 @@
-// -- [AI:BEGIN] --
+// --   --
 #include "UI/RenderGraphEditor/Commands/CommandHistory.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -55,4 +55,4 @@ Bool CommandHistory::CanRedo() CONST { return !redo_stack.empty(); }
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
-// -- [AI:END] --
+// --   --

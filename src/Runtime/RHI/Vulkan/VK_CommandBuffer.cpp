@@ -510,7 +510,7 @@ void VK_CommandBuffer::MemoryBarrier(VkPipelineStageFlags srcStageMask, VkPipeli
 	pipeline_barrier.memory_dst_access |= dstAccessMask;
 }
 
-// -- [AI:BEGIN] RHI barrier API implementations
+// --   RHI barrier API implementations
 
 void VK_CommandBuffer::ResourceBarrier(ENUM_RESOURCE_STATE src_state, ENUM_RESOURCE_STATE dst_state)
 {
@@ -557,7 +557,7 @@ void VK_CommandBuffer::MemoryBarrier(ENUM_SHADER_STAGE src_stage, ENUM_SHADER_ST
     pipeline_barrier.memory_src_access |= vkSrcAccess;
     pipeline_barrier.memory_dst_access |= vkDstAccess;
 }
-// -- [AI:END]
+// --  
 
 void VK_CommandBuffer::CopyBufferToImage(VkBuffer buffer, VkImage image, VkImageLayout imageLayout,UInt32 region_count, CONST VkBufferImageCopy* region)
 {
@@ -594,7 +594,7 @@ void VK_CommandBuffer::SetComputePipeline(RenderPipelineState* pipeline_state)
 	{
 		state_cache.compute_pipeline = compute_pipeline;
 		state_cache.pipeline_layout = pipeline_layout;
-		// -- [AI] removed immediate vkCmdBindPipeline -- deferred to Dispatch(),
+		// --   removed immediate vkCmdBindPipeline -- deferred to Dispatch(),
 		// matching the SetGraphicsPipeline pattern where binding happens in Draw().
 	}
 }
@@ -610,7 +610,7 @@ void VK_CommandBuffer::Dispatch(UInt32 groupX, UInt32 groupY, UInt32 groupZ)
 	// Flush any deferred descriptor writes before binding
 	if (state_cache.srb)
 		state_cache.srb->FlushDescriptorWrites();
-	// -- [AI] bind pipeline here (deferred from SetComputePipeline), matching Draw() pattern
+	// --   bind pipeline here (deferred from SetComputePipeline), matching Draw() pattern
 	if (state_cache.compute_pipeline != VK_NULL_HANDLE)
 		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, state_cache.compute_pipeline);
 	if (state_cache.descriptor_sets != nullptr)
@@ -623,7 +623,7 @@ void VK_CommandBuffer::SetPushConstants(UInt32 offset, UInt32 size, const void* 
 {
         if (state_cache.pipeline_layout == VK_NULL_HANDLE)
                 return;
-        // -- [AI] Auto-detect stage: compute vs graphics pipeline
+        // --   Auto-detect stage: compute vs graphics pipeline
         VkShaderStageFlagBits stage = (state_cache.compute_pipeline != VK_NULL_HANDLE)
                 ? VK_SHADER_STAGE_COMPUTE_BIT
                 : VkShaderStageFlagBits(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -631,7 +631,7 @@ void VK_CommandBuffer::SetPushConstants(UInt32 offset, UInt32 size, const void* 
                 stage, offset, size, data);
 }
 
-// -- [AI] Stage-aware push constants overload
+// --   Stage-aware push constants overload
 void VK_CommandBuffer::SetPushConstants(UInt32 offset, UInt32 size, const void* data, ENUM_SHADER_STAGE stage)
 {
         if (state_cache.pipeline_layout == VK_NULL_HANDLE)
@@ -641,7 +641,7 @@ void VK_CommandBuffer::SetPushConstants(UInt32 offset, UInt32 size, const void* 
                 vk_stage, offset, size, data);
 }
 
-// -- [AI] Combined compute dispatch: pipeline + SRB + dispatch in one call
+// --   Combined compute dispatch: pipeline + SRB + dispatch in one call
 void VK_CommandBuffer::ComputeDispatch(RenderPipelineState* pipeline, ShaderResourceBinding* srb, UInt32 groupX, UInt32 groupY, UInt32 groupZ)
 {
         SetComputePipeline(pipeline);

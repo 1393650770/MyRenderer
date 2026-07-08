@@ -8,22 +8,22 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
-// -- [AI] Template library ¡ª built-in and user-defined templates
+// --   Template library ¡ª built-in and user-defined templates
 MYRENDERER_BEGIN_CLASS(TemplateLibrary)
 public:
 	TemplateLibrary() MYDEFAULT;
 	~TemplateLibrary() MYDEFAULT;
 
-	// -- [AI] Get all available templates
+	// --   Get all available templates
 	static CONST Vector<PassTemplate>& METHOD(GetBuiltinTemplates)();
 
-	// -- [AI] Find a template by name
+	// --   Find a template by name
 	static CONST PassTemplate* METHOD(FindTemplate)(CONST String& name);
 
-	// -- [AI] Register a user-defined template
+	// --   Register a user-defined template
 	static void METHOD(RegisterUserTemplate)(CONST PassTemplate& tmpl);
 
-	// -- [AI] Save/load user templates to .rgtemplate.json
+	// --   Save/load user templates to .rgtemplate.json
 	static void METHOD(LoadUserTemplates)(CONST String& dir_path);
 
 private:

@@ -23,7 +23,7 @@ void RenderGraphPassBase::SetIsCullable(Bool in_is_cullable)
 	is_cullable = in_is_cullable;
 }
 
-// -- [AI:FIX] Default is_cullable(true) to match RDGPassDef default and UE5 convention
+// --   Default is_cullable(true) to match RDGPassDef default and UE5 convention
 	RenderGraphPassBase::RenderGraphPassBase(CONST std::string& in_name):pass_name(in_name), is_cullable(true), ref_count(0)
 {
 

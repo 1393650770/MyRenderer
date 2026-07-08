@@ -385,7 +385,7 @@ void VK_PipelineState::CreateShaderResourceBinding(ShaderResourceBinding*& out_s
 	}
 }
 
-// -- [AI:BEGIN] VK_ComputePipelineState implementation
+// --   VK_ComputePipelineState implementation
 
 VK_ComputePipelineState::~VK_ComputePipelineState()
 {
@@ -550,7 +550,7 @@ void VK_ComputePipelineState::CreateShaderResourceBinding(ShaderResourceBinding*
                 }
         }
 }
-// -- [AI:END]
+// --  
 
 VK_PipelineStateManager::VK_PipelineStateManager(VK_Device* in_device):device(in_device)
 {
@@ -604,7 +604,7 @@ VK_PipelineState* VK_PipelineStateManager::GetPipelineState(CONST RenderGraphiPi
 	return pipeline_state;
 }
 
-// -- [AI]
+// --  
 VK_ComputePipelineState* VK_PipelineStateManager::GetComputePipelineState(CONST ComputePipelineStateDesc& in_desc)
 {
         UInt64 hash = std::hash<const void*>{}(in_desc.compute_shader);

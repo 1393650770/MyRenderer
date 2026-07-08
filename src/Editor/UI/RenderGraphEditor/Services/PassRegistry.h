@@ -8,7 +8,7 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
-// -- [AI] Pass registry entry — metadata for a known pass type
+// --   Pass registry entry — metadata for a known pass type
 struct PassRegistryEntry
 {
 	String name;
@@ -18,7 +18,7 @@ struct PassRegistryEntry
 	Render::RDGPassFlags pass_flags = Render::RDGPassFlags::Raster;
 };
 
-// -- [AI] Global pass registry. Passes register themselves via REGISTER_PASS macro.
+// --   Global pass registry. Passes register themselves via REGISTER_PASS macro.
 // Editor consults this for: categorized menus, Quick Create suggestions, template auto-fill.
 // Builder consults this to verify a pass name maps to a known type before building.
 MYRENDERER_BEGIN_CLASS(PassRegistry)
@@ -37,7 +37,7 @@ private:
 	Map<String, Vector<PassRegistryEntry>> m_by_category;
 MYRENDERER_END_CLASS
 
-// -- [AI] Macro for static pass registration
+// --   Macro for static pass registration
 #define REGISTER_PASS(Name, Category, Kind) \
 	static struct RegPass_##Name { \
 		RegPass_##Name() { \

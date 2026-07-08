@@ -19,11 +19,23 @@
 #include "UI/RenderGraphEditor/Services/EditorEventBus.h"
 #include "UI/RenderGraphEditor/Services/PassRegistry.h"
 #include "UI/RenderGraphEditor/RenderGraphSubGraphNode.h"
+#include "UI/RenderGraphEditor/Commands/CreateNodeCmd.h"
+#include "UI/RenderGraphEditor/Commands/DeleteNodeCmd.h"
+#include "UI/RenderGraphEditor/Commands/CreateLinkCmd.h"
+#include "UI/RenderGraphEditor/Commands/DeleteLinkCmd.h"
+#include "UI/RenderGraphEditor/Commands/RenameCmd.h"
+#include "UI/RenderGraphEditor/Commands/MoveNodeCmd.h"
 #include <set>
 #include "UI/RenderGraphEditor/Services/GraphValidator.h"
 #include "UI/RenderGraphEditor/Services/EditorEventBus.h"
 #include "UI/RenderGraphEditor/Services/PassRegistry.h"
 #include "UI/RenderGraphEditor/RenderGraphSubGraphNode.h"
+#include "UI/RenderGraphEditor/Commands/CreateNodeCmd.h"
+#include "UI/RenderGraphEditor/Commands/DeleteNodeCmd.h"
+#include "UI/RenderGraphEditor/Commands/CreateLinkCmd.h"
+#include "UI/RenderGraphEditor/Commands/DeleteLinkCmd.h"
+#include "UI/RenderGraphEditor/Commands/RenameCmd.h"
+#include "UI/RenderGraphEditor/Commands/MoveNodeCmd.h"
 #include <set>
 
 namespace ed = ax::NodeEditor;
@@ -310,7 +322,7 @@ void RenderGraphPanel::CreateOperator()
 								}
 								auto* node = new RenderGraphPassNode(entry.name, pt);
 								ed::SetNodePosition(node->GetSelfID(), mouse_pos);
-								nodes.push_back(node);
+								AddNodeWithCmd(node, mouse_pos);
 							}
 						}
 						ImGui::EndMenu();
@@ -321,7 +333,7 @@ void RenderGraphPanel::CreateOperator()
 				{
 					auto* node = new RenderGraphPassNode("CustomPass", PassNodeType::Custom);
 					ed::SetNodePosition(node->GetSelfID(), mouse_pos);
-					nodes.push_back(node);
+					AddNodeWithCmd(node, mouse_pos);
 				}
 				ImGui::EndMenu();
 			}
@@ -333,7 +345,7 @@ void RenderGraphPanel::CreateOperator()
 					node->AddOutputPin("Output", PinAccess::Read);
 					node->AddInputPin("Input", PinAccess::Write);
 					ed::SetNodePosition(node->GetSelfID(), mouse_pos);
-					nodes.push_back(node);
+					AddNodeWithCmd(node, mouse_pos);
 				}
 				if (ImGui::MenuItem("DepthStencil"))
 				{
@@ -341,7 +353,7 @@ void RenderGraphPanel::CreateOperator()
 					node->AddOutputPin("Output", PinAccess::Read);
 					node->AddInputPin("Input", PinAccess::Write);
 					ed::SetNodePosition(node->GetSelfID(), mouse_pos);
-					nodes.push_back(node);
+					AddNodeWithCmd(node, mouse_pos);
 				}
 				if (ImGui::MenuItem("Buffer (Uniform)"))
 				{
@@ -350,7 +362,7 @@ void RenderGraphPanel::CreateOperator()
 					node->SetBufferStride(16);
 					node->AddOutputPin("Output", PinAccess::Read);
 					ed::SetNodePosition(node->GetSelfID(), mouse_pos);
-					nodes.push_back(node);
+					AddNodeWithCmd(node, mouse_pos);
 				}
 				if (ImGui::MenuItem("Buffer (Storage)"))
 				{
@@ -360,7 +372,7 @@ void RenderGraphPanel::CreateOperator()
 					node->AddOutputPin("Output", PinAccess::Read);
 					node->AddInputPin("Input", PinAccess::Write);
 					ed::SetNodePosition(node->GetSelfID(), mouse_pos);
-					nodes.push_back(node);
+					AddNodeWithCmd(node, mouse_pos);
 				}
 				if (ImGui::MenuItem("External Texture"))
 				{
@@ -368,7 +380,7 @@ void RenderGraphPanel::CreateOperator()
 					node->SetIsTransient(false);
 					node->AddOutputPin("Output", PinAccess::Read);
 					ed::SetNodePosition(node->GetSelfID(), mouse_pos);
-					nodes.push_back(node);
+					AddNodeWithCmd(node, mouse_pos);
 				}
 				ImGui::EndMenu();
 			}
@@ -481,7 +493,7 @@ void RenderGraphPanel::BaseOperator()
 					{
 						BaseLink* link = new BaseLink("Link");
 						link->Init(output_pin_id.Get(), input_pin_id.Get());
-						links.push_back(link);
+						AddLinkWithCmd(link);
 						// Determine link color by dataflow direction
 						PinAccess link_access = PinAccess::Read;
 						BaseNode* start_node = start_pin->GetBelongNode();
@@ -616,6 +628,30 @@ void RenderGraphPanel::BaseOperator()
 	}
 }
 
+void RenderGraphPanel::AddNodeWithCmd(BaseNode* node, ImVec2 pos)
+{
+	auto cmd = std::make_unique<CreateNodeCmd>(this, node, pos);
+	command_history.Execute(std::move(cmd));
+}
+
+void RenderGraphPanel::AddLinkWithCmd(BaseLink* link)
+{
+	auto cmd = std::make_unique<CreateLinkCmd>(this, link);
+	command_history.Execute(std::move(cmd));
+}
+
+void RenderGraphPanel::DeleteNodeWithCmd(UInt64 node_id)
+{
+	auto cmd = std::make_unique<DeleteNodeCmd>(this, node_id);
+	command_history.Execute(std::move(cmd));
+}
+
+void RenderGraphPanel::DeleteLinkWithCmd(UInt64 link_id)
+{
+	auto cmd = std::make_unique<DeleteLinkCmd>(this, link_id);
+	command_history.Execute(std::move(cmd));
+}
+
 void RenderGraphPanel::GraphMenu()
 {
 	static String current_save_path;
@@ -677,11 +713,40 @@ void RenderGraphPanel::GraphMenu()
 
 		if (ImGui::BeginMenu("Edit"))
 		{
+			if (ImGui::MenuItem("Undo", "Ctrl+Z", false, command_history.CanUndo()))
+			{
+				command_history.Undo();
+				EditorEventBus::Get().FireGraphModified();
+			}
+			if (ImGui::MenuItem("Redo", "Ctrl+Y", false, command_history.CanRedo()))
+			{
+				command_history.Redo();
+				EditorEventBus::Get().FireGraphModified();
+			}
+			ImGui::Separator();
 			if (ImGui::MenuItem("Delete Selected", "Del"))
 			{
 				// handled in BaseOperator
 			}
 			ImGui::EndMenu();
+		}
+
+		// Keyboard shortcuts for undo/redo
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z))
+		{
+			if (command_history.CanUndo())
+			{
+				command_history.Undo();
+				EditorEventBus::Get().FireGraphModified();
+			}
+		}
+		if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y))
+		{
+			if (command_history.CanRedo())
+			{
+				command_history.Redo();
+				EditorEventBus::Get().FireGraphModified();
+			}
 		}
 
 		if (ImGui::BeginMenu("View"))
@@ -867,7 +932,7 @@ void RenderGraphPanel::LoadDefinition(CONST Render::RenderGraphDefinition& def)
 			BaseLink* link = new BaseLink("Link");
 			link->Init(src_pin->GetSelfID(), tgt_pin->GetSelfID());
 			link->SetLinkAccess((PinAccess)ed.edge_type);
-			links.push_back(link);
+			AddLinkWithCmd(link);
 		}
 	}
 }
@@ -997,7 +1062,7 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 			BaseLink* link = new BaseLink("Link");
 			link->Init(res_out->GetSelfID(), pass_in->GetSelfID());
 			link->SetLinkAccess(PinAccess::Read);
-			links.push_back(link);
+			AddLinkWithCmd(link);
 		}
 
 		// Write/Create resources: Pass Output -> Resource Input
@@ -1026,7 +1091,7 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 				BaseLink* link = new BaseLink("Link");
 				link->Init(pass_out->GetSelfID(), res_in->GetSelfID());
 				link->SetLinkAccess(access);
-				links.push_back(link);
+				AddLinkWithCmd(link);
 			}
 		};
 

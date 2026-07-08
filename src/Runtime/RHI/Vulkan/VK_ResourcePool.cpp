@@ -108,7 +108,7 @@ MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 
-// -- [AI] Global VkDevice handle for RenderDoc debug object names
+// --   Global VkDevice handle for RenderDoc debug object names
 VkDevice g_debug_name_device = VK_NULL_HANDLE;
 
 // ---------------------------------------------------------------------------
@@ -179,7 +179,7 @@ void ReturnPooledBuffer(std::unique_ptr<MXRender::RHI::Buffer> buffer, CONST MXR
 	pool->ReturnBuffer(std::unique_ptr<MXRender::RHI::Vulkan::VK_Buffer>(vk_raw), desc);
 }
 
-	// -- [AI:BEGIN] --
+	// --   --
 	// g_debug_name_device is in global scope, declared extern in RenderGraphResource.h
 	void SetDebugNameForRHIResource(MXRender::RHI::RenderResource* resource, CONST String& name)
 	{
@@ -205,7 +205,7 @@ void ReturnPooledBuffer(std::unique_ptr<MXRender::RHI::Buffer> buffer, CONST MXR
 			if (fn) fn(g_debug_name_device, &i);
 		}
 	}
-	// -- [AI:END] --
+	// --   --
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
