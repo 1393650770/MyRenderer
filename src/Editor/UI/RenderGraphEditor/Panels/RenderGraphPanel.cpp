@@ -10,14 +10,14 @@
 #include "UI/RenderGraphEditor/Services/RenderGraphConnectionValidator.h"
 #include "UI/RenderGraphEditor/Panels/PropertiesPanel.h"
 #include "Render/Core/RenderGraphDefinition.h"
-#include "UI/RenderGraphEditor/Services/RenderGraphSerializer.h"
-#include "UI/RenderGraphEditor/Services/RenderGraphBuilder.h"
+#include "Render/Core/RenderGraphSerializer.h"
+#include "Render/Core/RenderGraphBuilder.h"
 #include <iostream>
 #include "Render/Core/RenderGraph.h"
 // -- [AI] Phase 1 services
 #include "UI/RenderGraphEditor/Services/GraphValidator.h"
 #include "UI/RenderGraphEditor/Services/EditorEventBus.h"
-#include "UI/RenderGraphEditor/Services/PassRegistry.h"
+#include "Render/Core/PassRegistry.h"
 #include "UI/RenderGraphEditor/RenderGraphSubGraphNode.h"
 #include "UI/RenderGraphEditor/Commands/CreateNodeCmd.h"
 #include "UI/RenderGraphEditor/Commands/DeleteNodeCmd.h"
@@ -28,7 +28,7 @@
 #include <set>
 #include "UI/RenderGraphEditor/Services/GraphValidator.h"
 #include "UI/RenderGraphEditor/Services/EditorEventBus.h"
-#include "UI/RenderGraphEditor/Services/PassRegistry.h"
+
 #include "UI/RenderGraphEditor/RenderGraphSubGraphNode.h"
 #include "UI/RenderGraphEditor/Commands/CreateNodeCmd.h"
 #include "UI/RenderGraphEditor/Commands/DeleteNodeCmd.h"
@@ -314,11 +314,11 @@ void RenderGraphPanel::CreateOperator()
 			if (ImGui::BeginMenu("Add Pass"))
 			{
 				// -- [AI] Categorized from PassRegistry
-				for (auto& cat : PassRegistry::Get().GetCategories())
+				for (auto& cat : Render::PassRegistry::Get().GetCategories())
 				{
 					if (ImGui::BeginMenu(cat.c_str()))
 					{
-						for (auto& entry : PassRegistry::Get().GetByCategory(cat))
+						for (auto& entry : Render::PassRegistry::Get().GetByCategory(cat))
 						{
 							if (ImGui::MenuItem(entry.name.c_str()))
 							{
@@ -681,36 +681,36 @@ void RenderGraphPanel::GraphMenu()
 				if (current_save_path.empty())
 					current_save_path = "render_graph.rgraph.json";
 				auto def = BuildDefinition();
-				auto vr = GraphValidator::Validate(def);
+				auto vr = Render::RenderGraphValidator::Validate(def);
 				if(!vr.is_valid) std::cerr << "[RG] Save with " << vr.errors.size() << " validation issues" << std::endl;
-				if (RenderGraphSerializer::SaveGraph(def, current_save_path))
+				if (Render::RenderGraphSerializer::SaveGraph(def, current_save_path))
 					std::cout << "[RenderGraphEditor] Saved to: " << current_save_path << std::endl;
 				else
-					std::cerr << "[RenderGraphEditor] Save failed: " << RenderGraphSerializer::GetLastError() << std::endl;
+					std::cerr << "[RenderGraphEditor] Save failed: " << Render::RenderGraphSerializer::GetLastError() << std::endl;
 			}
 			if (ImGui::MenuItem("Save As..."))
 			{
 				auto def = BuildDefinition();
 				String save_path = "render_graph_save.rgraph.json";
-				if (RenderGraphSerializer::SaveGraph(def, save_path))
+				if (Render::RenderGraphSerializer::SaveGraph(def, save_path))
 				{
 					current_save_path = save_path;
 					std::cout << "[RenderGraphEditor] Saved to: " << save_path << std::endl;
 				}
 				else
-					std::cerr << "[RenderGraphEditor] Save failed: " << RenderGraphSerializer::GetLastError() << std::endl;
+					std::cerr << "[RenderGraphEditor] Save failed: " << Render::RenderGraphSerializer::GetLastError() << std::endl;
 			}
 			if (ImGui::MenuItem("Open...", "Ctrl+O"))
 			{
 				String load_path = current_save_path.empty() ? "render_graph.rgraph.json" : current_save_path;
 				Render::RenderGraphDefinition def;
-				if (RenderGraphSerializer::LoadGraph(def, load_path))
+				if (Render::RenderGraphSerializer::LoadGraph(def, load_path))
 				{
 					LoadDefinition(def);
 					std::cout << "[RenderGraphEditor] Loaded from: " << load_path << std::endl;
 				}
 				else
-					std::cerr << "[RenderGraphEditor] Load failed: " << RenderGraphSerializer::GetLastError() << std::endl;
+					std::cerr << "[RenderGraphEditor] Load failed: " << Render::RenderGraphSerializer::GetLastError() << std::endl;
 			}
 			ImGui::Separator();
 			if (ImGui::MenuItem("Exit"))

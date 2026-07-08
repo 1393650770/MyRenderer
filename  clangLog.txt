@@ -279,12 +279,10 @@ parser_header.o: \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Services/AutoSaveService.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Services/EditorEventBus.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Services/GraphValidator.h \
-  Render/Core/RenderGraphDefinition.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Services/PassRegistry.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Services/RenderGraphBuilder.h \
+  Render/Core/RenderGraphValidator.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Services/RenderGraphConnectionValidator.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Services/RenderGraphSerializer.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Services/SearchService.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Templates/PassTemplate.h \
+  Render/Core/RenderGraphDefinition.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Templates/TemplateLibrary.h \
   UI/RenderGraphEditor/Templates/PassTemplate.h

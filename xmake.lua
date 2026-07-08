@@ -159,7 +159,7 @@ function CommonProjectSetting()
     add_includedirs("src/_Generated", {public = true})
     add_includedirs("src/Runtime", {public = true})
     add_includedirs("src/ThirdParty", {public = true})
-    add_packages("vulkansdk", "glfw", "glm","assimp","tinyobjloader","imgui","boost","flatbuffers","rttr")
+    add_packages("vulkansdk", "glfw", "glm","assimp","tinyobjloader","imgui","boost","flatbuffers","rttr","nlohmann_json")
 end
 
 target("CompileResource")

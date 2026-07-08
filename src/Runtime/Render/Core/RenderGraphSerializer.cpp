@@ -1,4 +1,4 @@
-#include "UI/RenderGraphEditor/Services/RenderGraphSerializer.h"
+#include "Render/Core/RenderGraphSerializer.h"
 #include "Render/Core/RenderGraphDefinition.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -7,11 +7,11 @@
 using json = nlohmann::json;
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
-MYRENDERER_BEGIN_NAMESPACE(UI)
+MYRENDERER_BEGIN_NAMESPACE(Render)
 
 String RenderGraphSerializer::s_last_error;
 
-Bool RenderGraphSerializer::SaveGraph(CONST Render::RenderGraphDefinition& def, CONST String& filepath)
+Bool RenderGraphSerializer::SaveGraph(CONST RenderGraphDefinition& def, CONST String& filepath)
 {
 	s_last_error.clear();
 	try
@@ -33,7 +33,7 @@ Bool RenderGraphSerializer::SaveGraph(CONST Render::RenderGraphDefinition& def, 
 			rj["kind"] = ResourceKindToString(rd.kind);
 			rj["is_transient"] = rd.is_transient;
 
-			if (rd.kind == Render::RDGResourceKind::Buffer)
+			if (rd.kind == RDGResourceKind::Buffer)
 			{
 				rj["buffer_size"] = rd.buffer_size;
 				rj["buffer_stride"] = rd.buffer_stride;
@@ -110,7 +110,7 @@ Bool RenderGraphSerializer::SaveGraph(CONST Render::RenderGraphDefinition& def, 
 	}
 }
 
-Bool RenderGraphSerializer::LoadGraph(Render::RenderGraphDefinition& out_def, CONST String& filepath)
+Bool RenderGraphSerializer::LoadGraph(RenderGraphDefinition& out_def, CONST String& filepath)
 {
 	s_last_error.clear();
 	try
@@ -126,7 +126,7 @@ Bool RenderGraphSerializer::LoadGraph(Render::RenderGraphDefinition& out_def, CO
 		file >> j;
 		file.close();
 
-		out_def = Render::RenderGraphDefinition();
+		out_def = RenderGraphDefinition();
 
 		if (j.contains("graph_name"))
 			out_def.graph_name = j["graph_name"].get<String>();
@@ -144,12 +144,12 @@ Bool RenderGraphSerializer::LoadGraph(Render::RenderGraphDefinition& out_def, CO
 		{
 			for (auto& rj : j["resources"])
 			{
-				Render::RDGResourceDef rd;
+				RDGResourceDef rd;
 				rd.name = rj.value("name", "Unnamed");
 				rd.kind = StringToResourceKind(rj.value("kind", "Texture"));
 				rd.is_transient = rj.value("is_transient", true);
 
-				if (rd.kind == Render::RDGResourceKind::Buffer)
+				if (rd.kind == RDGResourceKind::Buffer)
 				{
 					rd.buffer_size = rj.value("buffer_size", (UInt64)256);
 					rd.buffer_stride = rj.value("buffer_stride", (UInt32)16);
@@ -172,10 +172,10 @@ Bool RenderGraphSerializer::LoadGraph(Render::RenderGraphDefinition& out_def, CO
 		{
 			for (auto& pj : j["passes"])
 			{
-				Render::RDGPassDef pd;
+				RDGPassDef pd;
 				pd.name = pj.value("name", "Unnamed");
 				pd.pass_kind = StringToPassKind(pj.value("pass_kind", "Graphics"));
-				pd.pass_flags = (Render::RDGPassFlags)pj.value("pass_flags", (UInt32)Render::RDGPassFlags::Raster);
+				pd.pass_flags = (RDGPassFlags)pj.value("pass_flags", (UInt32)RDGPassFlags::Raster);
 
 				if (pj.contains("read_resources") && pj["read_resources"].is_array())
 					for (auto& r : pj["read_resources"])
@@ -198,7 +198,7 @@ Bool RenderGraphSerializer::LoadGraph(Render::RenderGraphDefinition& out_def, CO
 		{
 			for (auto& lj : j["node_layouts"])
 			{
-				Render::RDGNodeLayout nl;
+				RDGNodeLayout nl;
 				nl.node_name = lj.value("node_name", "");
 				nl.pos_x = lj.value("pos_x", 0.0f);
 				nl.pos_y = lj.value("pos_y", 0.0f);
@@ -210,7 +210,7 @@ Bool RenderGraphSerializer::LoadGraph(Render::RenderGraphDefinition& out_def, CO
 		{
 			for (auto& ej : j["edges"])
 			{
-				Render::RDGEdgeDef ed;
+				RDGEdgeDef ed;
 				ed.source_node_name = ej.value("source_node", "");
 				ed.source_pin_name = ej.value("source_pin", "");
 				ed.target_node_name = ej.value("target_node", "");
@@ -276,44 +276,44 @@ Int RenderGraphSerializer::StringToTextureFormat(CONST String& str)
 	return 0; // None
 }
 
-CONST Char* RenderGraphSerializer::ResourceKindToString(Render::RDGResourceKind kind)
+CONST Char* RenderGraphSerializer::ResourceKindToString(RDGResourceKind kind)
 {
 	switch (kind)
 	{
-	case Render::RDGResourceKind::Texture:        return "Texture";
-	case Render::RDGResourceKind::Buffer:         return "Buffer";
-	case Render::RDGResourceKind::ExternalTexture:return "ExternalTexture";
-	case Render::RDGResourceKind::DepthStencil:   return "DepthStencil";
+	case RDGResourceKind::Texture:        return "Texture";
+	case RDGResourceKind::Buffer:         return "Buffer";
+	case RDGResourceKind::ExternalTexture:return "ExternalTexture";
+	case RDGResourceKind::DepthStencil:   return "DepthStencil";
 	default: return "Texture";
 	}
 }
 
-Render::RDGResourceKind RenderGraphSerializer::StringToResourceKind(CONST String& str)
+RDGResourceKind RenderGraphSerializer::StringToResourceKind(CONST String& str)
 {
-	if (str == "Buffer")          return Render::RDGResourceKind::Buffer;
-	if (str == "ExternalTexture") return Render::RDGResourceKind::ExternalTexture;
-	if (str == "DepthStencil")    return Render::RDGResourceKind::DepthStencil;
-	return Render::RDGResourceKind::Texture;
+	if (str == "Buffer")          return RDGResourceKind::Buffer;
+	if (str == "ExternalTexture") return RDGResourceKind::ExternalTexture;
+	if (str == "DepthStencil")    return RDGResourceKind::DepthStencil;
+	return RDGResourceKind::Texture;
 }
 
-CONST Char* RenderGraphSerializer::PassKindToString(Render::RDGPassKind kind)
+CONST Char* RenderGraphSerializer::PassKindToString(RDGPassKind kind)
 {
 	switch (kind)
 	{
-	case Render::RDGPassKind::Graphics: return "Graphics";
-	case Render::RDGPassKind::Compute:  return "Compute";
-	case Render::RDGPassKind::Copy:     return "Copy";
-	case Render::RDGPassKind::Custom:   return "Custom";
+	case RDGPassKind::Graphics: return "Graphics";
+	case RDGPassKind::Compute:  return "Compute";
+	case RDGPassKind::Copy:     return "Copy";
+	case RDGPassKind::Custom:   return "Custom";
 	default: return "Graphics";
 	}
 }
 
-Render::RDGPassKind RenderGraphSerializer::StringToPassKind(CONST String& str)
+RDGPassKind RenderGraphSerializer::StringToPassKind(CONST String& str)
 {
-	if (str == "Compute")  return Render::RDGPassKind::Compute;
-	if (str == "Copy")     return Render::RDGPassKind::Copy;
-	if (str == "Custom")   return Render::RDGPassKind::Custom;
-	return Render::RDGPassKind::Graphics;
+	if (str == "Compute")  return RDGPassKind::Compute;
+	if (str == "Copy")     return RDGPassKind::Copy;
+	if (str == "Custom")   return RDGPassKind::Custom;
+	return RDGPassKind::Graphics;
 }
 
 MYRENDERER_END_NAMESPACE

@@ -4,13 +4,25 @@
 
 #include "Core/ConstDefine.h"
 #include "Render/Core/RenderGraphDefinition.h"
+#include <functional>
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Render)
 class RenderGraph;
+class RenderGraphResourceBase;
 MYRENDERER_END_NAMESPACE
 
-MYRENDERER_BEGIN_NAMESPACE(UI)
+MYRENDERER_BEGIN_NAMESPACE(RHI)
+class CommandList;
+MYRENDERER_END_NAMESPACE
+
+MYRENDERER_BEGIN_NAMESPACE(Render)
+
+// Callback type for pass implementations.
+// Takes the command list and a map of resource name -> runtime resource.
+using PassExecuteFunc = std::function<void(
+	MXRender::RHI::CommandList* cmd,
+	Map<String, MXRender::Render::RenderGraphResourceBase*>& resource_map)>;
 
 // Maps a resource name to an actual GPU resource (e.g. swapchain images).
 // Use void* to avoid pulling RHI headers into every consumer.
@@ -30,15 +42,20 @@ public:
 	// Build a runtime graph. External bindings override resource creation
 	// (used for swapchain BackBuffer / DepthStencil).
 	static Bool METHOD(BuildRuntimeGraph)(
-		CONST Render::RenderGraphDefinition& def,
-		Render::RenderGraph* out_graph,
+		CONST RenderGraphDefinition& def,
+		RenderGraph* out_graph,
 		CONST Vector<ExternalResourceBinding>& externals = {});
 
 	// Get the count of passes/resources that would be built (for preview).
 	static void METHOD(GetBuildStats)(
-		CONST Render::RenderGraphDefinition& def,
+		CONST RenderGraphDefinition& def,
 		UInt32& out_pass_count,
 		UInt32& out_resource_count);
+
+	// Register a pass execution callback. When Builder encounters a pass
+	// with a matching name, the registered callback is invoked instead of
+	// the default clear. Pass "" matches all passes (fallback).
+	static void METHOD(RegisterPassExecute)(CONST String& pass_name, PassExecuteFunc func);
 
 private:
 	static String s_last_error;

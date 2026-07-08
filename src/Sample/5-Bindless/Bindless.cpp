@@ -1,3 +1,4 @@
+#include "Render/Core/RenderGraphSerializer.h"
 #include <iostream>
 #include <fstream>
 #include <chrono>
@@ -18,6 +19,7 @@
 #include "Asset/TextureAsset.h"
 #include "Render/Core/BindlessMaterialData.h"
 #include "RHI/Vulkan/VK_BindlessManager.h"
+#include "Render/Core/RenderGraphDefinition.h"
 using namespace MXRender::Asset;
 using namespace MXRender::RHI;
 using namespace MXRender::Render;
@@ -36,38 +38,39 @@ Vector<UInt32> ReadShader(CONST String& filename) {
 static float g_cam_angle = 0.0f;
 static float g_cam_distance = 3.0f;
 
-struct MainPassData : public RenderGraphPassDataBase
-{
-	// Skybox
-	RenderPipelineState* sky_pipeline = nullptr;
-	ShaderResourceBinding* sky_srb = nullptr;
-	TextureAsset* sky_cubemap = nullptr;
-
-	// PBR
-	RenderPipelineState* pbr_pipeline = nullptr;
-	ShaderResourceBinding* pbr_srb = nullptr;
-	TextureAsset* basecolor_tex = nullptr, *normal_tex = nullptr, *aorm_tex = nullptr;
-	TextureAsset* cubemap_tex = nullptr, *irradiance_tex = nullptr;
-	Buffer* mvp_ubo = nullptr, *camera_ubo = nullptr, *material_ubo = nullptr;
-	UInt32 bc_idx=0, n_idx=0, ao_idx=0, cm_idx=0, irr_idx=0, lut_idx=0;
-	RHI::Vulkan::VK_BindlessManager* bindless_mgr = nullptr;
-	Texture* fallback_lut = nullptr; // cleanup for the fallback IBL LUT
-
+// Pass data shared between setup and execute
+struct SkyboxPassData : public RenderGraphPassDataBase {
+	RenderPipelineState* pipeline = nullptr;
+	ShaderResourceBinding* srb = nullptr;
+	TextureAsset* cubemap_asset = nullptr;
 	void Release() {
-		if (sky_srb) { delete sky_srb; sky_srb = nullptr; }
-		if (pbr_srb) { delete pbr_srb; pbr_srb = nullptr; }
-		if (sky_cubemap) { delete sky_cubemap; sky_cubemap = nullptr; }
-		if (basecolor_tex) { delete basecolor_tex; basecolor_tex = nullptr; }
-		if (normal_tex)    { delete normal_tex; normal_tex = nullptr; }
-		if (aorm_tex)      { delete aorm_tex; aorm_tex = nullptr; }
-		if (cubemap_tex)   { delete cubemap_tex; cubemap_tex = nullptr; }
-		if (irradiance_tex){ delete irradiance_tex; irradiance_tex = nullptr; }
-		if (mvp_ubo)      { delete mvp_ubo; mvp_ubo = nullptr; }
-		if (camera_ubo)   { delete camera_ubo; camera_ubo = nullptr; }
-		if (material_ubo) { delete material_ubo; material_ubo = nullptr; }
+		if (srb) { delete srb; srb = nullptr; }
+		if (cubemap_asset) { delete cubemap_asset; cubemap_asset = nullptr; }
+	}
+	VIRTUAL ~SkyboxPassData() { Release(); }
+};
+
+struct PBRPassData : public RenderGraphPassDataBase {
+	RenderPipelineState* pipeline = nullptr;
+	ShaderResourceBinding* srb = nullptr;
+	TextureAsset* basecolor=nullptr, *normal=nullptr, *aorm=nullptr, *cubemap=nullptr, *irradiance=nullptr;
+	Buffer* mvp_ubo=nullptr, *camera_ubo=nullptr, *material_ubo=nullptr;
+	UInt32 bc_idx=0, n_idx=0, a_idx=0, cm_idx=0, irr_idx=0, lut_idx=0;
+	RHI::Vulkan::VK_BindlessManager* bindless_mgr = nullptr;
+	Texture* fallback_lut = nullptr;
+	void Release() {
+		if (srb) { delete srb; srb = nullptr; }
+		if (basecolor) { delete basecolor; basecolor = nullptr; }
+		if (normal)    { delete normal; normal = nullptr; }
+		if (aorm)      { delete aorm; aorm = nullptr; }
+		if (cubemap)   { delete cubemap; cubemap = nullptr; }
+		if (irradiance){ delete irradiance; irradiance = nullptr; }
+		if (mvp_ubo)   { delete mvp_ubo; mvp_ubo = nullptr; }
+		if (camera_ubo){ delete camera_ubo; camera_ubo = nullptr; }
+		if (material_ubo){ delete material_ubo; material_ubo = nullptr; }
 		if (fallback_lut) { delete fallback_lut; fallback_lut = nullptr; }
 	}
-	VIRTUAL ~MainPassData() { Release(); }
+	VIRTUAL ~PBRPassData() { Release(); }
 };
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderTest, public MXRender::RenderInterface)
@@ -76,7 +79,7 @@ public:
 	RenderTest() MYDEFAULT;
 	~RenderTest() MYDEFAULT;
 	void BeginRender() OVERRIDE FINAL;
-	void EndRender() OVERRIDE FINAL { graph.Release(); }
+	void EndRender() OVERRIDE FINAL;
 	void BeginFrame() OVERRIDE FINAL {}
 	void OnFrame() OVERRIDE FINAL { graph.Execute(); }
 	void EndFrame() OVERRIDE FINAL {}
@@ -84,140 +87,245 @@ public:
 protected:
 	RenderGraph graph;
 	Window* window;
+
+	// Resource pointers for serialization
+	RenderGraphResource<RHI::TextureDesc, RHI::Texture>* rt_resource = nullptr;
+	RenderGraphResource<RHI::TextureDesc, RHI::Texture>* ds_resource = nullptr;
+	Vector<RenderGraphResource<RHI::TextureDesc, RHI::Texture>*> tex_resources;
+	Vector<RenderGraphResource<RHI::BufferDesc, RHI::Buffer>*> buffer_resources;
 MYRENDERER_END_CLASS
 
 void RenderTest::BeginRender()
 {
 	std::cout << "=== Bindless PBR ===" << std::endl;
 	CommandList* cmd_list = RHIGetImmediateCommandList();
+	auto* vp = window->GetViewport();
 
-	graph.AddRenderPass<MainPassData>("MainPass", &graph, cmd_list,
-		[&](MainPassData& d, RenderGraphPassBuilder&, CommandList*)
+	// Step 1: Register external BackBuffer + DepthStencil
+	RHI::Texture* bb = vp->GetCurrentBackBufferRTV();
+	RHI::Texture* ds = vp->GetCurrentBackBufferDSV();
+	rt_resource = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
+		"BackBuffer", bb->GetTextureDesc(), bb);
+	if (ds) ds_resource = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
+		"DepthStencil", ds->GetTextureDesc(), ds);
+
+	// Step 2: Load all textures and register as retained resources
+	auto RegTex = [&](const char* name, const char* path) {
+		auto* asset = new TextureAsset(path);
+		RHI::Texture* tex = asset->GetTexture();
+		RHI::TextureDesc desc; if (tex) desc = tex->GetTextureDesc();
+		auto* res = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(name, desc, tex);
+		tex_resources.push_back(res);
+		return asset;
+	};
+	auto* sky_asset   = RegTex("SkyboxCubemap",   "Texture/Skybox/bolonga_lod.dds");
+	auto* bc_asset    = RegTex("BasecolorTex",    "Texture/pbr_stone/pbr_stone_base_color.dds");
+	auto* n_asset     = RegTex("NormalTex",       "Texture/pbr_stone/pbr_stone_normal.dds");
+	auto* aorm_asset  = RegTex("AORMTex",         "Texture/pbr_stone/pbr_stone_aorm.dds");
+	auto* cm_asset_db = RegTex("CubemapTex",      "Texture/Skybox/bolonga_lod.dds");
+	auto* irr_asset   = RegTex("IrradianceTex",   "Texture/Skybox/bolonga_irr.dds");
+
+	// Create fallback IBL LUT texture
+	TextureDesc td; td.format=ENUM_TEXTURE_FORMAT::BGRA8; td.width=2; td.height=2;
+	td.type=ENUM_TEXTURE_TYPE::ENUM_TYPE_2D; td.usage=ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
+	Texture* fl = RHICreateTexture(td);
+	Char w[16]={-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+	TextureDataPayload lp; lp.data=Vector<Char>(w,w+16); lp.width=2; lp.height=2;
+	lp.format=ENUM_TEXTURE_FORMAT::BGRA8; lp.type=ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
+	lp.layer_count=1; lp.mip_level=1; lp.depth=1; fl->UpdateTextureData(lp);
+	auto* lut_res = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
+		"FallbackLUT", td, fl);
+	tex_resources.push_back(lut_res);
+
+	// Register UBOs
+	auto RegBuf = [&](const char* name) {
+		BufferDesc ub; ub.type=ENUM_BUFFER_TYPE::Uniform; ub.size=256;
+		Buffer* b = RHICreateBuffer(ub);
+		auto* res = graph.AddRetainedResource<RHI::BufferDesc, RHI::Buffer>(name, ub, b);
+		buffer_resources.push_back(res);
+		return b;
+	};
+	Buffer* mvp_buf    = RegBuf("MVP_UBO");
+	Buffer* camera_buf = RegBuf("Camera_UBO");
+	Buffer* mat_buf    = RegBuf("Material_UBO");
+
+	// wait for async texture loads
+	auto Wait = [](TextureAsset* t, const char* n){while(!t->GetTexture()){}std::cout<<"  "<<n<<std::endl;};
+	Wait(bc_asset,"basecolor"); Wait(n_asset,"normal"); Wait(aorm_asset,"aorm");
+	Wait(cm_asset_db,"cubemap"); Wait(irr_asset,"irradiance"); Wait(sky_asset,"skybox");
+
+	// Bindless registration (global singleton, not RDG-manageable)
+	auto* bindless_mgr = RHIGetBindlessManager();
+
+	// Step 3: SkyboxPass
+	auto* sky_pass = graph.AddRenderPass<SkyboxPassData>("SkyboxPass", &graph, cmd_list,
+	[&](SkyboxPassData& d, RenderGraphPassBuilder& builder, CommandList*)
 	{
-		ShaderDesc sd; ShaderDataPayload sp;
-		auto* vp = this->GetWindow()->GetViewport();
-		Vector<Texture*> rtvs = { vp->GetCurrentBackBufferRTV() };
-		Texture* dsv = vp->GetCurrentBackBufferDSV();
+		builder.Read(tex_resources[0]); // SkyboxCubemap
+		builder.Write(rt_resource);
+		if (ds_resource) builder.Write(ds_resource);
 
-		// ====== SKYBOX pipeline ======
+		ShaderDesc sd; ShaderDataPayload sp;
 		sd.shader_type = ENUM_SHADER_STAGE::Shader_Vertex;
-		sp.data = ReadShader("Shader/skybox_test.vert.spv");
-		Shader* sv = RHICreateShader(sd, sp);
+		sp.data = ReadShader("Shader/skybox_test.vert.spv"); Shader* sv = RHICreateShader(sd, sp);
 		sd.shader_type = ENUM_SHADER_STAGE::Shader_Pixel;
-		sp.data = ReadShader("Shader/skybox_test.frag.spv");
-		Shader* sps = RHICreateShader(sd, sp);
+		sp.data = ReadShader("Shader/skybox_test.frag.spv"); Shader* sps = RHICreateShader(sd, sp);
+
 		RenderGraphiPipelineStateDesc pd{};
 		pd.shaders[0]=sv; pd.shaders[1]=sps;
 		pd.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
-		pd.render_targets = rtvs; pd.depth_stencil_view = dsv;
-		pd.raster_state.sample_count = 1;
-		pd.blend_state.render_targets.resize(1);
-		d.sky_pipeline = RHICreateRenderPipelineState(pd);
-		d.sky_pipeline->CreateShaderResourceBinding(d.sky_srb, true);
-		d.sky_cubemap = new TextureAsset("Texture/Skybox/bolonga_lod.dds");
+		Vector<Texture*> rtvs = { bb }; pd.render_targets = rtvs; pd.depth_stencil_view = ds;
+		pd.raster_state.sample_count = 1; pd.blend_state.render_targets.resize(1);
+		d.pipeline = RHICreateRenderPipelineState(pd);
+		d.pipeline->CreateShaderResourceBinding(d.srb, true);
+		d.cubemap_asset = sky_asset;
 		delete sv; delete sps;
+	},
+	[=](CONST SkyboxPassData& d, CommandList* cmd)
+	{
+		if (!d.cubemap_asset->GetTexture()) return;
+		auto* vp = this->GetWindow()->GetViewport();
+		Vector<ClearValue> cc; cc.push_back({0.2f,0.2f,0.3f,1.0f});
+		Texture* dsv = vp->GetCurrentBackBufferDSV();
+		if(dsv) cc.push_back({1.0f, 0});
+		Vector<Texture*> rtvs = { vp->GetCurrentBackBufferRTV() };
+		cmd->SetRenderTarget(rtvs, dsv, cc, dsv != nullptr);
+		cmd->SetGraphicsPipeline(d.pipeline);
+		d.srb->SetResource("cubemap_sampler", d.cubemap_asset->GetTexture());
+		cmd->SetShaderResourceBinding(d.srb);
+		cmd->Draw(DrawAttribute{6,1,0,0});
+	});
+	sky_pass->SetIsCullable(false);
 
-		// ====== PBR bindless pipeline ======
+	// Step 4: PBRPass (bindless rendering)
+	auto* pbr_pass = graph.AddRenderPass<PBRPassData>("PBRPass", &graph, cmd_list,
+	[&](PBRPassData& d, RenderGraphPassBuilder& builder, CommandList*)
+	{
+		builder.Read(rt_resource); // Read skybox result from backbuffer
+		builder.Write(rt_resource);
+		if (ds_resource) builder.Write(ds_resource);
+		for (auto* tr : tex_resources) builder.Read(tr);
+		for (auto* br : buffer_resources) builder.Read(br);
+
+		ShaderDesc sd; ShaderDataPayload sp;
 		sd.shader_type = ENUM_SHADER_STAGE::Shader_Vertex;
-		sp.data = ReadShader("Shader/pbr_bindless_demo.vert.spv");
-		Shader* pv = RHICreateShader(sd, sp);
+		sp.data = ReadShader("Shader/pbr_bindless_demo.vert.spv"); Shader* pv = RHICreateShader(sd, sp);
 		sd.shader_type = ENUM_SHADER_STAGE::Shader_Pixel;
-		sp.data = ReadShader("Shader/pbr_mesh_bindless.frag.spv");
-		Shader* pps = RHICreateShader(sd, sp);
-		pd = {};
+		sp.data = ReadShader("Shader/pbr_mesh_bindless.frag.spv"); Shader* pps = RHICreateShader(sd, sp);
+
+		RenderGraphiPipelineStateDesc pd{};
 		pd.shaders[0]=pv; pd.shaders[1]=pps;
 		pd.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
-		pd.render_targets = rtvs; pd.depth_stencil_view = dsv;
-		pd.raster_state.sample_count = 1;
-		pd.raster_state.cull_mode = ENUM_RASTER_CULLMODE::None;
+		Vector<Texture*> rtvs = { bb }; pd.render_targets = rtvs; pd.depth_stencil_view = ds;
+		pd.raster_state.sample_count = 1; pd.raster_state.cull_mode = ENUM_RASTER_CULLMODE::None;
 		pd.depth_stencil_state.depth_test_enable = true;
 		pd.depth_stencil_state.depth_write_enable = true;
 		pd.blend_state.render_targets.resize(1);
-		d.pbr_pipeline = RHICreateRenderPipelineState(pd);
-		d.pbr_pipeline->CreateShaderResourceBinding(d.pbr_srb, false);
+		d.pipeline = RHICreateRenderPipelineState(pd);
+		d.pipeline->CreateShaderResourceBinding(d.srb, false);
 		delete pv; delete pps;
 
-		// PBR textures
-		d.basecolor_tex  = new TextureAsset("Texture/pbr_stone/pbr_stone_base_color.dds");
-		d.normal_tex     = new TextureAsset("Texture/pbr_stone/pbr_stone_normal.dds");
-		d.aorm_tex       = new TextureAsset("Texture/pbr_stone/pbr_stone_aorm.dds");
-		d.cubemap_tex    = new TextureAsset("Texture/Skybox/bolonga_lod.dds");
-		d.irradiance_tex = new TextureAsset("Texture/Skybox/bolonga_irr.dds");
-		auto Wait = [](TextureAsset* t, const char* n){while(!t->GetTexture()){}std::cout<<"  "<<n<<std::endl;};
-		Wait(d.basecolor_tex,"basecolor"); Wait(d.normal_tex,"normal"); Wait(d.aorm_tex,"aorm");
-		Wait(d.cubemap_tex,"cubemap"); Wait(d.irradiance_tex,"irradiance");
+		d.basecolor = bc_asset; d.normal = n_asset; d.aorm = aorm_asset;
+		d.cubemap = cm_asset_db; d.irradiance = irr_asset;
+		d.mvp_ubo = mvp_buf; d.camera_ubo = camera_buf; d.material_ubo = mat_buf;
+		d.bindless_mgr = bindless_mgr;
+		d.fallback_lut = fl;
 
-		// Bindless registration
-		d.bindless_mgr = RHIGetBindlessManager();
-		d.bc_idx  = d.bindless_mgr->AllocateTexture2DSlot(d.basecolor_tex->GetTexture());
-		d.n_idx   = d.bindless_mgr->AllocateTexture2DSlot(d.normal_tex->GetTexture());
-		d.ao_idx  = d.bindless_mgr->AllocateTexture2DSlot(d.aorm_tex->GetTexture());
-		d.cm_idx  = d.bindless_mgr->AllocateTextureCubeSlot(d.cubemap_tex->GetTexture());
-		d.irr_idx = d.bindless_mgr->AllocateTextureCubeSlot(d.irradiance_tex->GetTexture());
-		{ // fallback IBL LUT
-			TextureDesc td; td.format=ENUM_TEXTURE_FORMAT::BGRA8; td.width=2; td.height=2;
-			td.type=ENUM_TEXTURE_TYPE::ENUM_TYPE_2D; td.usage=ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
-			auto* fl=RHICreateTexture(td); TextureDataPayload lp;
-				d.fallback_lut = fl;
-			Char w[16]={-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
-			lp.data=Vector<Char>(w,w+16); lp.width=2; lp.height=2; lp.format=ENUM_TEXTURE_FORMAT::BGRA8;
-			lp.type=ENUM_TEXTURE_TYPE::ENUM_TYPE_2D; lp.layer_count=1; lp.mip_level=1; lp.depth=1;
-			fl->UpdateTextureData(lp); d.lut_idx=d.bindless_mgr->AllocateTexture2DSlot(fl);
-		}
-		// UBOs
-		BufferDesc ub; ub.type=ENUM_BUFFER_TYPE::Uniform; ub.size=256;
-		d.mvp_ubo=RHICreateBuffer(ub); d.camera_ubo=RHICreateBuffer(ub); d.material_ubo=RHICreateBuffer(ub);
+		// Bindless indices
+		d.bc_idx = bindless_mgr->AllocateTexture2DSlot(bc_asset->GetTexture());
+		d.n_idx  = bindless_mgr->AllocateTexture2DSlot(n_asset->GetTexture());
+		d.a_idx  = bindless_mgr->AllocateTexture2DSlot(aorm_asset->GetTexture());
+		d.cm_idx = bindless_mgr->AllocateTextureCubeSlot(cm_asset_db->GetTexture());
+		d.irr_idx= bindless_mgr->AllocateTextureCubeSlot(irr_asset->GetTexture());
+		d.lut_idx= bindless_mgr->AllocateTexture2DSlot(fl);
+
+		// Material UBO
 		BindlessMaterialDataGPU mat{}; mat.basecolorIndex=d.bc_idx; mat.normalIndex=d.n_idx;
-		mat.aormIndex=d.ao_idx; mat.cubemapIndex=d.cm_idx; mat.irradianceIndex=d.irr_idx;
+		mat.aormIndex=d.a_idx; mat.cubemapIndex=d.cm_idx; mat.irradianceIndex=d.irr_idx;
 		mat.iblLutIndex=d.lut_idx; mat.metallicFactor=0; mat.roughnessFactor=0.5f;
 		void* mp=RHIMapBuffer(d.material_ubo,ENUM_MAP_TYPE::Write,ENUM_MAP_FLAG::None);
 		memcpy(mp,&mat,sizeof(mat)); RHIUnmapBuffer(d.material_ubo);
 		std::cout << "  Bindless ready." << std::endl;
 	},
-		[=](CONST MainPassData& d, CommandList* cmd)
+	[=](CONST PBRPassData& d, CommandList* cmd)
 	{
-		auto* vp = this->GetWindow()->GetViewport();
-		Vector<Texture*> rtvs = { vp->GetCurrentBackBufferRTV() };
-		Texture* dsv = vp->GetCurrentBackBufferDSV();
-
-		// --- SKYBOX ---
-		if (d.sky_cubemap->GetTexture()) {
-			Vector<ClearValue> c; c.push_back(rtvs[0]->GetTextureDesc().clear_value);
-			if(dsv) c.push_back(dsv->GetTextureDesc().clear_value);
-			cmd->SetRenderTarget(rtvs, dsv, c, dsv != nullptr);
-			cmd->SetGraphicsPipeline(d.sky_pipeline);
-			d.sky_srb->SetResource("cubemap_sampler", d.sky_cubemap->GetTexture());
-			cmd->SetShaderResourceBinding(d.sky_srb);
-			cmd->Draw(DrawAttribute{6,1,0,0});
-		}
-
-		// --- PBR QUAD (LOAD, preserve skybox) ---
 		g_cam_angle += 0.005f;
 		float cx=sin(g_cam_angle)*g_cam_distance, cz=cos(g_cam_angle)*g_cam_distance;
 		glm::vec3 eye(cx,0.8f,cz);
 		glm::mat4 view=glm::lookAt(eye,glm::vec3(0,0,0),glm::vec3(0,1,0));
 		glm::mat4 proj=glm::perspective(glm::radians(60.f),1280.f/960.f,0.1f,100.f);
-		{ glm::mat4 m=glm::rotate(glm::mat4(1),glm::radians(-20.f),glm::vec3(1,0,0));
+		{
+			glm::mat4 m=glm::rotate(glm::mat4(1),glm::radians(-20.f),glm::vec3(1,0,0));
 			void* p=RHIMapBuffer(d.mvp_ubo,ENUM_MAP_TYPE::Write,ENUM_MAP_FLAG::None);
 			glm::mat4* a=static_cast<glm::mat4*>(p); a[0]=m;a[1]=view;a[2]=proj;
-			RHIUnmapBuffer(d.mvp_ubo); }
-		{ struct C_{glm::vec3 p;float _0;glm::vec3 d;float _1;};
+			RHIUnmapBuffer(d.mvp_ubo);
+		}
+		{
+			struct C_{glm::vec3 p;float _0;glm::vec3 d;float _1;};
 			void* p=RHIMapBuffer(d.camera_ubo,ENUM_MAP_TYPE::Write,ENUM_MAP_FLAG::None);
 			C_* c=static_cast<C_*>(p); c->p=eye; c->d=glm::normalize(glm::vec3(0,0,0)-eye);
-			c->_0=c->_1=0; RHIUnmapBuffer(d.camera_ubo); }
-		{
-			Vector<ClearValue> nc;
-			cmd->SetRenderTarget(rtvs, dsv, nc, dsv != nullptr);
+			c->_0=c->_1=0; RHIUnmapBuffer(d.camera_ubo);
 		}
-		cmd->SetGraphicsPipeline(d.pbr_pipeline);
-		d.pbr_srb->SetResource("mvp", d.mvp_ubo);
-		d.pbr_srb->SetResource("cameraData", d.camera_ubo);
-		d.pbr_srb->SetResource("g_Material", d.material_ubo);
-		cmd->SetShaderResourceBinding(d.pbr_srb);
+
+		Vector<ClearValue> nc;
+		Vector<Texture*> rtvs = { vp->GetCurrentBackBufferRTV() };
+		Texture* dsv = vp->GetCurrentBackBufferDSV();
+		cmd->SetRenderTarget(rtvs, dsv, nc, dsv != nullptr);
+		cmd->SetGraphicsPipeline(d.pipeline);
+		d.srb->SetResource("mvp", d.mvp_ubo);
+		d.srb->SetResource("cameraData", d.camera_ubo);
+		d.srb->SetResource("g_Material", d.material_ubo);
+		cmd->SetShaderResourceBinding(d.srb);
 		cmd->Draw(DrawAttribute{6,1,0,0});
 	});
+	pbr_pass->SetIsCullable(false);
 
 	graph.Compile();
+}
+
+void RenderTest::EndRender()
+{
+	Render::RenderGraphDefinition def;
+	def.graph_name = "Bindless";
+	def.version = 2;
+
+	for (auto& res : graph.GetResources())
+	{
+		Render::RDGResourceDef rd;
+		rd.name = res->GetName();
+		rd.is_transient = res->GetIsTransient();
+		if (auto* tex = res->GetAsTexture())
+		{
+			rd.kind = Render::RDGResourceKind::Texture;
+			CONST auto& d = tex->GetTextureDesc();
+			rd.texture_format = (UInt32)d.format;
+			rd.width = d.width; rd.height = d.height;
+			rd.mip_level = d.mip_level; rd.samples = d.samples;
+		}
+		else if (res->GetAsBuffer())
+		{
+			rd.kind = Render::RDGResourceKind::Buffer;
+			CONST auto& d = res->GetAsBuffer()->GetBufferDesc();
+			rd.buffer_size = d.size; rd.buffer_stride = d.stride;
+		}
+		def.resources.push_back(rd);
+	}
+
+	for (auto& pass : graph.GetPasses())
+	{
+		Render::RDGPassDef pd;
+		pd.name = pass->GetName();
+		pd.pass_kind = Render::RDGPassKind::Graphics;
+		for (auto* r : pass->GetReadResources())  pd.read_resources.push_back(r->GetName());
+		for (auto* w : pass->GetWriteResources()) pd.write_resources.push_back(w->GetName());
+		for (auto* c : pass->GetCreateResources()) pd.create_resources.push_back(c->GetName());
+		def.passes.push_back(pd);
+	}
+
+	Render::RenderGraphSerializer::SaveGraph(def, "bindless.rgraph.json");
+	std::cout << "[Sample] Graph saved to bindless.rgraph.json" << std::endl;
+
+		graph.Release();
 }
 
 int main() {

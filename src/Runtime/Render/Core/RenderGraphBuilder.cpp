@@ -1,8 +1,4 @@
-// --   Full Builder implementation
-// Creates RHI resources from RDGResourceDef, declares pass topology,
-// and wires external bindings (swapchain images) into the runtime graph.
-
-#include "UI/RenderGraphEditor/Services/RenderGraphBuilder.h"
+#include "Render/Core/RenderGraphBuilder.h"
 #include "Render/Core/RenderGraphDefinition.h"
 #include "Render/Core/RenderGraph.h"
 #include "Render/Core/RenderGraphResource.h"
@@ -11,15 +7,22 @@
 #include "RHI/RenderTexture.h"
 #include "RHI/RenderBuffer.h"
 #include "RHI/RenderCommandList.h"
-#include "UI/RenderGraphEditor/Services/PassRegistry.h"
 #include <iostream>
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
-MYRENDERER_BEGIN_NAMESPACE(UI)
+MYRENDERER_BEGIN_NAMESPACE(Render)
 
 String RenderGraphBuilder::s_last_error;
 
-static RHI::TextureDesc BuildTextureDesc(const Render::RDGResourceDef& rd)
+// Global pass execution registry
+static Map<String, PassExecuteFunc> g_pass_execute_registry;
+
+void RenderGraphBuilder::RegisterPassExecute(CONST String& pass_name, PassExecuteFunc func)
+{
+	g_pass_execute_registry[pass_name] = std::move(func);
+}
+
+static RHI::TextureDesc BuildTextureDesc(const RDGResourceDef& rd)
 {
 	RHI::TextureDesc desc;
 	desc.format = static_cast<ENUM_TEXTURE_FORMAT>(rd.texture_format);
@@ -35,7 +38,7 @@ static RHI::TextureDesc BuildTextureDesc(const Render::RDGResourceDef& rd)
 	return desc;
 }
 
-static RHI::BufferDesc BuildBufferDesc(const Render::RDGResourceDef& rd)
+static RHI::BufferDesc BuildBufferDesc(const RDGResourceDef& rd)
 {
 	RHI::BufferDesc desc;
 	desc.size = rd.buffer_size;
@@ -44,14 +47,15 @@ static RHI::BufferDesc BuildBufferDesc(const Render::RDGResourceDef& rd)
 	return desc;
 }
 
-struct MinimalPassData : public Render::RenderGraphPassDataBase
+struct MinimalPassData : public RenderGraphPassDataBase
 {
+	PassExecuteFunc exec_callback; // Registered pass execute (nullptr = default clear)
 	void Release() override {}
 };
 
 Bool RenderGraphBuilder::BuildRuntimeGraph(
-	CONST Render::RenderGraphDefinition& def,
-	Render::RenderGraph* out_graph,
+	CONST RenderGraphDefinition& def,
+	RenderGraph* out_graph,
 	CONST Vector<ExternalResourceBinding>& externals)
 {
 	s_last_error.clear();
@@ -59,7 +63,7 @@ Bool RenderGraphBuilder::BuildRuntimeGraph(
 	out_graph->Release();
 
 	// ---- Phase 1: Register resources ----
-	Map<String, Render::RenderGraphResourceBase*> resource_map;
+	Map<String, RenderGraphResourceBase*> resource_map;
 
 	// External bindings first (swapchain BackBuffer / DepthStencil)
 	for (auto& ext : externals)
@@ -76,9 +80,9 @@ Bool RenderGraphBuilder::BuildRuntimeGraph(
 	for (auto& rd : def.resources)
 	{
 		if (resource_map.count(rd.name)) continue;
-		if (rd.lifetime == Render::RDGResourceLifetime::External || !rd.is_transient)
+		if (rd.lifetime == RDGResourceLifetime::External || !rd.is_transient)
 		{
-			if (rd.kind == Render::RDGResourceKind::Buffer)
+			if (rd.kind == RDGResourceKind::Buffer)
 			{
 				auto desc = BuildBufferDesc(rd);
 				resource_map[rd.name] = out_graph->AddRetainedResource<RHI::BufferDesc, RHI::Buffer>(rd.name, desc, nullptr);
@@ -95,18 +99,28 @@ Bool RenderGraphBuilder::BuildRuntimeGraph(
 	UInt32 built_count = 0;
 	for (auto& pd : def.passes)
 	{
-		const PassRegistryEntry* reg = PassRegistry::Get().Find(pd.name);
 		String pass_name = pd.name;
+
+		// Look up registered pass execution callback
+		PassExecuteFunc exec_cb = nullptr;
+		auto exec_it = g_pass_execute_registry.find(pass_name);
+		if (exec_it != g_pass_execute_registry.end())
+			exec_cb = exec_it->second;
+		else {
+			auto wildcard_it = g_pass_execute_registry.find("");
+			if (wildcard_it != g_pass_execute_registry.end())
+				exec_cb = wildcard_it->second;
+		}
 
 		// Capture copies for execute lambda
 		Vector<String> write_names = pd.write_resources;
-		Vector<String> read_names = pd.read_resources;
-		Map<String, Render::RenderGraphResourceBase*> res_copy = resource_map;
+		Map<String, RenderGraphResourceBase*> exec_res_map = resource_map;
 
 		auto* pass = out_graph->AddRenderPass<MinimalPassData>(
 			pass_name,
-			[&](MinimalPassData& data, Render::RenderGraphPassBuilder& builder, RHI::CommandList*)
+			[&, exec_cb](MinimalPassData& data, RenderGraphPassBuilder& builder, RHI::CommandList*)
 			{
+				data.exec_callback = exec_cb;
 				for (auto& rn : pd.read_resources) {
 					auto it = resource_map.find(rn);
 					if (it != resource_map.end()) builder.Read(it->second);
@@ -116,24 +130,32 @@ Bool RenderGraphBuilder::BuildRuntimeGraph(
 					if (it != resource_map.end()) builder.Write(it->second);
 				}
 			},
-			[write_names, read_names, res_copy](const MinimalPassData& data, RHI::CommandList* cmd)
+			[write_names, exec_res_map](const MinimalPassData& data, RHI::CommandList* cmd)
 			{
-				// Default execute: clear bound render targets with a solid color
-				for (auto& rn : write_names) {
-					auto it = res_copy.find(rn);
-					if (it == res_copy.end() || !it->second) continue;
-					if (auto* tex = it->second->GetAsTexture()) {
-						Vector<RHI::Texture*> rtvs = { tex };
-						RHI::ClearValue cv{ 0.15f, 0.15f, 0.25f, 1.0f };
-						Vector<RHI::ClearValue> cvs = { cv };
-						cmd->SetRenderTarget(rtvs, nullptr, cvs, false);
-						cmd->ClearTexture(tex);
+				if (data.exec_callback)
+				{
+					auto mutable_map = exec_res_map;
+					data.exec_callback(cmd, mutable_map);
+				}
+				else
+				{
+					// Default execute: clear bound render targets
+					for (auto& rn : write_names) {
+						auto it = exec_res_map.find(rn);
+						if (it == exec_res_map.end() || !it->second) continue;
+						if (auto* tex = it->second->GetAsTexture()) {
+							Vector<RHI::Texture*> rtvs = { tex };
+							RHI::ClearValue cv{ 0.15f, 0.15f, 0.25f, 1.0f };
+							Vector<RHI::ClearValue> cvs = { cv };
+							cmd->SetRenderTarget(rtvs, nullptr, cvs, false);
+							cmd->ClearTexture(tex);
+						}
 					}
 				}
 			}
 		);
 
-		if (static_cast<UInt32>(pd.pass_flags) & static_cast<UInt32>(Render::RDGPassFlags::NeverCull))
+		if (static_cast<UInt32>(pd.pass_flags) & static_cast<UInt32>(RDGPassFlags::NeverCull))
 			pass->SetIsCullable(false);
 		built_count++;
 	}
@@ -144,7 +166,7 @@ Bool RenderGraphBuilder::BuildRuntimeGraph(
 }
 
 void RenderGraphBuilder::GetBuildStats(
-	CONST Render::RenderGraphDefinition& def,
+	CONST RenderGraphDefinition& def,
 	UInt32& out_pass_count,
 	UInt32& out_resource_count)
 {

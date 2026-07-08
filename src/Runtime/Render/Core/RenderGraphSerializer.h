@@ -6,7 +6,7 @@
 #include "Render/Core/RenderGraphDefinition.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
-MYRENDERER_BEGIN_NAMESPACE(UI)
+MYRENDERER_BEGIN_NAMESPACE(Render)
 
 // JSON-based serializer for RenderGraphDefinition.
 // Uses nlohmann_json (already a project dependency via xmake).
@@ -16,10 +16,10 @@ MYRENDERER_BEGIN_CLASS(RenderGraphSerializer)
 #pragma region METHOD
 public:
 	// Save a graph definition to a JSON file.
-	static Bool METHOD(SaveGraph)(CONST Render::RenderGraphDefinition& def, CONST String& filepath);
+	static Bool METHOD(SaveGraph)(CONST RenderGraphDefinition& def, CONST String& filepath);
 
 	// Load a graph definition from a JSON file.
-	static Bool METHOD(LoadGraph)(Render::RenderGraphDefinition& out_def, CONST String& filepath);
+	static Bool METHOD(LoadGraph)(RenderGraphDefinition& out_def, CONST String& filepath);
 
 
 	// Get last error message.
@@ -31,10 +31,10 @@ private:
 	// Enum name conversion helpers
 	static CONST Char* TextureFormatToString(Int format);
 	static Int StringToTextureFormat(CONST String& str);
-	static CONST Char* ResourceKindToString(Render::RDGResourceKind kind);
-	static Render::RDGResourceKind StringToResourceKind(CONST String& str);
-	static CONST Char* PassKindToString(Render::RDGPassKind kind);
-	static Render::RDGPassKind StringToPassKind(CONST String& str);
+	static CONST Char* ResourceKindToString(RDGResourceKind kind);
+	static RDGResourceKind StringToResourceKind(CONST String& str);
+	static CONST Char* PassKindToString(RDGPassKind kind);
+	static RDGPassKind StringToPassKind(CONST String& str);
 
 #pragma endregion
 

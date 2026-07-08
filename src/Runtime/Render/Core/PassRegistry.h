@@ -6,21 +6,19 @@
 #include "Render/Core/RenderGraphDefinition.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
-MYRENDERER_BEGIN_NAMESPACE(UI)
+MYRENDERER_BEGIN_NAMESPACE(Render)
 
-// --   Pass registry entry — metadata for a known pass type
 struct PassRegistryEntry
 {
 	String name;
 	String category;
 	String description;
-	Render::RDGPassKind pass_kind = Render::RDGPassKind::Graphics;
-	Render::RDGPassFlags pass_flags = Render::RDGPassFlags::Raster;
+	RDGPassKind pass_kind = RDGPassKind::Graphics;
+	RDGPassFlags pass_flags = RDGPassFlags::Raster;
 };
 
-// --   Global pass registry. Passes register themselves via REGISTER_PASS macro.
+// Global pass registry. Passes register themselves via REGISTER_PASS macro.
 // Editor consults this for: categorized menus, Quick Create suggestions, template auto-fill.
-// Builder consults this to verify a pass name maps to a known type before building.
 MYRENDERER_BEGIN_CLASS(PassRegistry)
 public:
 	static PassRegistry& METHOD(Get)();
@@ -37,7 +35,7 @@ private:
 	Map<String, Vector<PassRegistryEntry>> m_by_category;
 MYRENDERER_END_CLASS
 
-// --   Macro for static pass registration
+// Macro for static pass registration
 #define REGISTER_PASS(Name, Category, Kind) \
 	static struct RegPass_##Name { \
 		RegPass_##Name() { \
@@ -45,8 +43,8 @@ MYRENDERER_END_CLASS
 			e.name = #Name; \
 			e.category = Category; \
 			e.pass_kind = Kind; \
-			e.pass_flags = Render::RDGPassFlags::Raster; \
-			PassRegistry::Get().Register(e); \
+			e.pass_flags = RDGPassFlags::Raster; \
+			MXRender::Render::PassRegistry::Get().Register(e); \
 		} \
 	} g_RegPass_##Name;
 

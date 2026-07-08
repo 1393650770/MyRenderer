@@ -103,7 +103,7 @@ void RenderTest::BeginRender()
 	};
 	RenderPassDesc renderpass_desc;
 	CommandList* cmd_list = RHIGetImmediateCommandList();
-	graph.AddRenderPass<TestData>("TestPass", &graph, cmd_list,
+	auto* rdg_pass = graph.AddRenderPass<TestData>("TestPass", &graph, cmd_list,
 		[&](TestData& data, RenderGraphPassBuilder& builder, CommandList* in_cmd_list)
 	{
 		Shader* vs_shader;
@@ -169,6 +169,7 @@ void RenderTest::BeginRender()
 		}
 	});
 
+	rdg_pass->SetIsCullable(false);
 	graph.Compile();
 }
 
