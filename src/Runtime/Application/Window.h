@@ -2,6 +2,7 @@
 #ifndef _WINDOW_
 #define _WINDOW_
 #include "Core/ConstDefine.h"
+#include <MTScheduler.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -45,6 +46,7 @@ MYRENDERER_BEGIN_CLASS(Window)
 		UInt32 width = 1280, height = 960;
 		Bool is_full_screen = false;
 		MXRender::RHI::Viewport* viewport =nullptr;
+	MT::TaskScheduler scheduler;
 	private:
 
 #pragma endregion

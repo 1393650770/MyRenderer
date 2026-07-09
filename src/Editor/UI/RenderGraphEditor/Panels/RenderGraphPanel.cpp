@@ -10,6 +10,7 @@
 #include "UI/RenderGraphEditor/Services/RenderGraphConnectionValidator.h"
 #include "UI/RenderGraphEditor/Panels/PropertiesPanel.h"
 #include "Render/Core/RenderGraphDefinition.h"
+#include "Platform/FileDialog.h"
 #include "Render/Core/RenderGraphSerializer.h"
 #include "Render/Core/RenderGraphBuilder.h"
 #include <iostream>
@@ -679,7 +680,10 @@ void RenderGraphPanel::GraphMenu()
 			if (ImGui::MenuItem("Save Graph", "Ctrl+S"))
 			{
 				if (current_save_path.empty())
-					current_save_path = "render_graph.rgraph.json";
+				{
+					current_save_path = MXRender::Platform::SaveFileDialog();
+					if (current_save_path.empty()) return;
+				}
 				auto def = BuildDefinition();
 				auto vr = Render::RenderGraphValidator::Validate(def);
 				if(!vr.is_valid) std::cerr << "[RG] Save with " << vr.errors.size() << " validation issues" << std::endl;
@@ -691,7 +695,8 @@ void RenderGraphPanel::GraphMenu()
 			if (ImGui::MenuItem("Save As..."))
 			{
 				auto def = BuildDefinition();
-				String save_path = "render_graph_save.rgraph.json";
+				String save_path = MXRender::Platform::SaveFileDialog();
+			if (save_path.empty()) return;
 				if (Render::RenderGraphSerializer::SaveGraph(def, save_path))
 				{
 					current_save_path = save_path;
@@ -702,7 +707,8 @@ void RenderGraphPanel::GraphMenu()
 			}
 			if (ImGui::MenuItem("Open...", "Ctrl+O"))
 			{
-				String load_path = current_save_path.empty() ? "render_graph.rgraph.json" : current_save_path;
+				String load_path = MXRender::Platform::OpenFileDialog();
+			if (load_path.empty()) return;
 				Render::RenderGraphDefinition def;
 				if (Render::RenderGraphSerializer::LoadGraph(def, load_path))
 				{

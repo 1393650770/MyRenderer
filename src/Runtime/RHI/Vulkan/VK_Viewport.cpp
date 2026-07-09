@@ -134,6 +134,7 @@ void VK_Viewport::AttachUiLayer(UI::UIBase* ui_layer)
 		command_buffer->End();
 
 		device->GetQueue(ENUM_QUEUE_TYPE::TRANSFER)->Submit(command_buffer);
+		command_buffer->WaitForFence(10.0f);
 
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}

@@ -37,8 +37,9 @@ Vector<UInt32> ReadShader(CONST String& filename)
 	return std::move(buffer);
 }
 
-void EditorRenderPipeline::BeginRender()
+void EditorRenderPipeline::OnInit(Application::Window* in_window)
 {
+	window = in_window;
 	std::cout << "Hello Editor" << std::endl;
 	editor_ui.Init(window);
 	RHI::CommandList* cmd_list = RHIGetImmediateCommandList();
@@ -227,37 +228,32 @@ void EditorRenderPipeline::BeginRender()
 		rgp->SyncRuntimeToEditor(&graph);
 }
 
-void EditorRenderPipeline::EndRender()
+void EditorRenderPipeline::OnShutdown()
 {
 	editor_ui.Release();
 	graph.Release();
 }
 
-void EditorRenderPipeline::BeginFrame()
+void EditorRenderPipeline::OnUpdate(float dt)
 {
 
 }
 
-void EditorRenderPipeline::OnFrame()
+void EditorRenderPipeline::OnRender()
 {
 	graph.Execute();
 }
 
-void EditorRenderPipeline::EndFrame()
+EditorRenderPipeline::EditorRenderPipeline(MXRender::Application::Window* in_window)
 {
-
-}
-
-EditorRenderPipeline::EditorRenderPipeline(MXRender::Application::Window* in_window) :window(in_window)
-{
-
+	// window will be set in OnInit
 }
 
 MXRender::Application::Window* EditorRenderPipeline::GetWindow()
 {
 	return window;
-
 }
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
+

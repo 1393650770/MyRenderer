@@ -35,17 +35,32 @@ rule("flatbufferFile")
     --end)
 
 
+function PlatformSettings()
+    if is_plat("windows") then
+        add_defines("PLATFORM_WIN32")
+        add_syslinks("comdlg32")
+    elseif is_plat("linux") then
+        add_defines("PLATFORM_LINUX")
+    elseif is_plat("macosx") then
+        add_defines("PLATFORM_MACOS")
+    end
+end
+
 function CommonLibrarySetting()
-    set_languages("clatest", "cxx20")  
-    add_defines("PLATFORM_WIN32")
+    set_languages("clatest", "cxx20")
+    PlatformSettings()
     add_headerfiles("src/Runtime/**.h")
     add_files("src/Runtime/**.cpp")
     add_headerfiles("src/ThirdParty/**.h")
-    add_files("src/ThirdParty/**.cpp")
+    add_files("src/ThirdParty/stb_image/**.cpp")
+    add_files("src/ThirdParty/spv_reflect/**.cpp")
     add_files("src/ThirdParty/**.c")
     add_includedirs("src/_Generated", {public = true})
     add_includedirs("src/Runtime", {public = true})
     add_includedirs("src/ThirdParty", {public = true})
+    add_includedirs("src/ThirdParty/TaskScheduler/Scheduler/Include", {public = true})
+    add_files("src/ThirdParty/TaskScheduler/Scheduler/Source/**.cpp")
+    add_files("src/ThirdParty/TaskScheduler/Scheduler/Include/Platform/Windows/**.cpp")
     add_packages("vulkansdk", "glfw", "glm","assimp","tinyobjloader","imgui","lz4","nlohmann_json","gli","optick","boost","flatbuffers","rttr")
 end
 

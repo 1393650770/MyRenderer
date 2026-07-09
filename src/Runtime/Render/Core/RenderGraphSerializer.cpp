@@ -1,6 +1,7 @@
 #include "Render/Core/RenderGraphSerializer.h"
 #include "Render/Core/RenderGraphDefinition.h"
 #include "Render/Core/RenderGraphResourceImplementation.h"
+#include "Tool/ToolUtils.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <iostream>
@@ -31,7 +32,7 @@ Bool RenderGraphSerializer::SaveGraph(CONST RenderGraphDefinition& def, CONST St
 		{
 			json rj;
 			rj["name"] = rd.name;
-			rj["kind"] = ResourceKindToString(rd.GetKind());
+			rj["kind"] = MXRender::Tool::EnumToString(rd.GetKind());
 			rj["is_transient"] = rd.is_transient;
 
 			rj["is_depth_stencil"] = rd.is_depth_stencil;
@@ -49,7 +50,7 @@ Bool RenderGraphSerializer::SaveGraph(CONST RenderGraphDefinition& def, CONST St
 		{
 			json pj;
 			pj["name"] = pd.name;
-			pj["pass_kind"] = PassKindToString(pd.pass_kind);
+			pj["pass_kind"] = MXRender::Tool::EnumToString(pd.pass_kind);
 			pj["pass_flags"] = (UInt32)pd.pass_flags;
 			pj["read_resources"] = pd.read_resources;
 			pj["write_resources"] = pd.write_resources;
@@ -140,7 +141,7 @@ Bool RenderGraphSerializer::LoadGraph(RenderGraphDefinition& out_def, CONST Stri
 				rd.name = rj.value("name", "Unnamed");
 				rd.is_transient = rj.value("is_transient", true);
 				rd.is_depth_stencil = rj.value("is_depth_stencil", false);
-				auto kind = StringToResourceKind(rj.value("kind", "Texture"));
+				auto kind = MXRender::Tool::StringToEnum_ResourceKind(rj.value("kind", "Texture"));
 
 				if (kind == RDGResourceKind::Buffer)
 					rd.desc = ResourceDescSerializer<RHI::BufferDesc>::Deserialize(rj);
@@ -159,7 +160,7 @@ Bool RenderGraphSerializer::LoadGraph(RenderGraphDefinition& out_def, CONST Stri
 			{
 				RDGPassDef pd;
 				pd.name = pj.value("name", "Unnamed");
-				pd.pass_kind = StringToPassKind(pj.value("pass_kind", "Graphics"));
+				pd.pass_kind = MXRender::Tool::StringToEnum_PassKind(pj.value("pass_kind", "Graphics"));
 				pd.pass_flags = (RDGPassFlags)pj.value("pass_flags", (UInt32)RDGPassFlags::Raster);
 
 				if (pj.contains("read_resources") && pj["read_resources"].is_array())
@@ -214,92 +215,7 @@ Bool RenderGraphSerializer::LoadGraph(RenderGraphDefinition& out_def, CONST Stri
 	}
 }
 
-// ---- Enum conversion helpers ----
-
-CONST Char* RenderGraphSerializer::TextureFormatToString(Int format)
-{
-	static CONST Char* names[] = {
-		"None","BC1","BC1A","BC2","BC3","BC4","BC5","BC6H","BC7",
-		"ETC1","ETC2","ETC2A","ETC2A1","PTC12","PTC14","PTC12A","PTC14A","PTC22","PTC24",
-		"ATC","ATCE","ATCI","ASTC4x4","ASTC5x5","ASTC6x6","ASTC8x5","ASTC8x6","ASTC10x5",
-		"Unknown",
-		"R1","A8","R8","R8I","R8U","R8S","R16","R16I","R16U","R16F","R16S",
-		"R32I","R32U","R32F","RG8","RG8I","RG8U","RG8S","RG16","RG16I","RG16U","RG16F","RG16S",
-		"RG32I","RG32U","RG32F","RGB8","RGB8I","RGB8U","RGB8S","RGB9E5F",
-		"RGB16I","RGB16U","RGB16F","RGB32I","RGB32U","RGB32F",
-		"BGRA8","RGBA8","RGBA8I","RGBA8U","RGBA8S","RGBA16","RGBA16I","RGBA16U","RGBA16F","RGBA16S",
-		"RGBA32I","RGBA32U","RGBA32F","R5G6B5","RGBA4","RGB5A1","RGB10A2","RG11B10F",
-		"UnknownDepth",
-		"D16","D24","D24S8","D32","D32FS8","D16F","D24F","D32F","D0S8"
-	};
-	if (format < 0 || format >= (Int)(sizeof(names) / sizeof(names[0])))
-		return "RGBA8";
-	return names[format];
-}
-
-Int RenderGraphSerializer::StringToTextureFormat(CONST String& str)
-{
-	static CONST Char* names[] = {
-		"None","BC1","BC1A","BC2","BC3","BC4","BC5","BC6H","BC7",
-		"ETC1","ETC2","ETC2A","ETC2A1","PTC12","PTC14","PTC12A","PTC14A","PTC22","PTC24",
-		"ATC","ATCE","ATCI","ASTC4x4","ASTC5x5","ASTC6x6","ASTC8x5","ASTC8x6","ASTC10x5",
-		"Unknown",
-		"R1","A8","R8","R8I","R8U","R8S","R16","R16I","R16U","R16F","R16S",
-		"R32I","R32U","R32F","RG8","RG8I","RG8U","RG8S","RG16","RG16I","RG16U","RG16F","RG16S",
-		"RG32I","RG32U","RG32F","RGB8","RGB8I","RGB8U","RGB8S","RGB9E5F",
-		"RGB16I","RGB16U","RGB16F","RGB32I","RGB32U","RGB32F",
-		"BGRA8","RGBA8","RGBA8I","RGBA8U","RGBA8S","RGBA16","RGBA16I","RGBA16U","RGBA16F","RGBA16S",
-		"RGBA32I","RGBA32U","RGBA32F","R5G6B5","RGBA4","RGB5A1","RGB10A2","RG11B10F",
-		"UnknownDepth",
-		"D16","D24","D24S8","D32","D32FS8","D16F","D24F","D32F","D0S8"
-	};
-	Int count = sizeof(names) / sizeof(names[0]);
-	for (Int i = 0; i < count; ++i)
-	{
-		if (str == names[i]) return i;
-	}
-	return 0; // None
-}
-
-CONST Char* RenderGraphSerializer::ResourceKindToString(RDGResourceKind kind)
-{
-	switch (kind)
-	{
-	case RDGResourceKind::Texture:        return "Texture";
-	case RDGResourceKind::Buffer:         return "Buffer";
-	case RDGResourceKind::ExternalTexture:return "ExternalTexture";
-	case RDGResourceKind::DepthStencil:   return "DepthStencil";
-	default: return "Texture";
-	}
-}
-
-RDGResourceKind RenderGraphSerializer::StringToResourceKind(CONST String& str)
-{
-	if (str == "Buffer")          return RDGResourceKind::Buffer;
-	if (str == "ExternalTexture") return RDGResourceKind::ExternalTexture;
-	if (str == "DepthStencil")    return RDGResourceKind::DepthStencil;
-	return RDGResourceKind::Texture;
-}
-
-CONST Char* RenderGraphSerializer::PassKindToString(RDGPassKind kind)
-{
-	switch (kind)
-	{
-	case RDGPassKind::Graphics: return "Graphics";
-	case RDGPassKind::Compute:  return "Compute";
-	case RDGPassKind::Copy:     return "Copy";
-	case RDGPassKind::Custom:   return "Custom";
-	default: return "Graphics";
-	}
-}
-
-RDGPassKind RenderGraphSerializer::StringToPassKind(CONST String& str)
-{
-	if (str == "Compute")  return RDGPassKind::Compute;
-	if (str == "Copy")     return RDGPassKind::Copy;
-	if (str == "Custom")   return RDGPassKind::Custom;
-	return RDGPassKind::Graphics;
-}
-
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
+
+

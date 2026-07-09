@@ -1,5 +1,6 @@
 #include "RenderGraphResourceImplementation.h"
 #include "RenderGraphResource.h"
+#include "Tool/ToolUtils.h"
 #include "RHI/RenderRHI.h"
 #include "RHI/RenderTexture.h"
 #include "RHI/RenderBuffer.h"
@@ -11,53 +12,11 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Render)
 
-// ---- Enum conversion helpers (shared by Serialize/Deserialize) ----
-
-static CONST Char* TextureFormatToStr(Int format)
-{
-	static CONST Char* names[] = {
-		"None","BC1","BC1A","BC2","BC3","BC4","BC5","BC6H","BC7",
-		"ETC1","ETC2","ETC2A","ETC2A1","PTC12","PTC14","PTC12A","PTC14A","PTC22","PTC24",
-		"ATC","ATCE","ATCI","ASTC4x4","ASTC5x5","ASTC6x6","ASTC8x5","ASTC8x6","ASTC10x5",
-		"Unknown","R1","A8","R8","R8I","R8U","R8S","R16","R16I","R16U","R16F","R16S",
-		"R32I","R32U","R32F","RG8","RG8I","RG8U","RG8S","RG16","RG16I","RG16U","RG16F","RG16S",
-		"RG32I","RG32U","RG32F","RGB8","RGB8I","RGB8U","RGB8S","RGB9E5F",
-		"RGB16I","RGB16U","RGB16F","RGB32I","RGB32U","RGB32F",
-		"BGRA8","RGBA8","RGBA8I","RGBA8U","RGBA8S","RGBA16","RGBA16I","RGBA16U","RGBA16F","RGBA16S",
-		"RGBA32I","RGBA32U","RGBA32F","R5G6B5","RGBA4","RGB5A1","RGB10A2","RG11B10F",
-		"UnknownDepth","D16","D24","D24S8","D32","D32FS8","D16F","D24F","D32F","D0S8"
-	};
-	if (format < 0 || format >= (Int)(sizeof(names) / sizeof(names[0]))) return "RGBA8";
-	return names[format];
-}
-
-static Int StrToTextureFormat(const String& str)
-{
-	static CONST Char* names[] = {
-		"None","BC1","BC1A","BC2","BC3","BC4","BC5","BC6H","BC7",
-		"ETC1","ETC2","ETC2A","ETC2A1","PTC12","PTC14","PTC12A","PTC14A","PTC22","PTC24",
-		"ATC","ATCE","ATCI","ASTC4x4","ASTC5x5","ASTC6x6","ASTC8x5","ASTC8x6","ASTC10x5",
-		"Unknown","R1","A8","R8","R8I","R8U","R8S","R16","R16I","R16U","R16F","R16S",
-		"R32I","R32U","R32F","RG8","RG8I","RG8U","RG8S","RG16","RG16I","RG16U","RG16F","RG16S",
-		"RG32I","RG32U","RG32F","RGB8","RGB8I","RGB8U","RGB8S","RGB9E5F",
-		"RGB16I","RGB16U","RGB16F","RGB32I","RGB32U","RGB32F",
-		"BGRA8","RGBA8","RGBA8I","RGBA8U","RGBA8S","RGBA16","RGBA16I","RGBA16U","RGBA16F","RGBA16S",
-		"RGBA32I","RGBA32U","RGBA32F","R5G6B5","RGBA4","RGB5A1","RGB10A2","RG11B10F",
-		"UnknownDepth","D16","D24","D24S8","D32","D32FS8","D16F","D24F","D32F","D0S8"
-	};
-	Int count = (Int)(sizeof(names) / sizeof(names[0]));
-	for (Int i = 0; i < count; ++i) if (str == names[i]) return i;
-	return 0;
-}
-
 template<>
 std::unique_ptr<MXRender::RHI::Texture> RealizeResource<MXRender::RHI::TextureDesc, MXRender::RHI::Texture>(CONST MXRender::RHI::TextureDesc& description)
 {
-	// Try pooled resource first.
 	auto pooled = AcquirePooledTexture(description);
-	if (pooled)
-		return pooled;
-
+	if (pooled) return pooled;
 	std::unique_ptr<MXRender::RHI::Texture> texture(RHICreateTexture(description));
 	return std::move(texture);
 }
@@ -65,14 +24,12 @@ std::unique_ptr<MXRender::RHI::Texture> RealizeResource<MXRender::RHI::TextureDe
 template<>
 std::unique_ptr<MXRender::RHI::Buffer> RealizeResource<MXRender::RHI::BufferDesc, MXRender::RHI::Buffer>(CONST MXRender::RHI::BufferDesc& description)
 {
-	// Try pooled resource first.
 	auto pooled = AcquirePooledBuffer(description);
-	if (pooled)
-		return pooled;
-
+	if (pooled) return pooled;
 	std::unique_ptr<MXRender::RHI::Buffer> buffer(RHICreateBuffer(description));
 	return std::move(buffer);
 }
+
 template<>
 std::unique_ptr<MXRender::RHI::RenderPass> RealizeResource<MXRender::RHI::RenderPassDesc, MXRender::RHI::RenderPass>(CONST MXRender::RHI::RenderPassDesc& description)
 {
@@ -86,6 +43,7 @@ std::unique_ptr<MXRender::RHI::FrameBuffer> RealizeResource<MXRender::RHI::Frame
 	std::unique_ptr<MXRender::RHI::FrameBuffer> frame_buffer(RHICreateFrameBuffer(description));
 	return std::move(frame_buffer);
 }
+
 template<>
 std::unique_ptr<MXRender::RHI::RenderPipelineState> RealizeResource<MXRender::RHI::RenderGraphiPipelineStateDesc, MXRender::RHI::RenderPipelineState>(CONST MXRender::RHI::RenderGraphiPipelineStateDesc& description)
 {
@@ -113,7 +71,7 @@ std::unique_ptr<MXRender::RHI::Shader> RealizeResource<MXRender::RHI::ShaderDesc
 
 void ResourceDescSerializer<MXRender::RHI::TextureDesc>::Serialize(nlohmann::json& j, CONST MXRender::RHI::TextureDesc& d)
 {
-	j["texture_format"] = TextureFormatToStr((Int)d.format);
+	j["texture_format"] = MXRender::Tool::EnumToString(d.format);
 	j["width"] = d.width;
 	j["height"] = d.height;
 	j["mip_level"] = d.mip_level;
@@ -122,7 +80,7 @@ void ResourceDescSerializer<MXRender::RHI::TextureDesc>::Serialize(nlohmann::jso
 MXRender::RHI::TextureDesc ResourceDescSerializer<MXRender::RHI::TextureDesc>::Deserialize(CONST nlohmann::json& j)
 {
 	MXRender::RHI::TextureDesc d;
-	d.format = static_cast<ENUM_TEXTURE_FORMAT>(StrToTextureFormat(j.value("texture_format", "RGBA8")));
+	d.format = static_cast<ENUM_TEXTURE_FORMAT>(MXRender::Tool::StringToEnum_TextureFormat(j.value("texture_format", "RGBA8")));
 	d.width = j.value("width", (UInt32)1920);
 	d.height = j.value("height", (UInt32)1080);
 	d.mip_level = j.value("mip_level", (UInt8)1);

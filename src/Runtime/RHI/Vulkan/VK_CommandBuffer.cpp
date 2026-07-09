@@ -3,6 +3,7 @@
 #include "VK_Fence.h"
 #include "VK_Utils.h"
 #include "VK_Define.h"
+#include "VK_Buffer.h"
 #include "VK_PipelineState.h"
 #include "VK_RenderPass.h"
 #include "VK_Texture.h"
@@ -153,6 +154,7 @@ void VK_CommandBuffer::Free()
 
 void VK_CommandBuffer::ClearTexture(Texture* texture, Vector<float> clear_value /*= Vector<float>(4, 0.0f)*/)
 {
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdClearTexture>(texture, std::move(clear_value))); return; }
 	static constexpr CONST UInt32 invalid_attachment_index = ~UInt32{ 0 };
 
 	bool clear_depth_attachment = false,clear_depth_image=false;
@@ -283,6 +285,7 @@ void VK_CommandBuffer::BeginDynamicRendering(CONST Vector<Texture*>& render_targ
 }
 void VK_CommandBuffer::TransitionTextureState(Texture* texture, CONST ENUM_RESOURCE_STATE& required_state)
 {
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdTransitionTexture>(texture, required_state)); return; }
 	if (texture->GetTextureDesc().resource_state != required_state)
 	{
 		ENUM_RESOURCE_STATE old_state = texture->GetTextureDesc().resource_state;
@@ -454,6 +457,7 @@ void VK_CommandBuffer::TrainsitionImageLayout(VkImage image, VkImageLayout old_l
 
 void VK_CommandBuffer::FlushBarriers()
 {
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdFlushBarriers>()); return; }
 	if (state_cache.render_pass != VK_NULL_HANDLE)
 	{
 		EndRenderPass();
@@ -514,6 +518,7 @@ void VK_CommandBuffer::MemoryBarrier(VkPipelineStageFlags srcStageMask, VkPipeli
 
 void VK_CommandBuffer::ResourceBarrier(ENUM_RESOURCE_STATE src_state, ENUM_RESOURCE_STATE dst_state)
 {
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdResourceBarrier>(src_state, dst_state)); return; }
     if (state_cache.render_pass != VK_NULL_HANDLE)
     {
         EndRenderPass();
@@ -561,13 +566,14 @@ void VK_CommandBuffer::MemoryBarrier(ENUM_SHADER_STAGE src_stage, ENUM_SHADER_ST
 
 void VK_CommandBuffer::CopyBufferToImage(VkBuffer buffer, VkImage image, VkImageLayout imageLayout,UInt32 region_count, CONST VkBufferImageCopy* region)
 {
+	if (!bypass) return;  // CopyBufferToImage: skip in record mode
 	if (state_cache.render_pass != VK_NULL_HANDLE)
 	{
 		EndRenderPass();
 	}
 	FlushBarriers();
 	vkCmdCopyBufferToImage(command_buffer, buffer, image, imageLayout, region_count, region);
-	
+
 }
 
 
@@ -601,6 +607,7 @@ void VK_CommandBuffer::SetComputePipeline(RenderPipelineState* pipeline_state)
 
 void VK_CommandBuffer::Dispatch(UInt32 groupX, UInt32 groupY, UInt32 groupZ)
 {
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdDispatch>(groupX, groupY, groupZ)); return; }
 	// Compute dispatches must happen outside an active render pass
 	if (state_cache.render_pass != VK_NULL_HANDLE)
 	{
@@ -621,6 +628,7 @@ void VK_CommandBuffer::Dispatch(UInt32 groupX, UInt32 groupY, UInt32 groupZ)
 
 void VK_CommandBuffer::SetPushConstants(UInt32 offset, UInt32 size, const void* data)
 {
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdSetPushConstants>(offset, size, data)); return; }
         if (state_cache.pipeline_layout == VK_NULL_HANDLE)
                 return;
         // --   Auto-detect stage: compute vs graphics pipeline
@@ -745,6 +753,7 @@ void VK_CommandBuffer::SetShaderResourceBinding(ShaderResourceBinding* srb)
 
 void VK_CommandBuffer::Draw(CONST DrawAttribute& draw_attr)
 {
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdDraw>(draw_attr)); return; }
 	//vkCmdPushConstants(GetCommandBuffer(), state_cache.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &z);
 	VkViewport viewport{};
 	viewport.x = 0.0f; viewport.y = 0.0f;
@@ -830,6 +839,91 @@ void VK_CommandBufferManager::FreeUnusedCommandBuffer(ENUM_QUEUE_TYPE queue_type
 	default:
 		return ;
 	}
+}
+
+void VK_CommandBuffer::Replay()
+{
+	if (recorded_commands.empty()) return;
+
+	Bool saved_bypass = bypass;
+	bypass = true;  // During replay, execute vk calls directly
+
+	for (auto& cmd : recorded_commands)
+	{
+		switch (cmd->type)
+		{
+		case RHICommandType::SetGraphicsPipeline:
+			SetGraphicsPipeline(static_cast<RHICmdSetGraphicsPipeline*>(cmd.get())->pso);
+			break;
+		case RHICommandType::SetComputePipeline:
+			SetComputePipeline(static_cast<RHICmdSetComputePipeline*>(cmd.get())->pso);
+			break;
+		case RHICommandType::SetRenderTarget: {
+			auto* c = static_cast<RHICmdSetRenderTarget*>(cmd.get());
+			SetRenderTarget(c->rtvs, c->dsv, c->clear_values, c->has_dsv_clear);
+			break;
+		}
+		case RHICommandType::SetSRB:
+			SetShaderResourceBinding(static_cast<RHICmdSetSRB*>(cmd.get())->srb);
+			break;
+		case RHICommandType::Draw:
+			Draw(static_cast<RHICmdDraw*>(cmd.get())->attr);
+			break;
+		case RHICommandType::Dispatch: {
+			auto* c = static_cast<RHICmdDispatch*>(cmd.get());
+			Dispatch(c->gx, c->gy, c->gz);
+			break;
+		}
+		case RHICommandType::TransitionTexture: {
+			auto* c = static_cast<RHICmdTransitionTexture*>(cmd.get());
+			TransitionTextureState(c->texture, c->state);
+			break;
+		}
+		case RHICommandType::ClearTexture: {
+			auto* c = static_cast<RHICmdClearTexture*>(cmd.get());
+			ClearTexture(c->texture, c->clear_value);
+			break;
+		}
+		case RHICommandType::ResourceBarrier: {
+			auto* c = static_cast<RHICmdResourceBarrier*>(cmd.get());
+			ResourceBarrier(c->src, c->dst);
+			break;
+		}
+		case RHICommandType::FlushBarriers:
+			FlushBarriers();
+			break;
+		case RHICommandType::SetPushConstants: {
+			auto* c = static_cast<RHICmdSetPushConstants*>(cmd.get());
+			SetPushConstants(c->offset, c->size, c->data.data());
+			break;
+		}
+		case RHICommandType::Begin:
+			Begin();
+			break;
+		case RHICommandType::End:
+			End();
+			break;
+		case RHICommandType::EndRenderPass:
+			EndRenderPass();
+			break;
+		case RHICommandType::WriteTimestamp: {
+			auto* c = static_cast<RHICmdWriteTimestamp*>(cmd.get());
+			WriteTimestamp(c->index);
+			break;
+		}
+		case RHICommandType::UnmapBuffer: {
+			auto* c = static_cast<RHICmdUnmapBuffer*>(cmd.get());
+			VK_Buffer* vk_buf = STATIC_CAST(c->buffer, VK_Buffer);
+			if (vk_buf) vk_buf->Unmap();
+			break;
+		}
+		default:
+			break;
+		}
+	}
+
+	bypass = saved_bypass;
+	recorded_commands.clear();
 }
 
 MYRENDERER_END_NAMESPACE

@@ -42,6 +42,7 @@ void VulkanRHI::Init(RenderFactory* render_factory)
 {
 	VulkanRenderFactory* vulkan_render_factory = STATIC_CAST(render_factory,VulkanRenderFactory);
 	Bool enable_render_debug = vulkan_render_factory->enable_render_debug;
+	g_enable_rhi_thread = vulkan_render_factory->enable_rhi_thread;
 	CreateInstance(enable_render_debug);
 	InitializeDebugmessenger(enable_render_debug);
 	CreateDevice(enable_render_debug);
@@ -152,7 +153,15 @@ void* VulkanRHI::MapBuffer(Buffer* buffer, ENUM_MAP_TYPE map_type, ENUM_MAP_FLAG
 
 void VulkanRHI::UnmapBuffer(Buffer* buffer)
 {
-	return STATIC_CAST(buffer, VK_Buffer)->Unmap();
+	// Unmap triggers GPU copy (staging->device). In RHI thread mode,
+	// this is recorded for later replay. In bypass mode, executes immediately.
+	auto* cmd_list = STATIC_CAST(GetImmediateCommandList(), VK_CommandBuffer);
+	if (cmd_list && !cmd_list->IsBypass())
+	{
+		cmd_list->GetRecordedCommands().push_back(std::make_unique<RHICmdUnmapBuffer>(buffer));
+		return;
+	}
+	STATIC_CAST(buffer, VK_Buffer)->Unmap();
 }
 
 Bool VulkanRHI::CheckGpuSuitable(VkPhysicalDevice gpu)
@@ -363,6 +372,8 @@ void VulkanRHI::SubmitCommandList(CommandList* command_list)
 
 void VulkanRHI::RenderEnd()
 {
+	// Check GPU fence completion (non-blocking, async submit mode)
+	device->GetQueue(ENUM_QUEUE_TYPE::GRAPHICS)->CheckCompletion(g_frame_number_render_thread);
 	device->GetMemoryManager()->ReleaseFreedPages();
 	device->GetStagingBufferManager()->ProcessPendingFree(false, true);
 }

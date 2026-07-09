@@ -3,10 +3,20 @@
 #define _MESHLOADER_
 #include "Core/ConstDefine.h"
 #include "RHI/RenderEnum.h"
+#include "Render/Core/RenderGraphDefinition.h"
 #include "gli/format.hpp"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Tool)
+
+// Enum ↔ string conversion utilities
+CONST Char* EnumToString(ENUM_TEXTURE_FORMAT format);
+ENUM_TEXTURE_FORMAT StringToEnum_TextureFormat(CONST String& str);
+CONST Char* EnumToString(Render::RDGPassKind kind);
+Render::RDGPassKind StringToEnum_PassKind(CONST String& str);
+CONST Char* EnumToString(Render::RDGResourceKind kind);
+Render::RDGResourceKind StringToEnum_ResourceKind(CONST String& str);
+
 MYRENDERER_BEGIN_CLASS( ToolUtils )
 public:
 	static ENUM_TEXTURE_FORMAT METHOD(TranslateGliFormatToEngineFormat)(CONST gli::format& in_format);

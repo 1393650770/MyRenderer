@@ -73,11 +73,9 @@ public:
 	void  METHOD(MemoryBarrier)(VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask);
 	void  METHOD(CopyBufferToImage)(VkBuffer buffer, VkImage image, VkImageLayout imageLayout, UInt32 region_count, CONST VkBufferImageCopy* region);
 	
-	__forceinline void CopyBuffer(VkBuffer            src_buffer,
-		VkBuffer            dst_buffer,
-		uint32_t            region_count,
-		const VkBufferCopy* regions)
+	__forceinline void CopyBuffer(VkBuffer src_buffer,VkBuffer dst_buffer,uint32_t region_count,const VkBufferCopy* regions)
 	{
+		if(!bypass)return;
 		if (state_cache.render_pass != VK_NULL_HANDLE)
 		{
 			EndRenderPass();
@@ -92,6 +90,7 @@ public:
 		UInt32            in_clear_value_count = 0,
 		CONST VkClearValue* in_clear_values = nullptr)
 	{
+		if(!bypass)return;
 		if (state_cache.render_pass != in_render_pass || state_cache.framebuffer != in_frame_buffer)
 		{
 			FlushBarriers();
@@ -128,6 +127,7 @@ public:
 
 	__forceinline void METHOD(EndRenderPass)()
 	{
+		if(!bypass)return;
 		if (command_state == EState::IsInsideRenderPass)
 		{
 			vkCmdEndRenderPass(command_buffer);
@@ -139,6 +139,7 @@ public:
 	__forceinline void METHOD(BeginDynamicRendering)(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, UInt32 width, UInt32 height, UInt32 clear_value_count, CONST VkClearValue* clear_values);
 	__forceinline void METHOD(EndDynamicRendering)()
 	{
+		if(!bypass)return;
 		if (command_state == EState::IsInsideRenderPass)
 		{
 			vkCmdEndRendering(command_buffer);
@@ -149,6 +150,7 @@ public:
 
 	__forceinline VIRTUAL void METHOD(Begin)() OVERRIDE FINAL
 	{
+		if(!bypass){recorded_commands.push_back(std::make_unique<RHICmdBegin>());return;}
 		if (command_state == EState::NeedReset)
 			vkResetCommandBuffer(command_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 		if (command_state <= EState::NeedReset)
@@ -162,6 +164,7 @@ public:
 	}
 	__forceinline VIRTUAL void METHOD(End)() OVERRIDE FINAL
 	{
+		if(!bypass){recorded_commands.push_back(std::make_unique<RHICmdEnd>());return;}
 		if (command_state > EState::NeedReset && command_state < EState::HasEndedCommandBuffer)
 		{
 			// Distinguish legacy render pass vs dynamic rendering by state_cache.render_pass.
@@ -177,6 +180,7 @@ public:
 	}
 	__forceinline void METHOD(ClearAttachment)(CONST VkClearAttachment& attachment, CONST VkClearRect& clear_rect)
 	{
+		if(!bypass)return;
 		vkCmdClearAttachments(
 			command_buffer,
 			1,
@@ -228,6 +232,7 @@ public:
 	// --  
 	__forceinline VIRTUAL void METHOD(TransitionTextureState)(Texture* texture, CONST ENUM_RESOURCE_STATE& required_state) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(ClearTexture)(Texture* texture, Vector<float> clear_value = Vector<float>(4, 0.0f)) OVERRIDE FINAL;
+	VIRTUAL void METHOD(Replay)() OVERRIDE FINAL;
 
 	__forceinline VIRTUAL void METHOD(BeginUI)()  OVERRIDE FINAL;
 

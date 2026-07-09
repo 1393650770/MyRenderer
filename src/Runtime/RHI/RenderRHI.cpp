@@ -6,6 +6,7 @@
 #include "RenderTexture.h"
 
 MXRender::RHI::RenderRHI* g_render_rhi = nullptr;
+Bool g_enable_rhi_thread = false;
 
 void RHIInit()
 {

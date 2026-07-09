@@ -54,8 +54,23 @@ void VK_Queue::Submit(VK_CommandBuffer* command_list, UInt32 num_signal_semaphor
 	submitInfo.pWaitDstStageMask = waitStages;
 	vkQueueSubmit(queue,1,&submitInfo, fence);
 	command_list->command_state = VK_CommandBuffer::EState::Submitted;
-	vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
-	vkResetFences(device->GetDevice(), 1, &fence);
+	// Store for later completion check (non-blocking)
+	pending_submits.push_back({fence, command_list, g_frame_number_render_thread});
+}
+
+void VK_Queue::CheckCompletion(UInt64 current_frame)
+{
+	for (Int i = (Int)pending_submits.size() - 1; i >= 0; --i)
+	{
+		auto& ps = pending_submits[i];
+		if (vkGetFenceStatus(device->GetDevice(), ps.fence) == VK_SUCCESS)
+		{
+			vkResetFences(device->GetDevice(), 1, &ps.fence);
+			ps.cmd->command_state = VK_CommandBuffer::EState::NeedReset;
+			pending_submits[i] = pending_submits.back();
+			pending_submits.pop_back();
+		}
+	}
 }
 
 

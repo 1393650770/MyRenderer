@@ -1,63 +1,49 @@
-# RenderGraphResourceImplementation 序列化接口层
+# 补全所有 vkCmd 方法的 bypass 分支
 
-## 设计
+## 当前状态
 
-每种 `Desc` 类型在 `RenderGraphResourceImplementation` 中注册三个接口：
+VK_CommandBuffer 中产生 vkCmd 的方法共 ~18 个，目前只有 7 个有 bypass。缺 11 个。
 
-| 接口 | 方向 | 签名 |
-|------|------|------|
-| `RealizeResource<Desc, Actual>` | Desc → RHI | `unique_ptr<Actual>(const Desc&)` |
-| `ResourceDescSerializer<Desc>::Serialize` | Desc → JSON | `void(json&, const Desc&)` |
-| `ResourceDescSerializer<Desc>::Deserialize` | JSON → Desc | `Desc(const json&)` |
+## 缺的方法
 
-全部 7 种：
+| # | 方法 | 位置 | 需要新增 |
+|---|------|------|---------|
+| 1 | Draw | cpp | ✅ 已有 |
+| 2 | Dispatch | cpp | ✅ 已有 |
+| 3 | TransitionTextureState | cpp | ✅ 已有 |
+| 4 | FlushBarriers | cpp | ✅ 已有 |
+| 5 | ClearTexture | cpp | ✅ 已有 |
+| 6 | ResourceBarrier | cpp | ✅ 已有 |
+| 7 | SetPushConstants | cpp | ✅ 已有 |
+| 8 | Begin | header | ❌ |
+| 9 | End | header | ❌ |
+| 10 | CopyBuffer | header | ❌ |
+| 11 | BeginRenderPass | header | ❌ |
+| 12 | EndRenderPass | header | ❌ |
+| 13 | BeginDynamicRendering | cpp | ❌ |
+| 14 | EndDynamicRendering | header | ❌ |
+| 15 | CopyBufferToImage | cpp | ❌ (当前 return) |
+| 16 | WriteTimestamp | header | ❌ |
+| 17 | ClearAttachment | header | ❌ |
+| 18 | MemoryBarrier | cpp | ❌ |
 
+## 需要新增的命令结构体
+
+RenderCommandList.h 增加：RHICmdCopyBuffer, RHICmdBegin, RHICmdEnd, RHICmdWriteTimestamp
+
+## 改法
+
+每个方法加一行：
 ```cpp
-template<typename Desc> struct ResourceDescSerializer; // 未特化 = static_assert
-
-// 7 个特化：
-template<> struct ResourceDescSerializer<RHI::TextureDesc> { ... };
-template<> struct ResourceDescSerializer<RHI::BufferDesc> { ... };
-template<> struct ResourceDescSerializer<RHI::ShaderDesc> { ... };
-template<> struct ResourceDescSerializer<RHI::RenderPassDesc> { ... };
-template<> struct ResourceDescSerializer<RHI::FrameBufferDesc> { ... };
-template<> struct ResourceDescSerializer<RHI::RenderGraphiPipelineStateDesc> { ... };
-template<> struct ResourceDescSerializer<RHI::ComputePipelineStateDesc> { ... };
+if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdXxx>(args...)); return; }
 ```
 
-`ResourceDescSerializer<Desc>::Serialize` 和 `::Deserialize` 的实现放在 `RenderGraphResourceImplementation.cpp` 中（与 7 个 `RealizeResource` 放在一起）。
-
-## RenderGraphSerializer 改为通用调用
-
-`SaveGraph` 改用 `std::visit`：
-```cpp
-std::visit([&](auto& d) {
-    using T = std::decay_t<decltype(d)>;
-    ResourceDescSerializer<T>::Serialize(rj, d);
-}, rd.desc);
-```
-
-`LoadGraph` 根据 kind 分发：
-```cpp
-if (kind == RDGResourceKind::Buffer)
-    rd.desc = ResourceDescSerializer<RHI::BufferDesc>::Deserialize(rj);
-else if (rj.contains("spirv_data"))
-    rd.desc = ResourceDescSerializer<RHI::ShaderDesc>::Deserialize(rj);
-else
-    rd.desc = ResourceDescSerializer<RHI::TextureDesc>::Deserialize(rj);
-```
+Replay 中加对应 case 分支。
 
 ## 改动文件
 
 | 文件 | 改动 |
 |------|------|
-| [RenderGraphResourceImplementation.h](src/Runtime/Render/Core/RenderGraphResourceImplementation.h) | `ResourceDescSerializer<Desc>` 模板 + 7 个特化声明 |
-| [RenderGraphResourceImplementation.cpp](src/Runtime/Render/Core/RenderGraphResourceImplementation.cpp) | 7 个 `Serialize` + 7 个 `Deserialize` 实现 |
-| [RenderGraphSerializer.cpp](src/Runtime/Render/Core/RenderGraphSerializer.cpp) | 删除手写 if-else，改为调用 `ResourceDescSerializer` |
-
-## 验证
-
-```bash
-xmake build Editor        # Serializer 编译通过
-xmake build RendererSample-HelloTriangle  # Sample 编译通过
-```
+| [VK_CommandBuffer.cpp](src/Runtime/RHI/Vulkan/VK_CommandBuffer.cpp) | 补 4 个 bypass 分支 |
+| [VK_CommandBuffer.h](src/Runtime/RHI/Vulkan/VK_CommandBuffer.h) | 补 7 个 bypass 分支 |
+| [RenderCommandList.h](src/Runtime/RHI/RenderCommandList.h) | +4 命令结构体 |

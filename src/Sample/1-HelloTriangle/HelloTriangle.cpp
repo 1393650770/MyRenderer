@@ -45,11 +45,11 @@ public:
 	RenderTest() MYDEFAULT;
 	VIRTUAL ~RenderTest() MYDEFAULT;
 
-	VIRTUAL void BeginRender() OVERRIDE FINAL;
-	VIRTUAL void EndRender() OVERRIDE FINAL;
-	VIRTUAL void BeginFrame() OVERRIDE FINAL;
-	VIRTUAL void OnFrame() OVERRIDE FINAL;
-	VIRTUAL void EndFrame() OVERRIDE FINAL;
+	VIRTUAL void OnInit(Application::Window* in_window) OVERRIDE FINAL;
+	VIRTUAL void OnShutdown() OVERRIDE FINAL;
+	VIRTUAL void OnUpdate(float dt) OVERRIDE FINAL;
+	VIRTUAL void OnRender() OVERRIDE FINAL;
+	
 
 	Window* GetWindow();
 protected:
@@ -62,7 +62,6 @@ private:
 public:
 
 protected:
-	RenderGraph graph;
 	Window* window;
 private:
 
@@ -70,8 +69,9 @@ private:
 
 MYRENDERER_END_CLASS
 
-void RenderTest::BeginRender()
+void RenderTest::OnInit(Application::Window* in_window)
 {
+	window = in_window;
 	std::cout << "Hello Triangle" << std::endl;
 
 	RHI::CommandList* cmd_list = RHIGetImmediateCommandList();
@@ -162,7 +162,7 @@ void RenderTest::BeginRender()
 	graph.Compile();
 }
 
-void RenderTest::EndRender()
+void RenderTest::OnShutdown()
 {
 	// Serialize RDG to JSON for Editor loading
 	Render::RenderGraphDefinition def;
@@ -203,20 +203,16 @@ void RenderTest::EndRender()
 		graph.Release();
 }
 
-void RenderTest::BeginFrame()
+void RenderTest::OnUpdate(float dt)
 {
 
 }
 
-void RenderTest::OnFrame()
+void RenderTest::OnRender()
 {
 	graph.Execute();
 }
 
-void RenderTest::EndFrame()
-{
-
-}
 
 RenderTest::RenderTest(Window* in_window):window(in_window)
 {

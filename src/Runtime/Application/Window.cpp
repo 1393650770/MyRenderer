@@ -6,6 +6,7 @@
 #include "RHI/RenderViewport.h"
 #include "Render/RenderInterface.h"
 #include "RHI/RenderCommandList.h"
+#include "Render/Core/CommandQueue.h"
 #include <limits>
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
@@ -38,39 +39,67 @@ Window::~Window()
 
 void Window::Run(RenderInterface* render)
 {
-	Int width = 0;
-	Int height = 0;
-	render->BeginRender();
-	while (!glfwWindowShouldClose(glfw_window))
-    {
+	Render::CommandQueue render_queue;
+	Render::CommandQueue rhi_queue;
+	Bool use_rhi_thread = g_enable_rhi_thread;
 
-        float currentFrame = static_cast<float>(glfwGetTime());
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
+	// RHIWorker fiber: consumes rhi_queue asynchronously on TaskScheduler
+	struct RHIWorker {
+		MT_DECLARE_TASK(RHIWorker, MT::StackRequirements::STANDARD, MT::TaskPriority::NORMAL, MT::Color::Green);
+		Render::CommandQueue* queue;
+		void Do(MT::FiberContext&) {
+			while (queue->WaitAndFlush()) {}  // Block until Shutdown
+		}
+	};
+	RHIWorker rhi_worker{ &rhi_queue };
+
+	if (use_rhi_thread) {
+		rhi_queue.SetBypass(false);
+		scheduler.RunAsync(MT::TaskGroup::Default(), &rhi_worker, 1);
+	}
+
+	Int width = 0, height = 0;
+	render->OnInit(this);
+
+	while (!glfwWindowShouldClose(glfw_window))
+	{
+		float currentFrame = static_cast<float>(glfwGetTime());
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
 		glfwPollEvents();
 
-		MXRender::RHI::CommandList* cmd_list = RHIGetImmediateCommandList();
+		// Logic
+		render->OnUpdate(deltaTime);
 
-		render->BeginFrame();
-		render->OnFrame();
-		render->EndFrame();
-		
+		// Render: record commands (bypass=false) or execute directly (bypass=true)
+		auto* cmd_list = RHIGetImmediateCommandList();
+		if (use_rhi_thread) cmd_list->SetBypass(false);
+		render->OnRender();
+		if (use_rhi_thread) {
+			cmd_list->SetBypass(true);
+			rhi_queue.Enqueue([cmd_list]() { cmd_list->Replay(); });
+		}
+
+		// Wait for RHI replay before Present (single-thread fallback: Flush)
+		if (use_rhi_thread) rhi_queue.WaitAndFlush();  // TODO: replace with fence when fully async
+
+		// Present
 		viewport->Present(cmd_list, true, true);
 		RHIRenderEnd();
 		g_frame_number_render_thread = (g_frame_number_render_thread + 1) % g_max_frame_number;
-        glfwSwapBuffers(glfw_window);
 
+		glfwSwapBuffers(glfw_window);
 
 		glfwGetFramebufferSize(glfw_window, &width, &height);
-		while (width == 0 || height == 0) // minimized 0,0, pause for now
+		while (width == 0 || height == 0)
 		{
 			glfwGetFramebufferSize(glfw_window, &width, &height);
 			glfwWaitEvents();
 		}
 		viewport->Resize(width, height);
-
-    }
-	render->EndRender();
+	}
+	if (use_rhi_thread) rhi_queue.Shutdown();
+	render->OnShutdown();
 
 	delete viewport;
 	viewport = nullptr;

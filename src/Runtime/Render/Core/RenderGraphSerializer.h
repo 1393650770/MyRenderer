@@ -28,14 +28,6 @@ public:
 private:
 	static String s_last_error;
 
-	// Enum name conversion helpers
-	static CONST Char* TextureFormatToString(Int format);
-	static Int StringToTextureFormat(CONST String& str);
-	static CONST Char* ResourceKindToString(RDGResourceKind kind);
-	static RDGResourceKind StringToResourceKind(CONST String& str);
-	static CONST Char* PassKindToString(RDGPassKind kind);
-	static RDGPassKind StringToPassKind(CONST String& str);
-
 #pragma endregion
 
 MYRENDERER_END_CLASS

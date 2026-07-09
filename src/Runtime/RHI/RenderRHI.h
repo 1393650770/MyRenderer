@@ -24,6 +24,7 @@ MYRENDERER_BEGIN_CLASS(RenderFactory)
 public:
 	Int render_api_version=0;
 	Bool enable_render_debug=false;
+	Bool enable_rhi_thread=false;  // false=bypass (RHI calls on RenderThread)
 
 MYRENDERER_END_CLASS
 
@@ -82,6 +83,7 @@ MYRENDERER_END_CLASS
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 extern CORE_API MXRender::RHI::RenderRHI* g_render_rhi;
+extern CORE_API Bool g_enable_rhi_thread;
 
 extern CORE_API void METHOD(RHIInit)();
 extern CORE_API void METHOD(RHIShutdown)();

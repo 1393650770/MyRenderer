@@ -24,11 +24,10 @@ public:
 	VIRTUAL ~EditorRenderPipeline() MYDEFAULT;
 	EditorRenderPipeline() MYDEFAULT;
 
-	VIRTUAL void METHOD(BeginRender)() OVERRIDE FINAL;
-	VIRTUAL void METHOD(EndRender)() OVERRIDE FINAL;
-	VIRTUAL void METHOD(BeginFrame)() OVERRIDE FINAL;
-	VIRTUAL void METHOD(OnFrame)() OVERRIDE FINAL;
-	VIRTUAL void METHOD(EndFrame)() OVERRIDE FINAL;
+	VIRTUAL void METHOD(OnInit)(Application::Window* window) OVERRIDE FINAL;
+	VIRTUAL void METHOD(OnShutdown)() OVERRIDE FINAL;
+	VIRTUAL void METHOD(OnUpdate)(float dt) OVERRIDE FINAL;
+	VIRTUAL void METHOD(OnRender)() OVERRIDE FINAL;
 
 	Application::Window* METHOD(GetWindow)();
 protected:
@@ -42,7 +41,6 @@ private:
 public:
 
 protected:
-	Render::RenderGraph graph;
 	Window* window;
 	EditorUI editor_ui;
 private:

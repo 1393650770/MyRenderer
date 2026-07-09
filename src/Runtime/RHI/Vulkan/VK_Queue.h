@@ -20,6 +20,7 @@ public:
 	VIRTUAL ~VK_Queue();
 
 	void METHOD(Submit)(VK_CommandBuffer* command_list,  UInt32 num_signal_semaphores = 0, VkSemaphore* signal_semaphores = nullptr, UInt32 num_wait_semaphores = 0, VkSemaphore* wait_semaphores = nullptr);
+	void METHOD(CheckCompletion)(UInt64 current_frame);
 	UInt32 METHOD(GetFamily)() CONST;
 	UInt32 METHOD(GetQueueIndex)() CONST;
 	VkQueue METHOD(GetQueue)() CONST;
@@ -39,6 +40,8 @@ private:
 	UInt32 family_index = 0;
 	UInt32 queue_index = 0;
 	VK_Device* device = nullptr;
+	struct PendingSubmit { VkFence fence; VK_CommandBuffer* cmd; UInt64 frame_id; };
+	Vector<PendingSubmit> pending_submits;
 #pragma endregion
 
 

@@ -48,11 +48,11 @@ public:
 	RenderTest() MYDEFAULT;
 	VIRTUAL ~RenderTest() MYDEFAULT;
 
-	VIRTUAL void BeginRender() OVERRIDE FINAL;
-	VIRTUAL void EndRender() OVERRIDE FINAL;
-	VIRTUAL void BeginFrame() OVERRIDE FINAL;
-	VIRTUAL void OnFrame() OVERRIDE FINAL;
-	VIRTUAL void EndFrame() OVERRIDE FINAL;
+	VIRTUAL void OnInit(Application::Window* in_window) OVERRIDE FINAL;
+	VIRTUAL void OnShutdown() OVERRIDE FINAL;
+	VIRTUAL void OnUpdate(float dt) OVERRIDE FINAL;
+	VIRTUAL void OnRender() OVERRIDE FINAL;
+	
 
 	Window* GetWindow();
 protected:
@@ -73,7 +73,7 @@ private:
 
 MYRENDERER_END_CLASS
 
-void RenderTest::BeginRender()
+void RenderTest::OnInit(Application::Window* in_window)
 {
 	std::cout << "Hello Texture" << std::endl;
 
@@ -173,23 +173,23 @@ void RenderTest::BeginRender()
 	graph.Compile();
 }
 
-void RenderTest::EndRender()
+void RenderTest::OnShutdown()
 {
 	graph.Release();
 }
 
-void RenderTest::BeginFrame()
+void RenderTest::OnUpdate(float dt)
 {
 
 }
 
-void RenderTest::OnFrame()
+void RenderTest::OnRender()
 {
 	graph.Execute();
 	//RHISubmitCommandList(RHIGetImmediateCommandList());
 }
 
-void RenderTest::EndFrame()
+void RenderTest::OnUpdate_EndFrame_dummy()
 {
 
 }
