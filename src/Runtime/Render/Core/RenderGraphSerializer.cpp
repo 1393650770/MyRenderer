@@ -1,5 +1,6 @@
 #include "Render/Core/RenderGraphSerializer.h"
 #include "Render/Core/RenderGraphDefinition.h"
+#include "Render/Core/RenderGraphResourceImplementation.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <iostream>
@@ -24,29 +25,20 @@ Bool RenderGraphSerializer::SaveGraph(CONST RenderGraphDefinition& def, CONST St
 		j["editor_offset_x"] = def.editor_offset_x;
 		j["editor_offset_y"] = def.editor_offset_y;
 
-		// Serialize resources
+		// Serialize resources — use embedded RHI descriptor directly
 		json resources_json = json::array();
 		for (auto& rd : def.resources)
 		{
 			json rj;
 			rj["name"] = rd.name;
-			rj["kind"] = ResourceKindToString(rd.kind);
+			rj["kind"] = ResourceKindToString(rd.GetKind());
 			rj["is_transient"] = rd.is_transient;
 
-			if (rd.kind == RDGResourceKind::Buffer)
-			{
-				rj["buffer_size"] = rd.buffer_size;
-				rj["buffer_stride"] = rd.buffer_stride;
-			}
-			else
-			{
-				rj["texture_format"] = TextureFormatToString(rd.texture_format);
-				rj["width"] = rd.width;
-				rj["height"] = rd.height;
-				rj["mip_level"] = rd.mip_level;
-				rj["samples"] = rd.samples;
-				rj["is_depth_stencil"] = rd.is_depth_stencil;
-			}
+			rj["is_depth_stencil"] = rd.is_depth_stencil;
+			std::visit([&](auto& d) {
+				using T = std::decay_t<decltype(d)>;
+				ResourceDescSerializer<T>::Serialize(rj, d);
+			}, rd.desc);
 			resources_json.push_back(rj);
 		}
 		j["resources"] = resources_json;
@@ -139,30 +131,23 @@ Bool RenderGraphSerializer::LoadGraph(RenderGraphDefinition& out_def, CONST Stri
 		if (j.contains("editor_offset_y"))
 			out_def.editor_offset_y = j["editor_offset_y"].get<float>();
 
-		// Deserialize resources
+		// Deserialize resources -- populate embedded RHI descriptor from JSON
 		if (j.contains("resources") && j["resources"].is_array())
 		{
 			for (auto& rj : j["resources"])
 			{
 				RDGResourceDef rd;
 				rd.name = rj.value("name", "Unnamed");
-				rd.kind = StringToResourceKind(rj.value("kind", "Texture"));
 				rd.is_transient = rj.value("is_transient", true);
+				rd.is_depth_stencil = rj.value("is_depth_stencil", false);
+				auto kind = StringToResourceKind(rj.value("kind", "Texture"));
 
-				if (rd.kind == RDGResourceKind::Buffer)
-				{
-					rd.buffer_size = rj.value("buffer_size", (UInt64)256);
-					rd.buffer_stride = rj.value("buffer_stride", (UInt32)16);
-				}
+				if (kind == RDGResourceKind::Buffer)
+					rd.desc = ResourceDescSerializer<RHI::BufferDesc>::Deserialize(rj);
+				else if (rj.contains("spirv_data"))
+					rd.desc = ResourceDescSerializer<RHI::ShaderDesc>::Deserialize(rj);
 				else
-				{
-					rd.texture_format = StringToTextureFormat(rj.value("texture_format", "RGBA8"));
-					rd.width = rj.value("width", (UInt32)1920);
-					rd.height = rj.value("height", (UInt32)1080);
-					rd.mip_level = rj.value("mip_level", (UInt8)1);
-					rd.samples = rj.value("samples", (UInt8)1);
-					rd.is_depth_stencil = rj.value("is_depth_stencil", false);
-				}
+					rd.desc = ResourceDescSerializer<RHI::TextureDesc>::Deserialize(rj);
 				out_def.resources.push_back(rd);
 			}
 		}

@@ -3,6 +3,8 @@
 #define _RENDERGRAPHDEFINITION_
 
 #include "Core/ConstDefine.h"
+#include <variant>
+#include "RHI/RenderRource.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Render)
@@ -28,38 +30,27 @@ enum class RDGResourceKind : UInt8
 	DepthStencil
 };
 
-// Resource descriptor
+// Resource descriptor — embeds the real RHI descriptor directly
+// instead of duplicating fields. kind is derived from the variant index.
 struct RDGResourceDef
 {
 	String name;
-	RDGResourceKind kind = RDGResourceKind::Texture;
-	// --   Lifetime classification
 	RDGResourceLifetime lifetime = RDGResourceLifetime::Transient;
-
-	// Texture properties
-	Int texture_format = 0;        // TextureFomat enum value
-	UInt32 width = 1920;
-	UInt32 height = 1080;
-	UInt8 mip_level = 1;
-	// --   Extended TextureDesc coverage
-	UInt8 layer_count = 1;
-	UInt8 samples = 1;
-	UInt8 texture_type = 0;       // ENUM_TEXTURE_TYPE (2D/3D/Cube/Array)
-
-	// Buffer properties
-	UInt64 buffer_size = 256;
-	UInt32 buffer_stride = 16;
-	// --   Extended BufferDesc coverage
-	UInt8 buffer_type = 0;        // ENUM_BUFFER_TYPE
-
-	// Common
-	// --   ENUM_TEXTURE_USAGE_TYPE flags
-	UInt32 usage = 0;
-	UInt16 depth = 1;
-
-	// Lifecycle
-	Bool is_transient = true;      // Created/destroyed within graph
+	Bool is_transient = true;
 	Bool is_depth_stencil = false;
+
+	// Embedded RHI descriptor (TextureDesc, BufferDesc, or ShaderDesc)
+	std::variant<MXRender::RHI::TextureDesc, MXRender::RHI::BufferDesc, MXRender::RHI::ShaderDesc> desc;
+
+	// Helper: derive RDGResourceKind from the variant
+	RDGResourceKind GetKind() const
+	{
+		if (std::holds_alternative<MXRender::RHI::BufferDesc>(desc))
+			return RDGResourceKind::Buffer;
+		if (std::holds_alternative<MXRender::RHI::ShaderDesc>(desc))
+			return RDGResourceKind::Texture;
+		return RDGResourceKind::Texture;
+	}
 };
 
 // --   Pass flags bitmask (replaces single Bool is_cullable)

@@ -7,6 +7,7 @@
 #include "RHI/RenderEnum.h"
 #include "RHI/RenderTexture.h"
 #include "RHI/RenderBuffer.h"
+#include "RHI/RenderShader.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Render)
 

@@ -296,17 +296,11 @@ void RenderTest::EndRender()
 		rd.is_transient = res->GetIsTransient();
 		if (auto* tex = res->GetAsTexture())
 		{
-			rd.kind = Render::RDGResourceKind::Texture;
-			CONST auto& d = tex->GetTextureDesc();
-			rd.texture_format = (UInt32)d.format;
-			rd.width = d.width; rd.height = d.height;
-			rd.mip_level = d.mip_level; rd.samples = d.samples;
+			rd.desc = tex->GetTextureDesc();
 		}
 		else if (res->GetAsBuffer())
 		{
-			rd.kind = Render::RDGResourceKind::Buffer;
-			CONST auto& d = res->GetAsBuffer()->GetBufferDesc();
-			rd.buffer_size = d.size; rd.buffer_stride = d.stride;
+			rd.desc = res->GetAsBuffer()->GetBufferDesc();
 		}
 		def.resources.push_back(rd);
 	}

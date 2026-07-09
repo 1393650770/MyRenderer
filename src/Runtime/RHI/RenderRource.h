@@ -73,6 +73,7 @@ public:
 	String debug_name;
 	String entry_name = "main";
 	String shader_name;
+	Vector<UInt32> spirv_data;  // Merged from ShaderDataPayload for self-contained RDG resource
 
 MYRENDERER_END_STRUCT
 
@@ -396,7 +397,7 @@ public:
 
 	VertexInputLayout& operator= (CONST VertexInputLayout& rhs)
 	{
-		if (this != &rhs) // ×Ô¸³Öµ¼ì²é
+		if (this != &rhs) // ï¿½Ô¸ï¿½Öµï¿½ï¿½ï¿½
 		{
 			binding = rhs.binding;
 			location = rhs.location;

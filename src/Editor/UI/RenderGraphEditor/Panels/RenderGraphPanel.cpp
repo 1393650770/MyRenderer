@@ -821,16 +821,24 @@ Render::RenderGraphDefinition RenderGraphPanel::BuildDefinition() CONST
 			Bool _dup = false;
 			for (auto& r : def.resources) { if (r.name == _rn) { _dup = true; break; } }
 			if (_dup) continue;
-			rd.kind = (res_node->GetResourceType() == ResourceNodeType::Buffer)
-				? Render::RDGResourceKind::Buffer : Render::RDGResourceKind::Texture;
-			rd.texture_format = res_node->GetTextureFormat();
-			rd.width = res_node->GetTextureWidth();
-			rd.height = res_node->GetTextureHeight();
-			rd.mip_level = res_node->GetMipLevel();
-			rd.samples = res_node->GetSamples();
-			rd.buffer_size = res_node->GetBufferSize();
-			rd.buffer_stride = res_node->GetBufferStride();
 			rd.is_transient = res_node->GetIsTransient();
+			if (res_node->GetResourceType() == ResourceNodeType::Buffer)
+			{
+				RHI::BufferDesc bd;
+				bd.size = res_node->GetBufferSize();
+				bd.stride = res_node->GetBufferStride();
+				rd.desc = bd;
+			}
+			else
+			{
+				RHI::TextureDesc td;
+				td.format = static_cast<ENUM_TEXTURE_FORMAT>(res_node->GetTextureFormat());
+				td.width = res_node->GetTextureWidth();
+				td.height = res_node->GetTextureHeight();
+				td.mip_level = res_node->GetMipLevel();
+				td.samples = res_node->GetSamples();
+				rd.desc = td;
+			}
 
 			def.resources.push_back(rd);
 
@@ -873,22 +881,24 @@ void RenderGraphPanel::LoadDefinition(CONST Render::RenderGraphDefinition& def)
 	// Create resource nodes first
 	for (auto& rd : def.resources)
 	{
-		ResourceNodeType rtype = ResourceNodeType::Texture;
-		switch (rd.kind)
-		{
-		case Render::RDGResourceKind::Buffer:         rtype = ResourceNodeType::Buffer; break;
-		case Render::RDGResourceKind::ExternalTexture: rtype = ResourceNodeType::ExternalTexture; break;
-		case Render::RDGResourceKind::DepthStencil:    rtype = ResourceNodeType::DepthStencil; break;
-		default:                                      rtype = ResourceNodeType::Texture; break;
-		}
+		ResourceNodeType rtype = std::holds_alternative<RHI::BufferDesc>(rd.desc)
+			? ResourceNodeType::Buffer : ResourceNodeType::Texture;
 		auto* node = new RenderGraphResourceNode(rd.name, rtype);
-		node->SetTextureFormat(rd.texture_format);
-		node->SetTextureWidth(rd.width);
-		node->SetTextureHeight(rd.height);
-		node->SetMipLevel(rd.mip_level);
-		node->SetSamples(rd.samples);
-		node->SetBufferSize(rd.buffer_size);
-		node->SetBufferStride(rd.buffer_stride);
+		if (std::holds_alternative<RHI::BufferDesc>(rd.desc))
+		{
+			auto& bd = std::get<RHI::BufferDesc>(rd.desc);
+			node->SetBufferSize(bd.size);
+			node->SetBufferStride(bd.stride);
+		}
+		else
+		{
+			auto& td = std::get<RHI::TextureDesc>(rd.desc);
+			node->SetTextureFormat((Int)td.format);
+			node->SetTextureWidth(td.width);
+			node->SetTextureHeight(td.height);
+			node->SetMipLevel(td.mip_level);
+			node->SetSamples(td.samples);
+		}
 		node->SetIsTransient(rd.is_transient);
 
 		node->AddInputPin("Input", PinAccess::Write);

@@ -22,31 +22,6 @@ void RenderGraphBuilder::RegisterPassExecute(CONST String& pass_name, PassExecut
 	g_pass_execute_registry[pass_name] = std::move(func);
 }
 
-static RHI::TextureDesc BuildTextureDesc(const RDGResourceDef& rd)
-{
-	RHI::TextureDesc desc;
-	desc.format = static_cast<ENUM_TEXTURE_FORMAT>(rd.texture_format);
-	desc.width = rd.width;
-	desc.height = rd.height;
-	desc.mip_level = rd.mip_level;
-	desc.layer_count = rd.layer_count;
-	desc.samples = rd.samples;
-	desc.depth = rd.depth;
-	desc.type = static_cast<ENUM_TEXTURE_TYPE>(rd.texture_type);
-	desc.usage = static_cast<ENUM_TEXTURE_USAGE_TYPE>(rd.usage);
-	desc.resource_state = ENUM_RESOURCE_STATE::Undefined;
-	return desc;
-}
-
-static RHI::BufferDesc BuildBufferDesc(const RDGResourceDef& rd)
-{
-	RHI::BufferDesc desc;
-	desc.size = rd.buffer_size;
-	desc.stride = rd.buffer_stride;
-	desc.type = static_cast<ENUM_BUFFER_TYPE>(rd.buffer_type);
-	return desc;
-}
-
 struct MinimalPassData : public RenderGraphPassDataBase
 {
 	PassExecuteFunc exec_callback; // Registered pass execute (nullptr = default clear)
@@ -82,14 +57,19 @@ Bool RenderGraphBuilder::BuildRuntimeGraph(
 		if (resource_map.count(rd.name)) continue;
 		if (rd.lifetime == RDGResourceLifetime::External || !rd.is_transient)
 		{
-			if (rd.kind == RDGResourceKind::Buffer)
+			if (std::holds_alternative<RHI::BufferDesc>(rd.desc))
 			{
-				auto desc = BuildBufferDesc(rd);
+				auto desc = std::get<RHI::BufferDesc>(rd.desc);
 				resource_map[rd.name] = out_graph->AddRetainedResource<RHI::BufferDesc, RHI::Buffer>(rd.name, desc, nullptr);
+			}
+			else if (std::holds_alternative<RHI::ShaderDesc>(rd.desc))
+			{
+				auto desc = std::get<RHI::ShaderDesc>(rd.desc);
+				resource_map[rd.name] = out_graph->AddRetainedResource<RHI::ShaderDesc, RHI::Shader>(rd.name, desc, nullptr);
 			}
 			else
 			{
-				auto desc = BuildTextureDesc(rd);
+				auto desc = std::get<RHI::TextureDesc>(rd.desc);
 				resource_map[rd.name] = out_graph->AddRetainedResource<RHI::TextureDesc, RHI::Texture>(rd.name, desc, nullptr);
 			}
 		}

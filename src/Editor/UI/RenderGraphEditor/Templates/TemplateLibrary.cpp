@@ -26,20 +26,20 @@ static void InitBuiltins()
 	// --   Auto-create GBuffer resource nodes
 	{
 		Render::RDGResourceDef gba;
-		gba.name = "GBufferA"; gba.kind = Render::RDGResourceKind::Texture;
-		gba.width = 1920; gba.height = 1080;
+		gba.name = "GBufferA";
+		{ RHI::TextureDesc td; td.width=1920; td.height=1080; gba.desc = td; }
 		gbuffer.auto_create_resources.push_back(gba);
 	}
 	{
 		Render::RDGResourceDef gbb;
-		gbb.name = "GBufferB"; gbb.kind = Render::RDGResourceKind::Texture;
-		gbb.width = 1920; gbb.height = 1080;
+		gbb.name = "GBufferB";
+		{ RHI::TextureDesc td; td.width=1920; td.height=1080; gbb.desc = td; }
 		gbuffer.auto_create_resources.push_back(gbb);
 	}
 	{
 		Render::RDGResourceDef gbc;
-		gbc.name = "GBufferC"; gbc.kind = Render::RDGResourceKind::Texture;
-		gbc.width = 1920; gbc.height = 1080;
+		gbc.name = "GBufferC";
+		{ RHI::TextureDesc td; td.width=1920; td.height=1080; gbc.desc = td; }
 		gbuffer.auto_create_resources.push_back(gbc);
 	}
 	TemplateLibrary::s_builtin.push_back(gbuffer);
@@ -47,7 +47,7 @@ static void InitBuiltins()
 	// Lighting Pass
 	PassTemplate lighting;
 	lighting.name = "Lighting Pass";
-	lighting.description = "Deferred lighting ¡ª reads GBuffer, outputs light buffer";
+	lighting.description = "Deferred lighting ï¿½ï¿½ reads GBuffer, outputs light buffer";
 	lighting.category = "Lighting";
 	lighting.pass_kind = Render::RDGPassKind::Graphics;
 	lighting.input_pins = {
