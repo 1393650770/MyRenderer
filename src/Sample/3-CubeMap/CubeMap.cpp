@@ -224,7 +224,7 @@ void RenderTest::OnUpdate(float dt) {}
 
 void RenderTest::OnRender() { graph.Execute(); }
 
-void RenderTest::OnUpdate_EndFrame_dummy() {}
+
 
 RenderTest::RenderTest(Window* in_window):window(in_window) {}
 

@@ -189,10 +189,7 @@ void RenderTest::OnRender()
 	//RHISubmitCommandList(RHIGetImmediateCommandList());
 }
 
-void RenderTest::OnUpdate_EndFrame_dummy()
-{
 
-}
 
 RenderTest::RenderTest(Window* in_window) :window(in_window)
 {
