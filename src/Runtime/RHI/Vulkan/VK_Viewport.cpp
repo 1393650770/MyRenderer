@@ -158,7 +158,8 @@ void VK_Viewport::PresentInternal(VK_CommandBuffer* in_cmd_list, VK_Queue* submi
 			is_lock_to_vsync);
 		in_cmd_list->command_state = VK_CommandBuffer::EState::NeedReset;
 		temp_commandbuffer->command_state = VK_CommandBuffer::EState::NeedReset;
-		device->GetCommandBufferManager()->ReleaseCommandBuffer(temp_commandbuffer);
+		// Defer free: CB was just submitted, fence may still be pending.
+		// FreeUnusedCommandBuffers reclaims it later when fence is done.
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR ) {
 			VK_SwapChainRecreateInfo recreate_info;

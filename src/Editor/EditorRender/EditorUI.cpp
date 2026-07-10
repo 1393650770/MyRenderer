@@ -118,7 +118,7 @@ void EditorUI::AddPass(RenderGraph* in_graph)
 		//if (dsv)
 		//	clear_values.push_back(dsv->GetTextureDesc().clear_value);
 		in_cmd_list->SetRenderTarget(rtvs, nullptr, clear_values, dsv != nullptr);
-		cmd_list->BeginUI();
+		in_cmd_list->BeginUI();
 
 		//ImGui::SliderFloat("transparency", &(cmd_list->z), 0.0f, 1.0f);
 
@@ -150,7 +150,7 @@ void EditorUI::AddPass(RenderGraph* in_graph)
 
 		ImGui::End();
 
-		cmd_list->EndUI();
+		in_cmd_list->EndUI();
 	});
 
 }
