@@ -56,7 +56,7 @@ struct PBRPassData : public RenderGraphPassDataBase {
 	TextureAsset* basecolor=nullptr, *normal=nullptr, *aorm=nullptr, *cubemap=nullptr, *irradiance=nullptr;
 	Buffer* mvp_ubo=nullptr, *camera_ubo=nullptr, *material_ubo=nullptr;
 	UInt32 bc_idx=0, n_idx=0, a_idx=0, cm_idx=0, irr_idx=0, lut_idx=0;
-	RHI::Vulkan::VK_BindlessManager* bindless_mgr = nullptr;
+	RHI::BindlessManager* bindless_mgr = nullptr;
 	Texture* fallback_lut = nullptr;
 	void Release() {
 		if (srb) { delete srb; srb = nullptr; }

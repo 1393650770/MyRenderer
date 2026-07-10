@@ -48,6 +48,7 @@ VK_CommandBuffer* VK_CommandBufferPool::GetOrCreateCommandBuffer(Bool is_upload_
 		{
 			free_cmd_buffers.erase(free_cmd_buffers.begin() + index);
 			cmd_buffer->Allocate();
+			cmd_buffer->GetFence()->ResetFence();  // reset fence from previous submit
 			cmd_buffers.push_back(cmd_buffer);
 			return cmd_buffer;
 		}
@@ -72,7 +73,7 @@ void VK_CommandBufferPool::FreeUnusedCommandBuffers(VK_Queue* queue)
 	for (Int index = cmd_buffers.size() - 1; index >= 0; --index)
 	{
 		VK_CommandBuffer* cmd_buffer = cmd_buffers[index];
-		if ( cmd_buffer->GetFence()->GetIsSignaled())
+		if ( cmd_buffer->GetFence()->CheckSignaled())
 		{
 			cmd_buffer->Free();
 			free_cmd_buffers.push_back(cmd_buffer);
@@ -87,7 +88,7 @@ void VK_CommandBufferPool::FreeUnusedCommandBuffer(VK_CommandBuffer* target)
 	for (Int index = cmd_buffers.size() - 1; index >= 0; --index)
 	{
 		VK_CommandBuffer* cmd_buffer = cmd_buffers[index];
-		if (target == cmd_buffer && cmd_buffer->GetFence()->GetIsSignaled())
+		if (target == cmd_buffer && cmd_buffer->GetFence()->CheckSignaled())
 		{
 			cmd_buffer->Free();
 			free_cmd_buffers.push_back(cmd_buffer);
@@ -175,9 +176,9 @@ void VK_CommandBuffer::ClearTexture(Texture* texture, Vector<float> clear_value 
 		}
 		else
 		{
-			if ((UInt32)(texture->GetTextureDesc().usage & ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT) == 1 ||
-				(UInt32)(texture->GetTextureDesc().usage & ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT_READ_ONLY) == 1 ||
-				(UInt32)(texture->GetTextureDesc().usage & ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT_WRITE_ONLY) == 1
+			if ((UInt32)(texture->GetTextureDesc().usage & ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT) != 0 ||
+				(UInt32)(texture->GetTextureDesc().usage & ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT_READ_ONLY) != 0 ||
+				(UInt32)(texture->GetTextureDesc().usage & ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT_WRITE_ONLY) != 0
 				)
 			{
 				clear_depth_image = true;
@@ -246,6 +247,7 @@ void VK_CommandBuffer::ClearTexture(Texture* texture, Vector<float> clear_value 
 
 void VK_CommandBuffer::BeginDynamicRendering(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, UInt32 width, UInt32 height, UInt32 clear_value_count, CONST VkClearValue* clear_values)
 {
+	if (!bypass) return;
 	if (command_state == EState::IsInsideRenderPass)
 		EndDynamicRendering();
 	FlushBarriers();
@@ -285,6 +287,8 @@ void VK_CommandBuffer::BeginDynamicRendering(CONST Vector<Texture*>& render_targ
 }
 void VK_CommandBuffer::TransitionTextureState(Texture* texture, CONST ENUM_RESOURCE_STATE& required_state)
 {
+	// --   Recording: only push command, never modify CB live state (image_barriers etc.)
+	//       All live state modification happens during replay on RHI thread.
 	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdTransitionTexture>(texture, required_state)); return; }
 	if (texture->GetTextureDesc().resource_state != required_state)
 	{
@@ -331,17 +335,22 @@ void VK_CommandBuffer::TransitionTextureState(Texture* texture, CONST ENUM_RESOU
 
 void VK_CommandBuffer::BeginUI()
 {
+	// CPU阶段：始终在主线程执行（NewFrame 必须与 GLFW 输入同步）
 	ImGui_ImplVulkan_NewFrame();
-
 	ImGui_ImplGlfw_NewFrame();
-	
 	ImGui::NewFrame();
+
+	// record 模式下录制命令，bypass 模式下无需额外操作（GPU 工作由 EndUI 完成）
+	if (!bypass)
+	{
+		recorded_commands.push_back(std::make_unique<RHICmdBeginUI>());
+	}
 }
 
 void VK_CommandBuffer::EndUI()
 {
+	// CPU阶段：始终在主线程执行（Render=EndFrame, UpdatePlatformWindows 必须在下次 NewFrame 前调用）
 	ImGui::Render();
-	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(),command_buffer );
 	ImGuiIO& io = ImGui::GetIO();
 	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
@@ -350,6 +359,14 @@ void VK_CommandBuffer::EndUI()
 		ImGui::RenderPlatformWindowsDefault();
 		glfwMakeContextCurrent(backup_current_context);
 	}
+
+	// GPU阶段：record 模式录制命令待 RHI 线程重放，bypass 模式直接提交 Vulkan 命令
+	if (!bypass)
+	{
+		recorded_commands.push_back(std::make_unique<RHICmdEndUI>());
+		return;
+	}
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
 }
 
 void VK_CommandBuffer::TransitionRenderTargets(CONST Vector<Texture*>& render_targets, Texture* depth_stencil)
@@ -457,7 +474,11 @@ void VK_CommandBuffer::TrainsitionImageLayout(VkImage image, VkImageLayout old_l
 
 void VK_CommandBuffer::FlushBarriers()
 {
+	// --   Recording: only push command, never touch CB live state (image_barriers etc.)
+	//       Barrier accumulation and flushing all happen during replay on RHI thread.
 	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdFlushBarriers>()); return; }
+
+	// --   Bypass mode: execute barriers directly (on RHI thread during replay)
 	if (state_cache.render_pass != VK_NULL_HANDLE)
 	{
 		EndRenderPass();
@@ -566,7 +587,7 @@ void VK_CommandBuffer::MemoryBarrier(ENUM_SHADER_STAGE src_stage, ENUM_SHADER_ST
 
 void VK_CommandBuffer::CopyBufferToImage(VkBuffer buffer, VkImage image, VkImageLayout imageLayout,UInt32 region_count, CONST VkBufferImageCopy* region)
 {
-	if (!bypass) return;  // CopyBufferToImage: skip in record mode
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdCopyBufferToImage>((UInt64)(uintptr_t)buffer, (UInt64)(uintptr_t)image, (Int)imageLayout, region_count, region, region_count * sizeof(VkBufferImageCopy))); return; }
 	if (state_cache.render_pass != VK_NULL_HANDLE)
 	{
 		EndRenderPass();
@@ -579,6 +600,7 @@ void VK_CommandBuffer::CopyBufferToImage(VkBuffer buffer, VkImage image, VkImage
 
 void VK_CommandBuffer::SetGraphicsPipeline(RenderPipelineState* pipeline_state)
 {
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdSetGraphicsPipeline>(pipeline_state)); return; }
 	CHECK(pipeline_state == nullptr);
 	VK_PipelineState * vk_pipeline_state = STATIC_CAST(pipeline_state, VK_PipelineState);
 	VkPipeline graphics_pipeline = vk_pipeline_state->GetPipeline();
@@ -592,6 +614,7 @@ void VK_CommandBuffer::SetGraphicsPipeline(RenderPipelineState* pipeline_state)
 
 void VK_CommandBuffer::SetComputePipeline(RenderPipelineState* pipeline_state)
 {
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdSetComputePipeline>(pipeline_state)); return; }
 	CHECK(pipeline_state == nullptr);
 	VK_PipelineState* vk_pipeline_state = STATIC_CAST(pipeline_state, VK_PipelineState);
 	VkPipeline compute_pipeline = vk_pipeline_state->GetPipeline();
@@ -659,6 +682,7 @@ void VK_CommandBuffer::ComputeDispatch(RenderPipelineState* pipeline, ShaderReso
 
 void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, CONST Vector<ClearValue>& clear_values, Bool has_dsv_clear_value)
 {
+	if (!bypass) { FlushBarriers(); recorded_commands.push_back(std::make_unique<RHICmdSetRenderTarget>(render_targets, depth_stencil, clear_values, has_dsv_clear_value)); return; }
 	CHECK_WITH_LOG(command_state < EState::IsInsideBegin, "RHI Error: SetRenderTarget must be called between Begin and End");
 	if (render_targets.empty()) return;
 	// Dynamic rendering path (VK_KHR_dynamic_rendering)
@@ -721,6 +745,7 @@ void VK_CommandBuffer::SetRenderTarget(CONST Vector<Texture*>& render_targets, T
 
 void VK_CommandBuffer::SetShaderResourceBinding(ShaderResourceBinding* srb)
 {
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdSetSRB>(srb)); return; }
 	CHECK(srb == nullptr);
 	VK_ShaderResourceBinding* vk_srb = STATIC_CAST(srb, VK_ShaderResourceBinding);
 	state_cache.srb = vk_srb;
@@ -889,7 +914,7 @@ void VK_CommandBuffer::Replay()
 			ResourceBarrier(c->src, c->dst);
 			break;
 		}
-		case RHICommandType::FlushBarriers:
+				case RHICommandType::FlushBarriers:
 			FlushBarriers();
 			break;
 		case RHICommandType::SetPushConstants: {
@@ -903,12 +928,41 @@ void VK_CommandBuffer::Replay()
 		case RHICommandType::End:
 			End();
 			break;
+		case RHICommandType::BeginRenderPass: {
+			auto* c = static_cast<RHICmdBeginRenderPass*>(cmd.get());
+			BeginRenderPass(
+				(VkRenderPass)(uintptr_t)c->render_pass,
+				(VkFramebuffer)(uintptr_t)c->frame_buffer,
+				c->width, c->height, c->clear_count,
+				c->clear_count > 0 ? (const VkClearValue*)c->clear_value_data.data() : nullptr);
+			break;
+		}
 		case RHICommandType::EndRenderPass:
 			EndRenderPass();
+			break;
+		case RHICommandType::BeginUI:
+			// CPU phase already executed on main thread (NewFrame)
+			break;
+		case RHICommandType::EndUI:
+			// GPU submission only; CPU phase (Render+UpdatePlatformWindows) already done on main thread
+			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
 			break;
 		case RHICommandType::WriteTimestamp: {
 			auto* c = static_cast<RHICmdWriteTimestamp*>(cmd.get());
 			WriteTimestamp(c->index);
+			break;
+		}
+				case RHICommandType::CopyBuffer:
+		{
+			auto* cc = static_cast<RHICmdCopyBuffer*>(cmd.get());
+			if (cc->region_count > 0 && !cc->regions.empty())
+				CopyBuffer((VkBuffer)(uintptr_t)cc->src_id, (VkBuffer)(uintptr_t)cc->dst_id, cc->region_count, (const VkBufferCopy*)cc->regions.data());
+			break;
+		}
+		case RHICommandType::CopyBufferToImage: {
+			auto* cc = static_cast<RHICmdCopyBufferToImage*>(cmd.get());
+			if (cc->region_count > 0 && !cc->regions.empty())
+				CopyBufferToImage((VkBuffer)(uintptr_t)cc->src_buffer, (VkImage)(uintptr_t)cc->dst_image, (VkImageLayout)cc->image_layout, cc->region_count, (const VkBufferImageCopy*)cc->regions.data());
 			break;
 		}
 		case RHICommandType::UnmapBuffer: {

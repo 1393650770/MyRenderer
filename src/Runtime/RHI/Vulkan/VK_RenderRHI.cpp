@@ -8,6 +8,7 @@
 #include "VK_Viewport.h"
 #include "VK_Shader.h"
 #include <iostream>
+#include <thread>
 #include "VK_Texture.h"
 #include "VK_RenderPass.h"
 #include "VK_FrameBuffer.h"
@@ -47,7 +48,9 @@ void VulkanRHI::Init(RenderFactory* render_factory)
 	InitializeDebugmessenger(enable_render_debug);
 	CreateDevice(enable_render_debug);
 
-	immediate_command_buffer = device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::GRAPHICS);
+	write_cb = device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::GRAPHICS);
+	rhi_cb  = device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::GRAPHICS);
+	immediate_command_buffer = write_cb;
 }
 
 void VulkanRHI::PostInit()
@@ -346,11 +349,80 @@ Shader* VulkanRHI::CreateShader(CONST ShaderDesc& desc, CONST ShaderDataPayload&
 
 CommandList* VulkanRHI::GetImmediateCommandList()
 {
-	immediate_command_buffer->Begin();
+	// In bypass mode, Begin() starts the CB directly on main thread.
+	if (!g_enable_rhi_thread)
+	{
+		write_cb->Begin();
+	}
 	return immediate_command_buffer;
 }
 
-// --  
+CommandList* VulkanRHI::GetWriteCommandList()
+{
+	// In RHI mode, just return write CB — Begin() will be recorded as command
+	return write_cb;
+}
+
+CommandList* VulkanRHI::GetRHICmdListForPresent()
+{
+	// Return the CB that the RHI thread has (or will) replay
+	return rhi_cb;
+}
+
+void VulkanRHI::SwapCommandLists()
+{
+	// Swap: the just-recorded write_cb becomes rhi_cb for replay+present
+	std::swap(write_cb, rhi_cb);
+	// Sync immediate_command_buffer so RenderGraph::Execute uses correct CB
+	immediate_command_buffer = write_cb;
+	// Signal RHI thread
+	replay_done.store(false, std::memory_order_release);
+	replay_ready.store(true, std::memory_order_release);
+}
+
+Bool VulkanRHI::IsReplayDone() CONST
+{
+	return replay_done.load(std::memory_order_acquire);
+}
+
+void VulkanRHI::StartRHIThread()
+{
+	rhi_running.store(true, std::memory_order_release);
+	rhi_thread = std::thread([this]() {
+		while (rhi_running.load(std::memory_order_acquire)) {
+			if (replay_ready.load(std::memory_order_acquire)) {
+				rhi_cb->Replay();
+				rhi_cb->End();  // End CB on RHI thread (same thread as Begin during Replay)
+				replay_ready.store(false, std::memory_order_release);
+				replay_done.store(true, std::memory_order_release);
+			} else {
+				std::this_thread::yield();
+			}
+		}
+	});
+}
+
+Bool VulkanRHI::CheckAndProcessReplay()
+{
+	if (replay_ready.load(std::memory_order_acquire))
+	{
+		rhi_cb->Replay();
+		replay_ready.store(false, std::memory_order_release);
+		replay_done.store(true, std::memory_order_release);
+		return true;
+	}
+	return false;
+}
+
+void VulkanRHI::StopRHIThread()
+{
+	rhi_running.store(false, std::memory_order_release);
+	if (rhi_thread.joinable()) {
+		rhi_thread.join();
+	}
+}
+
+// --
 CommandList* VulkanRHI::GetCommandListForQueue(ENUM_QUEUE_TYPE queue_type)
 {
 	return device->GetCommandBufferManager()->GetOrCreateCommandBuffer(queue_type);
@@ -378,7 +450,7 @@ void VulkanRHI::RenderEnd()
 	device->GetStagingBufferManager()->ProcessPendingFree(false, true);
 }
 
-VK_BindlessManager* VulkanRHI::GetBindlessManager()
+MXRender::RHI::BindlessManager* VulkanRHI::GetBindlessManager()
 {
 	return device ? device->GetBindlessManager() : nullptr;
 }

@@ -142,7 +142,7 @@ void RenderGraph::Execute()
 		// --   GPU timing: timestamp before pass (if cmd_list available)
 		if (cmd_list) cmd_list->WriteTimestamp(ts_idx++);
 
-		step.pass->Execute();
+		step.pass->Execute(cmd_list);
 
 		// --   GPU timing: timestamp after pass
 		if (cmd_list) cmd_list->WriteTimestamp(ts_idx++);

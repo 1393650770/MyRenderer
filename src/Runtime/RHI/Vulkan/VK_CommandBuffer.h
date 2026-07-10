@@ -75,7 +75,7 @@ public:
 	
 	__forceinline void CopyBuffer(VkBuffer src_buffer,VkBuffer dst_buffer,uint32_t region_count,const VkBufferCopy* regions)
 	{
-		if(!bypass)return;
+		if(!bypass){recorded_commands.push_back(std::make_unique<RHICmdCopyBuffer>((UInt64)(uintptr_t)src_buffer,(UInt64)(uintptr_t)dst_buffer,region_count,regions,region_count*sizeof(VkBufferCopy)));return;}
 		if (state_cache.render_pass != VK_NULL_HANDLE)
 		{
 			EndRenderPass();
@@ -90,7 +90,7 @@ public:
 		UInt32            in_clear_value_count = 0,
 		CONST VkClearValue* in_clear_values = nullptr)
 	{
-		if(!bypass)return;
+		if(!bypass){FlushBarriers();recorded_commands.push_back(std::make_unique<RHICmdBeginRenderPass>((UInt64)(uintptr_t)in_render_pass,(UInt64)(uintptr_t)in_frame_buffer,in_framebuffer_width,in_framebuffer_height,in_clear_value_count,in_clear_values));return;}
 		if (state_cache.render_pass != in_render_pass || state_cache.framebuffer != in_frame_buffer)
 		{
 			FlushBarriers();
@@ -153,7 +153,7 @@ public:
 		if(!bypass){recorded_commands.push_back(std::make_unique<RHICmdBegin>());return;}
 		if (command_state == EState::NeedReset)
 			vkResetCommandBuffer(command_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
-		if (command_state <= EState::NeedReset)
+		if (command_state != EState::IsInsideBegin && command_state != EState::IsInsideRenderPass && command_state != EState::HasEndedRenderPass)
 		{
 			VkCommandBufferBeginInfo begin_info{};
 			begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -164,7 +164,7 @@ public:
 	}
 	__forceinline VIRTUAL void METHOD(End)() OVERRIDE FINAL
 	{
-		if(!bypass){recorded_commands.push_back(std::make_unique<RHICmdEnd>());return;}
+		if(!bypass){FlushBarriers();recorded_commands.push_back(std::make_unique<RHICmdEnd>());return;}
 		if (command_state > EState::NeedReset && command_state < EState::HasEndedCommandBuffer)
 		{
 			// Distinguish legacy render pass vs dynamic rendering by state_cache.render_pass.
@@ -193,6 +193,7 @@ public:
 
 	__forceinline void ClearDepthStencilImage(VkImage image,CONST VkClearDepthStencilValue& depth_stencil,CONST VkImageSubresourceRange& subresource)
 	{
+		if(!bypass)return;
 
 		FlushBarriers();
 		vkCmdClearDepthStencilImage(
@@ -206,6 +207,7 @@ public:
 
 	__forceinline void ClearColorImage(VkImage  image, CONST VkClearColorValue& color,CONST VkImageSubresourceRange& subresource)
 	{
+		if(!bypass)return;
 		FlushBarriers();
 		vkCmdClearColorImage(
 			command_buffer,

@@ -4,6 +4,8 @@
 #include "RHI/RenderRHI.h"
 #include "vulkan/vulkan_core.h"
 #include "VK_Viewport.h"
+#include <atomic>
+#include <thread>
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -63,15 +65,25 @@ public:
 #pragma endregion
 
 #pragma region DRAW
+	// --   Returns CB for main-thread recording
 	VIRTUAL	CommandList* METHOD(GetImmediateCommandList)() OVERRIDE FINAL;
-	// --  
+	// --   Async RHI thread: write-CB / swap / rhi-CB for Present
+	CommandList* METHOD(GetWriteCommandList)();
+	CommandList* METHOD(GetRHICmdListForPresent)();
+	void METHOD(SwapCommandLists)();   // atomically swap write <=> rhi, signal RHI thread
+	Bool METHOD(IsReplayDone)() CONST; // check if RHI thread finished replay
+	// --
 	VIRTUAL CommandList* METHOD(GetCommandListForQueue)(ENUM_QUEUE_TYPE queue_type) OVERRIDE FINAL;
 	VIRTUAL void METHOD(SubmitCommandList)(CommandList* command_list) OVERRIDE FINAL;
 	// --  
 	VIRTUAL void METHOD(SubmitCommandListForQueue)(CommandList* cmd_list, ENUM_QUEUE_TYPE queue_type) OVERRIDE FINAL;
 	VIRTUAL void METHOD(RenderEnd)() OVERRIDE FINAL;
-	VK_BindlessManager* METHOD(GetBindlessManager)();
+	VIRTUAL MXRender::RHI::BindlessManager* METHOD(GetBindlessManager)() OVERRIDE FINAL;
 	VK_Device* METHOD(GetDevice)() CONST;
+	// --   RHI thread control (lock-free)
+	void METHOD(StartRHIThread)();
+	void METHOD(StopRHIThread)();
+	Bool METHOD(CheckAndProcessReplay)();
 #pragma endregion
 
 private:
@@ -98,8 +110,14 @@ protected:
 	VkDebugUtilsMessengerEXT debug_messenger;
 	VK_Device* device=nullptr;
 	Vector<VK_Viewport*> viewports;
+	VK_CommandBuffer* write_cb=nullptr;    // main thread records into this
+	VK_CommandBuffer* rhi_cb=nullptr;     // RHI thread replays this, main thread presents
 	VK_CommandBuffer* immediate_command_buffer=nullptr;
 	Vector<VK_CommandBuffer*> defered_command_buffers;
+	std::atomic<bool> replay_ready{false};
+	std::atomic<bool> replay_done{true};
+	std::atomic<bool> rhi_running{false};
+	std::thread rhi_thread;
 	friend class VK_Viewport;
 #pragma endregion
 

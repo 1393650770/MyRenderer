@@ -4,6 +4,7 @@
 
 #include <vulkan/vulkan_core.h>
 #include "Core/ConstDefine.h"
+#include "RHI/RenderBindlessManager.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -18,7 +19,7 @@ MYRENDERER_BEGIN_NAMESPACE(Vulkan)
 class VK_Device;
 class VK_Texture;
 
-MYRENDERER_BEGIN_CLASS(VK_BindlessManager)
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VK_BindlessManager, public MXRender::RHI::BindlessManager)
 #pragma region METHOD
 public:
 	static constexpr UInt32 BINDLESS_SET_INDEX = 2;
@@ -33,21 +34,21 @@ public:
 	~VK_BindlessManager();
 
 	// 2D texture slot management
-	UInt32 METHOD(AllocateTexture2DSlot)(MXRender::RHI::Texture* texture);
+	VIRTUAL UInt32 METHOD(AllocateTexture2DSlot)(MXRender::RHI::Texture* texture) OVERRIDE FINAL;
 	UInt32 METHOD(AllocateTexture2DSlot)(VK_Texture* texture);
-	void   METHOD(FreeTexture2DSlot)(UInt32 index);
+	VIRTUAL void   METHOD(FreeTexture2DSlot)(UInt32 index) OVERRIDE FINAL;
 	void   METHOD(UpdateTexture2DSlot)(UInt32 index, VK_Texture* texture);
 	void   METHOD(UpdateTexture2DSlot)(UInt32 index, MXRender::RHI::Texture* texture);
 
 	// Cube texture slot management
-	UInt32 METHOD(AllocateTextureCubeSlot)(MXRender::RHI::Texture* texture);
+	VIRTUAL UInt32 METHOD(AllocateTextureCubeSlot)(MXRender::RHI::Texture* texture) OVERRIDE FINAL;
 	UInt32 METHOD(AllocateTextureCubeSlot)(VK_Texture* texture);
-	void   METHOD(FreeTextureCubeSlot)(UInt32 index);
+	VIRTUAL void   METHOD(FreeTextureCubeSlot)(UInt32 index) OVERRIDE FINAL;
 
 	// Global shared descriptor set (all pipelines referencing Set 3 share this)
 	VkDescriptorSetLayout METHOD(GetLayout)() CONST;
 	VkDescriptorSet METHOD(GetDescriptorSet)() CONST;
-	Bool METHOD(IsEnabled)() CONST;
+	VIRTUAL Bool METHOD(IsEnabled)() CONST OVERRIDE FINAL;
 
 protected:
 	void METHOD(CreateBindlessPool)();

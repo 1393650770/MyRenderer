@@ -68,7 +68,7 @@ protected:
 	friend class RenderGraph;
 
 	VIRTUAL void METHOD(SetUp)(RenderGraphPassBuilder& in_builder) PURE;
-	VIRTUAL void METHOD(Execute)() PURE;
+	VIRTUAL void METHOD(Execute)(MXRender::RHI::CommandList* current_cmd_list) PURE;
 private:
 
 #pragma endregion
@@ -131,9 +131,9 @@ protected:
 	{
 		setup(data, builder,cmd_list);
 	}
-	void Execute() override
+	void Execute(MXRender::RHI::CommandList* current_cmd_list) override
 	{
-		execute(data,cmd_list);
+		execute(data, current_cmd_list);
 	}
 private:
 

@@ -101,6 +101,26 @@ struct RHICmdResourceBarrier : RHICommand {
 	RHICmdResourceBarrier(ENUM_RESOURCE_STATE s, ENUM_RESOURCE_STATE d) : RHICommand(RHICommandType::ResourceBarrier), src(s), dst(d) {}
 };
 struct RHICmdFlushBarriers : RHICommand {
+	// Cached image memory barrier data (platform-agnostic)
+	struct CachedImageBarrier {
+		UInt64 image;       // VkImage handle
+		Int    old_layout;
+		Int    new_layout;
+		UInt32 src_access;
+		UInt32 dst_access;
+		UInt32 aspect_mask;
+		UInt32 base_mip;
+		UInt32 level_count;
+		UInt32 base_layer;
+		UInt32 layer_count;
+	};
+	Vector<CachedImageBarrier> image_barriers;
+	UInt32 src_stages = 0;
+	UInt32 dst_stages = 0;
+	Bool   has_mem_barrier = false;
+	UInt32 mem_src_access = 0;
+	UInt32 mem_dst_access = 0;
+
 	RHICmdFlushBarriers() : RHICommand(RHICommandType::FlushBarriers) {}
 };
 struct RHICmdSetPushConstants : RHICommand {
@@ -109,17 +129,46 @@ struct RHICmdSetPushConstants : RHICommand {
 	RHICmdSetPushConstants(UInt32 o, UInt32 s, const void* d) : RHICommand(RHICommandType::SetPushConstants), offset(o), size(s), data((UInt8*)d, (UInt8*)d + s) {}
 };
 struct RHICmdCopyBuffer : RHICommand {
-	UInt32 src_id, dst_id;
+	UInt64 src_id, dst_id;
 	UInt32 region_count;
 	Vector<UInt8> regions;
-	RHICmdCopyBuffer(UInt32 s, UInt32 d, UInt32 c, const void* r, size_t sz) : RHICommand(RHICommandType::CopyBuffer), src_id(s), dst_id(d), region_count(c), regions((UInt8*)r, (UInt8*)r + sz) {}
+	RHICmdCopyBuffer(UInt64 s, UInt64 d, UInt32 c, const void* r, size_t sz) : RHICommand(RHICommandType::CopyBuffer), src_id(s), dst_id(d), region_count(c), regions((UInt8*)r, (UInt8*)r + sz) {}
 };
+struct RHICmdCopyBufferToImage : RHICommand {
+	UInt64 src_buffer;   // VkBuffer handle
+	UInt64 dst_image;    // VkImage handle
+	Int    image_layout; // VkImageLayout
+	UInt32 region_count;
+	Vector<UInt8> regions; // VkBufferImageCopy[] raw data
+	RHICmdCopyBufferToImage(UInt64 s, UInt64 d, Int l, UInt32 c, const void* r, size_t sz)
+		: RHICommand(RHICommandType::CopyBufferToImage), src_buffer(s), dst_image(d)
+		, image_layout(l), region_count(c), regions((UInt8*)r, (UInt8*)r + sz) {}
+};
+
 struct RHICmdBegin : RHICommand {
 	RHICmdBegin() : RHICommand(RHICommandType::Begin) {}
 };
 struct RHICmdEnd : RHICommand {
 	RHICmdEnd() : RHICommand(RHICommandType::End) {}
 };
+struct RHICmdBeginRenderPass : RHICommand {
+	UInt64 render_pass;    // VkRenderPass handle
+	UInt64 frame_buffer;   // VkFramebuffer handle
+	UInt32 width;
+	UInt32 height;
+	UInt32 clear_count;
+	// Clear values stored as raw data (VkClearValue is 16 bytes with union)
+	Vector<UInt8> clear_value_data;
+	RHICmdBeginRenderPass(UInt64 rp, UInt64 fb, UInt32 w, UInt32 h, UInt32 cc, const void* cv)
+		: RHICommand(RHICommandType::BeginRenderPass), render_pass(rp), frame_buffer(fb)
+		, width(w), height(h), clear_count(cc)
+	{
+		if (cc > 0 && cv)
+			clear_value_data.assign((UInt8*)cv, (UInt8*)cv + cc * 16); // sizeof(VkClearValue) == 16
+	}
+};
+struct RHICmdBeginUI : RHICommand { RHICmdBeginUI() : RHICommand(RHICommandType::BeginUI) {} };
+struct RHICmdEndUI : RHICommand { RHICmdEndUI() : RHICommand(RHICommandType::EndUI) {} };
 struct RHICmdWriteTimestamp : RHICommand {
 	UInt32 index;
 	RHICmdWriteTimestamp(UInt32 i) : RHICommand(RHICommandType::WriteTimestamp), index(i) {}

@@ -8,6 +8,7 @@
 #include<memory>
 #include "RenderRource.h"
 #include "Core/ConstGlobals.h"
+#include "RenderBindlessManager.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -69,6 +70,14 @@ public:
 	VIRTUAL void METHOD(SubmitCommandListForQueue)(CommandList* cmd_list, ENUM_QUEUE_TYPE queue_type) {}
 
 	VIRTUAL void METHOD(RenderEnd)() PURE;
+	// --   Async RHI thread (lock-free)
+	VIRTUAL CommandList* METHOD(GetWriteCommandList)() PURE;
+	VIRTUAL CommandList* METHOD(GetRHICmdListForPresent)() PURE;
+	VIRTUAL void METHOD(SwapCommandLists)() PURE;
+	VIRTUAL Bool METHOD(IsReplayDone)() CONST PURE;
+	VIRTUAL void METHOD(StartRHIThread)() PURE;
+	VIRTUAL void METHOD(StopRHIThread)() PURE;
+	VIRTUAL BindlessManager* METHOD(GetBindlessManager)() PURE;
 #pragma endregion
 
 private:
@@ -102,11 +111,17 @@ extern CORE_API MXRender::RHI::CommandList* METHOD(RHIGetCommandListForQueue)(MX
 extern CORE_API void METHOD(RHISubmitCommandListForQueue)(MXRender::RHI::CommandList* cmd_list, MXRender::ENUM_QUEUE_TYPE queue_type);
 extern CORE_API void METHOD(RHIRenderEnd)();
 extern CORE_API void METHOD(RHISubmitCommandList)(MXRender::RHI::CommandList* command_list);
+// --   Async RHI thread (lock-free)
+extern CORE_API MXRender::RHI::CommandList* METHOD(RHIGetWriteCommandList)();
+extern CORE_API MXRender::RHI::CommandList* METHOD(RHIGetRHICmdListForPresent)();
+extern CORE_API void METHOD(RHISwapCommandLists)();
+extern CORE_API Bool METHOD(RHIIsReplayDone)();
+extern CORE_API void METHOD(RHIStartRHIThread)();
+extern CORE_API void METHOD(RHIStopRHIThread)();
 extern CORE_API void* METHOD(RHIMapBuffer)(MXRender::RHI::Buffer* buffer, MXRender::ENUM_MAP_TYPE map_type, MXRender::ENUM_MAP_FLAG map_flag);
 extern CORE_API void METHOD(RHIUnmapBuffer)(MXRender::RHI::Buffer* buffer);
 
-namespace MXRender::RHI::Vulkan { class VK_BindlessManager; }
-extern CORE_API MXRender::RHI::Vulkan::VK_BindlessManager* METHOD(RHIGetBindlessManager)();
+extern CORE_API MXRender::RHI::BindlessManager* METHOD(RHIGetBindlessManager)();
 
 #endif
 

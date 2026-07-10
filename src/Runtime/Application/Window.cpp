@@ -8,6 +8,7 @@
 #include "RHI/RenderCommandList.h"
 #include "Render/Core/CommandQueue.h"
 #include <limits>
+#include <thread>
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
 
@@ -39,23 +40,10 @@ Window::~Window()
 
 void Window::Run(RenderInterface* render)
 {
-	Render::CommandQueue render_queue;
-	Render::CommandQueue rhi_queue;
 	Bool use_rhi_thread = g_enable_rhi_thread;
 
-	// RHIWorker fiber: consumes rhi_queue asynchronously on TaskScheduler
-	struct RHIWorker {
-		MT_DECLARE_TASK(RHIWorker, MT::StackRequirements::STANDARD, MT::TaskPriority::NORMAL, MT::Color::Green);
-		Render::CommandQueue* queue;
-		void Do(MT::FiberContext&) {
-			while (queue->WaitAndFlush()) {}  // Block until Shutdown
-		}
-	};
-	RHIWorker rhi_worker{ &rhi_queue };
-
 	if (use_rhi_thread) {
-		rhi_queue.SetBypass(false);
-		scheduler.RunAsync(MT::TaskGroup::Default(), &rhi_worker, 1);
+		RHIStartRHIThread();
 	}
 
 	Int width = 0, height = 0;
@@ -71,20 +59,29 @@ void Window::Run(RenderInterface* render)
 		// Logic
 		render->OnUpdate(deltaTime);
 
-		// Render: record commands (bypass=false) or execute directly (bypass=true)
-		auto* cmd_list = RHIGetImmediateCommandList();
-		if (use_rhi_thread) cmd_list->SetBypass(false);
-		render->OnRender();
 		if (use_rhi_thread) {
+			// Record into write-CB, atomically swap to RHI thread
+			auto* cmd_list = RHIGetWriteCommandList();
+			cmd_list->SetBypass(false);
+			cmd_list->Begin();
+			render->OnRender();
 			cmd_list->SetBypass(true);
-			rhi_queue.Enqueue([cmd_list]() { cmd_list->Replay(); });
+			RHISwapCommandLists();
+		} else {
+			render->OnRender();
 		}
 
-		// Wait for RHI replay before Present (single-thread fallback: Flush)
-		if (use_rhi_thread) rhi_queue.WaitAndFlush();  // TODO: replace with fence when fully async
-
-		// Present
-		viewport->Present(cmd_list, true, true);
+		if (use_rhi_thread) {
+			// Wait for RHI replay (rarely blocks)
+			while (!RHIIsReplayDone()) {
+				std::this_thread::yield();
+			}
+			auto* present_cb = RHIGetRHICmdListForPresent();
+			viewport->Present(present_cb, true, true);
+		} else {
+			auto* cmd_list = RHIGetImmediateCommandList();
+			viewport->Present(cmd_list, true, true);
+		}
 		RHIRenderEnd();
 		g_frame_number_render_thread = (g_frame_number_render_thread + 1) % g_max_frame_number;
 
@@ -98,7 +95,7 @@ void Window::Run(RenderInterface* render)
 		}
 		viewport->Resize(width, height);
 	}
-	if (use_rhi_thread) rhi_queue.Shutdown();
+	if (use_rhi_thread) RHIStopRHIThread();
 	render->OnShutdown();
 
 	delete viewport;
@@ -113,7 +110,6 @@ GLFWwindow* Window::GetWindow() CONST
 
 void Window::InitWindow()
 {
-
 	RHIInit();
 	viewport = RHICreateViewport((void*)glfw_window, width, height, is_full_screen);
 }
