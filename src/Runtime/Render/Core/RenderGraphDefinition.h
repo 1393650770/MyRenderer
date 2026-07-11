@@ -39,6 +39,7 @@ struct RDGResourceDef
 	Bool is_transient = true;
 	Bool is_depth_stencil = false;
 	String file_path; // --  External texture path for TextureAsset loading
+	Vector<UInt8> buffer_data; // --  Raw buffer content for UBO serialization
 
 	// Embedded RHI descriptor (TextureDesc, BufferDesc, or ShaderDesc)
 	std::variant<MXRender::RHI::TextureDesc, MXRender::RHI::BufferDesc, MXRender::RHI::ShaderDesc> desc;

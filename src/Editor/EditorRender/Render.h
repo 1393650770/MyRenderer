@@ -50,7 +50,8 @@ protected:
 	Window* window;
 	EditorUI editor_ui;
 
-	Bool has_deferred_rebuild = false; // -- 
+	Bool has_deferred_rebuild = false; // --
+	Bool need_clear_fb = false; // --
 	Render::RenderGraphDefinition deferred_def;
 	// --  Pre-created pipeline states for loaded graph passes
 	RHI::Shader* skybox_vs = nullptr, *skybox_ps = nullptr;

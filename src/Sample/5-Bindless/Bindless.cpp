@@ -306,6 +306,12 @@ void RenderTest::OnShutdown()
 		else if (res->GetAsBuffer())
 		{
 			rd.desc = res->GetAsBuffer()->GetBufferDesc();
+			// --   Read buffer content for serialization
+			if (RHI::Buffer* buf = res->GetAsBuffer()) {
+				UInt32 sz = buf->GetBufferDesc().size;
+				void* p = RHIMapBuffer(buf, ENUM_MAP_TYPE::Read, ENUM_MAP_FLAG::None);
+				if (p) { rd.buffer_data.assign((UInt8*)p, (UInt8*)p + sz); RHIUnmapBuffer(buf); }
+			}
 		}
 		def.resources.push_back(rd);
 	}

@@ -1,127 +1,85 @@
-# RenderGraph 完整序列化/反序列化 — HelloTriangle 通用 pass 渲染
+# RenderGraph 层修复 + UBO 序列化
 
-## Context
+## Part 1: RenderGraphResource 保留构造函数修复
 
-用户从 `RendererSample-HelloTriangle` 保存了 `hello_triangle.rgraph.json`，在 Editor 中加载后看不到三角形。
+### 根因
 
-### 根因分析
+`AddRetainedResource(name, desc, nullptr)` → 保留构造函数中 `if (!in_actual)` 触发 `RealizeResource` → 创建 GPU 对象存入 `unique_ptr` variant → `Release()` 析构时 `FreeAllocation` 崩溃（pool 返回的资源 allocation 与主分配器不兼容）。
 
-序列化只捕获了**资源依赖图**（pass 读/写了哪些 resource），但没有捕获**渲染逻辑**（shader、pipeline、draw call）。
+### 修复
 
-**HelloTriangle 的 OnShutdown**：
-```cpp
-pd.name = pass->GetName();
-pd.pass_kind = Render::RDGPassKind::Graphics;
-// ❌ 没有 pd.shader_path = pass->GetShaderPath();
-// ❌ OnInit 也没调用 pass->SetShaderPath()
-for (auto* r : pass->GetReadResources())  pd.read_resources.push_back(r->GetName());
-for (auto* w : pass->GetWriteResources()) pd.write_resources.push_back(w->GetName());
-```
-
-**对比 Bindless 的 OnShutdown**（已有正确模式）：
-```cpp
-pd.shader_path = pass->GetShaderPath();  // ✅ 运行时设置 → 定义层 → JSON
-```
-
-**Builder 默认执行路径**（无注册 callback 时）：只做 Clear，不加载 shader、不创建 pipeline、不 Draw。
-
-### 数据流缺口总结
-
-```
-Sample 运行态              JSON 存储              Editor Builder 重建
-─────────────────         ──────────             ──────────────────
-shader 路径 (.vert/.frag)  shader_path ✅ 已有    ❌ 未用于创建 pipeline
-vertex count = 3          ❌ 未存储              ❌ 默认只 Clear
-pipeline state            ❌ 未存储              ❌ 未创建
-Draw call                 ❌ 不可序列化          ❌ 不执行
-```
-
-## 方案
-
-### 1. HelloTriangle 添加 shader_path（匹配 Bindless 模式）
-
-**文件**: `src/Sample/1-HelloTriangle/HelloTriangle.cpp`
-
-- `OnInit`: 添加 `rdg_pass->SetShaderPath("Shader/triangle_test");`
-- `OnShutdown`: 添加 `pd.shader_path = pass->GetShaderPath();`
-
-### 2. RDGPassDef 添加 vertex_count
-
-**文件**: `src/Runtime/Render/Core/RenderGraphDefinition.h`
+移除保留构造函数中的自动创建逻辑：
 
 ```cpp
-struct RDGPassDef {
-    // ... existing fields ...
-    String shader_path;
-    UInt32 vertex_count = 3;   // ← 新增，默认 3（三角形）
-};
+// RenderGraphResource.h — 修改前
+explicit RenderGraphResource(CONST String& name, CONST description_type& in_description, actual_type* in_actual = nullptr)
+    : RenderGraphResourceBase(name, nullptr), description(in_description), actual(in_actual)
+{
+    if (!in_actual)                              // ← 删除这个 block
+        actual = RealizeResource<...>(...);       // ← 
+}
+
+// 修改后
+explicit RenderGraphResource(CONST String& name, CONST description_type& in_description, actual_type* in_actual = nullptr)
+    : RenderGraphResourceBase(name, nullptr), description(in_description), actual(in_actual)
+{
+    // nullptr → variant 存 Texture* = nullptr → GetAsTexture() 返回 nullptr → 安全占位
+}
 ```
 
-### 3. 序列化 vertex_count
+`AddRetainedResource(name, desc, nullptr)` 现在创建的是**仅描述符的占位 resource**：
+- `actual` variant 存 `Texture* = nullptr`
+- 析构时只丢弃 nullptr，不释放 GPU 资源
+- `GetAsTexture()` 返回 nullptr，渲染时自然跳过
 
-**文件**: `src/Runtime/Render/Core/RenderGraphSerializer.cpp`
+### 影响范围
 
-- Save: `if (pd.vertex_count != 3) pj["vertex_count"] = pd.vertex_count;`
-- Load: `pd.vertex_count = pj.value("vertex_count", (UInt32)3);`
+检查所有 `AddRetainedResource` 调用点——都传入了非 null 的 actual 指针（或 ShaderDesc 有 spirv_data），不受影响。
 
-### 4. Builder 通用 pass 执行 — shader 加载 + 绘制
+## Part 2: UBO 序列化/反序列化
 
-**文件**: `src/Runtime/Render/Core/RenderGraphBuilder.cpp`
+### Context
 
-扩展 `MinimalPassData` 和 setup/execute lambda：
+Bindless sample 中 UBO 每帧写入动态数据（MVP、Camera、Material）。当前 JSON 只序列化了 `BufferDesc`（size、stride、type），没有 buffer 内容。
 
-**Setup 阶段**（当无注册 callback 但有 `shader_path` 时）：
-- 读取 `pd.shader_path` + ".vert.spv" / ".frag.spv"
-- 创建 VS + PS shader
-- 创建 RenderPipelineState（从 BackBuffer 获取 RT 格式）
-- 创建 SRB
-- 存储到 `MinimalPassData`
+### 方案
 
-**Execute 阶段**（默认路径，当 pipeline 存在时）：
-- SetRenderTarget（BackBuffer + DepthStencil，带 clear）
-- SetGraphicsPipeline
-- SetShaderResourceBinding
-- Draw（vertex_count 取自定义）
+**序列化**（Sample OnShutdown）：
+1. Map buffer → 读取当前内容 → 存储为 base64/字节数组
+2. 存入 `RDGResourceDef.buffer_data`
 
-修改后的 execute lambda 逻辑：
+**反序列化**（Builder）：
+1. 读取 `BufferDesc` → `RHICreateBuffer(desc)` → 创建真实 GPU buffer
+2. 读取 `buffer_data` → `UpdateBufferData()` → 上传初始数据
+3. `AddRetainedResource(name, desc, buf)` → buf 非 null → raw ptr variant → 安全
+
+### 数据流
+
 ```
-if (有注册 callback) → 调用 callback（现有行为）
-else if (有 pipeline) → 绑定 pipeline + draw（新增）
-else → clear render targets（现有默认行为）
+Sample 运行态                  JSON                         Editor Builder
+─────────────────             ──────────                   ──────────────────
+BufferDesc (size/type)  →     buffer_size/type       →    RHICreateBuffer(desc)
+Buffer 当前内容          →     buffer_data (bytes)    →    UpdateBufferData()
+RHICreateBuffer(desc)         (base64 编码)               AddRetainedResource(name,desc,buf)
+                                                          → raw ptr → 安全析构
 ```
 
-### 5. RenderGraphPassBase 存储 vertex_count
-
-**文件**: `src/Runtime/Render/Core/RenderGraphPass.h`
-
-添加 `UInt32 vertex_count = 3` 成员和 getter/setter（供 Sample 在 OnInit 设置，OnShutdown 读取）。
-
-### 6. HelloTriangle 完整序列化
-
-**文件**: `src/Sample/1-HelloTriangle/HelloTriangle.cpp`
-
-- `OnInit`: `rdg_pass->SetVertexCount(3);`
-- `OnShutdown`: `pd.vertex_count = pass->GetVertexCount();`
-
-## 文件清单
+### 文件清单
 
 | 操作 | 文件 | 说明 |
 |------|------|------|
-| 修改 | `RenderGraphPass.h` | 添加 `vertex_count` 成员 |
-| 修改 | `RenderGraphDefinition.h` | `RDGPassDef` 添加 `vertex_count` |
-| 修改 | `RenderGraphSerializer.cpp` | 序列化/反序列化 `vertex_count` |
-| 修改 | `RenderGraphBuilder.cpp` | 通用 shader 加载 + pipeline 创建 + Draw |
-| 修改 | `Sample/1-HelloTriangle/HelloTriangle.cpp` | 设置 shader_path + vertex_count，序列化它们 |
+| 修改 | `RenderGraphResource.h` | 移除保留构造函数的 `RealizeResource` 自动调用 |
+| 修改 | `RenderGraphDefinition.h` | `RDGResourceDef` 添加 `buffer_data` 字段 |
+| 修改 | `RenderGraphSerializer.cpp` | 序列化/反序列化 `buffer_data` |
+| 修改 | `RenderGraphBuilder.cpp` | Buffer 有 data 时创建 GPU buffer 并上传 |
+| 修改 | `Sample/5-Bindless/Bindless.cpp` | OnShutdown 读取 UBO 内容存储到 buffer_data |
 
 ## 验证
 
 ```bash
-# 1. 编译 + 运行 HelloTriangle sample → 生成新的 JSON
-xmake build RendererSample-HelloTriangle
-# 运行后检查 JSON 包含 shader_path 和 vertex_count
-
-# 2. 编译 Editor
 xmake build Editor
-
-# 3. Editor 加载 hello_triangle.rgraph.json → 应看到三角形
+xmake build RendererSample-Bindless
+# 1. 运行 Bindless sample → 生成含 buffer_data 的 JSON
+# 2. Editor 加载 bindless.rgraph.json → 不应崩溃
+# 3. Editor 切换 graph → 不应崩溃
 ```

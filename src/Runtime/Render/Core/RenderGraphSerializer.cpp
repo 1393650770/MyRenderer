@@ -37,6 +37,11 @@ Bool RenderGraphSerializer::SaveGraph(CONST RenderGraphDefinition& def, CONST St
 
 			rj["is_depth_stencil"] = rd.is_depth_stencil;
 			if (!rd.file_path.empty()) rj["file_path"] = rd.file_path;
+			if (!rd.buffer_data.empty()) {
+				json bd = json::array();
+				for (auto b : rd.buffer_data) bd.push_back((UInt32)b);
+				rj["buffer_data"] = bd;
+			}
 			std::visit([&](auto& d) {
 				using T = std::decay_t<decltype(d)>;
 				ResourceDescSerializer<T>::Serialize(rj, d);
@@ -145,6 +150,8 @@ Bool RenderGraphSerializer::LoadGraph(RenderGraphDefinition& out_def, CONST Stri
 				rd.is_transient = rj.value("is_transient", true);
 				rd.is_depth_stencil = rj.value("is_depth_stencil", false);
 				rd.file_path = rj.value("file_path", "");
+				if (rj.contains("buffer_data") && rj["buffer_data"].is_array())
+					for (auto& v : rj["buffer_data"]) rd.buffer_data.push_back((UInt8)v.get<UInt32>());
 				auto kind = MXRender::Tool::StringToEnum_ResourceKind(rj.value("kind", "Texture"));
 
 				if (kind == RDGResourceKind::Buffer)

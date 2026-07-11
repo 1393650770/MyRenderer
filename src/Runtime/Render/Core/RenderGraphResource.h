@@ -137,9 +137,7 @@ public:
 	explicit RenderGraphResource(CONST String& name, CONST description_type& in_description, actual_type* in_actual = nullptr)
 		: RenderGraphResourceBase(name, nullptr), description(in_description), actual(in_actual)
 	{
-		// Retained (import) constructor.
-		if (!in_actual)
-			actual = RealizeResource<description_type, actual_type>(in_description);
+		// Retained (import) constructor. If in_actual is nullptr, stores nullptr placeholder.
 	}
 	RenderGraphResource(CONST RenderGraphResource& that) MYDELETE;
 	RenderGraphResource(RenderGraphResource&& temp) MYDEFAULT;

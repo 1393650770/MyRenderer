@@ -43,6 +43,7 @@ RHI::Texture* TextureAsset::GetTexture()
 		}
 		return texture;
 	}
+	return nullptr;
 }
 
 TextureAsset::~TextureAsset()

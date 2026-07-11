@@ -1,5 +1,6 @@
 #include "Render/Core/RenderGraphBuilder.h"
 #include <fstream>
+#include <cstring>
 #include "RHI/RenderShader.h"
 #include "RHI/RenderPipelineState.h"
 #include "Render/Core/RenderGraphDefinition.h"
@@ -78,7 +79,16 @@ Bool RenderGraphBuilder::BuildRuntimeGraph(
 			if (std::holds_alternative<RHI::BufferDesc>(rd.desc))
 			{
 				auto desc = std::get<RHI::BufferDesc>(rd.desc);
-				resource_map[rd.name] = out_graph->AddRetainedResource<RHI::BufferDesc, RHI::Buffer>(rd.name, desc, nullptr);
+				if (!rd.buffer_data.empty()) {
+					// --   Create GPU buffer from serialized data
+					RHI::Buffer* buf = RHICreateBuffer(desc);
+					void* p = RHIMapBuffer(buf, ENUM_MAP_TYPE::Write, ENUM_MAP_FLAG::None);
+					memcpy(p, rd.buffer_data.data(), rd.buffer_data.size());
+					RHIUnmapBuffer(buf);
+					resource_map[rd.name] = out_graph->AddRetainedResource<RHI::BufferDesc, RHI::Buffer>(rd.name, desc, buf);
+				} else {
+					resource_map[rd.name] = out_graph->AddRetainedResource<RHI::BufferDesc, RHI::Buffer>(rd.name, desc, nullptr);
+				}
 			}
 			else if (std::holds_alternative<RHI::ShaderDesc>(rd.desc))
 			{
@@ -94,8 +104,10 @@ Bool RenderGraphBuilder::BuildRuntimeGraph(
 					auto* asset = new Asset::TextureAsset(rd.file_path);
 					while (!asset->GetTexture()) {} // Wait for async load
 					existing_tex = asset->GetTexture();
+					resource_map[rd.name] = out_graph->AddRetainedResource<RHI::TextureDesc, RHI::Texture>(rd.name, desc, existing_tex);
+				} else {
+					resource_map[rd.name] = out_graph->AddRetainedResource<RHI::TextureDesc, RHI::Texture>(rd.name, desc, nullptr); // --   placeholder
 				}
-				resource_map[rd.name] = out_graph->AddRetainedResource<RHI::TextureDesc, RHI::Texture>(rd.name, desc, existing_tex);
 			}
 		}
 	}

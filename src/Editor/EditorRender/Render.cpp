@@ -290,6 +290,7 @@ void EditorRenderPipeline::RebuildFromDefinition(CONST MXRender::Render::RenderG
 	if (backbuffer_dsv) externals.push_back({"DepthStencil", backbuffer_dsv, nullptr});
 	if (Render::RenderGraphBuilder::BuildRuntimeGraph(def, &graph, externals))
 	{
+		need_clear_fb = true; // --   Clear framebuffer on next frame
 		editor_ui.AddPass(&graph);
 		graph.Compile();
 		if (auto* rgp = editor_ui.GetRenderGraphPanel()) rgp->SyncRuntimeToEditor(&graph);
@@ -337,6 +338,18 @@ void EditorRenderPipeline::OnRender()
 		bb->UpdateRetainedPtr(window->GetViewport()->GetCurrentBackBufferRTV());
 	if (auto* ds = graph.GetRetainedResource<RHI::TextureDesc, RHI::Texture>("DepthStencil"))
 		ds->UpdateRetainedPtr(window->GetViewport()->GetCurrentBackBufferDSV());
+
+	// --   Clear framebuffer once after a graph rebuild (old ClearPass is gone)
+	if (need_clear_fb) {
+		need_clear_fb = false;
+		auto* cmd = RHIGetImmediateCommandList();
+		auto* rt = window->GetViewport()->GetCurrentBackBufferRTV();
+		auto* ds = window->GetViewport()->GetCurrentBackBufferDSV();
+		Vector<RHI::ClearValue> cvs = { rt->GetTextureDesc().clear_value };
+		if (ds) cvs.push_back(ds->GetTextureDesc().clear_value);
+		cmd->SetRenderTarget({rt}, ds, cvs, ds != nullptr);
+	}
+
 	graph.Execute();
 }
 
