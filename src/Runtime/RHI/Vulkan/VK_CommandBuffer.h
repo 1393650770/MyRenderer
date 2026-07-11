@@ -3,6 +3,8 @@
 #define _VK_COMMANDBUFFER_
 #include <vulkan/vulkan_core.h>
 #include "RHI/RenderCommandList.h"
+#include "VK_Fence.h"
+#include "VK_Device.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -64,7 +66,7 @@ public:
 
 	VkCommandBuffer METHOD(GetCommandBuffer)() CONST;
 	VK_Fence* METHOD(GetFence)() CONST;
-	Bool METHOD(WaitForFence)(float time_in_seconds_to_wait);
+	VIRTUAL Bool METHOD(WaitForFence)(float time_in_seconds_to_wait) OVERRIDE FINAL;
 
 	UInt64 METHOD(GetFenceSignaledCounter)() CONST;
 
@@ -151,8 +153,19 @@ public:
 	__forceinline VIRTUAL void METHOD(Begin)() OVERRIDE FINAL
 	{
 		if(!bypass){recorded_commands.push_back(std::make_unique<RHICmdBegin>());return;}
-		if (command_state == EState::NeedReset)
+		if (command_state == EState::NeedReset || command_state == EState::Submitted)
+		{
+			// Ensure GPU has finished with this CB before resetting.
+			// CheckCompletion no longer resets fences; Begin() is the sole point
+			// where the fence is reset for the next submit cycle.
+			if (!fence->CheckSignaled())
+			{
+				device->GetFenceManager()->WaitForFence(fence, 1000000000ULL); // 1s timeout
+			}
+			fence->ResetFence(); // signaled → unsignaled (required for next vkQueueSubmit)
 			vkResetCommandBuffer(command_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+			command_state = EState::ReadyForBegin;
+		}
 		if (command_state != EState::IsInsideBegin && command_state != EState::IsInsideRenderPass && command_state != EState::HasEndedRenderPass)
 		{
 			VkCommandBufferBeginInfo begin_info{};

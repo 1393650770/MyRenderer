@@ -26,17 +26,10 @@
 #include "UI/RenderGraphEditor/Commands/DeleteLinkCmd.h"
 #include "UI/RenderGraphEditor/Commands/RenameCmd.h"
 #include "UI/RenderGraphEditor/Commands/MoveNodeCmd.h"
-#include <set>
-#include "UI/RenderGraphEditor/Services/GraphValidator.h"
-#include "UI/RenderGraphEditor/Services/EditorEventBus.h"
-
-#include "UI/RenderGraphEditor/RenderGraphSubGraphNode.h"
-#include "UI/RenderGraphEditor/Commands/CreateNodeCmd.h"
-#include "UI/RenderGraphEditor/Commands/DeleteNodeCmd.h"
-#include "UI/RenderGraphEditor/Commands/CreateLinkCmd.h"
-#include "UI/RenderGraphEditor/Commands/DeleteLinkCmd.h"
-#include "UI/RenderGraphEditor/Commands/RenameCmd.h"
-#include "UI/RenderGraphEditor/Commands/MoveNodeCmd.h"
+#include "UI/RenderGraphEditor/Commands/NewGraphCmd.h"
+#include "UI/RenderGraphEditor/Commands/OpenGraphCmd.h"
+#include "UI/RenderGraphEditor/Commands/ModifyPinCmd.h"
+#include "UI/RenderGraphEditor/Commands/EditorCommandQueue.h"
 #include <set>
 
 namespace ed = ax::NodeEditor;
@@ -411,7 +404,13 @@ void RenderGraphPanel::CreateOperator()
 				if (ImGui::InputText("##RenameNode", name_buf, sizeof(name_buf),
 					ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue))
 				{
-					node->SetName(String(name_buf));
+					String oldName = node->GetName();
+					String newName(name_buf);
+					UInt64 nid = hover_node_id;
+					QUEUE_LAMBDA("Rename Node",
+						{ auto* n = GetNode(nid); if (n) n->SetName(newName); },
+						{ auto* n = GetNode(nid); if (n) n->SetName(oldName); }
+					);
 				}
 				ImGui::PopItemWidth();
 			}
@@ -419,16 +418,16 @@ void RenderGraphPanel::CreateOperator()
 			if (ImGui::MenuItem("Add Input Pin"))
 			{
 				if (auto* pass = dynamic_cast<RenderGraphPassNode*>(node))
-					pass->AddInputPin("Input", PinAccess::Read);
+					QUEUE_CMD(ModifyPinCmd, node->GetSelfID(), ModifyPinCmd::EAction::AddInput);
 				else if (node)
-					node->AddInput("Input");
+					QUEUE_CMD(ModifyPinCmd, node->GetSelfID(), ModifyPinCmd::EAction::AddInput);
 			}
 			if (ImGui::MenuItem("Add Output Pin"))
 			{
 				if (auto* pass = dynamic_cast<RenderGraphPassNode*>(node))
-					pass->AddOutputPin("Output", PinAccess::Write);
+					QUEUE_CMD(ModifyPinCmd, node->GetSelfID(), ModifyPinCmd::EAction::AddOutput);
 				else if (node)
-					node->AddOutput("Output");
+					QUEUE_CMD(ModifyPinCmd, node->GetSelfID(), ModifyPinCmd::EAction::AddOutput);
 			}
 
 			ImGui::Separator();
@@ -436,7 +435,7 @@ void RenderGraphPanel::CreateOperator()
 			if (ImGui::MenuItem("Delete Node"))
 			{
 				if (node)
-					DeleteItem(node->GetSelfID());
+					QUEUE_CMD(DeleteNodeCmd, node->GetSelfID());
 			}
 
 			ImGui::EndPopup();
@@ -455,14 +454,20 @@ void RenderGraphPanel::CreateOperator()
 				if (ImGui::InputText("##RenamePin", pin_name_buf, sizeof(pin_name_buf),
 					ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue))
 				{
-					pin->SetName(String(pin_name_buf));
-					node->SetSetNeedRecalcSize();
+					String oldName = pin->GetName();
+					String newName(pin_name_buf);
+					UInt64 hid = hover_pin_id;
+					UInt64 nid = hover_node_id;
+					QUEUE_LAMBDA("Rename Pin",
+						{ auto* n = GetNode(nid); if (n) { auto* p = n->GetPin(hid); if (p) { p->SetName(newName); n->SetSetNeedRecalcSize(); } } },
+						{ auto* n = GetNode(nid); if (n) { auto* p = n->GetPin(hid); if (p) { p->SetName(oldName); n->SetSetNeedRecalcSize(); } } }
+					);
 				}
 				ImGui::PopItemWidth();
 
 				if (ImGui::MenuItem("Delete Pin"))
 				{
-					node->DeletePin(pin->GetSelfID());
+					QUEUE_CMD(ModifyPinCmd, node->GetSelfID(), pin->GetSelfID(), ModifyPinCmd::EAction::Delete);
 				}
 			}
 			ImGui::EndPopup();
@@ -473,7 +478,7 @@ void RenderGraphPanel::CreateOperator()
 		{
 			if (ImGui::MenuItem("Delete Link"))
 			{
-				DeleteLink(hover_link_id);
+				QUEUE_CMD(DeleteLinkCmd, hover_link_id);
 			}
 			ImGui::EndPopup();
 		}
@@ -503,7 +508,7 @@ void RenderGraphPanel::BaseOperator()
 					{
 						BaseLink* link = new BaseLink("Link");
 						link->Init(output_pin_id.Get(), input_pin_id.Get());
-						AddLinkWithCmd(link);
+						QUEUE_CMD(CreateLinkCmd, link);
 						// Determine link color by dataflow direction
 						PinAccess link_access = PinAccess::Read;
 						BaseNode* start_node = start_pin->GetBelongNode();
@@ -531,7 +536,7 @@ void RenderGraphPanel::BaseOperator()
 	}
 	ed::EndCreate();
 
-	
+
 	// -- [AI] Copy/Paste
 	static Render::RenderGraphDefinition s_clipboard;
 	static Bool s_has_clipboard = false;
@@ -572,11 +577,12 @@ void RenderGraphPanel::BaseOperator()
 	if (ImGui::IsKeyPressed(ImGuiKey_V) && ImGui::GetIO().KeyCtrl && s_has_clipboard) {
 		static UInt32 pcnt = 0; Float32 ox=50+pcnt*20, oy=50+pcnt*20; pcnt++;
 		Map<String,String> nmap;
+		BEGIN_TXN("Paste Nodes");
 		for (auto& rd : s_clipboard.resources) {
 			String nn=rd.name+"_C"; nmap[rd.name]=nn;
 			auto* node=new RenderGraphResourceNode(nn, ResourceNodeType::Texture);
 			ed::SetNodePosition(node->GetSelfID(), ImVec2(300+ox,200+oy));
-			nodes.push_back(node);
+			QUEUE_CMD(CreateNodeCmd, node, ImVec2(300+ox,200+oy));
 		}
 		for (auto& pd : s_clipboard.passes) {
 			String nn=pd.name+"_C"; nmap[pd.name]=nn;
@@ -586,7 +592,7 @@ void RenderGraphPanel::BaseOperator()
 			for (auto& rn:pd.read_resources) node->AddInputPin(rn,PinAccess::Read);
 			for (auto& rn:pd.write_resources) node->AddOutputPin(rn,PinAccess::Write);
 			ed::SetNodePosition(node->GetSelfID(),ImVec2(300+ox,200+oy));
-			nodes.push_back(node);
+			QUEUE_CMD(CreateNodeCmd, node, ImVec2(300+ox,200+oy));
 		}
 		for (auto& ed:s_clipboard.edges) {
 			String sn=nmap.count(ed.source_node_name)?nmap[ed.source_node_name]:ed.source_node_name;
@@ -597,8 +603,9 @@ void RenderGraphPanel::BaseOperator()
 			BasePin*sp=ns->GetPinByName(ed.source_pin_name);BasePin*tp=nt->GetPinByName(ed.target_pin_name);
 			if(!sp||!tp)continue;
 			BaseLink* l=new BaseLink("Link");l->Init(sp->GetSelfID(),tp->GetSelfID());l->SetLinkAccess((PinAccess)ed.edge_type);
-			links.push_back(l);
+			QUEUE_CMD(CreateLinkCmd, l);
 		}
+		END_TXN();
 		EditorEventBus::Get().FireGraphModified();
 	}
 // === Deletion ===
@@ -609,7 +616,7 @@ void RenderGraphPanel::BaseOperator()
 		{
 			if (ed::AcceptDeletedItem())
 			{
-				DeleteLink(deleted_link_id.Get());
+				QUEUE_CMD(DeleteLinkCmd, deleted_link_id.Get());
 			}
 		}
 		ed::NodeId deleted_node_id;
@@ -617,7 +624,7 @@ void RenderGraphPanel::BaseOperator()
 		{
 			if (ed::AcceptDeletedItem())
 			{
-				DeleteNode(deleted_node_id.Get());
+				QUEUE_CMD(DeleteNodeCmd, deleted_node_id.Get());
 			}
 		}
 	}
@@ -631,35 +638,33 @@ void RenderGraphPanel::BaseOperator()
 		Vector<ed::LinkId> selected_links(selected_count);
 		ed::GetSelectedNodes(selected_nodes.data(), selected_count);
 		ed::GetSelectedLinks(selected_links.data(), selected_count);
+		BEGIN_TXN("Delete Selected");
 		for (auto& nid : selected_nodes)
-			if (nid) DeleteNode(nid.Get());
+			if (nid) QUEUE_CMD(DeleteNodeCmd, nid.Get());
 		for (auto& lid : selected_links)
-			if (lid) DeleteLink(lid.Get());
+			if (lid) QUEUE_CMD(DeleteLinkCmd, lid.Get());
+		END_TXN();
 	}
 }
 
 void RenderGraphPanel::AddNodeWithCmd(BaseNode* node, ImVec2 pos)
 {
-	auto cmd = std::make_unique<CreateNodeCmd>(this, node, pos);
-	command_history.Execute(std::move(cmd));
+	cmd_queue.Enqueue(std::make_unique<CreateNodeCmd>(this, node, pos));
 }
 
 void RenderGraphPanel::AddLinkWithCmd(BaseLink* link)
 {
-	auto cmd = std::make_unique<CreateLinkCmd>(this, link);
-	command_history.Execute(std::move(cmd));
+	cmd_queue.Enqueue(std::make_unique<CreateLinkCmd>(this, link));
 }
 
 void RenderGraphPanel::DeleteNodeWithCmd(UInt64 node_id)
 {
-	auto cmd = std::make_unique<DeleteNodeCmd>(this, node_id);
-	command_history.Execute(std::move(cmd));
+	cmd_queue.Enqueue(std::make_unique<DeleteNodeCmd>(this, node_id));
 }
 
 void RenderGraphPanel::DeleteLinkWithCmd(UInt64 link_id)
 {
-	auto cmd = std::make_unique<DeleteLinkCmd>(this, link_id);
-	command_history.Execute(std::move(cmd));
+	cmd_queue.Enqueue(std::make_unique<DeleteLinkCmd>(this, link_id));
 }
 
 void RenderGraphPanel::GraphMenu()
@@ -672,8 +677,7 @@ void RenderGraphPanel::GraphMenu()
 		{
 			if (ImGui::MenuItem("New Graph", "Ctrl+N"))
 			{
-				while (!links.empty()) DeleteLink(links[0]->GetSelfID());
-				while (!nodes.empty()) DeleteNode(nodes[0]->GetSelfID());
+				QUEUE_CMD(NewGraphCmd);
 				current_save_path.clear();
 			}
 			ImGui::Separator();
@@ -684,50 +688,51 @@ void RenderGraphPanel::GraphMenu()
 					current_save_path = MXRender::Platform::SaveFileDialog();
 					if (current_save_path.empty()) return;
 				}
-				auto def = BuildDefinition();
-				auto vr = Render::RenderGraphValidator::Validate(def);
-				if(!vr.is_valid) std::cerr << "[RG] Save with " << vr.errors.size() << " validation issues" << std::endl;
-				if (Render::RenderGraphSerializer::SaveGraph(def, current_save_path))
-					std::cout << "[RenderGraphEditor] Saved to: " << current_save_path << std::endl;
-				else
-					std::cerr << "[RenderGraphEditor] Save failed: " << Render::RenderGraphSerializer::GetLastError() << std::endl;
+				auto save_path = current_save_path;
+				QUEUE_ACTION("Save Graph", {
+					auto def = BuildDefinition();
+					auto vr = Render::RenderGraphValidator::Validate(def);
+					if(!vr.is_valid) std::cerr << "[RG] Save with " << vr.errors.size() << " validation issues" << std::endl;
+					if (Render::RenderGraphSerializer::SaveGraph(def, save_path))
+						std::cout << "[RenderGraphEditor] Saved to: " << save_path << std::endl;
+					else
+						std::cerr << "[RenderGraphEditor] Save failed: " << Render::RenderGraphSerializer::GetLastError() << std::endl;
+				});
 			}
 			if (ImGui::MenuItem("Save As..."))
 			{
 				auto def = BuildDefinition();
 				String save_path = MXRender::Platform::SaveFileDialog();
-			if (save_path.empty()) return;
-				if (Render::RenderGraphSerializer::SaveGraph(def, save_path))
+				if (!save_path.empty())
 				{
 					current_save_path = save_path;
-					std::cout << "[RenderGraphEditor] Saved to: " << save_path << std::endl;
+					QUEUE_ACTION("Save As", {
+						if (Render::RenderGraphSerializer::SaveGraph(def, save_path))
+							std::cout << "[RenderGraphEditor] Saved to: " << save_path << std::endl;
+						else
+							std::cerr << "[RenderGraphEditor] Save failed: " << Render::RenderGraphSerializer::GetLastError() << std::endl;
+					});
 				}
-				else
-					std::cerr << "[RenderGraphEditor] Save failed: " << Render::RenderGraphSerializer::GetLastError() << std::endl;
 			}
 			if (ImGui::MenuItem("Open...", "Ctrl+O"))
 			{
 				String load_path = MXRender::Platform::OpenFileDialog();
-			if (load_path.empty()) return;
-				Render::RenderGraphDefinition def;
-				if (Render::RenderGraphSerializer::LoadGraph(def, load_path))
-				{
-					LoadDefinition(def);
-					std::cout << "[RenderGraphEditor] Loaded from: " << load_path << std::endl;
+				if (!load_path.empty()) {
+					current_save_path = load_path;
+					QUEUE_CMD(OpenGraphCmd, load_path);
 				}
-				else
-					std::cerr << "[RenderGraphEditor] Load failed: " << Render::RenderGraphSerializer::GetLastError() << std::endl;
 			}
 			ImGui::Separator();
 			if (ImGui::MenuItem("Exit"))
 			{
-				is_show = false;
+				QUEUE_ACTION("Exit", { is_show = false; });
 			}
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu("Edit"))
 		{
+			// Undo/Redo — execute IMMEDIATELY
 			if (ImGui::MenuItem("Undo", "Ctrl+Z", false, command_history.CanUndo()))
 			{
 				command_history.Undo();
@@ -768,7 +773,7 @@ void RenderGraphPanel::GraphMenu()
 		{
 			if (ImGui::MenuItem("Navigate to Content"))
 			{
-				ed::NavigateToContent();
+				QUEUE_ACTION("Navigate", { ed::NavigateToContent(); });
 			}
 			ImGui::Separator();
 			ImGui::MenuItem("Show Resource Nodes", nullptr, &show_resource_nodes);
@@ -957,7 +962,7 @@ void RenderGraphPanel::LoadDefinition(CONST Render::RenderGraphDefinition& def)
 			BaseLink* link = new BaseLink("Link");
 			link->Init(src_pin->GetSelfID(), tgt_pin->GetSelfID());
 			link->SetLinkAccess((PinAccess)ed.edge_type);
-			AddLinkWithCmd(link);
+			links.push_back(link);
 		}
 	}
 }
@@ -1059,7 +1064,7 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 		for (auto* l : links) if (l->GetStartID() == src->GetSelfID() && l->GetEndID() == dst->GetSelfID()) { dup = true; break; }
 		if (dup) return;
 		auto* l = new BaseLink("Link"); l->Init(src->GetSelfID(), dst->GetSelfID()); l->SetLinkAccess(access);
-		AddLinkWithCmd(l);
+		links.push_back(l);
 	};
 
 	for (auto& rn : all_res) {

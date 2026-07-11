@@ -202,6 +202,8 @@ public:
 	VIRTUAL void METHOD(Begin)() PURE;
 	VIRTUAL void METHOD(End)() PURE;
 
+	VIRTUAL Bool METHOD(WaitForFence)(float time_in_seconds_to_wait) PURE;
+
 	VIRTUAL void METHOD(BeginUI)() PURE;
 	VIRTUAL void METHOD(EndUI)() PURE;
 

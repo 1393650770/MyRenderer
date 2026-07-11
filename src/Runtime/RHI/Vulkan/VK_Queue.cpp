@@ -65,7 +65,8 @@ void VK_Queue::CheckCompletion(UInt64 current_frame)
 		auto& ps = pending_submits[i];
 		if (vkGetFenceStatus(device->GetDevice(), ps.fence) == VK_SUCCESS)
 		{
-			vkResetFences(device->GetDevice(), 1, &ps.fence);
+			// Don't reset fence here — let Begin() handle it.
+			// Fence stays signaled so Begin() can detect GPU completion.
 			ps.cmd->command_state = VK_CommandBuffer::EState::NeedReset;
 			pending_submits[i] = pending_submits.back();
 			pending_submits.pop_back();

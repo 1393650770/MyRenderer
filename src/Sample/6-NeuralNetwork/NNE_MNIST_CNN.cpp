@@ -252,6 +252,8 @@ int main()
         std::cout << std::endl;
     }
 
+    // Wait for all GPU work to finish before cleanup
+    cmd->WaitForFence(5.0f);
     std::cout << "=== DONE ===" << std::endl;
     system("pause");
     return 0;

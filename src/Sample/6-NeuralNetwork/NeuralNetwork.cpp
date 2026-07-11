@@ -156,6 +156,8 @@ int main()
 		std::cout << "Epoch " << epoch << " done, " << batch_count << " batches" << std::endl;
 	}
 
+	// Wait for all GPU work to finish before cleanup
+	cmd->WaitForFence(5.0f);
 	std::cout << "=== DONE ===" << std::endl;
 	system("pause");
 	return 0;

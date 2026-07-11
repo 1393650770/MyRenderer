@@ -15,6 +15,7 @@
 #include "RHI/RenderBuffer.h"
 #include "RHI/RenderUtils.h"
 #include "UI/RenderGraphEditor/Panels/RenderGraphPanel.h"
+#include "UI/RenderGraphEditor/Services/EditorEventBus.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
@@ -236,11 +237,22 @@ void EditorRenderPipeline::OnShutdown()
 
 void EditorRenderPipeline::OnUpdate(float dt)
 {
+	//   Process editor command queue — execute all commands collected during the
+	// previous frame's ImGui Draw(). This separates logic (OnUpdate) from rendering (OnRender).
+	auto* rgp = editor_ui.GetRenderGraphPanel();
+	if (rgp)
+	{
+		rgp->GetCommandQueue().ProcessAll(rgp->GetCommandHistory());
+	}
 
+	//   Tick debounced graph-modified event
+	UI::EditorEventBus::Get().TickFireGraphModified();
 }
 
 void EditorRenderPipeline::OnRender()
 {
+	//   Only rendering — UIPass inside draws ImGui and collects new commands,
+	// but does NOT modify the data model directly. Changes happen in OnUpdate.
 	graph.Execute();
 }
 

@@ -51,6 +51,12 @@ function CommonLibrarySetting()
     PlatformSettings()
     add_headerfiles("src/Runtime/**.h")
     add_files("src/Runtime/**.cpp")
+    -- Platform-specific file dialog: exclude the wrong platform implementation
+    if is_plat("windows") then
+        remove_files("src/Runtime/Platform/FileDialogStub.cpp")
+    else
+        remove_files("src/Runtime/Platform/Win/WinFileDialog.cpp")
+    end
     add_headerfiles("src/ThirdParty/**.h")
     add_files("src/ThirdParty/stb_image/**.cpp")
     add_files("src/ThirdParty/spv_reflect/**.cpp")

@@ -405,7 +405,10 @@ UInt64 VK_CommandBuffer::GetFenceSignaledCounter() CONST
 
 Bool VK_CommandBuffer::WaitForFence(float time_in_seconds_to_wait)
 {
-	return device->GetFenceManager()->WaitForFence(fence, time_in_seconds_to_wait);
+	UInt64 timeout_ns = (time_in_seconds_to_wait <= 0.0f)
+		? 0ULL
+		: (UInt64)(time_in_seconds_to_wait * 1'000'000'000.0);
+	return device->GetFenceManager()->WaitForFence(fence, timeout_ns);
 }
 
 void VK_CommandBuffer::TrainsitionImageLayout(VkImage image, VkImageLayout old_layout, VkImageLayout new_layout,CONST VkImageSubresourceRange& subresource_range, VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask)

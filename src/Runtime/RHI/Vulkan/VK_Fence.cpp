@@ -54,7 +54,7 @@ Bool VK_Fence::CheckSignaled()
 void VK_Fence::ResetFence()
 {
 	owner_fence_manager->ResetFence(this);
-	state = ENUM_Fence_State::Signaled;
+	state = ENUM_Fence_State::NotReady; // fence is now unsignaled after reset
 }
 
 VK_FenceManager::VK_FenceManager(VK_Device* in_device): device(in_device)

@@ -1,15 +1,12 @@
-#pragma once
-#ifndef _WIN_FILEDIALOG_
-#define _WIN_FILEDIALOG_
-#include "Core/ConstDefine.h"
+// --   --
 #include "Platform/FileDialog.h"
 #include <windows.h>
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Platform)
 
-// Helper: build null-separated filter string for Win32 dialog
-inline String BuildFilter(CONST String& desc, CONST String& ext)
+// Internal helper: build null-separated filter string for Win32 OPENFILENAME
+static String BuildFilter(const String& desc, const String& ext)
 {
 	String f = desc;
 	f.push_back('\0');
@@ -18,9 +15,10 @@ inline String BuildFilter(CONST String& desc, CONST String& ext)
 	return f;
 }
 
-inline String OpenFileDialog(CONST String& ext_filter = "*.rgraph.json")
+String OpenFileDialog(const String& ext_filter)
 {
-	String filter = BuildFilter("RenderGraph JSON", ext_filter);
+	String filter = BuildFilter("RenderGraph JSON",
+		ext_filter.empty() ? "*.rgraph.json" : ext_filter);
 	CHAR buf[512] = {};
 	OPENFILENAMEA ofn = {};
 	ofn.lStructSize = sizeof(ofn);
@@ -33,9 +31,10 @@ inline String OpenFileDialog(CONST String& ext_filter = "*.rgraph.json")
 	return "";
 }
 
-inline String SaveFileDialog(CONST String& ext_filter = "*.rgraph.json")
+String SaveFileDialog(const String& ext_filter)
 {
-	String filter = BuildFilter("RenderGraph JSON", ext_filter);
+	String filter = BuildFilter("RenderGraph JSON",
+		ext_filter.empty() ? "*.rgraph.json" : ext_filter);
 	CHAR buf[512] = {};
 	OPENFILENAMEA ofn = {};
 	ofn.lStructSize = sizeof(ofn);
@@ -51,4 +50,4 @@ inline String SaveFileDialog(CONST String& ext_filter = "*.rgraph.json")
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
-#endif
+// --   --

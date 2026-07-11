@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include "UI/BasePanel.h"
 #include "UI/RenderGraphEditor/Commands/CommandHistory.h"
+#include "UI/RenderGraphEditor/Commands/EditorCommandQueue.h"
 
 MYRENDERER_BEGIN_NAMESPACE(ax)
 MYRENDERER_BEGIN_NAMESPACE(NodeEditor)
@@ -60,14 +61,15 @@ public:
 	// Sync runtime graph to editor nodes (5.6)
 	void METHOD(SyncRuntimeToEditor)(Render::RenderGraph* graph);
 
+	// Node/Link access (used by external Command classes)
+	BaseNode* METHOD(GetNode)(UInt64 id);
+	void METHOD(DeleteNode)(UInt64 id);
+	void METHOD(DeleteLink)(UInt64 id);
+
 protected:
 	void METHOD(BaseOperator)();
 	void METHOD(CreateOperator)();
 	void METHOD(GraphMenu)();
-
-	BaseNode* METHOD(GetNode)(UInt64 id);
-	void METHOD(DeleteNode)(UInt64 id);
-	void METHOD(DeleteLink)(UInt64 id);
 
 	// Context menu helpers
 	void ShowAddPassMenu(ImVec2 mouse_pos);
@@ -96,11 +98,19 @@ protected:
 	// Undo/Redo command history
 	CommandHistory command_history;
 
+	//   Editor command queue — collects commands during Draw(), executed in OnUpdate
+	EditorCommandQueue cmd_queue;
+
 	// Command-wrapped mutation helpers (replace raw push_back)
 	void METHOD(AddNodeWithCmd)(BaseNode* node, ImVec2 pos);
 	void METHOD(AddLinkWithCmd)(BaseLink* link);
 	void METHOD(DeleteNodeWithCmd)(UInt64 node_id);
 	void METHOD(DeleteLinkWithCmd)(UInt64 link_id);
+
+	//   Expose for external tick (EditorRenderPipeline::OnUpdate)
+public:
+	EditorCommandQueue& METHOD(GetCommandQueue)() { return cmd_queue; }
+	CommandHistory& METHOD(GetCommandHistory)() { return command_history; }
 
 	// Child panels
 private:
@@ -110,4 +120,26 @@ MYRENDERER_END_CLASS
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
+
+// ----   Editor command macros — use inside RenderGraphPanel member functions
+#define QUEUE_CMD(CmdType, ...) \
+	cmd_queue.Enqueue(std::make_unique<CmdType>(this, ##__VA_ARGS__))
+
+#define QUEUE_LAMBDA(desc, exec_body, undo_body) \
+	cmd_queue.Enqueue(std::make_unique<MXRender::UI::LambdaCmd>( \
+		desc, \
+		[=]() { exec_body; }, \
+		[=]() { undo_body; }))
+
+#define QUEUE_ACTION(desc, ...) \
+	cmd_queue.Enqueue(std::make_unique<MXRender::UI::LambdaCmd>( \
+		desc, \
+		[=]() { __VA_ARGS__; }))
+
+#define BEGIN_TXN(desc) \
+	cmd_queue.Enqueue(std::make_unique<MXRender::UI::TransactionBeginCmd>(&command_history, desc))
+
+#define END_TXN() \
+	cmd_queue.Enqueue(std::make_unique<MXRender::UI::TransactionEndCmd>(&command_history))
+
 #endif // !_RENDERGRAPHPANNEL_
