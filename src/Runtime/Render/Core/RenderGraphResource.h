@@ -84,6 +84,9 @@ public:
 	// Get the actual RHI resource pointers. Returns nullptr if not applicable.
 	VIRTUAL MXRender::RHI::Texture* GetAsTexture() CONST { return nullptr; }
 	VIRTUAL MXRender::RHI::Buffer* GetAsBuffer() CONST { return nullptr; }
+	// --  File path for external resources
+	void SetFilePath(CONST String& p) { file_path = p; }
+	CONST String& GetFilePath() CONST { return file_path; }
 
 	// Track the current resource state for automatic barrier generation.
 	MXRender::ENUM_RESOURCE_STATE tracked_state = MXRender::ENUM_RESOURCE_STATE::Undefined;
@@ -111,6 +114,7 @@ protected:
 	Vector<CONST RenderGraphPassBase*> read_passes;
 	Vector<CONST RenderGraphPassBase*> write_passes;
 	UInt32                          ref_count;
+	String                         file_path; // -- 
 private:
 
 
@@ -150,6 +154,12 @@ public:
 	actual_type* METHOD(GetActual)() CONST // If transient, only valid through the realized interval of the resource.
 	{
 		return std::holds_alternative<std::unique_ptr<actual_type>>(actual) ? std::get<std::unique_ptr<actual_type>>(actual).get() : std::get<actual_type*>(actual);
+	}
+	// -- Update retained (imported) resource pointer for per-frame swapchain rotation
+	void METHOD(UpdateRetainedPtr)(actual_type* new_ptr)
+	{
+		if (!GetIsTransient())
+			actual = new_ptr;
 	}
 
 	// Override type-specific accessors.

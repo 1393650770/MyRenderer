@@ -4,7 +4,7 @@
 
 int main()
 {
-	MXRender::Application::Window window;
+	MXRender::Application::Window window("MXRender - Render View");
 	MXRender::Application::EditorRenderPipeline render(&window);
 	window.InitWindow();
 	window.Run(&render);

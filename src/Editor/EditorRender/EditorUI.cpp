@@ -106,49 +106,51 @@ void EditorUI::AddPass(RenderGraph* in_graph)
 		[=](CONST UIPassData& data, CommandList* in_cmd_list)
 	{
 
-		Vector<RHI::ClearValue> clear_values;
 		Vector<RHI::Texture*> rtvs;
-		RHI::Texture* dsv=nullptr;
 		rtvs = { window->GetViewport()->GetCurrentBackBufferRTV() };
-		//dsv = window->GetViewport()->GetCurrentBackBufferDSV();
-		for (auto rtv : rtvs)
-		{
-			clear_values.push_back(rtv->GetTextureDesc().clear_value);
-		}
-		//if (dsv)
-		//	clear_values.push_back(dsv->GetTextureDesc().clear_value);
-		in_cmd_list->SetRenderTarget(rtvs, nullptr, clear_values, dsv != nullptr);
+		// --  Pass empty clear_values to use LOAD instead of CLEAR
+		in_cmd_list->SetRenderTarget(rtvs, nullptr, {}, false);
 		in_cmd_list->BeginUI();
 
 		//ImGui::SliderFloat("transparency", &(cmd_list->z), 0.0f, 1.0f);
 
-		// Build dockspace for the main viewport
-		ImGuiViewport* viewport = ImGui::GetMainViewport();
-		ImGui::SetNextWindowPos(viewport->WorkPos);
-		ImGui::SetNextWindowSize(viewport->WorkSize);
-		ImGui::SetNextWindowViewport(viewport->ID);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		// -- [AI:BEGIN] 双窗口布局：渲染窗口(主视口) + 编辑器窗口(辅视口)
+		// 主视口不绘制 ImGui — 3D 渲染结果直接可见
 
-		ImGuiWindowFlags dockspace_flags = ImGuiWindowFlags_NoDocking
-			| ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse
-			| ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
-			| ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus
-			| ImGuiWindowFlags_NoBackground;
-
-		ImGui::Begin("MainDockSpace", nullptr, dockspace_flags);
-		ImGui::PopStyleVar(2);
-
-		ImGuiID dockspace_id = ImGui::GetID("EditorDockSpace");
-		ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
-
-		// Draw each panel in its own window
-		for (auto& panel : panels)
+		if (show_editor)
 		{
-			panel->Draw();
-		}
+			ImGuiViewport* main_vp = ImGui::GetMainViewport();
+			ImVec2 editor_pos = ImVec2(main_vp->Pos.x + main_vp->Size.x + 10, main_vp->Pos.y);
+			ImVec2 editor_size = ImVec2(1280, 960);
 
-		ImGui::End();
+			ImGui::SetNextWindowPos(editor_pos, ImGuiCond_FirstUseEver);
+			ImGui::SetNextWindowSize(editor_size, ImGuiCond_FirstUseEver);
+
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+						ImGuiWindowFlags editor_flags = ImGuiWindowFlags_NoDocking;
+
+			Bool editor_open = true;
+			ImGui::Begin("MXRender Editor", &editor_open, editor_flags);
+			ImGui::PopStyleVar(2);
+
+			ImGuiIO& io = ImGui::GetIO();
+			ImGui::Text("FPS: %.2f (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
+
+			ImGuiID dockspace_id = ImGui::GetID("EditorDockSpace");
+			ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_None);
+
+			for (auto& panel : panels)
+			{
+				panel->Draw();
+			}
+
+			ImGui::End();
+
+			if (!editor_open) show_editor = false;
+		}
+		// -- [AI:END]
 
 		in_cmd_list->EndUI();
 	});

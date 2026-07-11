@@ -19,8 +19,7 @@ Bool BasePanel::OnBegin(Int window_flags)
 
 	ImGui::Begin(name.c_str(), &is_show, window_flags | ImGuiWindowFlags_NoCollapse);
 	//ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,ImVec2(4.0f,2.0f));
-	auto& io = ImGui::GetIO();
-	ImGui::Text("FPS: %.2f (%.2gms)", io.Framerate, io.Framerate ? 1000.0f / io.Framerate : 0.0f);
+	// --  FPS 移至编辑器窗口级别显示，每个面板不再单独显示
 	return true;
 }
 

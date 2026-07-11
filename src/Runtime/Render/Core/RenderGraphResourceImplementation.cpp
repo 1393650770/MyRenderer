@@ -76,6 +76,10 @@ void ResourceDescSerializer<MXRender::RHI::TextureDesc>::Serialize(nlohmann::jso
 	j["height"] = d.height;
 	j["mip_level"] = d.mip_level;
 	j["samples"] = d.samples;
+	j["texture_type"] = MXRender::Tool::EnumToString(d.type);
+	j["texture_usage"] = (UInt32)d.usage;
+	j["layer_count"] = d.layer_count;
+	j["depth"] = d.depth;
 }
 MXRender::RHI::TextureDesc ResourceDescSerializer<MXRender::RHI::TextureDesc>::Deserialize(CONST nlohmann::json& j)
 {
@@ -85,6 +89,10 @@ MXRender::RHI::TextureDesc ResourceDescSerializer<MXRender::RHI::TextureDesc>::D
 	d.height = j.value("height", (UInt32)1080);
 	d.mip_level = j.value("mip_level", (UInt8)1);
 	d.samples = j.value("samples", (UInt8)1);
+	d.type = static_cast<ENUM_TEXTURE_TYPE>(MXRender::Tool::StringToEnum_TextureType(j.value("texture_type", "2D")));
+	d.usage = static_cast<ENUM_TEXTURE_USAGE_TYPE>(j.value("texture_usage", (UInt32)0));
+	d.layer_count = j.value("layer_count", (UInt8)1);
+	d.depth = j.value("depth", (UInt16)1);
 	return d;
 }
 
@@ -92,12 +100,14 @@ void ResourceDescSerializer<MXRender::RHI::BufferDesc>::Serialize(nlohmann::json
 {
 	j["buffer_size"] = d.size;
 	j["buffer_stride"] = d.stride;
+	j["buffer_type"] = MXRender::Tool::EnumToString(d.type);
 }
 MXRender::RHI::BufferDesc ResourceDescSerializer<MXRender::RHI::BufferDesc>::Deserialize(CONST nlohmann::json& j)
 {
 	MXRender::RHI::BufferDesc d;
 	d.size = j.value("buffer_size", (UInt32)256);
 	d.stride = j.value("buffer_stride", (UInt32)16);
+	d.type = static_cast<ENUM_BUFFER_TYPE>(MXRender::Tool::StringToEnum_BufferType(j.value("buffer_type", "Uniform")));
 	return d;
 }
 

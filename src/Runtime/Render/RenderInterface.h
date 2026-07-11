@@ -23,6 +23,7 @@ public:
 
 	// === Per-frame (called on LogicThread) ===
 	VIRTUAL void METHOD(OnUpdate)(float dt) {}
+	VIRTUAL void METHOD(PostFrame)() {} // --  Called after RHIRenderEnd
 
 	// === Per-frame (called on RenderThread) ===
 	VIRTUAL void METHOD(OnRender)() PURE;

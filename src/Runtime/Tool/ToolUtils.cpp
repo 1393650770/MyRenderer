@@ -112,5 +112,40 @@ Render::RDGResourceKind StringToEnum_ResourceKind(CONST String& str)
 	return Render::RDGResourceKind::Texture;
 }
 
+// -- 
+static CONST Char* kBufferTypeNames[] = { "None","Static","Dynamic","Index","Vertex","Staging","Uniform","Storage","Indirect" };
+static constexpr Int kBufferTypeCount = sizeof(kBufferTypeNames) / sizeof(kBufferTypeNames[0]);
+
+CONST Char* EnumToString(ENUM_BUFFER_TYPE type)
+{
+	// Buffer types are bitmask flags; serialize primary value only
+	for (Int i = 1; i < kBufferTypeCount; ++i)
+		if ((UInt32)type == (1u << (i - 1))) return kBufferTypeNames[i];
+	return kBufferTypeNames[0];
+}
+
+ENUM_BUFFER_TYPE StringToEnum_BufferType(CONST String& str)
+{
+	for (Int i = 1; i < kBufferTypeCount; ++i)
+		if (str == kBufferTypeNames[i]) return static_cast<ENUM_BUFFER_TYPE>(1u << (i - 1));
+	return ENUM_BUFFER_TYPE::None;
+}
+
+// -- 
+static CONST Char* kTextureTypeNames[] = { "NotValid","2D","2D_MultiSample","2D_Array","2D_Depth","CubeMap","2D_Dynamic","3D" };
+static constexpr Int kTextureTypeCount = sizeof(kTextureTypeNames) / sizeof(kTextureTypeNames[0]);
+
+CONST Char* EnumToString(ENUM_TEXTURE_TYPE type) {
+	Int idx = (Int)type;
+	if (idx >= 0 && idx < kTextureTypeCount) return kTextureTypeNames[idx];
+	return "2D";
+}
+
+ENUM_TEXTURE_TYPE StringToEnum_TextureType(CONST String& str) {
+	for (Int i = 0; i < kTextureTypeCount; ++i)
+		if (str == kTextureTypeNames[i]) return static_cast<ENUM_TEXTURE_TYPE>(i);
+	return ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
+}
+
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

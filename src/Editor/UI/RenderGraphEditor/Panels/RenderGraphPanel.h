@@ -5,6 +5,7 @@
 #include "UI/BasePanel.h"
 #include "UI/RenderGraphEditor/Commands/CommandHistory.h"
 #include "UI/RenderGraphEditor/Commands/EditorCommandQueue.h"
+#include "Render/Core/RenderGraphDefinition.h"
 
 MYRENDERER_BEGIN_NAMESPACE(ax)
 MYRENDERER_BEGIN_NAMESPACE(NodeEditor)
@@ -98,6 +99,10 @@ protected:
 	// Undo/Redo command history
 	CommandHistory command_history;
 
+	//   Pending rebuild definition
+	Bool has_pending_build = false;
+	Render::RenderGraphDefinition pending_build_def;
+
 	//   Editor command queue — collects commands during Draw(), executed in OnUpdate
 	EditorCommandQueue cmd_queue;
 
@@ -111,6 +116,12 @@ protected:
 public:
 	EditorCommandQueue& METHOD(GetCommandQueue)() { return cmd_queue; }
 	CommandHistory& METHOD(GetCommandHistory)() { return command_history; }
+
+	//   Pending rebuild request (set by OpenGraphCmd, consumed by EditorRenderPipeline)
+	void RequestBuildDefinition(CONST MXRender::Render::RenderGraphDefinition& def);
+	Bool HasPendingBuild() CONST { return has_pending_build; }
+	CONST MXRender::Render::RenderGraphDefinition& GetPendingBuildDef() CONST { return pending_build_def; }
+	void ClearPendingBuild() { has_pending_build = false; }
 
 	// Child panels
 private:

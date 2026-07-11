@@ -159,6 +159,8 @@ void RenderTest::OnInit(Application::Window* in_window)
 	});
 
 	rdg_pass->SetIsCullable(false);
+	rdg_pass->SetShaderPath("Shader/triangle_test");
+	rdg_pass->SetVertexCount(3);
 	graph.Compile();
 }
 
@@ -190,6 +192,8 @@ void RenderTest::OnShutdown()
 		Render::RDGPassDef pd;
 		pd.name = pass->GetName();
 		pd.pass_kind = Render::RDGPassKind::Graphics;
+		pd.shader_path = pass->GetShaderPath();
+		pd.vertex_count = pass->GetVertexCount();
 		for (auto* r : pass->GetReadResources())  pd.read_resources.push_back(r->GetName());
 		for (auto* w : pass->GetWriteResources()) pd.write_resources.push_back(w->GetName());
 		for (auto* c : pass->GetCreateResources()) pd.create_resources.push_back(c->GetName());

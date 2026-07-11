@@ -27,7 +27,7 @@ MYRENDERER_BEGIN_NAMESPACE(Application)
 MYRENDERER_BEGIN_CLASS(Window)
 #pragma region METHOD
 	public:
-		Window();
+		Window(CONST String& in_title = "MXRender");
 		VIRTUAL ~Window();
 		void METHOD(InitWindow)();
 		void METHOD(Run)(RenderInterface* render);
@@ -44,6 +44,7 @@ MYRENDERER_BEGIN_CLASS(Window)
 		Float32 deltaTime = 0.0f;
 		Float32 lastFrame = 0.0f;
 		UInt32 width = 1280, height = 960;
+			String title = "MXRender";
 		Bool is_full_screen = false;
 		MXRender::RHI::Viewport* viewport =nullptr;
 	MT::TaskScheduler scheduler;

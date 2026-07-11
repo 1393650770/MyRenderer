@@ -29,6 +29,7 @@ void OpenGraphCmd::Execute()
 	if (Render::RenderGraphSerializer::LoadGraph(def, file_path))
 	{
 		panel->LoadDefinition(def);
+		panel->RequestBuildDefinition(def);
 		loaded_nodes = panel->GetNodes();
 		loaded_links = panel->GetLinks();
 		std::cout << "[RenderGraphEditor] Loaded from: " << file_path << std::endl;

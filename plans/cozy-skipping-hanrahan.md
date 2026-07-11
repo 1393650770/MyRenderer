@@ -1,151 +1,127 @@
-# 双窗口渲染 — RenderGraph Editor + Render View
+# RenderGraph 完整序列化/反序列化 — HelloTriangle 通用 pass 渲染
 
 ## Context
 
-当前 Editor 是单窗口架构：
+用户从 `RendererSample-HelloTriangle` 保存了 `hello_triangle.rgraph.json`，在 Editor 中加载后看不到三角形。
+
+### 根因分析
+
+序列化只捕获了**资源依赖图**（pass 读/写了哪些 resource），但没有捕获**渲染逻辑**（shader、pipeline、draw call）。
+
+**HelloTriangle 的 OnShutdown**：
+```cpp
+pd.name = pass->GetName();
+pd.pass_kind = Render::RDGPassKind::Graphics;
+// ❌ 没有 pd.shader_path = pass->GetShaderPath();
+// ❌ OnInit 也没调用 pass->SetShaderPath()
+for (auto* r : pass->GetReadResources())  pd.read_resources.push_back(r->GetName());
+for (auto* w : pass->GetWriteResources()) pd.write_resources.push_back(w->GetName());
+```
+
+**对比 Bindless 的 OnShutdown**（已有正确模式）：
+```cpp
+pd.shader_path = pass->GetShaderPath();  // ✅ 运行时设置 → 定义层 → JSON
+```
+
+**Builder 默认执行路径**（无注册 callback 时）：只做 Clear，不加载 shader、不创建 pipeline、不 Draw。
+
+### 数据流缺口总结
 
 ```
-GLFW Window "MXRender" (1280×960)
-├─ ClearPass → 清空 backbuffer
-├─ TestPass → 渲染 3D 三角形到 backbuffer
-└─ UIPass  → ImGui Dockspace (编辑器面板) 叠加绘制到同一 backbuffer
+Sample 运行态              JSON 存储              Editor Builder 重建
+─────────────────         ──────────             ──────────────────
+shader 路径 (.vert/.frag)  shader_path ✅ 已有    ❌ 未用于创建 pipeline
+vertex count = 3          ❌ 未存储              ❌ 默认只 Clear
+pipeline state            ❌ 未存储              ❌ 未创建
+Draw call                 ❌ 不可序列化          ❌ 不执行
 ```
-
-用户希望默认开启两个窗口：
-- **渲染窗口**：显示 RenderGraph 渲染管线的输出（纯 3D 画面，无编辑器叠加）
-- **编辑器窗口**：显示 RenderGraph 节点编辑器（节点图 + 属性面板 + 大纲面板）
-
-## 关键发现
-
-**`ImGuiConfigFlags_ViewportsEnable` 已经开启。** ImGui 的 GLFW+Vulkan 后端已经支持多视口：
-
-- 当 ImGui 窗口位置超出主视口范围时，ImGui 自动创建新的 OS 窗口（GLFW window）
-- 辅视口的 VkSwapChain/渲染由 `ImGui::UpdatePlatformWindows()` + `ImGui::RenderPlatformWindowsDefault()` 内部处理
-- `VK_CommandBuffer::EndUI()` 已正确调用这两个函数（VK_CommandBuffer.cpp:355-360）
-- 辅视口的资源管理完全由 ImGui backend 负责，与 RHI 不冲突
-
-**这意味着不需要创建第二个 GLFW 窗口，不需要第二个 VK_Viewport/SwapChain。**
 
 ## 方案
 
-核心思路：把编辑器 UI 窗口移到主视口外部 → ImGui 自动创建第二个 OS 窗口。
+### 1. HelloTriangle 添加 shader_path（匹配 Bindless 模式）
 
-```
-渲染窗口 (主 GLFW 窗口, 1280×960)       编辑器窗口 (ImGui 辅视口, 自动创建)
-┌────────────────────────────┐       ┌──────────────────────────────┐
-│                            │       │ MXRender Editor              │
-│   ClearPass + TestPass     │       │ ┌──────────────────────────┐ │
-│   3D 渲染输出              │       │ │ RenderGraph 节点编辑     │ │
-│                            │       │ │ Properties 属性面板      │ │
-│   (无 ImGui 叠加)          │       │ │ Outline 大纲面板         │ │
-│                            │       │ └──────────────────────────┘ │
-└────────────────────────────┘       └──────────────────────────────┘
-```
+**文件**: `src/Sample/1-HelloTriangle/HelloTriangle.cpp`
 
-**工作原理**：
-- 主视口：没有任何 ImGui 窗口 → `ImGui::GetDrawData()` 为空 → `ImGui_ImplVulkan_RenderDrawData` 是 no-op → 3D 渲染结果直接显示在渲染窗口
-- 辅视口：编辑器窗口位于主视口外部 → ImGui GLFW backend 自动创建新窗口 → `RenderPlatformWindowsDefault()` 在新窗口上渲染编辑器 UI → swapchain/present 全由 ImGui 管理
+- `OnInit`: 添加 `rdg_pass->SetShaderPath("Shader/triangle_test");`
+- `OnShutdown`: 添加 `pd.shader_path = pass->GetShaderPath();`
 
-## 改动
+### 2. RDGPassDef 添加 vertex_count
 
-### 1. `src/Editor/Editor.cpp` — 调整渲染窗口标题
-
-- 标题从 `"MXRender"` 改为 `"MXRender - Render View"`
-- ~30 字符的简单改动
-
-### 2. `src/Editor/EditorRender/EditorUI.h` — 添加 `show_editor` 标志
+**文件**: `src/Runtime/Render/Core/RenderGraphDefinition.h`
 
 ```cpp
-Bool show_editor = true; // 编辑器窗口是否可见
+struct RDGPassDef {
+    // ... existing fields ...
+    String shader_path;
+    UInt32 vertex_count = 3;   // ← 新增，默认 3（三角形）
+};
 ```
 
-### 3. `src/Editor/EditorRender/EditorUI.cpp` — 核心改动：UIPass 重写
+### 3. 序列化 vertex_count
 
-**删除** (行 125-151)：主视口的全屏 dockspace
-```cpp
-// 删除以下代码：
-ImGuiViewport* viewport = ImGui::GetMainViewport();
-ImGui::SetNextWindowPos(viewport->WorkPos);
-ImGui::SetNextWindowSize(viewport->WorkSize);
-ImGui::SetNextWindowViewport(viewport->ID);
-// ... MainDockSpace + dockspace ...
+**文件**: `src/Runtime/Render/Core/RenderGraphSerializer.cpp`
+
+- Save: `if (pd.vertex_count != 3) pj["vertex_count"] = pd.vertex_count;`
+- Load: `pd.vertex_count = pj.value("vertex_count", (UInt32)3);`
+
+### 4. Builder 通用 pass 执行 — shader 加载 + 绘制
+
+**文件**: `src/Runtime/Render/Core/RenderGraphBuilder.cpp`
+
+扩展 `MinimalPassData` 和 setup/execute lambda：
+
+**Setup 阶段**（当无注册 callback 但有 `shader_path` 时）：
+- 读取 `pd.shader_path` + ".vert.spv" / ".frag.spv"
+- 创建 VS + PS shader
+- 创建 RenderPipelineState（从 BackBuffer 获取 RT 格式）
+- 创建 SRB
+- 存储到 `MinimalPassData`
+
+**Execute 阶段**（默认路径，当 pipeline 存在时）：
+- SetRenderTarget（BackBuffer + DepthStencil，带 clear）
+- SetGraphicsPipeline
+- SetShaderResourceBinding
+- Draw（vertex_count 取自定义）
+
+修改后的 execute lambda 逻辑：
+```
+if (有注册 callback) → 调用 callback（现有行为）
+else if (有 pipeline) → 绑定 pipeline + draw（新增）
+else → clear render targets（现有默认行为）
 ```
 
-**替换为**：编辑器窗口（定位在主视口外部）
+### 5. RenderGraphPassBase 存储 vertex_count
 
-```cpp
-// === 渲染窗口（主视口）：不绘制任何 ImGui — 3D 渲染结果直接可见 ===
+**文件**: `src/Runtime/Render/Core/RenderGraphPass.h`
 
-// === 编辑器窗口（辅视口）：位于渲染窗口右侧 ===
-if (show_editor)
-{
-    ImGuiViewport* main_vp = ImGui::GetMainViewport();
-    ImVec2 editor_pos = ImVec2(main_vp->Pos.x + main_vp->Size.x + 10, main_vp->Pos.y);
-    ImVec2 editor_size = ImVec2(1280, 960);
+添加 `UInt32 vertex_count = 3` 成员和 getter/setter（供 Sample 在 OnInit 设置，OnShutdown 读取）。
 
-    ImGui::SetNextWindowPos(editor_pos, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(editor_size, ImGuiCond_FirstUseEver);
+### 6. HelloTriangle 完整序列化
 
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+**文件**: `src/Sample/1-HelloTriangle/HelloTriangle.cpp`
 
-    ImGuiWindowFlags editor_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+- `OnInit`: `rdg_pass->SetVertexCount(3);`
+- `OnShutdown`: `pd.vertex_count = pass->GetVertexCount();`
 
-    Bool editor_open = true;
-    ImGui::Begin("MXRender Editor", &editor_open, editor_flags);
-    ImGui::PopStyleVar(2);
+## 文件清单
 
-    // FPS
-    ImGuiIO& io = ImGui::GetIO();
-    ImGui::Text("FPS: %.2f (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
-
-    // 编辑器 Dockspace
-    ImGuiID dockspace_id = ImGui::GetID("EditorDockSpace");
-    ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_None);
-
-    // 绘制所有面板
-    for (auto& panel : panels)
-    {
-        panel->Draw();
-    }
-
-    ImGui::End();
-
-    if (!editor_open) show_editor = false;
-}
-```
-
-### 4. `src/Editor/UI/BasePanel.cpp` — 移除 OnBegin 中的 FPS
-
-- `BasePanel::OnBegin()` 中的 FPS 行移除（FPS 现在在编辑器窗口级别显示）
-
-## 不改变的文件
-
-- **Window.h/.cpp** — 不需要第二个 GLFW 窗口，现有单窗口架构不变
-- **VK_Viewport/VK_SwapChain** — 辅视口由 ImGui 管理
-- **Render.cpp (ClearPass/TestPass)** — 依然渲染到主窗口 swapchain
-- **RenderGraphPanel/PropertiesPanel/OutlinePanel** — 面板代码完全不改
-- **CommandQueue/CommandHistory** — 不需要改动
-- **VK_CommandBuffer (BeginUI/EndUI)** — `RenderPlatformWindowsDefault()` 已存在
-
-## 行为细节
-
-| 场景 | 行为 |
-|------|------|
-| 首次启动 | 渲染窗口(左) + 编辑器窗口(右, ImGui 自动创建) |
-| 关闭编辑器窗口 | `show_editor = false`，渲染窗口继续显示 3D 画面 |
-| 拖拽面板到渲染窗口 | 用户可把面板拖回主视口（ViewportsEnable 支持） |
-| 窗口 resize | 渲染窗口 resize 触发 VK_Viewport swapchain 重建；编辑器窗口 resize 由 ImGui 管理 |
-| 布局持久化 | ImGui 的 `imgui.ini` 自动记住窗口/面板位置 |
+| 操作 | 文件 | 说明 |
+|------|------|------|
+| 修改 | `RenderGraphPass.h` | 添加 `vertex_count` 成员 |
+| 修改 | `RenderGraphDefinition.h` | `RDGPassDef` 添加 `vertex_count` |
+| 修改 | `RenderGraphSerializer.cpp` | 序列化/反序列化 `vertex_count` |
+| 修改 | `RenderGraphBuilder.cpp` | 通用 shader 加载 + pipeline 创建 + Draw |
+| 修改 | `Sample/1-HelloTriangle/HelloTriangle.cpp` | 设置 shader_path + vertex_count，序列化它们 |
 
 ## 验证
 
 ```bash
-xmake build Editor  # 编译通过
-```
+# 1. 编译 + 运行 HelloTriangle sample → 生成新的 JSON
+xmake build RendererSample-HelloTriangle
+# 运行后检查 JSON 包含 shader_path 和 vertex_count
 
-运行时验证：
-1. 看到两个窗口 — 左侧渲染窗口(3D 画面)、右侧编辑器窗口(RenderGraph 编辑器)
-2. 编辑器窗口可正常编辑节点、连线、undo/redo
-3. 关闭编辑器窗口不会退出程序
-4. 可拖拽面板在窗口之间移动
+# 2. 编译 Editor
+xmake build Editor
+
+# 3. Editor 加载 hello_triangle.rgraph.json → 应看到三角形
+```

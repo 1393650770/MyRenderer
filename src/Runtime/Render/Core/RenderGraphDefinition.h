@@ -38,6 +38,7 @@ struct RDGResourceDef
 	RDGResourceLifetime lifetime = RDGResourceLifetime::Transient;
 	Bool is_transient = true;
 	Bool is_depth_stencil = false;
+	String file_path; // --  External texture path for TextureAsset loading
 
 	// Embedded RHI descriptor (TextureDesc, BufferDesc, or ShaderDesc)
 	std::variant<MXRender::RHI::TextureDesc, MXRender::RHI::BufferDesc, MXRender::RHI::ShaderDesc> desc;
@@ -85,6 +86,7 @@ struct RDGPassDef
 	RDGPassFlags pass_flags = RDGPassFlags::Raster;
 	// --   Shader reference
 	String shader_path;
+	UInt32 vertex_count = 3;
 
 	// Resource references (by name)
 	Vector<String> read_resources;

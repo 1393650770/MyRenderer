@@ -15,7 +15,7 @@
 #include "Render/Core/RenderGraphBuilder.h"
 #include <iostream>
 #include "Render/Core/RenderGraph.h"
-// -- [AI] Phase 1 services
+// --  Phase 1 services
 #include "UI/RenderGraphEditor/Services/GraphValidator.h"
 #include "UI/RenderGraphEditor/Services/EditorEventBus.h"
 #include "Render/Core/PassRegistry.h"
@@ -307,7 +307,7 @@ void RenderGraphPanel::CreateOperator()
 		{
 			if (ImGui::BeginMenu("Add Pass"))
 			{
-				// -- [AI] Categorized from PassRegistry
+				// --  Categorized from PassRegistry
 				for (auto& cat : Render::PassRegistry::Get().GetCategories())
 				{
 					if (ImGui::BeginMenu(cat.c_str()))
@@ -537,7 +537,7 @@ void RenderGraphPanel::BaseOperator()
 	ed::EndCreate();
 
 
-	// -- [AI] Copy/Paste
+	// --  Copy/Paste
 	static Render::RenderGraphDefinition s_clipboard;
 	static Bool s_has_clipboard = false;
 	if (ImGui::IsKeyPressed(ImGuiKey_C) && ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift) {
@@ -948,6 +948,45 @@ void RenderGraphPanel::LoadDefinition(CONST Render::RenderGraphDefinition& def)
 		{
 			it->second->SetPendingPosition(nl.pos_x, nl.pos_y);
 		}
+	}
+	// --  Auto-resolve edges from pin names when no explicit edges defined
+	if (def.edges.empty())
+	{
+		for (auto* node : nodes)
+		{
+			auto* pass_node = dynamic_cast<RenderGraphPassNode*>(node);
+			if (!pass_node) continue;
+
+			// Input pins (Read): Resource.Output -> Pass.Input
+			for (auto* pin : pass_node->GetInputPins())
+			{
+				auto res_it = name_to_node.find(pin->GetName());
+				if (res_it == name_to_node.end()) continue;
+				BasePin* res_pin = res_it->second->GetPinByName("Output");
+				if (!res_pin) continue;
+
+				BaseLink* link = new BaseLink("Link");
+				link->Init(res_pin->GetSelfID(), pin->GetSelfID());
+				link->SetLinkAccess(PinAccess::Read);
+				links.push_back(link);
+			}
+
+			// Output pins (Write): Pass.Output -> Resource.Input
+			for (auto* pin : pass_node->GetOutputPins())
+			{
+				auto res_it = name_to_node.find(pin->GetName());
+				if (res_it == name_to_node.end()) continue;
+				BasePin* res_pin = res_it->second->GetPinByName("Input");
+				if (!res_pin) continue;
+
+				BaseLink* link = new BaseLink("Link");
+				link->Init(pin->GetSelfID(), res_pin->GetSelfID());
+				link->SetLinkAccess(PinAccess::Write);
+				links.push_back(link);
+			}
+		}
+	}
+
 	// Restore links from edges
 	for (auto& ed : def.edges)
 		{
@@ -964,8 +1003,14 @@ void RenderGraphPanel::LoadDefinition(CONST Render::RenderGraphDefinition& def)
 			link->SetLinkAccess((PinAccess)ed.edge_type);
 			links.push_back(link);
 		}
-	}
 }
+// -- 
+void RenderGraphPanel::RequestBuildDefinition(CONST Render::RenderGraphDefinition& def)
+{
+	pending_build_def = def;
+	has_pending_build = true;
+}
+
 void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 {
 	if (!graph) return;

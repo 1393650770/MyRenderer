@@ -58,6 +58,12 @@ public:
 	Bool METHOD(GetIsCullable)() CONST;
 	void METHOD(SetIsCullable)(Bool in_is_cullable);
 
+	// --  Shader metadata for serialization
+	void SetShaderPath(CONST String& p) { shader_path = p; }
+	CONST String& GetShaderPath() CONST { return shader_path; }
+	void SetVertexCount(UInt32 v) { vertex_count = v; }
+	UInt32 GetVertexCount() CONST { return vertex_count; }
+
 	// Accessors for editor introspection
 	Vector<CONST RenderGraphResourceBase*>& METHOD(GetReadResources)() { return read_resources; }
 	Vector<CONST RenderGraphResourceBase*>& METHOD(GetWriteResources)() { return write_resources; }
@@ -79,6 +85,8 @@ public:
 
 protected:
 	String pass_name;
+	String shader_path; // -- 
+	UInt32 vertex_count = 3; // -- 
 	Bool   is_cullable=true;
 	Vector<CONST RenderGraphResourceBase*> create_resources;
 	Vector<CONST RenderGraphResourceBase*> read_resources;

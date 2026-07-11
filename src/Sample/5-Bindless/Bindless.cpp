@@ -114,6 +114,7 @@ void RenderTest::OnInit(Application::Window* in_window)
 		RHI::Texture* tex = asset->GetTexture();
 		RHI::TextureDesc desc; if (tex) desc = tex->GetTextureDesc();
 		auto* res = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(name, desc, tex);
+		res->SetFilePath(path);
 		tex_resources.push_back(res);
 		return asset;
 	};
@@ -195,6 +196,7 @@ void RenderTest::OnInit(Application::Window* in_window)
 		cmd->Draw(DrawAttribute{6,1,0,0});
 	});
 	sky_pass->SetIsCullable(false);
+	sky_pass->SetShaderPath("Shader/skybox_test");
 
 	// Step 4: PBRPass (bindless rendering)
 	auto* pbr_pass = graph.AddRenderPass<PBRPassData>("PBRPass", &graph, cmd_list,
@@ -278,6 +280,7 @@ void RenderTest::OnInit(Application::Window* in_window)
 		cmd->Draw(DrawAttribute{6,1,0,0});
 	});
 	pbr_pass->SetIsCullable(false);
+	pbr_pass->SetShaderPath("Shader/pbr_mesh_bindless");
 
 	graph.Compile();
 }
@@ -293,9 +296,12 @@ void RenderTest::OnShutdown()
 		Render::RDGResourceDef rd;
 		rd.name = res->GetName();
 		rd.is_transient = res->GetIsTransient();
+		rd.file_path = res->GetFilePath();
+		rd.lifetime = res->GetIsTransient() ? RDGResourceLifetime::Transient : RDGResourceLifetime::External;
 		if (auto* tex = res->GetAsTexture())
 		{
 			rd.desc = tex->GetTextureDesc();
+			rd.is_depth_stencil = ((UInt32)tex->GetTextureDesc().usage & 16) != 0;
 		}
 		else if (res->GetAsBuffer())
 		{
@@ -309,6 +315,7 @@ void RenderTest::OnShutdown()
 		Render::RDGPassDef pd;
 		pd.name = pass->GetName();
 		pd.pass_kind = Render::RDGPassKind::Graphics;
+		pd.shader_path = pass->GetShaderPath();
 		for (auto* r : pass->GetReadResources())  pd.read_resources.push_back(r->GetName());
 		for (auto* w : pass->GetWriteResources()) pd.write_resources.push_back(w->GetName());
 		for (auto* c : pass->GetCreateResources()) pd.create_resources.push_back(c->GetName());

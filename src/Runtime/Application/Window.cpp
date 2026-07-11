@@ -12,7 +12,7 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
 
-Window::Window()
+Window::Window(CONST String& in_title) : title(in_title)
 {
 
 	if (!glfwInit())
@@ -20,7 +20,7 @@ Window::Window()
 		return;
 	}
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfw_window = glfwCreateWindow(width,height, "MXRender",NULL, NULL);
+	glfw_window = glfwCreateWindow(width,height, title.c_str(),NULL, NULL);
 	if (!glfw_window)
 	{
 		glfwTerminate();
@@ -83,6 +83,7 @@ void Window::Run(RenderInterface* render)
 			viewport->Present(cmd_list, true, true);
 		}
 		RHIRenderEnd();
+		render->PostFrame();
 		g_frame_number_render_thread = (g_frame_number_render_thread + 1) % g_max_frame_number;
 
 		glfwSwapBuffers(glfw_window);

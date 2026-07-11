@@ -16,6 +16,8 @@
 #include "RHI/RenderUtils.h"
 #include "UI/RenderGraphEditor/Panels/RenderGraphPanel.h"
 #include "UI/RenderGraphEditor/Services/EditorEventBus.h"
+#include "Render/Core/RenderGraphBuilder.h"
+#include "Render/Core/RenderGraphDefinition.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
@@ -227,10 +229,88 @@ void EditorRenderPipeline::OnInit(Application::Window* in_window)
 	// Sync runtime graph to editor visualization
 	if (auto* rgp = editor_ui.GetRenderGraphPanel())
 		rgp->SyncRuntimeToEditor(&graph);
+
+	// --  Register fallback shaders for loaded graph passes
+	InitRenderPasses();
+}
+
+// -- 
+void EditorRenderPipeline::InitRenderPasses()
+{
+	// ---- Skybox pipeline ----
+	{
+		RHI::ShaderDesc vs_desc; vs_desc.shader_type = ENUM_SHADER_STAGE::Shader_Vertex; vs_desc.shader_name = "SkyboxVS";
+		RHI::ShaderDataPayload vs_data; vs_data.data = ReadShader("Shader/skybox_test.vert.spv");
+		skybox_vs = RHICreateShader(vs_desc, vs_data);
+		RHI::ShaderDesc ps_desc; ps_desc.shader_type = ENUM_SHADER_STAGE::Shader_Pixel; ps_desc.shader_name = "SkyboxPS";
+		RHI::ShaderDataPayload ps_data; ps_data.data = ReadShader("Shader/skybox_test.frag.spv");
+		skybox_ps = RHICreateShader(ps_desc, ps_data);
+		RHI::RenderGraphiPipelineStateDesc pd; pd.shaders[ENUM_SHADER_STAGE::Shader_Vertex] = skybox_vs; pd.shaders[ENUM_SHADER_STAGE::Shader_Pixel] = skybox_ps;
+		pd.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
+		pd.render_targets = { window->GetViewport()->GetCurrentBackBufferRTV() };
+		pd.depth_stencil_view = window->GetViewport()->GetCurrentBackBufferDSV();
+		pd.raster_state.sample_count = 1; pd.blend_state.render_targets.resize(1);
+		skybox_pipeline = RHICreateRenderPipelineState(pd);
+		skybox_pipeline->CreateShaderResourceBinding(skybox_srb, true);
+	}
+	Render::RenderGraphBuilder::RegisterPassExecute("SkyboxPass",
+		[this](RHI::CommandList* cmd, Map<String, Render::RenderGraphResourceBase*>& res) {
+			//   Get current swapchain image each frame (swapchain rotates images)
+			auto* rt_tex = this->window->GetViewport()->GetCurrentBackBufferRTV();
+			auto* ds_tex = this->window->GetViewport()->GetCurrentBackBufferDSV();
+			if (!rt_tex) return;
+			Vector<RHI::ClearValue> cvs = { RHI::ClearValue{0.2f,0.2f,0.3f,1.0f} };
+			if (ds_tex) cvs.push_back(RHI::ClearValue{1.0f,0});
+			cmd->SetRenderTarget({rt_tex}, ds_tex, cvs, ds_tex != nullptr);
+			if (auto* cm = res["SkyboxCubemap"]) { if (auto* t = cm->GetAsTexture()) skybox_srb->SetResource("cubemap_sampler", t); }
+			cmd->SetGraphicsPipeline(skybox_pipeline); cmd->SetShaderResourceBinding(skybox_srb);
+			cmd->Draw(DrawAttribute{6,1,0,0});
+		});
+	Render::RenderGraphBuilder::RegisterPassExecute("PBRPass",
+		[this](RHI::CommandList* cmd, Map<String, Render::RenderGraphResourceBase*>& res) {
+			//   Get current swapchain image each frame (swapchain rotates images)
+			auto* rt_tex = this->window->GetViewport()->GetCurrentBackBufferRTV();
+			auto* ds_tex = this->window->GetViewport()->GetCurrentBackBufferDSV();
+			if (!rt_tex) return;
+			cmd->SetRenderTarget({rt_tex}, ds_tex, {}, ds_tex != nullptr);
+			cmd->SetGraphicsPipeline(skybox_pipeline); cmd->SetShaderResourceBinding(skybox_srb);
+			cmd->Draw(DrawAttribute{6,1,0,0});
+		});
+}
+
+
+
+void EditorRenderPipeline::RebuildFromDefinition(CONST MXRender::Render::RenderGraphDefinition& def)
+{
+	if (!window) return;
+	Vector<Render::ExternalResourceBinding> externals;
+	RHI::Texture* backbuffer_rtv = window->GetViewport()->GetCurrentBackBufferRTV();
+	RHI::Texture* backbuffer_dsv = window->GetViewport()->GetCurrentBackBufferDSV();
+	externals.push_back({"BackBuffer", backbuffer_rtv, nullptr});
+	if (backbuffer_dsv) externals.push_back({"DepthStencil", backbuffer_dsv, nullptr});
+	if (Render::RenderGraphBuilder::BuildRuntimeGraph(def, &graph, externals))
+	{
+		editor_ui.AddPass(&graph);
+		graph.Compile();
+		if (auto* rgp = editor_ui.GetRenderGraphPanel()) rgp->SyncRuntimeToEditor(&graph);
+	}
+}
+
+void EditorRenderPipeline::PostFrame()
+{
+	if (!has_deferred_rebuild) return;
+	has_deferred_rebuild = false;
+	RebuildFromDefinition(deferred_def);
+	std::cout << "[EditorRenderPipeline] PostFrame rebuild: " << deferred_def.graph_name << std::endl;
 }
 
 void EditorRenderPipeline::OnShutdown()
 {
+	if (skybox_srb) { delete skybox_srb; skybox_srb = nullptr; }
+	if (skybox_pipeline) { delete skybox_pipeline; skybox_pipeline = nullptr; }
+	if (skybox_vs) { delete skybox_vs; skybox_vs = nullptr; }
+	if (skybox_ps) { delete skybox_ps; skybox_ps = nullptr; }
+
 	editor_ui.Release();
 	graph.Release();
 }
@@ -246,13 +326,17 @@ void EditorRenderPipeline::OnUpdate(float dt)
 	}
 
 	//   Tick debounced graph-modified event
+	if (rgp->HasPendingBuild()) { deferred_def = rgp->GetPendingBuildDef(); has_deferred_rebuild = true; rgp->ClearPendingBuild(); }
 	UI::EditorEventBus::Get().TickFireGraphModified();
 }
 
 void EditorRenderPipeline::OnRender()
 {
-	//   Only rendering — UIPass inside draws ImGui and collects new commands,
-	// but does NOT modify the data model directly. Changes happen in OnUpdate.
+	//   Update swapchain resources each frame (swapchain rotates images)
+	if (auto* bb = graph.GetRetainedResource<RHI::TextureDesc, RHI::Texture>("BackBuffer"))
+		bb->UpdateRetainedPtr(window->GetViewport()->GetCurrentBackBufferRTV());
+	if (auto* ds = graph.GetRetainedResource<RHI::TextureDesc, RHI::Texture>("DepthStencil"))
+		ds->UpdateRetainedPtr(window->GetViewport()->GetCurrentBackBufferDSV());
 	graph.Execute();
 }
 

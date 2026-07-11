@@ -36,6 +36,7 @@ Bool RenderGraphSerializer::SaveGraph(CONST RenderGraphDefinition& def, CONST St
 			rj["is_transient"] = rd.is_transient;
 
 			rj["is_depth_stencil"] = rd.is_depth_stencil;
+			if (!rd.file_path.empty()) rj["file_path"] = rd.file_path;
 			std::visit([&](auto& d) {
 				using T = std::decay_t<decltype(d)>;
 				ResourceDescSerializer<T>::Serialize(rj, d);
@@ -55,6 +56,8 @@ Bool RenderGraphSerializer::SaveGraph(CONST RenderGraphDefinition& def, CONST St
 			pj["read_resources"] = pd.read_resources;
 			pj["write_resources"] = pd.write_resources;
 			pj["create_resources"] = pd.create_resources;
+			if (!pd.shader_path.empty()) pj["shader_path"] = pd.shader_path;
+				if (pd.vertex_count != 3) pj["vertex_count"] = pd.vertex_count;
 			passes_json.push_back(pj);
 		}
 		j["passes"] = passes_json;
@@ -141,6 +144,7 @@ Bool RenderGraphSerializer::LoadGraph(RenderGraphDefinition& out_def, CONST Stri
 				rd.name = rj.value("name", "Unnamed");
 				rd.is_transient = rj.value("is_transient", true);
 				rd.is_depth_stencil = rj.value("is_depth_stencil", false);
+				rd.file_path = rj.value("file_path", "");
 				auto kind = MXRender::Tool::StringToEnum_ResourceKind(rj.value("kind", "Texture"));
 
 				if (kind == RDGResourceKind::Buffer)
@@ -162,6 +166,8 @@ Bool RenderGraphSerializer::LoadGraph(RenderGraphDefinition& out_def, CONST Stri
 				pd.name = pj.value("name", "Unnamed");
 				pd.pass_kind = MXRender::Tool::StringToEnum_PassKind(pj.value("pass_kind", "Graphics"));
 				pd.pass_flags = (RDGPassFlags)pj.value("pass_flags", (UInt32)RDGPassFlags::Raster);
+				pd.shader_path = pj.value("shader_path", "");
+					pd.vertex_count = pj.value("vertex_count", (UInt32)3);
 
 				if (pj.contains("read_resources") && pj["read_resources"].is_array())
 					for (auto& r : pj["read_resources"])

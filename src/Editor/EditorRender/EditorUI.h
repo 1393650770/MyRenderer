@@ -50,6 +50,7 @@ private:
 
 #pragma region MEMBER
 public:
+	Bool show_editor = true; // -- 
 	Window* window = nullptr;
 protected:
 	Vector<UI::BasePanel*> panels;
