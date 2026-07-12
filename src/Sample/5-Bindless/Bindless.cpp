@@ -78,8 +78,8 @@ public:
 	RenderTest(Window* w) : window(w) {}
 	RenderTest() MYDEFAULT;
 	~RenderTest() MYDEFAULT;
-	void OnInit(Application::Window* in_window) OVERRIDE FINAL;
-	void OnShutdown() OVERRIDE FINAL;
+	void OnInit_Logic(Application::Window* in_window) OVERRIDE FINAL;
+	void OnShutdown_Logic() OVERRIDE FINAL;
 	void OnUpdate(float dt) OVERRIDE FINAL {}
 	void OnRender() OVERRIDE FINAL { GetRenderGraph().Execute(); }
 	Window* GetWindow() { return window; }
@@ -93,7 +93,7 @@ protected:
 	Vector<RenderGraphResource<RHI::BufferDesc, RHI::Buffer>*> buffer_resources;
 MYRENDERER_END_CLASS
 
-void RenderTest::OnInit(Application::Window* in_window)
+void RenderTest::OnInit_Logic(Application::Window* in_window)
 {
 	window = in_window;
 	std::cout << "=== Bindless PBR ===" << std::endl;
@@ -285,7 +285,7 @@ void RenderTest::OnInit(Application::Window* in_window)
 	graph.Compile();
 }
 
-void RenderTest::OnShutdown()
+void RenderTest::OnShutdown_Logic()
 {
 	Render::RenderGraphDefinition def;
 	def.graph_name = "Bindless";

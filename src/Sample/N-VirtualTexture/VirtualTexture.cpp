@@ -48,8 +48,8 @@ public:
 	RenderTest() MYDEFAULT;
 	VIRTUAL ~RenderTest() MYDEFAULT;
 
-	VIRTUAL void OnInit(Application::Window* in_window) OVERRIDE FINAL;
-	VIRTUAL void OnShutdown() OVERRIDE FINAL;
+	VIRTUAL void OnInit_Logic(Application::Window* in_window) OVERRIDE FINAL;
+	VIRTUAL void OnShutdown_Logic() OVERRIDE FINAL;
 	VIRTUAL void OnUpdate(float dt) OVERRIDE FINAL;
 	VIRTUAL void OnRender() OVERRIDE FINAL;
 	
@@ -73,7 +73,7 @@ private:
 
 MYRENDERER_END_CLASS
 
-void RenderTest::OnInit(Application::Window* in_window)
+void RenderTest::OnInit_Logic(Application::Window* in_window)
 {
 	std::cout << "Hello Texture" << std::endl;
 
@@ -173,7 +173,7 @@ void RenderTest::OnInit(Application::Window* in_window)
 	graph.Compile();
 }
 
-void RenderTest::OnShutdown()
+void RenderTest::OnShutdown_Logic()
 {
 	graph.Release();
 }
