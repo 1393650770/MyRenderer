@@ -40,14 +40,23 @@ Window::~Window()
 
 void Window::Run(RenderInterface* render)
 {
-	Bool use_rhi_thread = g_enable_rhi_thread;
+	EThreadingMode mode = g_thread_mode;
+	Bool use_rhi_thread = (mode >= EThreadingMode::RHIThread);
+	Bool use_render_thread = (mode >= EThreadingMode::ThreeThread);
 
 	if (use_rhi_thread) {
 		RHIStartRHIThread();
 	}
+	if (use_render_thread) {
+		// ThreeThread: Logic init on main, Render init on Render thread
+		render->OnInit_Logic(this);
+		frame_sync.StartRenderThread(render, viewport);
+	} else {
+		// Single / RHIThread: compat wrapper calls OnInit_Logic + OnInit_Render
+		render->OnInit(this);
+	}
 
 	Int width = 0, height = 0;
-	render->OnInit(this);
 
 	while (!glfwWindowShouldClose(glfw_window))
 	{
@@ -56,34 +65,74 @@ void Window::Run(RenderInterface* render)
 		lastFrame = currentFrame;
 		glfwPollEvents();
 
-		// Logic
+
 		render->OnUpdate(deltaTime);
 
-		if (use_rhi_thread) {
-			// Record into write-CB, atomically swap to RHI thread
+		switch (mode)
+		{
+		case EThreadingMode::Single:
+		{
+			Render::FrameContext ctx;
+			ctx.deltaTime = deltaTime;
+			ctx.viewport_width = this->width;
+			ctx.viewport_height = this->height;
+			render->OnPrepareFrameContext(ctx);
+			render->OnPreRender(ctx);
+			render->OnRender();
+			render->OnPostRender(ctx);
+			auto* cmd_list = RHIGetImmediateCommandList();
+			viewport->Present(cmd_list, true, true);
+			break;
+		}
+
+		case EThreadingMode::RHIThread:
+		{
+			Render::FrameContext ctx;
+			ctx.deltaTime = deltaTime;
+			ctx.viewport_width = this->width;
+			ctx.viewport_height = this->height;
+			render->OnPrepareFrameContext(ctx);
+			render->OnPreRender(ctx);
 			auto* cmd_list = RHIGetWriteCommandList();
 			cmd_list->SetBypass(false);
 			cmd_list->Begin();
 			render->OnRender();
+			render->OnPostRender(ctx);
 			cmd_list->SetBypass(true);
 			RHISwapCommandLists();
-		} else {
-			render->OnRender();
-		}
 
-		if (use_rhi_thread) {
-			// Wait for RHI replay (rarely blocks)
 			while (!RHIIsReplayDone()) {
 				std::this_thread::yield();
 			}
 			auto* present_cb = RHIGetRHICmdListForPresent();
 			viewport->Present(present_cb, true, true);
-		} else {
-			auto* cmd_list = RHIGetImmediateCommandList();
-			viewport->Present(cmd_list, true, true);
+			break;
 		}
-		RHIRenderEnd();
-		render->PostFrame();
+
+		case EThreadingMode::ThreeThread:
+		{
+			Render::FrameContext* ctx = frame_sync.AcquireWriteSlot();
+			if (ctx)
+			{
+				ctx->deltaTime = deltaTime;
+				ctx->viewport_width = this->width;
+				ctx->viewport_height = this->height;
+				ctx->frame_number = g_frame_number_render_thread;
+
+				// ImGui CPU work (NewFrame+widgets+Render) in OnPrepareFrameContext
+				render->OnPrepareFrameContext(*ctx);
+			}
+
+			frame_sync.SignalFrameReady();
+			frame_sync.WaitFrameComplete();
+			break;
+		}
+		}
+
+		if (mode != EThreadingMode::ThreeThread)
+		{
+			RHIRenderEnd();
+		}
 		g_frame_number_render_thread = (g_frame_number_render_thread + 1) % g_max_frame_number;
 
 		glfwSwapBuffers(glfw_window);
@@ -94,10 +143,18 @@ void Window::Run(RenderInterface* render)
 			glfwGetFramebufferSize(glfw_window, &width, &height);
 			glfwWaitEvents();
 		}
+		this->width = width;
+		this->height = height;
 		viewport->Resize(width, height);
 	}
+
+	if (use_render_thread) {
+		frame_sync.StopRenderThread();
+		render->OnShutdown_Logic();
+	} else {
+		render->OnShutdown();
+	}
 	if (use_rhi_thread) RHIStopRHIThread();
-	render->OnShutdown();
 
 	delete viewport;
 	viewport = nullptr;

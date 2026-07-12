@@ -5,6 +5,7 @@
 #include "Core/ConstDefine.h"
 #include "CommandHistory.h"
 #include <functional>
+#include <mutex>
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
@@ -35,7 +36,7 @@ private:
 	Fn undo_;
 };
 
-// ----   EditorCommandQueue
+// ----   EditorCommandQueue — thread-safe command queue
 class EditorCommandQueue
 {
 public:
@@ -45,11 +46,12 @@ public:
 	void Enqueue(std::unique_ptr<Command> cmd);
 	void ProcessAll(CommandHistory& history);
 	void Clear();
-	size_t PendingCount() const { return pending.size(); }
-	bool IsEmpty() const { return pending.empty(); }
+	size_t PendingCount() const;
+	bool IsEmpty() const;
 
 private:
 	Vector<std::unique_ptr<Command>> pending;
+	mutable std::mutex mtx; // --   protects pending (Logic<->Render thread)
 };
 
 MYRENDERER_END_NAMESPACE

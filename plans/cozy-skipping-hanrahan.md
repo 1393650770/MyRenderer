@@ -1,85 +1,65 @@
-# RenderGraph 层修复 + UBO 序列化
+# 三线程模式 Graph 切换不渲染 — 最终根因
 
-## Part 1: RenderGraphResource 保留构造函数修复
+## 根因
 
-### 根因
-
-`AddRetainedResource(name, desc, nullptr)` → 保留构造函数中 `if (!in_actual)` 触发 `RealizeResource` → 创建 GPU 对象存入 `unique_ptr` variant → `Release()` 析构时 `FreeAllocation` 崩溃（pool 返回的资源 allocation 与主分配器不兼容）。
-
-### 修复
-
-移除保留构造函数中的自动创建逻辑：
+`FrameSynchronizer::AcquireWriteSlot` 只接受 `SlotState::Free` 的 slot：
 
 ```cpp
-// RenderGraphResource.h — 修改前
-explicit RenderGraphResource(CONST String& name, CONST description_type& in_description, actual_type* in_actual = nullptr)
-    : RenderGraphResourceBase(name, nullptr), description(in_description), actual(in_actual)
+cv_logic.wait(lock, [this]() {
+    return slot_states[write_index] == SlotState::Free || !render_running;
+});
+```
+
+但 `Free` 状态只在 `WaitFrameComplete()` 中设置：
+```cpp
+slot_states[complete_index] = SlotState::Free;  // Done → Free
+```
+
+`WaitFrameComplete` 在 ThreeThread 模式中**从不被调用**（注释说 "ThreeThread mode no longer calls it"）。
+
+**Slot 生命周期**：
+```
+Free → LogicWriting → Ready → RenderProcessing → Done → ❌ 停在这里
+```
+
+3帧后全部 3 个 slot 都是 Done → `AcquireWriteSlot` 永久阻塞 → logic 线程无法进入 `OnPrepareFrameContext` → `has_deferred_rebuild` 永远无法传递给 render 线程。
+
+日志验证：前3帧有 `[Window] AcquireWriteSlot=...`，之后永远消失。
+
+## 修复
+
+在 `AcquireWriteSlot` 中加入 `SlotState::Done` 条件，将 Done 视为可复用的 Free slot：
+
+```cpp
+// RenderFrameSync.cpp
+FrameContext* FrameSynchronizer::AcquireWriteSlot()
 {
-    if (!in_actual)                              // ← 删除这个 block
-        actual = RealizeResource<...>(...);       // ← 
+    std::unique_lock<std::mutex> lock(mtx);
+    cv_logic.wait(lock, [this]() {
+        return slot_states[write_index] == SlotState::Free 
+            || slot_states[write_index] == SlotState::Done  // ← 新增
+            || !render_running.load(std::memory_order_acquire);
+    });
+
+    if (!render_running.load(std::memory_order_acquire))
+        return nullptr;
+
+    slot_states[write_index] = SlotState::LogicWriting;
+    return &contexts[write_index];
 }
-
-// 修改后
-explicit RenderGraphResource(CONST String& name, CONST description_type& in_description, actual_type* in_actual = nullptr)
-    : RenderGraphResourceBase(name, nullptr), description(in_description), actual(in_actual)
-{
-    // nullptr → variant 存 Texture* = nullptr → GetAsTexture() 返回 nullptr → 安全占位
-}
 ```
 
-`AddRetainedResource(name, desc, nullptr)` 现在创建的是**仅描述符的占位 resource**：
-- `actual` variant 存 `Texture* = nullptr`
-- 析构时只丢弃 nullptr，不释放 GPU 资源
-- `GetAsTexture()` 返回 nullptr，渲染时自然跳过
+Done → LogicWriting（跳过 Free），logic 线程直接从 render 线程已完成的位置继续写入。`complete_index` 和 `WaitFrameComplete` 在 ThreeThread 模式下不再需要。
 
-### 影响范围
-
-检查所有 `AddRetainedResource` 调用点——都传入了非 null 的 actual 指针（或 ShaderDesc 有 spirv_data），不受影响。
-
-## Part 2: UBO 序列化/反序列化
-
-### Context
-
-Bindless sample 中 UBO 每帧写入动态数据（MVP、Camera、Material）。当前 JSON 只序列化了 `BufferDesc`（size、stride、type），没有 buffer 内容。
-
-### 方案
-
-**序列化**（Sample OnShutdown）：
-1. Map buffer → 读取当前内容 → 存储为 base64/字节数组
-2. 存入 `RDGResourceDef.buffer_data`
-
-**反序列化**（Builder）：
-1. 读取 `BufferDesc` → `RHICreateBuffer(desc)` → 创建真实 GPU buffer
-2. 读取 `buffer_data` → `UpdateBufferData()` → 上传初始数据
-3. `AddRetainedResource(name, desc, buf)` → buf 非 null → raw ptr variant → 安全
-
-### 数据流
-
-```
-Sample 运行态                  JSON                         Editor Builder
-─────────────────             ──────────                   ──────────────────
-BufferDesc (size/type)  →     buffer_size/type       →    RHICreateBuffer(desc)
-Buffer 当前内容          →     buffer_data (bytes)    →    UpdateBufferData()
-RHICreateBuffer(desc)         (base64 编码)               AddRetainedResource(name,desc,buf)
-                                                          → raw ptr → 安全析构
-```
-
-### 文件清单
+### 文件
 
 | 操作 | 文件 | 说明 |
 |------|------|------|
-| 修改 | `RenderGraphResource.h` | 移除保留构造函数的 `RealizeResource` 自动调用 |
-| 修改 | `RenderGraphDefinition.h` | `RDGResourceDef` 添加 `buffer_data` 字段 |
-| 修改 | `RenderGraphSerializer.cpp` | 序列化/反序列化 `buffer_data` |
-| 修改 | `RenderGraphBuilder.cpp` | Buffer 有 data 时创建 GPU buffer 并上传 |
-| 修改 | `Sample/5-Bindless/Bindless.cpp` | OnShutdown 读取 UBO 内容存储到 buffer_data |
+| 修改 | `RenderFrameSync.cpp` | `AcquireWriteSlot` 接受 Done 状态 |
 
-## 验证
+### 验证
 
 ```bash
 xmake build Editor
-xmake build RendererSample-Bindless
-# 1. 运行 Bindless sample → 生成含 buffer_data 的 JSON
-# 2. Editor 加载 bindless.rgraph.json → 不应崩溃
-# 3. Editor 切换 graph → 不应崩溃
+# [Window] AcquireWriteSlot 应持续打印 → OnPrepareFrameContext 持续调用
 ```

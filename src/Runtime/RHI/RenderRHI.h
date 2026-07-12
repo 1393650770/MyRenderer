@@ -25,7 +25,8 @@ MYRENDERER_BEGIN_CLASS(RenderFactory)
 public:
 	Int render_api_version=0;
 	Bool enable_render_debug=false;
-	Bool enable_rhi_thread=false;  // false=bypass (RHI calls on RenderThread)
+	// -- [AI] threading_mode replaces enable_rhi_thread
+	EThreadingMode threading_mode = EThreadingMode::ThreeThread;
 
 MYRENDERER_END_CLASS
 

@@ -29,7 +29,10 @@ public:
 	EditorUI() MYDEFAULT;
 
 	void METHOD(Init)(Window* in_window);
-	void METHOD(AddPass)(Render::RenderGraph* in_graph);
+	// -- [AI] Logic thread: ImGui NewFrame + widgets + Render → returns ImDrawData
+	ImDrawData* METHOD(DrawFrame_Logic)();
+	// -- [AI] Render thread: record ImGui GPU commands
+	void METHOD(DrawFrame_Render)(ImDrawData* draw_data, RHI::CommandList* cmd);
 	void METHOD(Release)();
 
 	// RenderGraph bridge
@@ -50,7 +53,7 @@ private:
 
 #pragma region MEMBER
 public:
-	Bool show_editor = true; // -- 
+	Bool show_editor = true; // -- 
 	Window* window = nullptr;
 protected:
 	Vector<UI::BasePanel*> panels;

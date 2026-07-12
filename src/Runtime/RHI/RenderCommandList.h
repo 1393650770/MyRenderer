@@ -49,6 +49,7 @@ enum class RHICommandType : UInt8
 	BeginUI,
 	EndUI,
 	WriteTimestamp,
+	RenderImGui,
 };
 
 struct RHICommand
@@ -177,6 +178,12 @@ struct RHICmdUnmapBuffer : RHICommand {
 	class Buffer* buffer;
 	RHICmdUnmapBuffer(class Buffer* b) : RHICommand(RHICommandType::UnmapBuffer), buffer(b) {}
 };
+// -- [AI] ImGui draw data: recorded on Render thread, replayed on RHI thread
+struct RHICmdRenderImGui : RHICommand {
+	void* draw_data;     // ImDrawData* (valid during replay due to WaitFrameComplete sync)
+	void* imgui_context; // ImGuiContext* (restore before calling ImGui functions)
+	RHICmdRenderImGui(void* dd, void* ctx) : RHICommand(RHICommandType::RenderImGui), draw_data(dd), imgui_context(ctx) {}
+};
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(CommandList,public RenderResource)
 
@@ -206,6 +213,14 @@ public:
 
 	VIRTUAL void METHOD(BeginUI)() PURE;
 	VIRTUAL void METHOD(EndUI)() PURE;
+
+	// -- [AI] 三线程模式：拆分 UI 阶段
+	// Logic 线程调用（GLFW input → ImGui NewFrame）
+	VIRTUAL void METHOD(BeginUI_Logic)() {}
+	// Render 线程调用（ImGui widget draw → ImGui::Render → 录制 GPU 命令）
+	VIRTUAL void METHOD(EndUI_Render)() {}
+	// Logic 线程调用（ImGui Platform 窗口更新，需要 GLFW）
+	VIRTUAL void METHOD(EndUI_Platform)() {}
 
 	VIRTUAL void METHOD(WriteTimestamp)(UInt32 query_index) {}
 

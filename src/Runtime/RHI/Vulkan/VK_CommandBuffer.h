@@ -252,6 +252,10 @@ public:
 	__forceinline VIRTUAL void METHOD(BeginUI)()  OVERRIDE FINAL;
 
 	__forceinline VIRTUAL void METHOD(EndUI)()  OVERRIDE FINAL;
+	// -- [AI] 三线程模式：拆分 UI 阶段
+	VIRTUAL void METHOD(BeginUI_Logic)() ;
+	VIRTUAL void METHOD(EndUI_Render)() ;
+	VIRTUAL void METHOD(EndUI_Platform)() ;
 protected:
 	void METHOD(Allocate)();
 	void METHOD(Free)();

@@ -9,6 +9,7 @@
 #include "VK_Texture.h"
 #include "VK_FrameBuffer.h"
 #include "Core/ConstDefine.h"
+#include "Core/ConstGlobals.h"
 #include "VK_Shader.h"
 #define  GLFW_INCLUDE_VULKAN
 #include "imgui_impl_vulkan.h"
@@ -349,15 +350,21 @@ void VK_CommandBuffer::BeginUI()
 
 void VK_CommandBuffer::EndUI()
 {
-	// CPU阶段：始终在主线程执行（Render=EndFrame, UpdatePlatformWindows 必须在下次 NewFrame 前调用）
+	// CPU阶段：Render=EndFrame
 	ImGui::Render();
-	ImGuiIO& io = ImGui::GetIO();
-	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+
+	// -- [AI] 三线程模式：平台窗口更新推迟到 Logic 线程（EndUI_Platform）
+	// GLFW CreateWindow/DestroyWindow 必须在主线程
+	if (g_thread_mode != EThreadingMode::ThreeThread)
 	{
-		GLFWwindow* backup_current_context = glfwGetCurrentContext();
-		ImGui::UpdatePlatformWindows();
-		ImGui::RenderPlatformWindowsDefault();
-		glfwMakeContextCurrent(backup_current_context);
+		ImGuiIO& io = ImGui::GetIO();
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			GLFWwindow* backup_current_context = glfwGetCurrentContext();
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+			glfwMakeContextCurrent(backup_current_context);
+		}
 	}
 
 	// GPU阶段：record 模式录制命令待 RHI 线程重放，bypass 模式直接提交 Vulkan 命令
@@ -368,6 +375,49 @@ void VK_CommandBuffer::EndUI()
 	}
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
 }
+
+// -- [AI:BEGIN] 三线程模式：拆分 UI 阶段实现
+
+void VK_CommandBuffer::BeginUI_Logic()
+{
+	// Logic 线程（GLFW 线程安全）：捕获输入 + ImGui NewFrame
+	ImGui_ImplVulkan_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+
+	if (!bypass)
+	{
+		recorded_commands.push_back(std::make_unique<RHICmdBeginUI>());
+	}
+}
+
+void VK_CommandBuffer::EndUI_Render()
+{
+	// Render 线程：生成 draw data + 录制 GPU 命令
+	ImGui::Render();
+
+	if (!bypass)
+	{
+		recorded_commands.push_back(std::make_unique<RHICmdEndUI>());
+		return;
+	}
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
+}
+
+void VK_CommandBuffer::EndUI_Platform()
+{
+	// Logic 线程（GLFW 线程安全）：平台窗口更新
+	ImGuiIO& io = ImGui::GetIO();
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		GLFWwindow* backup_current_context = glfwGetCurrentContext();
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+		glfwMakeContextCurrent(backup_current_context);
+	}
+}
+
+// -- [AI:END]
 
 void VK_CommandBuffer::TransitionRenderTargets(CONST Vector<Texture*>& render_targets, Texture* depth_stencil)
 {
@@ -950,6 +1000,17 @@ void VK_CommandBuffer::Replay()
 			// GPU submission only; CPU phase (Render+UpdatePlatformWindows) already done on main thread
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
 			break;
+		case RHICommandType::RenderImGui: {
+			// Save/restore context — GImGui is global, never set to null
+			auto* c = static_cast<RHICmdRenderImGui*>(cmd.get());
+			auto* prev_ctx = ImGui::GetCurrentContext();
+			if (c->imgui_context)
+				ImGui::SetCurrentContext(static_cast<ImGuiContext*>(c->imgui_context));
+			if (c->draw_data)
+				ImGui_ImplVulkan_RenderDrawData(static_cast<ImDrawData*>(c->draw_data), command_buffer);
+			ImGui::SetCurrentContext(prev_ctx);
+			break;
+		}
 		case RHICommandType::WriteTimestamp: {
 			auto* c = static_cast<RHICmdWriteTimestamp*>(cmd.get());
 			WriteTimestamp(c->index);

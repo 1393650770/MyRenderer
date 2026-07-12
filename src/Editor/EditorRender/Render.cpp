@@ -40,11 +40,17 @@ Vector<UInt32> ReadShader(CONST String& filename)
 	return std::move(buffer);
 }
 
-void EditorRenderPipeline::OnInit(Application::Window* in_window)
+// -- [AI] Logic thread: ImGui init, editor UI (GLFW-dependent)
+void EditorRenderPipeline::OnInit_Logic(Application::Window* in_window)
 {
 	window = in_window;
 	std::cout << "Hello Editor" << std::endl;
 	editor_ui.Init(window);
+}
+
+// -- [AI] Render thread: shaders, pipelines, RenderGraph passes, compile
+void EditorRenderPipeline::OnInit_Render()
+{
 	RHI::CommandList* cmd_list = RHIGetImmediateCommandList();
 
 	// Register backbuffer as retained (imported) resources so the RDG knows about them.
@@ -224,7 +230,6 @@ void EditorRenderPipeline::OnInit(Application::Window* in_window)
 	});
 
 	editor_ui.SetRenderGraph(&graph);
-	editor_ui.AddPass(&graph);
 	graph.Compile();
 	// Sync runtime graph to editor visualization
 	if (auto* rgp = editor_ui.GetRenderGraphPanel())
@@ -258,13 +263,18 @@ void EditorRenderPipeline::InitRenderPasses()
 			//   Get current swapchain image each frame (swapchain rotates images)
 			auto* rt_tex = this->window->GetViewport()->GetCurrentBackBufferRTV();
 			auto* ds_tex = this->window->GetViewport()->GetCurrentBackBufferDSV();
-			if (!rt_tex) return;
+			std::cout << "[SkyboxPass] rt=" << (void*)rt_tex << " ds=" << (void*)ds_tex << " res_count=" << res.size() << std::endl;
+			if (!rt_tex) { std::cout << "[SkyboxPass] no rt_tex!" << std::endl; return; }
 			Vector<RHI::ClearValue> cvs = { RHI::ClearValue{0.2f,0.2f,0.3f,1.0f} };
 			if (ds_tex) cvs.push_back(RHI::ClearValue{1.0f,0});
 			cmd->SetRenderTarget({rt_tex}, ds_tex, cvs, ds_tex != nullptr);
-			if (auto* cm = res["SkyboxCubemap"]) { if (auto* t = cm->GetAsTexture()) skybox_srb->SetResource("cubemap_sampler", t); }
+			if (auto* cm = res["SkyboxCubemap"]) {
+				if (auto* t = cm->GetAsTexture()) { skybox_srb->SetResource("cubemap_sampler", t); std::cout << "[SkyboxPass] cubemap bound" << std::endl; }
+				else std::cout << "[SkyboxPass] cubemap GetAsTexture null" << std::endl;
+			} else std::cout << "[SkyboxPass] no SkyboxCubemap in res" << std::endl;
 			cmd->SetGraphicsPipeline(skybox_pipeline); cmd->SetShaderResourceBinding(skybox_srb);
 			cmd->Draw(DrawAttribute{6,1,0,0});
+			std::cout << "[SkyboxPass] draw done" << std::endl;
 		});
 	Render::RenderGraphBuilder::RegisterPassExecute("PBRPass",
 		[this](RHI::CommandList* cmd, Map<String, Render::RenderGraphResourceBase*>& res) {
@@ -290,29 +300,81 @@ void EditorRenderPipeline::RebuildFromDefinition(CONST MXRender::Render::RenderG
 	if (backbuffer_dsv) externals.push_back({"DepthStencil", backbuffer_dsv, nullptr});
 	if (Render::RenderGraphBuilder::BuildRuntimeGraph(def, &graph, externals))
 	{
-		need_clear_fb = true; // --   Clear framebuffer on next frame
-		editor_ui.AddPass(&graph);
+		// --   Add ClearPass to ensure fresh framebuffer on graph switch
+		auto* bb = graph.GetRetainedResource<RHI::TextureDesc, RHI::Texture>("BackBuffer");
+		auto* ds = graph.GetRetainedResource<RHI::TextureDesc, RHI::Texture>("DepthStencil");
+		struct ClearData : public Render::RenderGraphPassDataBase {
+			void Release() override {}
+		};
+		graph.AddRenderPass<ClearData>("ClearPass", &graph, RHIGetImmediateCommandList(),
+			[bb, ds](ClearData&, Render::RenderGraphPassBuilder& builder, RHI::CommandList*) {
+				if (bb) builder.Write(bb);
+				if (ds) builder.Write(ds);
+			},
+			[this](CONST ClearData&, RHI::CommandList* cmd) {
+				auto* rt = this->window->GetViewport()->GetCurrentBackBufferRTV();
+				auto* dsv = this->window->GetViewport()->GetCurrentBackBufferDSV();
+				Vector<RHI::ClearValue> cvs = { rt->GetTextureDesc().clear_value };
+				if (dsv) cvs.push_back(dsv->GetTextureDesc().clear_value);
+				cmd->SetRenderTarget({rt}, dsv, cvs, dsv != nullptr);
+			});
+		// Move ClearPass to front so it executes before loaded passes.
+		// Topological sort preserves insertion order for passes that only
+		// write retained resources (no create_pass edges).
+		auto& passes = graph.GetPasses();
+		if (passes.size() >= 2)
+		{
+			for (size_t i = passes.size() - 1; i > 0; --i)
+			{
+				if (passes[i]->GetName() == "ClearPass")
+				{
+					auto clear_pass = std::move(passes[i]);
+					passes.erase(passes.begin() + i);
+					passes.insert(passes.begin(), std::move(clear_pass));
+					break;
+				}
+			}
+		}
+
 		graph.Compile();
 		if (auto* rgp = editor_ui.GetRenderGraphPanel()) rgp->SyncRuntimeToEditor(&graph);
 	}
 }
 
-void EditorRenderPipeline::PostFrame()
+// -- [AI] Logic thread: transfer deferred rebuild + ImGui context into FrameContext
+// The definition is copied into a heap allocation owned by ctx, so Render thread
+// can access it without touching the shared deferred_def.
+void EditorRenderPipeline::OnPrepareFrameContext(Render::FrameContext& ctx)
 {
-	if (!has_deferred_rebuild) return;
-	has_deferred_rebuild = false;
-	RebuildFromDefinition(deferred_def);
-	std::cout << "[EditorRenderPipeline] PostFrame rebuild: " << deferred_def.graph_name << std::endl;
+	{
+		std::lock_guard<std::mutex> lock(rebuild_mutex_);
+		if (has_deferred_rebuild)
+		{
+			delete ctx.rebuild_def;
+			ctx.rebuild_def = new Render::RenderGraphDefinition(deferred_def);
+			ctx.has_rebuild = true;
+			has_deferred_rebuild = false;
+		}
+	}
+	// ImGui CPU work (NewFrame + widgets + Render) — must be on same thread as glfwPollEvents
+	ctx.draw_data = editor_ui.DrawFrame_Logic();
+	ctx.imgui_context = ImGui::GetCurrentContext();
 }
 
-void EditorRenderPipeline::OnShutdown()
+// -- [AI] Logic thread: release ImGui, editor UI (GLFW-dependent)
+void EditorRenderPipeline::OnShutdown_Logic()
+{
+	editor_ui.Release();
+}
+
+// -- [AI] Render thread: release GPU resources
+void EditorRenderPipeline::OnShutdown_Render()
 {
 	if (skybox_srb) { delete skybox_srb; skybox_srb = nullptr; }
 	if (skybox_pipeline) { delete skybox_pipeline; skybox_pipeline = nullptr; }
 	if (skybox_vs) { delete skybox_vs; skybox_vs = nullptr; }
 	if (skybox_ps) { delete skybox_ps; skybox_ps = nullptr; }
 
-	editor_ui.Release();
 	graph.Release();
 }
 
@@ -325,32 +387,69 @@ void EditorRenderPipeline::OnUpdate(float dt)
 	{
 		rgp->GetCommandQueue().ProcessAll(rgp->GetCommandHistory());
 	}
+			std::cout << "[OnUpdate] ProcessAll done, pending=" << (rgp->HasPendingBuild()?"YES":"NO") << std::endl;
 
 	//   Tick debounced graph-modified event
-	if (rgp->HasPendingBuild()) { deferred_def = rgp->GetPendingBuildDef(); has_deferred_rebuild = true; rgp->ClearPendingBuild(); }
-	UI::EditorEventBus::Get().TickFireGraphModified();
+	{
+		std::lock_guard<std::mutex> lock(rebuild_mutex_);
+		if (rgp->HasPendingBuild()) {
+			deferred_def = rgp->GetPendingBuildDef(); has_deferred_rebuild = true; rgp->ClearPendingBuild();
+			std::cout << "[OnUpdate] rebuild set, graph=" << deferred_def.graph_name << std::endl;
+		}
+	}
+		UI::EditorEventBus::Get().TickFireGraphModified();
 }
 
 void EditorRenderPipeline::OnRender()
 {
-	//   Update swapchain resources each frame (swapchain rotates images)
-	if (auto* bb = graph.GetRetainedResource<RHI::TextureDesc, RHI::Texture>("BackBuffer"))
-		bb->UpdateRetainedPtr(window->GetViewport()->GetCurrentBackBufferRTV());
-	if (auto* ds = graph.GetRetainedResource<RHI::TextureDesc, RHI::Texture>("DepthStencil"))
-		ds->UpdateRetainedPtr(window->GetViewport()->GetCurrentBackBufferDSV());
+	static int fc = 0;
+	if (++fc <= 5) std::cout << "[OnRender] frame=" << fc << " passes=" << graph.GetPasses().size() << std::endl;
+	// Backbuffer update is done in OnPreRender (called before OnRender each frame)
+	graph.Execute();
+}
 
-	// --   Clear framebuffer once after a graph rebuild (old ClearPass is gone)
-	if (need_clear_fb) {
-		need_clear_fb = false;
-		auto* cmd = RHIGetImmediateCommandList();
-		auto* rt = window->GetViewport()->GetCurrentBackBufferRTV();
-		auto* ds = window->GetViewport()->GetCurrentBackBufferDSV();
-		Vector<RHI::ClearValue> cvs = { rt->GetTextureDesc().clear_value };
-		if (ds) cvs.push_back(ds->GetTextureDesc().clear_value);
-		cmd->SetRenderTarget({rt}, ds, cvs, ds != nullptr);
+// -- [AI] Render thread: pre-render — rebuild graph, update backbuffer, restore ImGui context
+void EditorRenderPipeline::OnPreRender(Render::FrameContext& ctx)
+{
+	// Restore ImGui context (Logic saved it via OnPrepareFrameContext)
+	// Deferred rebuild: definition was copied into ctx by OnPrepareFrameContext.
+	if (ctx.has_rebuild && ctx.rebuild_def)
+	{
+		RebuildFromDefinition(*ctx.rebuild_def);
+		std::cout << "[EditorRenderPipeline] PreRender rebuild: " << ctx.rebuild_def->graph_name << std::endl;
+		delete ctx.rebuild_def;
+		ctx.rebuild_def = nullptr;
+		ctx.has_rebuild = false;
 	}
 
-	graph.Execute();
+	// Update backbuffer retained resources (safe on Render thread)
+	RHI::Texture* rtv = window->GetViewport()->GetCurrentBackBufferRTV();
+	RHI::Texture* dsv = window->GetViewport()->GetCurrentBackBufferDSV();
+
+	if (auto* bb = graph.GetRetainedResource<RHI::TextureDesc, RHI::Texture>("BackBuffer"))
+		bb->UpdateRetainedPtr(rtv);
+	if (auto* ds = graph.GetRetainedResource<RHI::TextureDesc, RHI::Texture>("DepthStencil"))
+		ds->UpdateRetainedPtr(dsv);
+}
+
+// -- [AI] Render thread: record ImGui GPU commands
+void EditorRenderPipeline::OnPostRender(Render::FrameContext& ctx)
+{
+	if (!ctx.imgui_context) return;
+
+	// Save previous context — ImGui GImGui is global (not thread_local).
+	// Never set to null; it would break GLFW callbacks on the Logic thread.
+	auto* prev_ctx = ImGui::GetCurrentContext();
+	ImGui::SetCurrentContext(static_cast<ImGuiContext*>(ctx.imgui_context));
+
+	if (ctx.draw_data)
+	{
+		auto* cmd = RHIGetWriteCommandList();
+		editor_ui.DrawFrame_Render(static_cast<ImDrawData*>(ctx.draw_data), cmd);
+		ctx.draw_data = nullptr;
+	}
+
+	ImGui::SetCurrentContext(prev_ctx);
 }
 
 EditorRenderPipeline::EditorRenderPipeline(MXRender::Application::Window* in_window)

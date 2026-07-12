@@ -2,6 +2,8 @@
 #ifndef _WINDOW_
 #define _WINDOW_
 #include "Core/ConstDefine.h"
+#include "Core/ConstGlobals.h"
+#include "Render/Core/RenderFrameSync.h"
 #include <MTScheduler.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -48,6 +50,8 @@ MYRENDERER_BEGIN_CLASS(Window)
 		Bool is_full_screen = false;
 		MXRender::RHI::Viewport* viewport =nullptr;
 	MT::TaskScheduler scheduler;
+	// -- [AI] 三线程模式帧同步器
+	MXRender::Render::FrameSynchronizer frame_sync;
 	private:
 
 #pragma endregion
