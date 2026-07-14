@@ -1,0 +1,56 @@
+#version 460
+
+// Fluid2D: inject force + dye around the mouse cursor (in-place on vel/dye)
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// fp: [0]=dt [1]=mouse_x [2]=mouse_y [3]=force_x [4]=force_y
+//     [5]=is_down [6]=is_radial [7]=radius [8]=dye_amount
+layout(set = 0, binding = 0) readonly buffer fp_Buf { float d[]; } fp;
+layout(set = 0, binding = 1) buffer v0_Buf { float d[]; } v0;
+layout(set = 0, binding = 2) buffer d0_Buf { float d[]; } d0;
+
+const uint W = 512u;
+const uint H = 384u;
+const float RADIAL_IMPULSE = 150.0;
+const float DYE_MAX = 3.0;
+
+void main()
+{
+	uvec2 gid = gl_GlobalInvocationID.xy;
+	if (gid.x >= W || gid.y >= H)
+	{
+		return;
+	}
+	uint i = gid.y * W + gid.x;
+	// closed box: zero velocity on the border ring
+	if (gid.x == 0u || gid.y == 0u || gid.x == W - 1u || gid.y == H - 1u)
+	{
+		v0.d[i * 2u] = 0.0;
+		v0.d[i * 2u + 1u] = 0.0;
+		return;
+	}
+	if (fp.d[5] < 0.5)
+	{
+		return;
+	}
+	vec2 cell = vec2(gid) + 0.5;
+	vec2 mouse = vec2(fp.d[1], fp.d[2]);
+	vec2 diff = cell - mouse;
+	float r = fp.d[7];
+	float g = exp(-dot(diff, diff) / (r * r));
+	vec2 force;
+	if (fp.d[6] > 0.5)
+	{
+		// stationary click: radial impulse outwards
+		float len = max(length(diff), 1e-4);
+		force = (diff / len) * RADIAL_IMPULSE;
+	}
+	else
+	{
+		// drag: force along mouse move direction
+		force = vec2(fp.d[3], fp.d[4]);
+	}
+	v0.d[i * 2u] += force.x * g;
+	v0.d[i * 2u + 1u] += force.y * g;
+	d0.d[i] = min(d0.d[i] + fp.d[8] * g, DYE_MAX);
+}

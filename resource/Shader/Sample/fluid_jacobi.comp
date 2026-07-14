@@ -1,0 +1,33 @@
+#version 460
+
+// Fluid2D: one Jacobi iteration of the pressure Poisson equation (pin -> pout)
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0) readonly buffer pin_Buf { float d[]; } pin;
+layout(set = 0, binding = 1) readonly buffer dv_Buf { float d[]; } dv;
+layout(set = 0, binding = 2) writeonly buffer pout_Buf { float d[]; } pout;
+
+const uint W = 512u;
+const uint H = 384u;
+
+float loadP(uint x, uint y)
+{
+	return pin.d[y * W + x];
+}
+
+void main()
+{
+	uvec2 gid = gl_GlobalInvocationID.xy;
+	if (gid.x >= W || gid.y >= H)
+	{
+		return;
+	}
+	// clamped neighbors act as a Neumann boundary condition
+	uint xl = gid.x > 0u ? gid.x - 1u : 0u;
+	uint xr = min(gid.x + 1u, W - 1u);
+	uint yu = gid.y > 0u ? gid.y - 1u : 0u;
+	uint yd = min(gid.y + 1u, H - 1u);
+	uint i = gid.y * W + gid.x;
+	pout.d[i] = 0.25 * (loadP(xl, gid.y) + loadP(xr, gid.y)
+	                  + loadP(gid.x, yu) + loadP(gid.x, yd) - dv.d[i]);
+}

@@ -1,0 +1,32 @@
+#version 460
+
+// Fluid2D: divergence of the velocity field
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0) readonly buffer vin_Buf { float d[]; } vin;
+layout(set = 0, binding = 1) writeonly buffer dout_Buf { float d[]; } dout;
+
+const uint W = 512u;
+const uint H = 384u;
+
+vec2 loadVel(uint x, uint y)
+{
+	uint i = (y * W + x) * 2u;
+	return vec2(vin.d[i], vin.d[i + 1u]);
+}
+
+void main()
+{
+	uvec2 gid = gl_GlobalInvocationID.xy;
+	if (gid.x >= W || gid.y >= H)
+	{
+		return;
+	}
+	uint xl = gid.x > 0u ? gid.x - 1u : 0u;
+	uint xr = min(gid.x + 1u, W - 1u);
+	uint yu = gid.y > 0u ? gid.y - 1u : 0u;
+	uint yd = min(gid.y + 1u, H - 1u);
+	float div = 0.5 * ((loadVel(xr, gid.y).x - loadVel(xl, gid.y).x)
+	                 + (loadVel(gid.x, yd).y - loadVel(gid.x, yu).y));
+	dout.d[gid.y * W + gid.x] = div;
+}

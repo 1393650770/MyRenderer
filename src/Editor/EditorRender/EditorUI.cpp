@@ -78,7 +78,7 @@ void EditorUI::Init(Window* in_window)
 	}
 }
 
-// -- [AI] Logic thread: ImGui NewFrame + widgets + Render → returns ImDrawData
+//  Logic thread: ImGui NewFrame + widgets + Render → returns ImDrawData
 ImDrawData* EditorUI::DrawFrame_Logic()
 {
 	ImGui_ImplVulkan_NewFrame();
@@ -125,7 +125,7 @@ ImDrawData* EditorUI::DrawFrame_Logic()
 	return ImGui::GetDrawData();
 }
 
-// -- [AI] Render thread: record ImGui GPU commands to CommandList
+//  Render thread: record ImGui GPU commands to CommandList
 void EditorUI::DrawFrame_Render(ImDrawData* draw_data, RHI::CommandList* cmd)
 {
 	if (!draw_data || !cmd) return;

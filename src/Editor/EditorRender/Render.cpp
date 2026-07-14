@@ -40,7 +40,7 @@ Vector<UInt32> ReadShader(CONST String& filename)
 	return std::move(buffer);
 }
 
-// -- [AI] Logic thread: ImGui init, editor UI (GLFW-dependent)
+//  Logic thread: ImGui init, editor UI (GLFW-dependent)
 void EditorRenderPipeline::OnInit_Logic(Application::Window* in_window)
 {
 	window = in_window;
@@ -48,7 +48,7 @@ void EditorRenderPipeline::OnInit_Logic(Application::Window* in_window)
 	editor_ui.Init(window);
 }
 
-// -- [AI] Render thread: shaders, pipelines, RenderGraph passes, compile
+//  Render thread: shaders, pipelines, RenderGraph passes, compile
 void EditorRenderPipeline::OnInit_Render()
 {
 	RHI::CommandList* cmd_list = RHIGetImmediateCommandList();
@@ -341,7 +341,7 @@ void EditorRenderPipeline::RebuildFromDefinition(CONST MXRender::Render::RenderG
 	}
 }
 
-// -- [AI] Logic thread: transfer deferred rebuild + ImGui context into FrameContext
+//  Logic thread: transfer deferred rebuild + ImGui context into FrameContext
 // The definition is copied into a heap allocation owned by ctx, so Render thread
 // can access it without touching the shared deferred_def.
 void EditorRenderPipeline::OnPrepareFrameContext(Render::FrameContext& ctx)
@@ -361,13 +361,13 @@ void EditorRenderPipeline::OnPrepareFrameContext(Render::FrameContext& ctx)
 	ctx.imgui_context = ImGui::GetCurrentContext();
 }
 
-// -- [AI] Logic thread: release ImGui, editor UI (GLFW-dependent)
+//  Logic thread: release ImGui, editor UI (GLFW-dependent)
 void EditorRenderPipeline::OnShutdown_Logic()
 {
 	editor_ui.Release();
 }
 
-// -- [AI] Render thread: release GPU resources
+//  Render thread: release GPU resources
 void EditorRenderPipeline::OnShutdown_Render()
 {
 	if (skybox_srb) { delete skybox_srb; skybox_srb = nullptr; }
@@ -408,7 +408,7 @@ void EditorRenderPipeline::OnRender()
 	graph.Execute();
 }
 
-// -- [AI] Render thread: pre-render — rebuild graph, update backbuffer, restore ImGui context
+//  Render thread: pre-render — rebuild graph, update backbuffer, restore ImGui context
 void EditorRenderPipeline::OnPreRender(Render::FrameContext& ctx)
 {
 	// Restore ImGui context (Logic saved it via OnPrepareFrameContext)
@@ -432,7 +432,7 @@ void EditorRenderPipeline::OnPreRender(Render::FrameContext& ctx)
 		ds->UpdateRetainedPtr(dsv);
 }
 
-// -- [AI] Render thread: record ImGui GPU commands
+//  Render thread: record ImGui GPU commands
 void EditorRenderPipeline::OnPostRender(Render::FrameContext& ctx)
 {
 	if (!ctx.imgui_context) return;

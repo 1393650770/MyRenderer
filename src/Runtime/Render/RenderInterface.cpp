@@ -5,14 +5,14 @@
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 
-// -- [AI] Backward compat: OnInit calls split lifecycle methods
+//  Backward compat: OnInit calls split lifecycle methods
 void RenderInterface::OnInit(Application::Window* window)
 {
 	OnInit_Logic(window);
 	OnInit_Render();
 }
 
-// -- [AI] Backward compat: OnShutdown calls split lifecycle methods
+//  Backward compat: OnShutdown calls split lifecycle methods
 void RenderInterface::OnShutdown()
 {
 	OnShutdown_Render();

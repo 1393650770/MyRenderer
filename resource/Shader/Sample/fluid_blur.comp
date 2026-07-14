@@ -1,0 +1,40 @@
+#version 460
+
+// Fluid2D: separable 9-tap gaussian blur (direction/stride come from bp)
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// bp: [0]=dir_x [1]=dir_y [2]=stride
+layout(set = 0, binding = 0) readonly buffer bp_Buf { float d[]; } bp;
+layout(set = 0, binding = 1) readonly buffer src_Buf { float d[]; } src_buf;
+layout(set = 0, binding = 2) writeonly buffer dst_Buf { float d[]; } dst_buf;
+
+const uint W = 512u;
+const uint H = 384u;
+const float G0 = 0.227027;
+const float G1 = 0.194595;
+const float G2 = 0.121622;
+const float G3 = 0.054054;
+const float G4 = 0.016216;
+
+float loadSrc(ivec2 c)
+{
+	c = clamp(c, ivec2(0), ivec2(int(W) - 1, int(H) - 1));
+	return src_buf.d[uint(c.y) * W + uint(c.x)];
+}
+
+void main()
+{
+	uvec2 gid = gl_GlobalInvocationID.xy;
+	if (gid.x >= W || gid.y >= H)
+	{
+		return;
+	}
+	ivec2 c = ivec2(gid);
+	ivec2 dir = ivec2(round(vec2(bp.d[0], bp.d[1]) * bp.d[2]));
+	float sum = loadSrc(c) * G0;
+	sum += (loadSrc(c + dir) + loadSrc(c - dir)) * G1;
+	sum += (loadSrc(c + dir * 2) + loadSrc(c - dir * 2)) * G2;
+	sum += (loadSrc(c + dir * 3) + loadSrc(c - dir * 3)) * G3;
+	sum += (loadSrc(c + dir * 4) + loadSrc(c - dir * 4)) * G4;
+	dst_buf.d[gid.y * W + gid.x] = sum;
+}

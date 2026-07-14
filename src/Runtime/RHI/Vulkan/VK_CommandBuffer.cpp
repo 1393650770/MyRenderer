@@ -353,7 +353,7 @@ void VK_CommandBuffer::EndUI()
 	// CPU阶段：Render=EndFrame
 	ImGui::Render();
 
-	// -- [AI] 三线程模式：平台窗口更新推迟到 Logic 线程（EndUI_Platform）
+	//  三线程模式：平台窗口更新推迟到 Logic 线程（EndUI_Platform）
 	// GLFW CreateWindow/DestroyWindow 必须在主线程
 	if (g_thread_mode != EThreadingMode::ThreeThread)
 	{
@@ -376,7 +376,7 @@ void VK_CommandBuffer::EndUI()
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
 }
 
-// -- [AI:BEGIN] 三线程模式：拆分 UI 阶段实现
+// 三线程模式：拆分 UI 阶段实现
 
 void VK_CommandBuffer::BeginUI_Logic()
 {
@@ -417,7 +417,7 @@ void VK_CommandBuffer::EndUI_Platform()
 	}
 }
 
-// -- [AI:END]
+// 
 
 void VK_CommandBuffer::TransitionRenderTargets(CONST Vector<Texture*>& render_targets, Texture* depth_stencil)
 {

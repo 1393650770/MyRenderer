@@ -1,0 +1,55 @@
+#version 460
+
+// Fluid2D: semi-Lagrangian advection of the velocity field (vin -> vout)
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// fp: [0]=dt (other slots unused here)
+layout(set = 0, binding = 0) readonly buffer fp_Buf { float d[]; } fp;
+layout(set = 0, binding = 1) readonly buffer vin_Buf { float d[]; } vin;
+layout(set = 0, binding = 2) writeonly buffer vout_Buf { float d[]; } vout;
+
+const uint W = 512u;
+const uint H = 384u;
+const float DISSIPATION = 0.999;
+
+vec2 loadVel(uint x, uint y)
+{
+	uint i = (y * W + x) * 2u;
+	return vec2(vin.d[i], vin.d[i + 1u]);
+}
+
+vec2 sampleVel(vec2 pos)
+{
+	// pos is in cell-center coordinates; manual bilinear filtering
+	vec2 p = clamp(pos - 0.5, vec2(0.0), vec2(float(W - 1u), float(H - 1u)));
+	uvec2 i0 = uvec2(p);
+	uvec2 i1 = min(i0 + 1u, uvec2(W - 1u, H - 1u));
+	vec2 f = p - vec2(i0);
+	vec2 v00 = loadVel(i0.x, i0.y);
+	vec2 v10 = loadVel(i1.x, i0.y);
+	vec2 v01 = loadVel(i0.x, i1.y);
+	vec2 v11 = loadVel(i1.x, i1.y);
+	return mix(mix(v00, v10, f.x), mix(v01, v11, f.x), f.y);
+}
+
+void main()
+{
+	uvec2 gid = gl_GlobalInvocationID.xy;
+	if (gid.x >= W || gid.y >= H)
+	{
+		return;
+	}
+	uint i = (gid.y * W + gid.x) * 2u;
+	if (gid.x == 0u || gid.y == 0u || gid.x == W - 1u || gid.y == H - 1u)
+	{
+		vout.d[i] = 0.0;
+		vout.d[i + 1u] = 0.0;
+		return;
+	}
+	float dt = fp.d[0];
+	vec2 vel = vec2(vin.d[i], vin.d[i + 1u]);
+	vec2 pos = vec2(gid) + 0.5 - dt * vel;
+	vec2 nv = sampleVel(pos) * DISSIPATION;
+	vout.d[i] = nv.x;
+	vout.d[i + 1u] = nv.y;
+}

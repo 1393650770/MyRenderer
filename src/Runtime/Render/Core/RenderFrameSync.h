@@ -19,7 +19,7 @@ class RenderInterface;
 
 MYRENDERER_BEGIN_NAMESPACE(Render)
 
-// -- [AI] Triple-buffered frame synchronizer for Logic -> Render -> RHI pipeline
+//  Triple-buffered frame synchronizer for Logic -> Render -> RHI pipeline
 // Uses condition_variable initially; upgrade path: lock-free ring buffer
 MYRENDERER_BEGIN_CLASS(FrameSynchronizer)
 public:

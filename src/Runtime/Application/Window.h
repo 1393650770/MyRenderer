@@ -50,7 +50,7 @@ MYRENDERER_BEGIN_CLASS(Window)
 		Bool is_full_screen = false;
 		MXRender::RHI::Viewport* viewport =nullptr;
 	MT::TaskScheduler scheduler;
-	// -- [AI] 三线程模式帧同步器
+	//  三线程模式帧同步器
 	MXRender::Render::FrameSynchronizer frame_sync;
 	private:
 

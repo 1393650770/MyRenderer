@@ -1,0 +1,44 @@
+#version 460
+
+// Fluid2D: semi-Lagrangian advection of the dye field (din -> dout)
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// fp: [0]=dt (other slots unused here)
+layout(set = 0, binding = 0) readonly buffer fp_Buf { float d[]; } fp;
+layout(set = 0, binding = 1) readonly buffer vin_Buf { float d[]; } vin;
+layout(set = 0, binding = 2) readonly buffer din_Buf { float d[]; } din;
+layout(set = 0, binding = 3) writeonly buffer dout_Buf { float d[]; } dout;
+
+const uint W = 512u;
+const uint H = 384u;
+const float DISSIPATION = 0.99;
+
+float loadDye(uint x, uint y)
+{
+	return din.d[y * W + x];
+}
+
+float sampleDye(vec2 pos)
+{
+	vec2 p = clamp(pos - 0.5, vec2(0.0), vec2(float(W - 1u), float(H - 1u)));
+	uvec2 i0 = uvec2(p);
+	uvec2 i1 = min(i0 + 1u, uvec2(W - 1u, H - 1u));
+	vec2 f = p - vec2(i0);
+	return mix(mix(loadDye(i0.x, i0.y), loadDye(i1.x, i0.y), f.x),
+	           mix(loadDye(i0.x, i1.y), loadDye(i1.x, i1.y), f.x), f.y);
+}
+
+void main()
+{
+	uvec2 gid = gl_GlobalInvocationID.xy;
+	if (gid.x >= W || gid.y >= H)
+	{
+		return;
+	}
+	uint i = gid.y * W + gid.x;
+	float dt = fp.d[0];
+	uint vi = i * 2u;
+	vec2 vel = vec2(vin.d[vi], vin.d[vi + 1u]);
+	vec2 pos = vec2(gid) + 0.5 - dt * vel;
+	dout.d[i] = sampleDye(pos) * DISSIPATION;
+}

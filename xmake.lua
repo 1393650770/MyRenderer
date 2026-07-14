@@ -309,5 +309,11 @@ target("RendererSample-NNE_Transformer")
     add_files("src/Sample/6-NeuralNetwork/ConvLayer.cpp")
     set_group("Sample")
     after_build(MoveResource)
-after_build(MoveResource)
+
+--   2D Fluid Simulation Demo
+target("RendererSample-Fluid2D")
+    CommonProjectSetting()
+    add_files("src/Sample/7-Fluid2D/Fluid2D.cpp")
+    set_group("Sample")
+    after_build(MoveResource)
 

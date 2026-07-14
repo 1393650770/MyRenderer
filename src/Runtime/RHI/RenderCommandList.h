@@ -178,7 +178,7 @@ struct RHICmdUnmapBuffer : RHICommand {
 	class Buffer* buffer;
 	RHICmdUnmapBuffer(class Buffer* b) : RHICommand(RHICommandType::UnmapBuffer), buffer(b) {}
 };
-// -- [AI] ImGui draw data: recorded on Render thread, replayed on RHI thread
+//  ImGui draw data: recorded on Render thread, replayed on RHI thread
 struct RHICmdRenderImGui : RHICommand {
 	void* draw_data;     // ImDrawData* (valid during replay due to WaitFrameComplete sync)
 	void* imgui_context; // ImGuiContext* (restore before calling ImGui functions)
@@ -214,7 +214,7 @@ public:
 	VIRTUAL void METHOD(BeginUI)() PURE;
 	VIRTUAL void METHOD(EndUI)() PURE;
 
-	// -- [AI] 三线程模式：拆分 UI 阶段
+	//  三线程模式：拆分 UI 阶段
 	// Logic 线程调用（GLFW input → ImGui NewFrame）
 	VIRTUAL void METHOD(BeginUI_Logic)() {}
 	// Render 线程调用（ImGui widget draw → ImGui::Render → 录制 GPU 命令）

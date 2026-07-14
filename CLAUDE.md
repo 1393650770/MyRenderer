@@ -52,7 +52,6 @@ Editor.exe  ──depends──>  Runtime.lib  ──includes──>  ThirdParty
 - Type aliases: `String`, `Vector`, `Map`, `Bool`, `UInt32`, `Int`, etc. (from ConstDefine.h)
 - Namespaces: `MXRender::Render`, `MXRender::RHI`, `MXRender::UI`, `MXRender::RHI::Vulkan`
 - `#pragma region METHOD` / `#pragma region MEMBER` for class organization
-- AI-generated code: `// -- [AI]` (single line), `// -- [AI:BEGIN]` / `// -- [AI:END]` (multi-line)
 - GBK encoding for all .cpp/.h files
 
 ## RenderGraph Architecture

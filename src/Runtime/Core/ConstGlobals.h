@@ -8,7 +8,7 @@
 extern CORE_API UInt64 g_frame_number_render_thread;
 extern CORE_API CONST UInt64 g_max_frame_number;
 
-// -- [AI] 线程模式配置
+//  线程模式配置
 enum class EThreadingMode : UInt8
 {
 	Single,       // 单线程：Logic + Render + RHI 全部同线程（默认）

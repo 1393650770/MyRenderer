@@ -126,7 +126,7 @@ void FrameSynchronizer::JoinRenderThread()
 	}
 }
 
-// -- [AI] Render thread main loop
+//  Render thread main loop
 void FrameSynchronizer::RenderThreadMain(RenderInterface* render, RHI::Viewport* viewport)
 {
 	// Init render resources on the Render thread

@@ -43,7 +43,7 @@ void VulkanRHI::Init(RenderFactory* render_factory)
 {
 	VulkanRenderFactory* vulkan_render_factory = STATIC_CAST(render_factory,VulkanRenderFactory);
 	Bool enable_render_debug = vulkan_render_factory->enable_render_debug;
-	// -- [AI] 从 factory 读取线程模式
+	//  从 factory 读取线程模式
 	g_thread_mode = vulkan_render_factory->threading_mode;
 	g_enable_rhi_thread = (g_thread_mode >= EThreadingMode::RHIThread);
 	CreateInstance(enable_render_debug);

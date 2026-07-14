@@ -28,19 +28,19 @@ public:
 	VIRTUAL ~EditorRenderPipeline() MYDEFAULT;
 	EditorRenderPipeline() MYDEFAULT;
 
-	// -- [AI] Logic thread lifecycle
+	//  Logic thread lifecycle
 	VIRTUAL void METHOD(OnInit_Logic)(Application::Window* window) OVERRIDE;
 	VIRTUAL void METHOD(OnShutdown_Logic)() OVERRIDE;
 
-	// -- [AI] Render thread lifecycle
+	//  Render thread lifecycle
 	VIRTUAL void METHOD(OnInit_Render)() OVERRIDE;
 	VIRTUAL void METHOD(OnShutdown_Render)() OVERRIDE;
 
-	// -- [AI] Logic thread per-frame
+	//  Logic thread per-frame
 	VIRTUAL void METHOD(OnUpdate)(float dt) OVERRIDE;
 	VIRTUAL void METHOD(OnPrepareFrameContext)(Render::FrameContext& ctx) OVERRIDE;
 
-	// -- [AI] Render thread per-frame
+	//  Render thread per-frame
 	VIRTUAL void METHOD(OnPreRender)(Render::FrameContext& ctx) OVERRIDE;
 	VIRTUAL void METHOD(OnRender)() OVERRIDE;
 	VIRTUAL void METHOD(OnPostRender)(Render::FrameContext& ctx) OVERRIDE;
@@ -66,7 +66,7 @@ protected:
 	Bool has_deferred_rebuild = false;
 	Bool need_clear_fb = false;
 	Render::RenderGraphDefinition deferred_def;
-	// -- [AI] Mutex for deferred_def (Logic writes, Render reads in 3-thread mode)
+	//  Mutex for deferred_def (Logic writes, Render reads in 3-thread mode)
 	std::mutex rebuild_mutex_;
 
 	// --  Pre-created pipeline states for loaded graph passes

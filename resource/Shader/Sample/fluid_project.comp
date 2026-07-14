@@ -1,0 +1,40 @@
+#version 460
+
+// Fluid2D: subtract pressure gradient to make the velocity field divergence-free
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0) readonly buffer pin_Buf { float d[]; } pin;
+layout(set = 0, binding = 1) readonly buffer vin_Buf { float d[]; } vin;
+layout(set = 0, binding = 2) writeonly buffer vout_Buf { float d[]; } vout;
+
+const uint W = 512u;
+const uint H = 384u;
+
+float loadP(uint x, uint y)
+{
+	return pin.d[y * W + x];
+}
+
+void main()
+{
+	uvec2 gid = gl_GlobalInvocationID.xy;
+	if (gid.x >= W || gid.y >= H)
+	{
+		return;
+	}
+	uint i = (gid.y * W + gid.x) * 2u;
+	if (gid.x == 0u || gid.y == 0u || gid.x == W - 1u || gid.y == H - 1u)
+	{
+		vout.d[i] = 0.0;
+		vout.d[i + 1u] = 0.0;
+		return;
+	}
+	uint xl = gid.x - 1u;
+	uint xr = gid.x + 1u;
+	uint yu = gid.y - 1u;
+	uint yd = gid.y + 1u;
+	vec2 grad = 0.5 * vec2(loadP(xr, gid.y) - loadP(xl, gid.y),
+	                       loadP(gid.x, yd) - loadP(gid.x, yu));
+	vout.d[i] = vin.d[i] - grad.x;
+	vout.d[i + 1u] = vin.d[i + 1u] - grad.y;
+}

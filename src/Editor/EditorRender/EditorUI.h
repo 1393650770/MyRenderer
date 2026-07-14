@@ -29,9 +29,9 @@ public:
 	EditorUI() MYDEFAULT;
 
 	void METHOD(Init)(Window* in_window);
-	// -- [AI] Logic thread: ImGui NewFrame + widgets + Render → returns ImDrawData
+	//  Logic thread: ImGui NewFrame + widgets + Render → returns ImDrawData
 	ImDrawData* METHOD(DrawFrame_Logic)();
-	// -- [AI] Render thread: record ImGui GPU commands
+	//  Render thread: record ImGui GPU commands
 	void METHOD(DrawFrame_Render)(ImDrawData* draw_data, RHI::CommandList* cmd);
 	void METHOD(Release)();
 

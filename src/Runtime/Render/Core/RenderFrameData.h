@@ -15,7 +15,7 @@ MYRENDERER_BEGIN_NAMESPACE(Render)
 // Forward declare RenderGraphDefinition (defined in Render layer)
 class RenderGraphDefinition;
 
-// -- [AI] Per-frame data passed from Logic thread to Render thread
+//  Per-frame data passed from Logic thread to Render thread
 // Backbuffer RTV/DSV acquired on Render thread (via OnPreRender) to avoid race with Present.
 MYRENDERER_BEGIN_STRUCT(FrameContext)
 public:
