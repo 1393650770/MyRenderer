@@ -8,7 +8,7 @@ layout(set = 0, binding = 2) readonly buffer nbr_Buf { uint d[]; } nbr;
 layout(set = 0, binding = 3) readonly buffer nc_Buf { uint d[]; } nc;
 layout(set = 0, binding = 4) writeonly buffer lam_Buf { float d[]; } lam;
 
-const uint NBR_MAX = 48u;
+const uint NBR_MAX = 64u;
 const float H = 0.1;
 const float MASS = 1.0;
 const float REST_DENSITY = 8400.0; // must match fluid3d_deltapos.comp

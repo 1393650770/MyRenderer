@@ -6,7 +6,7 @@ layout(set = 0, binding = 0) readonly buffer fp_Buf { float d[]; } fp;
 layout(set = 0, binding = 1) writeonly buffer pos_Buf { float d[]; } pos;
 layout(set = 0, binding = 2) writeonly buffer vel_Buf { float d[]; } vel;
 
-const uint MAX_PARTICLES = 32768u;
+const uint MAX_PARTICLES = 655360u;
 
 float hash1(uint x)
 {

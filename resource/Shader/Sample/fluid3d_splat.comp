@@ -11,7 +11,7 @@ layout(set = 0, binding = 3, r32ui) uniform uimage2D uimg_thick;
 
 const uint W = 640u;
 const uint H = 480u;
-const float DRAW_R = 0.045;
+const float DRAW_R = 0.055;
 const float THICK_SCALE = 1024.0;
 const int MAX_PX_R = 16;
 const float P11 = 2.4142135; // 1/tan(fovY/2), fovY = 45 deg

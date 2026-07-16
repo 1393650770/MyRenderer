@@ -10,8 +10,8 @@ layout(set = 0, binding = 3) readonly buffer nbr_Buf { uint d[]; } nbr;
 layout(set = 0, binding = 4) readonly buffer nc_Buf { uint d[]; } nc;
 layout(set = 0, binding = 5) writeonly buffer xout_Buf { float d[]; } xout;
 
-const uint NBR_MAX = 48u;
-const float H = 0.1;
+const uint NBR_MAX = 64u;
+const float H = 1;
 const float MASS = 1.0;
 // Slightly above the exact lattice sum (~8080): settled water reads as
 // under-dense -> C clamps to 0 -> no perpetual micro-corrections at rest.
@@ -20,10 +20,10 @@ const float REST_DENSITY = 8400.0;
 // otherwise it acts like gas pressure and pushes the fluid against the walls.
 const float S_CORR_K = 0.001;
 const float S_CORR_DQ = 0.03; // 0.3 * H
-// Per-iteration correction cap. Without it a jet-impact cell (several times
-// rest density) computes ~0.3m corrections that v=(x*-x)/dt turns into
-// explosion velocities; capped, over-pressure relaxes over a few frames.
-const float DP_MAX = 0.1 * H;
+// Per-iteration correction cap. Large enough that a compressed column can
+// decompress within a few frames (water level rises), small enough that
+// v=(x*-x)/dt stays bounded (velocity pass also clamps MAX_SPEED).
+const float DP_MAX = 3 * H;
 const float PI = 3.14159265;
 // pool interior (open-top box): the whole sim domain
 const vec3 BOX_MIN = vec3(-1.4, 0.0, -1.0);

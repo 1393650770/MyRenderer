@@ -1,8 +1,9 @@
 #version 460
-// Fluid3D: ink-wash composition.
-// r = smoothed view depth, g = smoothed thickness (from the blur chain).
-// Paper background + Beer-Lambert ink density + edge/rim strokes +
-// pool box drawn as wobbly brush lines + gun/aim indicator.
+// Fluid3D: realistic screen-space water composition.
+// ink_tex: r = smoothed view depth (camera-forward distance), g = thickness.
+// Per-pixel world ray -> procedural pool/sky background; water surface is
+// reconstructed from depth, shaded with Fresnel reflection, refraction with
+// Beer-Lambert absorption, and a sun specular highlight.
 layout(location = 0) in vec2 inUV;
 layout(location = 0) out vec4 outColor;
 
@@ -12,27 +13,152 @@ layout(set = 0, binding = 1) uniform sampler2D ink_tex;
 const float W = 640.0;
 const float H = 480.0;
 const float FAR_SENTINEL = 1e20;
-const vec3 PAPER = vec3(0.960, 0.945, 0.915);
-const vec3 INK_LIGHT = vec3(0.45, 0.48, 0.52);
-const vec3 INK_DARK = vec3(0.06, 0.08, 0.11);
+// pool interior: floor y=0, walls up to y=0.8, footprint x[-1.4,1.4] z[-1.0,1.0]
+const vec3 POOL_MIN = vec3(-1.4, 0.0, -1.0);
+const vec3 POOL_MAX = vec3(1.4, 0.8, 1.0);
+const float DECK_Y = 0.8;
+const float TILE = 0.4;
+const vec3 SUN_DIR = normalize(vec3(-0.4, 1.0, 0.3));
+const vec3 ABSORB = vec3(1.0, 0.4, 0.25);      // per-channel Beer-Lambert
+const vec3 SCATTER = vec3(0.05, 0.25, 0.35);   // deep-water in-scatter color
 
-float hash12(vec2 p)
-{
-	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-	p3 += dot(p3, p3.yzx + 33.33);
-	return fract((p3.x + p3.y) * p3.z);
-}
-
-mat4 load_vp()
+mat4 load_mat(uint base)
 {
 	return mat4(
-		vec4(fp.d[16], fp.d[17], fp.d[18], fp.d[19]),
-		vec4(fp.d[20], fp.d[21], fp.d[22], fp.d[23]),
-		vec4(fp.d[24], fp.d[25], fp.d[26], fp.d[27]),
-		vec4(fp.d[28], fp.d[29], fp.d[30], fp.d[31]));
+		vec4(fp.d[base + 0u], fp.d[base + 1u], fp.d[base + 2u], fp.d[base + 3u]),
+		vec4(fp.d[base + 4u], fp.d[base + 5u], fp.d[base + 6u], fp.d[base + 7u]),
+		vec4(fp.d[base + 8u], fp.d[base + 9u], fp.d[base + 10u], fp.d[base + 11u]),
+		vec4(fp.d[base + 12u], fp.d[base + 13u], fp.d[base + 14u], fp.d[base + 15u]));
 }
 
-// world -> pixel coords, same convention as the splat pass
+// uv (top-left origin) -> world point on the near/far clip plane
+vec3 unproject(mat4 ivp, vec2 uv, float ndc_z)
+{
+	vec2 ndc = vec2(uv.x * 2.0 - 1.0, 1.0 - 2.0 * uv.y);
+	vec4 p = ivp * vec4(ndc, ndc_z, 1.0);
+	return p.xyz / p.w;
+}
+
+vec3 sky_color(vec3 rd)
+{
+	float t = clamp(rd.y * 0.5 + 0.5, 0.0, 1.0);
+	vec3 col = mix(vec3(0.78, 0.86, 0.95), vec3(0.32, 0.52, 0.82), t);
+	float sun = pow(max(dot(rd, SUN_DIR), 0.0), 800.0);
+	col += vec3(1.0, 0.95, 0.85) * sun * 2.0;
+	return col;
+}
+
+// aqua ceramic tiles with dark grout, p in local surface meters
+vec3 tile_color(vec2 p)
+{
+	vec2 cell = floor(p / TILE);
+	float checker = mod(cell.x + cell.y, 2.0);
+	vec3 base = mix(vec3(0.52, 0.74, 0.80), vec3(0.62, 0.83, 0.87), checker);
+	vec2 g = abs(fract(p / TILE) - 0.5);
+	float grout = smoothstep(0.44, 0.5, max(g.x, g.y));
+	return mix(base, vec3(0.32, 0.44, 0.50), grout);
+}
+
+vec3 deck_color(vec2 p)
+{
+	vec3 base = vec3(0.76, 0.72, 0.66);
+	vec2 g = abs(fract(p / 0.8) - 0.5);
+	float seam = smoothstep(0.47, 0.5, max(g.x, g.y));
+	return mix(base, vec3(0.6, 0.56, 0.5), seam);
+}
+
+// procedural scene: pool interior (tiles), deck around the opening, sky
+vec3 bg_color(vec3 ro, vec3 rd)
+{
+	float best_t = 1e9;
+	vec3 col = sky_color(rd);
+
+	// pool floor (y = 0), only inside the footprint
+	if (abs(rd.y) > 1e-5)
+	{
+		float t = (POOL_MIN.y - ro.y) / rd.y;
+		if (t > 0.0 && t < best_t)
+		{
+			vec3 p = ro + rd * t;
+			if (p.x >= POOL_MIN.x && p.x <= POOL_MAX.x && p.z >= POOL_MIN.z && p.z <= POOL_MAX.z)
+			{
+				best_t = t;
+				col = tile_color(p.xz) * 1.0;
+			}
+		}
+		// deck plane (y = 0.8), only outside the pool opening
+		float td = (DECK_Y - ro.y) / rd.y;
+		if (td > 0.0 && td < best_t)
+		{
+			vec3 p = ro + rd * td;
+			if (!(p.x > POOL_MIN.x && p.x < POOL_MAX.x && p.z > POOL_MIN.z && p.z < POOL_MAX.z))
+			{
+				best_t = td;
+				col = deck_color(p.xz);
+			}
+		}
+	}
+	// four pool walls (tiles), y in [0, 0.8]
+	if (abs(rd.x) > 1e-5)
+	{
+		for (int s = 0; s < 2; ++s)
+		{
+			float px = s == 0 ? POOL_MIN.x : POOL_MAX.x;
+			float t = (px - ro.x) / rd.x;
+			if (t > 0.0 && t < best_t)
+			{
+				vec3 p = ro + rd * t;
+				if (p.y >= POOL_MIN.y && p.y <= POOL_MAX.y && p.z >= POOL_MIN.z && p.z <= POOL_MAX.z)
+				{
+					best_t = t;
+					col = tile_color(p.zy) * 0.85;
+				}
+			}
+		}
+	}
+	if (abs(rd.z) > 1e-5)
+	{
+		for (int s = 0; s < 2; ++s)
+		{
+			float pz = s == 0 ? POOL_MIN.z : POOL_MAX.z;
+			float t = (pz - ro.z) / rd.z;
+			if (t > 0.0 && t < best_t)
+			{
+				vec3 p = ro + rd * t;
+				if (p.y >= POOL_MIN.y && p.y <= POOL_MAX.y && p.x >= POOL_MIN.x && p.x <= POOL_MAX.x)
+				{
+					best_t = t;
+					col = tile_color(p.xy) * 0.9;
+				}
+			}
+		}
+	}
+	return col;
+}
+
+// world position of the water surface seen through uv (depth = camera-forward distance)
+vec3 surface_pos(mat4 ivp, vec3 ro, vec3 fwd, vec2 uv, float depth)
+{
+	vec3 p1 = unproject(ivp, uv, 1.0);
+	vec3 rd = normalize(p1 - ro);
+	float t = depth / max(dot(rd, fwd), 1e-4);
+	return ro + rd * t;
+}
+
+float depth_at(vec2 uv, float fallback)
+{
+	float d = texture(ink_tex, uv).r;
+	return d < FAR_SENTINEL ? d : fallback;
+}
+
+// distance from p to segment ab (for the small gun indicator)
+float seg_dist(vec2 p, vec2 a, vec2 b)
+{
+	vec2 ab = b - a;
+	float t = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-6), 0.0, 1.0);
+	return length(p - (a + ab * t));
+}
+
 vec2 project_px(mat4 vp, vec3 world)
 {
 	vec4 clip = vp * vec4(world, 1.0);
@@ -40,115 +166,71 @@ vec2 project_px(mat4 vp, vec3 world)
 	return vec2((ndc.x * 0.5 + 0.5) * W, (0.5 - 0.5 * ndc.y) * H);
 }
 
-// distance from p to segment ab, also returns normalized position along it
-float seg_dist(vec2 p, vec2 a, vec2 b, out float t_along)
-{
-	vec2 ab = b - a;
-	float t = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-6), 0.0, 1.0);
-	t_along = t;
-	return length(p - (a + ab * t));
-}
-
-// brush-style line: soft edge + wobble + dry-brush breakup
-float brush_line(vec2 px, vec2 a, vec2 b, float width, float seed)
-{
-	float t;
-	float dist = seg_dist(px, a, b, t);
-	float wobble = sin(t * 40.0 + seed * 6.2831) * width * 0.35;
-	float line = 1.0 - smoothstep(0.0, width, dist + wobble);
-	float dry = hash12(vec2(floor(t * 28.0), seed * 7.0));
-	line *= dry > 0.82 ? 0.25 : 1.0;
-	// taper the stroke ends
-	line *= smoothstep(0.0, 0.06, t) * smoothstep(1.0, 0.94, t);
-	return line;
-}
-
 void main()
 {
-	vec2 px = inUV * vec2(W, H);
-	vec2 texel = vec2(1.0 / W, 1.0 / H);
-	mat4 vp = load_vp();
+	mat4 ivp = load_mat(36u);
+	vec3 ro = vec3(fp.d[52], fp.d[53], fp.d[54]);
+	vec3 p0 = unproject(ivp, inUV, -1.0);
+	vec3 p1 = unproject(ivp, inUV, 1.0);
+	vec3 rd = normalize(p1 - p0);
+	vec3 fwd = normalize(unproject(ivp, vec2(0.5, 0.5), 1.0) - ro);
 
-	// ---- paper base with grain and soft vignette ----
-	float grain = 0.97 + 0.06 * hash12(px * 1.7);
-	float vig = 1.0 - 0.18 * pow(length(inUV - 0.5) * 1.35, 2.0);
-	vec3 col = PAPER * grain * vig;
+	vec3 col = bg_color(ro, rd);
 
-	// ---- water body ----
 	vec2 dt_c = texture(ink_tex, inUV).rg;
 	float depth = dt_c.r;
 	float thick = dt_c.g;
-	float mask = depth < FAR_SENTINEL ? smoothstep(0.02, 0.10, thick) : 0.0;
+	float mask = depth < FAR_SENTINEL ? smoothstep(0.02, 0.30, thick) : 0.0;
 
 	if (mask > 0.001)
 	{
-		// ink density from thickness (Beer-Lambert)
-		float shade = 1.0 - exp(-0.8 * thick);
+		// reconstruct the surface point and a world-space normal from depth
+		vec2 texel = vec2(1.0 / W, 1.0 / H);
+		vec3 pc = surface_pos(ivp, ro, fwd, inUV, depth);
+		vec3 pr = surface_pos(ivp, ro, fwd, inUV + vec2(texel.x, 0.0), depth_at(inUV + vec2(texel.x, 0.0), depth));
+		vec3 pl = surface_pos(ivp, ro, fwd, inUV - vec2(texel.x, 0.0), depth_at(inUV - vec2(texel.x, 0.0), depth));
+		vec3 pd = surface_pos(ivp, ro, fwd, inUV + vec2(0.0, texel.y), depth_at(inUV + vec2(0.0, texel.y), depth));
+		vec3 pu = surface_pos(ivp, ro, fwd, inUV - vec2(0.0, texel.y), depth_at(inUV - vec2(0.0, texel.y), depth));
+		vec3 n = normalize(cross(pr - pl, pd - pu));
+		if (dot(n, -rd) < 0.0) n = -n;
 
-		// screen-space normal from depth gradients (FAR neighbors fall back)
-		float dl = texture(ink_tex, inUV - vec2(texel.x, 0.0)).r;
-		float dr = texture(ink_tex, inUV + vec2(texel.x, 0.0)).r;
-		float du = texture(ink_tex, inUV - vec2(0.0, texel.y)).r;
-		float dd = texture(ink_tex, inUV + vec2(0.0, texel.y)).r;
-		if (dl >= FAR_SENTINEL) dl = depth;
-		if (dr >= FAR_SENTINEL) dr = depth;
-		if (du >= FAR_SENTINEL) du = depth;
-		if (dd >= FAR_SENTINEL) dd = depth;
-		float dzdx = (dr - dl) * 0.5;
-		float dzdy = (dd - du) * 0.5;
-		vec3 n = normalize(vec3(-dzdx * 8.0, -dzdy * 8.0, 1.0));
+		vec3 v = -rd;
+		float fresnel = 0.02 + 0.98 * pow(1.0 - max(dot(n, v), 0.0), 5.0);
 
-		// strokes: depth discontinuity (outline / wave lines) + grazing rim
-		float edge = smoothstep(0.02, 0.10, length(vec2(dzdx, dzdy)));
-		float rim = pow(1.0 - n.z, 3.0);
-		float stroke = max(edge, rim * 0.6) * mask;
+		// refraction into the pool, absorbed and tinted by water thickness
+		vec3 rr = refract(rd, n, 0.75);
+		if (dot(rr, rr) < 1e-6) rr = rd;
+		vec3 absorb = exp(-ABSORB * thick);
+		vec3 refr = bg_color(pc + rr * 0.02, rr) * absorb + SCATTER * (1.0 - absorb);
 
-		vec3 ink = mix(INK_LIGHT, INK_DARK, shade);
-		col = mix(col, ink, mask * (0.35 + 0.65 * shade));
-		col = mix(col, INK_DARK, stroke * 0.85);
+		// reflection (mostly sky at this camera angle)
+		vec3 rl = reflect(rd, n);
+		vec3 refl = bg_color(pc + rl * 0.02, rl);
+
+		// sun specular
+		vec3 hlf = normalize(SUN_DIR + v);
+		float spec = pow(max(dot(n, hlf), 0.0), 250.0) * 1.5;
+
+		vec3 water = mix(refr, refl, fresnel) + vec3(spec);
+		col = mix(col, water, mask);
 	}
 
-	// ---- pool box brush lines (8 corners, 12 edges) ----
-	const vec3 corners[8] = vec3[8](
-		vec3(-1.4, 0.0, -1.0), vec3(1.4, 0.0, -1.0), vec3(1.4, 0.0, 1.0), vec3(-1.4, 0.0, 1.0),
-		vec3(-1.4, 0.8, -1.0), vec3(1.4, 0.8, -1.0), vec3(1.4, 0.8, 1.0), vec3(-1.4, 0.8, 1.0));
-	const ivec2 edges[12] = ivec2[12](
-		ivec2(0, 1), ivec2(1, 2), ivec2(2, 3), ivec2(3, 0),   // floor
-		ivec2(4, 5), ivec2(5, 6), ivec2(6, 7), ivec2(7, 4),   // wall top
-		ivec2(0, 4), ivec2(1, 5), ivec2(2, 6), ivec2(3, 7));  // pillars
-	// far side (negative z, back wall) drawn lighter for depth cue
-	const float edge_tone[12] = float[12](
-		0.45, 0.85, 0.85, 0.85,
-		0.45, 0.85, 0.85, 0.85,
-		0.45, 0.45, 0.85, 0.85);
-
-	vec2 cpx[8];
-	for (int i = 0; i < 8; ++i) cpx[i] = project_px(vp, corners[i]);
-
-	float pool_line = 0.0;
-	for (int e = 0; e < 12; ++e)
-	{
-		float l = brush_line(px, cpx[edges[e].x], cpx[edges[e].y], 2.2, float(e) * 0.618);
-		pool_line = max(pool_line, l * edge_tone[e]);
-	}
-	col = mix(col, INK_DARK, pool_line * 0.8);
-
-	// ---- water gun indicator: nozzle dot + aim stroke + aim ring ----
+	// water gun indicator: nozzle dot + short stroke toward the aim ring
+	mat4 vp = load_mat(16u);
 	vec3 nozzle = vec3(fp.d[4], fp.d[5], fp.d[6]);
 	vec3 aim = vec3(fp.d[32], fp.d[33], fp.d[34]);
 	float fire = fp.d[7];
-
+	vec2 px = inUV * vec2(W, H);
 	vec2 npx = project_px(vp, nozzle);
 	vec2 apx = project_px(vp, aim);
-
-	float nozzle_dot = 1.0 - smoothstep(3.0, 5.0, length(px - npx));
 	vec2 to_aim = normalize(apx - npx + vec2(1e-4));
-	float aim_stroke = brush_line(px, npx + to_aim * 6.0, npx + to_aim * 24.0, 1.8, 0.37);
+	float nozzle_dot = 1.0 - smoothstep(3.0, 5.0, length(px - npx));
+	float aim_stroke = 1.0 - smoothstep(1.2, 2.4, seg_dist(px, npx + to_aim * 6.0, npx + to_aim * 22.0));
 	float ring_d = abs(length(px - apx) - 9.0);
-	float aim_ring = (1.0 - smoothstep(0.8, 2.2, ring_d)) * (fire > 0.5 ? 0.75 : 0.35);
-
-	col = mix(col, INK_DARK, max(nozzle_dot, aim_stroke) * 0.9);
-	col = mix(col, INK_DARK, aim_ring);
+	float aim_ring = (1.0 - smoothstep(0.8, 2.2, ring_d)) * (fire > 0.5 ? 0.7 : 0.35);
+	vec3 marker = vec3(0.12, 0.14, 0.16);
+	col = mix(col, marker, max(nozzle_dot, aim_stroke) * 0.8);
+	col = mix(col, marker, aim_ring);
 
 	outColor = vec4(col, 1.0);
 }

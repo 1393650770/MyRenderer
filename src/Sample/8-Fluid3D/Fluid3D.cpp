@@ -24,17 +24,25 @@ using namespace MXRender::RHI::Vulkan;
 using namespace MXRender;
 
 // -------- PBF simulation constants (must match the GLSL constants) --------
-static CONST UInt32 MAX_PARTICLES = 32768;
+static CONST UInt32 MAX_PARTICLES = 655360;
 static CONST UInt32 LOCAL_SIZE = 256;          // 1D particle passes
-static CONST UInt32 EMIT_PER_FRAME = 16;       // keep the emitted slug near rest density
-static CONST Int SOLVER_ITERS = 3;             // must be odd: chain a->b->a->b ends in xstar_b
+static CONST UInt32 EMIT_PER_FRAME = 32;       // keep the emitted slug near rest density
+// DEBUG: pre-fill the pool with a resting lattice column at startup.
+// 56 x 40 particles per 5cm layer; 7 layers = 15680 particles ~= 0.37m depth.
+// A stable solver must HOLD that level; collapse means density underestimation.
+static CONST UInt32 PREFILL_LAYERS = 107;
+static CONST UInt32 PREFILL_COUNT = 25 * 25 * PREFILL_LAYERS;
+static CONST Int SOLVER_ITERS = 5;             // must be odd: chain a->b->...->b ends in xstar_b
 // uniform grid over the whole domain (pool footprint x domain height)
 static CONST UInt32 GRID_X = 30;
 static CONST UInt32 GRID_Y = 20;
 static CONST UInt32 GRID_Z = 22;
 static CONST UInt32 GRID_CELLS = GRID_X * GRID_Y * GRID_Z; // 13200
-static CONST UInt32 CELL_CAP = 32;
-static CONST UInt32 NBR_MAX = 48;
+// generous caps: compressed regions (jet impact, deep column) must still see
+// all their neighbors, otherwise density is underestimated and the fluid
+// silently over-compresses (water level stops rising)
+static CONST UInt32 CELL_CAP = 48;
+static CONST UInt32 NBR_MAX = 64;
 // world: pool inner walls x[-1.4,1.4] z[-1.0,1.0], floor y=0, domain top y=1.9
 static CONST Float32 POOL_X = 1.4f;
 static CONST Float32 POOL_Z = 1.0f;
@@ -217,6 +225,7 @@ protected:
 	glm::vec3 interact_pos = glm::vec3(0.0f);
 	Float32 cur_dt = 1.0f / 60.0f;
 	Float32 time_sec = 0.0f;
+	glm::vec3 cam_eye = glm::vec3(0.0f, 3.0f, 3.2f);
 	glm::mat4 view_proj = glm::mat4(1.0f);
 	glm::mat4 inv_view_proj = glm::mat4(1.0f);
 private:
@@ -263,6 +272,27 @@ void RenderTest::CreateFluidBuffers()
 	ink_thick_u = RHICreateTexture(ink_uint_desc);
 	ink_f_a = RHICreateTexture(ink_float_desc);
 	ink_f_b = RHICreateTexture(ink_float_desc);
+
+	// DEBUG pre-fill: resting lattice column, written directly (host-visible)
+	if (PREFILL_COUNT > 0)
+	{
+		Float32* pp = (Float32*)RHIMapBuffer(pos_buf, ENUM_MAP_TYPE::Write, ENUM_MAP_FLAG::None);
+		UInt32 idx = 0;
+		for (UInt32 layer = 0; layer < PREFILL_LAYERS; ++layer)
+		for (UInt32 iz = 0; iz < 40; ++iz)
+		for (UInt32 ix = 0; ix < 56; ++ix)
+		{
+			Float32 jitter = (Float32)((ix * 7 + iz * 13 + layer * 29) % 17) / 17.0f * 0.004f;
+			pp[idx * 4 + 0] = -1.375f + (Float32)ix * 0.05f + jitter;
+			pp[idx * 4 + 1] = 0.05f + (Float32)layer * 0.05f;
+			pp[idx * 4 + 2] = -0.975f + (Float32)iz * 0.05f + jitter;
+			pp[idx * 4 + 3] = 0.0f;
+			idx++;
+		}
+		RHIUnmapBuffer(pos_buf);
+		alive_count = PREFILL_COUNT;
+		emit_head = PREFILL_COUNT % MAX_PARTICLES;
+	}
 }
 
 void RenderTest::CreateFluidPipelines()
@@ -437,16 +467,26 @@ UInt32 RenderTest::ParticleGroupCount() CONST
 
 void RenderTest::RecordSim(RHI::CommandList* in_cmd_list)
 {
-	// per-frame CPU bookkeeping: ring-buffer emission
-	emit_count = firing ? EMIT_PER_FRAME : 0;
+	// per-frame CPU bookkeeping. Emission STOPS when the buffer is full so the
+	// poured water accumulates (ring-recycling would teleport pool water back
+	// to the nozzle and cap the water level).
+	if (firing && alive_count < MAX_PARTICLES)
+	{
+		UInt32 room = MAX_PARTICLES - alive_count;
+		emit_count = EMIT_PER_FRAME < room ? EMIT_PER_FRAME : room;
+	}
+	else
+	{
+		emit_count = 0;
+	}
 	emit_start = emit_head;
 	emit_head = (emit_head + emit_count) % MAX_PARTICLES;
-	UInt32 new_alive = alive_count + emit_count;
-	alive_count = new_alive < MAX_PARTICLES ? new_alive : MAX_PARTICLES;
+	alive_count = alive_count + emit_count;
 
 	// fp layout: [0]=dt [1]=alive [2]=emit_start [3]=emit_count [4-6]=nozzle
 	//            [7]=fire [8-10]=emit_vel [11]=seed [12-14]=interact [15]=interact_flag
-	//            [16-31]=view_proj (column major) [32-34]=aim [35]=time
+	//            [16-31]=view_proj [32-34]=aim [35]=time
+	//            [36-51]=inv_view_proj [52-54]=camera eye (all matrices column major)
 	// The sim runs SUBSTEPS times per frame with dt/SUBSTEPS: halving the step
 	// halves per-step compression, which PBF turns directly into velocity.
 	CONST Int SUBSTEPS = 2;
@@ -472,6 +512,10 @@ void RenderTest::RecordSim(RHI::CommandList* in_cmd_list)
 	params[33] = aim_target.y;
 	params[34] = aim_target.z;
 	params[35] = time_sec;
+	std::memcpy(&params[36], &inv_view_proj[0][0], 16 * sizeof(Float32));
+	params[52] = cam_eye.x;
+	params[53] = cam_eye.y;
+	params[54] = cam_eye.z;
 	UploadFloats(fp_buf, params, 64);
 
 	auto run_compute = [&](RenderPipelineState* pso, ShaderResourceBinding* srb, UInt32 gx, UInt32 gy, UInt32 gz)
@@ -607,7 +651,7 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 	}
 
 	// Step 2: fixed oblique top-down camera looking at the pool
-	glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 3.0f, 3.2f), glm::vec3(0.0f, 0.25f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::mat4 view = glm::lookAt(cam_eye, glm::vec3(0.0f, 0.25f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	glm::mat4 proj = glm::perspective(glm::radians(45.0f), (Float32)IRES_W / (Float32)IRES_H, 0.1f, 100.0f);
 	view_proj = proj * view;
 	inv_view_proj = glm::inverse(view_proj);
@@ -788,6 +832,24 @@ void RenderTest::OnUpdate(float dt)
 	cur_dt = glm::clamp(dt, 1.0f / 240.0f, 1.0f / 60.0f);
 	time_sec += dt;
 	frame_index++;
+
+	// DEBUG stats: alive + water column height, printed every ~2s
+	if (alive_count > 0 && (frame_index % 120) == 0)
+	{
+		CONST Float32* pp = (CONST Float32*)RHIMapBuffer(pos_buf, ENUM_MAP_TYPE::Read, ENUM_MAP_FLAG::None);
+		Float32 y_max = 0.0f, y_sum = 0.0f;
+		for (UInt32 i = 0; i < alive_count; ++i)
+		{
+			Float32 y = pp[i * 4 + 1];
+			y_max = y > y_max ? y : y_max;
+			y_sum += y;
+		}
+		RHIUnmapBuffer(pos_buf);
+		std::cout << "[dbg] alive=" << alive_count
+			<< " y_max=" << y_max
+			<< " y_avg=" << (y_sum / (Float32)alive_count)
+			<< " dt=" << dt << std::endl;
+	}
 }
 
 void RenderTest::OnRender()
