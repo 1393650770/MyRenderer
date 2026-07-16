@@ -38,11 +38,12 @@ void main()
 	float ang = hash1(h) * 6.2831853;
 	float rad = sqrt(hash1(h ^ 0x68bc21ebu)) * 0.06;   // nozzle disc jitter
 	float cone = hash1(h ^ 0x02e5be93u) * 0.10;        // ~6 deg velocity cone
-	// spread new particles along the jet over the frame to avoid clumping
+	// spread new particles along the jet over the whole frame (fp dt is the
+	// substep dt, the frame runs 2 substeps) to avoid clumping
 	float along = (float(tid) + hash1(h ^ 0x967a889bu)) / max(float(emit_count), 1.0);
 
 	vec3 side = t0 * cos(ang) + t1 * sin(ang);
-	vec3 p = nozzle + side * rad + dir * (along * dt * length(v0));
+	vec3 p = nozzle + side * rad + dir * (along * 2.0 * dt * length(v0));
 	vec3 v = v0 + side * (cone * length(v0));
 
 	pos.d[slot * 4u + 0u] = p.x;

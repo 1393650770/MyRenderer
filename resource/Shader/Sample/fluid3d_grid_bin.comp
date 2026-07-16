@@ -10,7 +10,7 @@ layout(set = 0, binding = 3) writeonly buffer cell_Buf { uint d[]; } cell;
 const vec3 DOMAIN_MIN = vec3(-1.5, -0.05, -1.1);
 const float CELL = 0.1;
 const uvec3 GRID = uvec3(30u, 20u, 22u);
-const uint CELL_CAP = 24u;
+const uint CELL_CAP = 32u;
 
 void main()
 {

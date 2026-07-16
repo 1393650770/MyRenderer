@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <limits>
 #include "Application/Window.h"
 #include "Render/RenderInterface.h"
 #include "Render/Core/RenderGraph.h"
@@ -25,14 +26,14 @@ using namespace MXRender;
 // -------- PBF simulation constants (must match the GLSL constants) --------
 static CONST UInt32 MAX_PARTICLES = 32768;
 static CONST UInt32 LOCAL_SIZE = 256;          // 1D particle passes
-static CONST UInt32 EMIT_PER_FRAME = 64;
+static CONST UInt32 EMIT_PER_FRAME = 16;       // keep the emitted slug near rest density
 static CONST Int SOLVER_ITERS = 3;             // must be odd: chain a->b->a->b ends in xstar_b
 // uniform grid over the whole domain (pool footprint x domain height)
 static CONST UInt32 GRID_X = 30;
 static CONST UInt32 GRID_Y = 20;
 static CONST UInt32 GRID_Z = 22;
 static CONST UInt32 GRID_CELLS = GRID_X * GRID_Y * GRID_Z; // 13200
-static CONST UInt32 CELL_CAP = 24;
+static CONST UInt32 CELL_CAP = 32;
 static CONST UInt32 NBR_MAX = 48;
 // world: pool inner walls x[-1.4,1.4] z[-1.0,1.0], floor y=0, domain top y=1.9
 static CONST Float32 POOL_X = 1.4f;
@@ -43,7 +44,6 @@ static CONST Float32 JET_SPEED = 3.5f;
 // screen-space ink buffers (fixed internal resolution, 4:3 like the window)
 static CONST UInt32 IRES_W = 640;
 static CONST UInt32 IRES_H = 480;
-static CONST UInt32 FAR_BITS = 0x7F800000u;    // +inf bit pattern for depth atomicMin
 
 Vector<UInt32> ReadShader(CONST String& filename)
 {
@@ -134,6 +134,7 @@ protected:
 	void METHOD(CreateFluidBindings)();
 	UInt32 METHOD(ParticleGroupCount)() CONST;
 	void METHOD(RecordSim)(RHI::CommandList* in_cmd_list);
+	void METHOD(RecordClear)(RHI::CommandList* in_cmd_list);
 	void METHOD(RecordSplat)(RHI::CommandList* in_cmd_list);
 	void METHOD(RecordBlurH)(RHI::CommandList* in_cmd_list);
 	void METHOD(RecordBlurV)(RHI::CommandList* in_cmd_list);
@@ -160,8 +161,6 @@ protected:
 	RHI::Buffer* cell_particles = nullptr; // (uint)
 	RHI::Buffer* fp_buf = nullptr;     // per-frame params (64 floats)
 	RHI::Buffer* fill_grid = nullptr;  // fill params {value,count} (uint)
-	RHI::Buffer* fill_far = nullptr;
-	RHI::Buffer* fill_zero = nullptr;
 
 	// pipelines (owned by the pipeline state manager, not deleted here)
 	RHI::RenderPipelineState* pso_emit = nullptr;
@@ -173,7 +172,6 @@ protected:
 	RHI::RenderPipelineState* pso_deltapos = nullptr;
 	RHI::RenderPipelineState* pso_velocity = nullptr;
 	RHI::RenderPipelineState* pso_finalize = nullptr;
-	RHI::RenderPipelineState* pso_fill_img = nullptr;
 	RHI::RenderPipelineState* pso_splat = nullptr;
 	RHI::RenderPipelineState* pso_blur_h = nullptr;
 	RHI::RenderPipelineState* pso_blur_v = nullptr;
@@ -190,18 +188,19 @@ protected:
 	RHI::ShaderResourceBinding* srb_deltapos[2] = { nullptr, nullptr }; // [0] a->b, [1] b->a
 	RHI::ShaderResourceBinding* srb_velocity = nullptr;
 	RHI::ShaderResourceBinding* srb_finalize = nullptr;
-	RHI::ShaderResourceBinding* srb_fill_far = nullptr;
-	RHI::ShaderResourceBinding* srb_fill_zero = nullptr;
 	RHI::ShaderResourceBinding* srb_splat = nullptr;
 	RHI::ShaderResourceBinding* srb_blur_h = nullptr;
 	RHI::ShaderResourceBinding* srb_blur_v = nullptr;
 	RHI::ShaderResourceBinding* srb_display = nullptr;
 
-	// transient RDG textures (created in pass setup, realized per frame)
-	RenderGraphResource<RHI::TextureDesc, RHI::Texture>* res_depth_u = nullptr;
-	RenderGraphResource<RHI::TextureDesc, RHI::Texture>* res_thick_u = nullptr;
-	RenderGraphResource<RHI::TextureDesc, RHI::Texture>* res_f_a = nullptr;
-	RenderGraphResource<RHI::TextureDesc, RHI::Texture>* res_f_b = nullptr;
+	// screen-space ink textures. Retained (created once at init) on purpose:
+	// SRB descriptor sets are persistent and referenced by in-flight command
+	// buffers (ThreeThread mode keeps two frames in flight), so per-frame
+	// SetResource rebinds are unsafe. Bind once at init like Fluid2D.
+	RHI::Texture* ink_depth_u = nullptr; // R32U, view-depth bits (imageAtomicMin)
+	RHI::Texture* ink_thick_u = nullptr; // R32U, fixed-point thickness (imageAtomicAdd)
+	RHI::Texture* ink_f_a = nullptr;     // RGBA16F, blur ping (r=depth g=thickness)
+	RHI::Texture* ink_f_b = nullptr;     // RGBA16F, blur pong, sampled by display
 
 	// per-frame CPU state
 	UInt32 alive_count = 0;
@@ -239,15 +238,31 @@ void RenderTest::CreateFluidBuffers()
 	cell_particles = CreateStorageBuffer(GRID_CELLS * CELL_CAP);
 	fp_buf = CreateStorageBuffer(64);
 	fill_grid = CreateStorageBuffer(2);
-	fill_far = CreateStorageBuffer(2);
-	fill_zero = CreateStorageBuffer(2);
 
 	UInt32 grid_params[2] = { 0u, GRID_CELLS };
-	UInt32 far_params[2] = { FAR_BITS, IRES_W * IRES_H };
-	UInt32 zero_params[2] = { 0u, IRES_W * IRES_H };
 	UploadUInts(fill_grid, grid_params, 2);
-	UploadUInts(fill_far, far_params, 2);
-	UploadUInts(fill_zero, zero_params, 2);
+
+	// screen-space ink textures (retained, see member comment)
+	RHI::TextureDesc ink_uint_desc{};
+	ink_uint_desc.width = IRES_W;
+	ink_uint_desc.height = IRES_H;
+	ink_uint_desc.format = ENUM_TEXTURE_FORMAT::R32U;
+	ink_uint_desc.type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
+	ink_uint_desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_STORAGE;
+
+	// RGBA16F instead of RG32F: linear filtering of 32-bit float formats is
+	// not mandated by Vulkan, 16F is (display samples ink_f_b bilinearly)
+	RHI::TextureDesc ink_float_desc{};
+	ink_float_desc.width = IRES_W;
+	ink_float_desc.height = IRES_H;
+	ink_float_desc.format = ENUM_TEXTURE_FORMAT::RGBA16F;
+	ink_float_desc.type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
+	ink_float_desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_STORAGE | ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
+
+	ink_depth_u = RHICreateTexture(ink_uint_desc);
+	ink_thick_u = RHICreateTexture(ink_uint_desc);
+	ink_f_a = RHICreateTexture(ink_float_desc);
+	ink_f_b = RHICreateTexture(ink_float_desc);
 }
 
 void RenderTest::CreateFluidPipelines()
@@ -264,7 +279,6 @@ void RenderTest::CreateFluidPipelines()
 	Shader* cs_deltapos = LoadShaderFile(ENUM_SHADER_STAGE::Shader_Compute, "Shader/fluid3d_deltapos.comp.spv");
 	Shader* cs_velocity = LoadShaderFile(ENUM_SHADER_STAGE::Shader_Compute, "Shader/fluid3d_velocity.comp.spv");
 	Shader* cs_finalize = LoadShaderFile(ENUM_SHADER_STAGE::Shader_Compute, "Shader/fluid3d_finalize.comp.spv");
-	Shader* cs_fill_img = LoadShaderFile(ENUM_SHADER_STAGE::Shader_Compute, "Shader/fluid3d_fill_img.comp.spv");
 	Shader* cs_splat = LoadShaderFile(ENUM_SHADER_STAGE::Shader_Compute, "Shader/fluid3d_splat.comp.spv");
 	Shader* cs_blur_h = LoadShaderFile(ENUM_SHADER_STAGE::Shader_Compute, "Shader/fluid3d_blur_h.comp.spv");
 	Shader* cs_blur_v = LoadShaderFile(ENUM_SHADER_STAGE::Shader_Compute, "Shader/fluid3d_blur_v.comp.spv");
@@ -280,7 +294,6 @@ void RenderTest::CreateFluidPipelines()
 	pso_deltapos = CreateComputePSO(cs_deltapos);
 	pso_velocity = CreateComputePSO(cs_velocity);
 	pso_finalize = CreateComputePSO(cs_finalize);
-	pso_fill_img = CreateComputePSO(cs_fill_img);
 	pso_splat = CreateComputePSO(cs_splat);
 	pso_blur_h = CreateComputePSO(cs_blur_h);
 	pso_blur_v = CreateComputePSO(cs_blur_v);
@@ -305,7 +318,6 @@ void RenderTest::CreateFluidPipelines()
 	delete cs_deltapos;
 	delete cs_velocity;
 	delete cs_finalize;
-	delete cs_fill_img;
 	delete cs_splat;
 	delete cs_blur_h;
 	delete cs_blur_v;
@@ -390,25 +402,30 @@ void RenderTest::CreateFluidBindings()
 	srb_finalize->SetResource("vel", vel_buf);
 	srb_finalize->FlushDescriptorWrites();
 
-	// image bindings (transient textures) are set per frame in the execute lambdas
-	pso_fill_img->CreateShaderResourceBinding(srb_fill_far, false);
-	srb_fill_far->SetResource("fx", fill_far);
-	srb_fill_far->FlushDescriptorWrites();
-
-	pso_fill_img->CreateShaderResourceBinding(srb_fill_zero, false);
-	srb_fill_zero->SetResource("fx", fill_zero);
-	srb_fill_zero->FlushDescriptorWrites();
-
+	// image bindings: bound ONCE here. Descriptor sets are persistent and the
+	// previous frame's command buffer may still be executing (ThreeThread),
+	// so runtime SetResource would race with the GPU.
 	pso_splat->CreateShaderResourceBinding(srb_splat, false);
 	srb_splat->SetResource("fp", fp_buf);
 	srb_splat->SetResource("pos", pos_buf);
+	srb_splat->SetResource("uimg_depth", ink_depth_u);
+	srb_splat->SetResource("uimg_thick", ink_thick_u);
 	srb_splat->FlushDescriptorWrites();
 
 	pso_blur_h->CreateShaderResourceBinding(srb_blur_h, false);
+	srb_blur_h->SetResource("uimg_depth", ink_depth_u);
+	srb_blur_h->SetResource("uimg_thick", ink_thick_u);
+	srb_blur_h->SetResource("img_out", ink_f_a);
+	srb_blur_h->FlushDescriptorWrites();
+
 	pso_blur_v->CreateShaderResourceBinding(srb_blur_v, false);
+	srb_blur_v->SetResource("tex_in", ink_f_a);
+	srb_blur_v->SetResource("img_out", ink_f_b);
+	srb_blur_v->FlushDescriptorWrites();
 
 	pso_display->CreateShaderResourceBinding(srb_display, false);
 	srb_display->SetResource("fp", fp_buf);
+	srb_display->SetResource("ink_tex", ink_f_b);
 	srb_display->FlushDescriptorWrites();
 }
 
@@ -430,8 +447,11 @@ void RenderTest::RecordSim(RHI::CommandList* in_cmd_list)
 	// fp layout: [0]=dt [1]=alive [2]=emit_start [3]=emit_count [4-6]=nozzle
 	//            [7]=fire [8-10]=emit_vel [11]=seed [12-14]=interact [15]=interact_flag
 	//            [16-31]=view_proj (column major) [32-34]=aim [35]=time
+	// The sim runs SUBSTEPS times per frame with dt/SUBSTEPS: halving the step
+	// halves per-step compression, which PBF turns directly into velocity.
+	CONST Int SUBSTEPS = 2;
 	Float32 params[64] = {};
-	params[0] = cur_dt;
+	params[0] = cur_dt / (Float32)SUBSTEPS;
 	params[1] = (Float32)alive_count;
 	params[2] = (Float32)emit_start;
 	params[3] = (Float32)emit_count;
@@ -476,50 +496,50 @@ void RenderTest::RecordSim(RHI::CommandList* in_cmd_list)
 	{
 		return; // nothing to simulate yet
 	}
-	run_compute(pso_predict, srb_predict, g, 1, 1);
-	run_compute(pso_fill_buf, srb_fill_buf, g_grid, 1, 1);
-	run_compute(pso_grid_bin, srb_grid_bin, g, 1, 1);
-	run_compute(pso_neighbor, srb_neighbor, g, 1, 1);
-	for (Int i = 0; i < SOLVER_ITERS; ++i)
+	for (Int step = 0; step < SUBSTEPS; ++step)
 	{
-		run_compute(pso_lambda, srb_lambda[i & 1], g, 1, 1);
-		run_compute(pso_deltapos, srb_deltapos[i & 1], g, 1, 1);
+		run_compute(pso_predict, srb_predict, g, 1, 1);
+		run_compute(pso_fill_buf, srb_fill_buf, g_grid, 1, 1);
+		run_compute(pso_grid_bin, srb_grid_bin, g, 1, 1);
+		run_compute(pso_neighbor, srb_neighbor, g, 1, 1);
+		for (Int i = 0; i < SOLVER_ITERS; ++i)
+		{
+			run_compute(pso_lambda, srb_lambda[i & 1], g, 1, 1);
+			run_compute(pso_deltapos, srb_deltapos[i & 1], g, 1, 1);
+		}
+		run_compute(pso_velocity, srb_velocity, g, 1, 1);
+		run_compute(pso_finalize, srb_finalize, g, 1, 1);
 	}
-	run_compute(pso_velocity, srb_velocity, g, 1, 1);
-	run_compute(pso_finalize, srb_finalize, g, 1, 1);
+}
+
+void RenderTest::RecordClear(RHI::CommandList* in_cmd_list)
+{
+	// frame-head clear via vkCmdClearColorImage (ClearTexture transitions to
+	// CopyDest internally). VkClearColorValue is a union: the engine fills
+	// float32[], and R32_UINT images read the same bits as uint32 — so +inf
+	// (0x7F800000) is exactly the FAR sentinel imageAtomicMin expects.
+	CONST Float32 far_sentinel = std::numeric_limits<Float32>::infinity();
+	in_cmd_list->ClearTexture(ink_depth_u, { far_sentinel, 0.0f, 0.0f, 0.0f });
+	in_cmd_list->ClearTexture(ink_thick_u, { 0.0f, 0.0f, 0.0f, 0.0f });
 }
 
 void RenderTest::RecordSplat(RHI::CommandList* in_cmd_list)
 {
-	// transient textures are realized fresh each frame: rebind the images
-	RHI::Texture* depth_tex = res_depth_u->GetActual();
-	RHI::Texture* thick_tex = res_thick_u->GetActual();
-	srb_fill_far->SetResource("img", depth_tex);
-	srb_fill_zero->SetResource("img", thick_tex);
-	srb_splat->SetResource("uimg_depth", depth_tex);
-	srb_splat->SetResource("uimg_thick", thick_tex);
+	// CopyDest (after the clear pass) -> GENERAL for imageAtomic writes
+	in_cmd_list->TransitionTextureState(ink_depth_u, ENUM_RESOURCE_STATE::UnorderedAccess);
+	in_cmd_list->TransitionTextureState(ink_thick_u, ENUM_RESOURCE_STATE::UnorderedAccess);
 
-	auto run_compute = [&](RenderPipelineState* pso, ShaderResourceBinding* srb, UInt32 gx, UInt32 gy, UInt32 gz)
-	{
-		in_cmd_list->SetComputePipeline(pso);
-		in_cmd_list->SetShaderResourceBinding(srb);
-		in_cmd_list->Dispatch(gx, gy, gz);
-		in_cmd_list->ResourceBarrier(ENUM_RESOURCE_STATE::UnorderedAccess, ENUM_RESOURCE_STATE::ShaderResource);
-		in_cmd_list->ResourceBarrier(ENUM_RESOURCE_STATE::UnorderedAccess, ENUM_RESOURCE_STATE::UnorderedAccess);
-	};
-
-	CONST UInt32 gx = (IRES_W + 15) / 16;
-	CONST UInt32 gy = (IRES_H + 15) / 16;
-	run_compute(pso_fill_img, srb_fill_far, gx, gy, 1);
-	run_compute(pso_fill_img, srb_fill_zero, gx, gy, 1);
-	run_compute(pso_splat, srb_splat, ParticleGroupCount(), 1, 1);
+	in_cmd_list->SetComputePipeline(pso_splat);
+	in_cmd_list->SetShaderResourceBinding(srb_splat);
+	in_cmd_list->Dispatch(ParticleGroupCount(), 1, 1);
+	in_cmd_list->ResourceBarrier(ENUM_RESOURCE_STATE::UnorderedAccess, ENUM_RESOURCE_STATE::ShaderResource);
+	in_cmd_list->ResourceBarrier(ENUM_RESOURCE_STATE::UnorderedAccess, ENUM_RESOURCE_STATE::UnorderedAccess);
 }
 
 void RenderTest::RecordBlurH(RHI::CommandList* in_cmd_list)
 {
-	srb_blur_h->SetResource("uimg_depth", res_depth_u->GetActual());
-	srb_blur_h->SetResource("uimg_thick", res_thick_u->GetActual());
-	srb_blur_h->SetResource("img_out", res_f_a->GetActual());
+	// frame 0: Undefined -> GENERAL, afterwards SRV -> GENERAL (BlurV read it)
+	in_cmd_list->TransitionTextureState(ink_f_a, ENUM_RESOURCE_STATE::UnorderedAccess);
 
 	in_cmd_list->SetComputePipeline(pso_blur_h);
 	in_cmd_list->SetShaderResourceBinding(srb_blur_h);
@@ -530,9 +550,10 @@ void RenderTest::RecordBlurH(RHI::CommandList* in_cmd_list)
 
 void RenderTest::RecordBlurV(RHI::CommandList* in_cmd_list)
 {
-	// f_a is transitioned to ShaderResource by the RDG prologue (sampled via texelFetch)
-	srb_blur_v->SetResource("tex_in", res_f_a->GetActual());
-	srb_blur_v->SetResource("img_out", res_f_b->GetActual());
+	// f_a: GENERAL -> SHADER_READ_ONLY (sampled via texelFetch)
+	in_cmd_list->TransitionTextureState(ink_f_a, ENUM_RESOURCE_STATE::ShaderResource);
+	// f_b: frame 0 Undefined -> GENERAL, afterwards SRV -> GENERAL
+	in_cmd_list->TransitionTextureState(ink_f_b, ENUM_RESOURCE_STATE::UnorderedAccess);
 
 	in_cmd_list->SetComputePipeline(pso_blur_v);
 	in_cmd_list->SetShaderResourceBinding(srb_blur_v);
@@ -542,8 +563,9 @@ void RenderTest::RecordBlurV(RHI::CommandList* in_cmd_list)
 
 void RenderTest::RecordDisplay(RHI::CommandList* in_cmd_list)
 {
-	// f_b is transitioned to ShaderResource by the RDG prologue (hardware bilinear sampling)
-	srb_display->SetResource("ink_tex", res_f_b->GetActual());
+	// f_b: GENERAL -> SHADER_READ_ONLY for hardware bilinear sampling
+	// (SetRenderTarget flushes the pending barrier)
+	in_cmd_list->TransitionTextureState(ink_f_b, ENUM_RESOURCE_STATE::ShaderResource);
 
 	Vector<ClearValue> clear_values;
 	Vector<Texture*> rtvs = { window->GetViewport()->GetCurrentBackBufferRTV() };
@@ -595,21 +617,31 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 	CreateFluidPipelines();
 	CreateFluidBindings();
 
-	// Step 4: build the 5-pass graph. Transient screen-space textures flow
-	// Splat -> BlurH -> BlurV -> Display with RDG-generated layout transitions.
-	RHI::TextureDesc ink_uint_desc{};
-	ink_uint_desc.width = IRES_W;
-	ink_uint_desc.height = IRES_H;
-	ink_uint_desc.format = ENUM_TEXTURE_FORMAT::R32U;
-	ink_uint_desc.type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
-	ink_uint_desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_STORAGE;
+	// Step 4: build the 5-pass graph. The screen-space ink textures are
+	// retained (created in CreateFluidBuffers); layout transitions are issued
+	// manually inside the execute lambdas (RDG only auto-transitions transient
+	// resources, and per-frame SRB rebinding of transients is unsafe here).
+	auto* ink_depth_res = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
+		"InkDepthU", ink_depth_u->GetTextureDesc(), ink_depth_u);
+	auto* ink_thick_res = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
+		"InkThickU", ink_thick_u->GetTextureDesc(), ink_thick_u);
+	auto* ink_f_a_res = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
+		"InkBlurA", ink_f_a->GetTextureDesc(), ink_f_a);
+	auto* ink_f_b_res = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
+		"InkBlurB", ink_f_b->GetTextureDesc(), ink_f_b);
 
-	RHI::TextureDesc ink_float_desc{};
-	ink_float_desc.width = IRES_W;
-	ink_float_desc.height = IRES_H;
-	ink_float_desc.format = ENUM_TEXTURE_FORMAT::RG32F;
-	ink_float_desc.type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
-	ink_float_desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_STORAGE | ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
+	// frame-head clear pass: wipe the splat targets before anything else
+	auto* clear_pass = graph.AddRenderPass<Fluid3DData>("Fluid3DClearPass", &graph, cmd_list,
+	[&](Fluid3DData& data, RenderGraphPassBuilder& builder, CommandList* in_cmd_list)
+	{
+		builder.Write(ink_depth_res, ENUM_RESOURCE_STATE::CopyDest);
+		builder.Write(ink_thick_res, ENUM_RESOURCE_STATE::CopyDest);
+	},
+	[=](CONST Fluid3DData& data, CommandList* in_cmd_list)
+	{
+		this->RecordClear(in_cmd_list);
+	});
+	clear_pass->SetIsCullable(false);
 
 	auto* sim_pass = graph.AddRenderPass<Fluid3DData>("Fluid3DSimPass", &graph, cmd_list,
 	[&](Fluid3DData& data, RenderGraphPassBuilder& builder, CommandList* in_cmd_list)
@@ -622,48 +654,47 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 	});
 	sim_pass->SetIsCullable(false);
 
-	graph.AddRenderPass<Fluid3DData>("Fluid3DSplatPass", &graph, cmd_list,
+	auto* splat_pass = graph.AddRenderPass<Fluid3DData>("Fluid3DSplatPass", &graph, cmd_list,
 	[&](Fluid3DData& data, RenderGraphPassBuilder& builder, CommandList* in_cmd_list)
 	{
-		res_depth_u = builder.Create<RenderGraphResource<RHI::TextureDesc, RHI::Texture>>("InkDepthU", ink_uint_desc);
-		res_thick_u = builder.Create<RenderGraphResource<RHI::TextureDesc, RHI::Texture>>("InkThickU", ink_uint_desc);
-		builder.Write(res_depth_u, ENUM_RESOURCE_STATE::UnorderedAccess);
-		builder.Write(res_thick_u, ENUM_RESOURCE_STATE::UnorderedAccess);
+		builder.Write(ink_depth_res, ENUM_RESOURCE_STATE::UnorderedAccess);
+		builder.Write(ink_thick_res, ENUM_RESOURCE_STATE::UnorderedAccess);
 	},
 	[=](CONST Fluid3DData& data, CommandList* in_cmd_list)
 	{
 		this->RecordSplat(in_cmd_list);
 	});
+	splat_pass->SetIsCullable(false);
 
-	graph.AddRenderPass<Fluid3DData>("Fluid3DBlurHPass", &graph, cmd_list,
+	auto* blur_h_pass = graph.AddRenderPass<Fluid3DData>("Fluid3DBlurHPass", &graph, cmd_list,
 	[&](Fluid3DData& data, RenderGraphPassBuilder& builder, CommandList* in_cmd_list)
 	{
-		builder.Read(res_depth_u, ENUM_RESOURCE_STATE::UnorderedAccess); // imageLoad, stays GENERAL
-		builder.Read(res_thick_u, ENUM_RESOURCE_STATE::UnorderedAccess);
-		res_f_a = builder.Create<RenderGraphResource<RHI::TextureDesc, RHI::Texture>>("InkBlurA", ink_float_desc);
-		builder.Write(res_f_a, ENUM_RESOURCE_STATE::UnorderedAccess);
+		builder.Read(ink_depth_res, ENUM_RESOURCE_STATE::UnorderedAccess); // imageLoad, stays GENERAL
+		builder.Read(ink_thick_res, ENUM_RESOURCE_STATE::UnorderedAccess);
+		builder.Write(ink_f_a_res, ENUM_RESOURCE_STATE::UnorderedAccess);
 	},
 	[=](CONST Fluid3DData& data, CommandList* in_cmd_list)
 	{
 		this->RecordBlurH(in_cmd_list);
 	});
+	blur_h_pass->SetIsCullable(false);
 
-	graph.AddRenderPass<Fluid3DData>("Fluid3DBlurVPass", &graph, cmd_list,
+	auto* blur_v_pass = graph.AddRenderPass<Fluid3DData>("Fluid3DBlurVPass", &graph, cmd_list,
 	[&](Fluid3DData& data, RenderGraphPassBuilder& builder, CommandList* in_cmd_list)
 	{
-		builder.Read(res_f_a, ENUM_RESOURCE_STATE::ShaderResource); // sampled via texelFetch
-		res_f_b = builder.Create<RenderGraphResource<RHI::TextureDesc, RHI::Texture>>("InkBlurB", ink_float_desc);
-		builder.Write(res_f_b, ENUM_RESOURCE_STATE::UnorderedAccess);
+		builder.Read(ink_f_a_res, ENUM_RESOURCE_STATE::ShaderResource); // sampled via texelFetch
+		builder.Write(ink_f_b_res, ENUM_RESOURCE_STATE::UnorderedAccess);
 	},
 	[=](CONST Fluid3DData& data, CommandList* in_cmd_list)
 	{
 		this->RecordBlurV(in_cmd_list);
 	});
+	blur_v_pass->SetIsCullable(false);
 
-	graph.AddRenderPass<Fluid3DData>("Fluid3DDisplayPass", &graph, cmd_list,
+	auto* display_pass = graph.AddRenderPass<Fluid3DData>("Fluid3DDisplayPass", &graph, cmd_list,
 	[&](Fluid3DData& data, RenderGraphPassBuilder& builder, CommandList* in_cmd_list)
 	{
-		builder.Read(res_f_b, ENUM_RESOURCE_STATE::ShaderResource); // hardware bilinear in frag
+		builder.Read(ink_f_b_res, ENUM_RESOURCE_STATE::ShaderResource); // hardware bilinear in frag
 		builder.Write(rt_resource);
 		if (ds_resource) builder.Write(ds_resource);
 	},
@@ -671,6 +702,7 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 	{
 		this->RecordDisplay(in_cmd_list);
 	});
+	display_pass->SetIsCullable(false);
 
 	graph.Compile();
 }
@@ -682,7 +714,7 @@ void RenderTest::OnShutdown_Logic()
 	RHI::ShaderResourceBinding* srbs[] = {
 		srb_emit, srb_predict, srb_fill_buf, srb_grid_bin, srb_neighbor,
 		srb_lambda[0], srb_lambda[1], srb_deltapos[0], srb_deltapos[1],
-		srb_velocity, srb_finalize, srb_fill_far, srb_fill_zero,
+		srb_velocity, srb_finalize,
 		srb_splat, srb_blur_h, srb_blur_v, srb_display };
 	for (auto* srb : srbs)
 	{
@@ -691,10 +723,16 @@ void RenderTest::OnShutdown_Logic()
 
 	RHI::Buffer* buffers[] = {
 		pos_buf, vel_buf, xstar_a, xstar_b, lambda_buf, nbr_buf, nbr_count,
-		cell_count, cell_particles, fp_buf, fill_grid, fill_far, fill_zero };
+		cell_count, cell_particles, fp_buf, fill_grid };
 	for (auto* buf : buffers)
 	{
 		delete buf;
+	}
+
+	RHI::Texture* textures[] = { ink_depth_u, ink_thick_u, ink_f_a, ink_f_b };
+	for (auto* tex : textures)
+	{
+		delete tex;
 	}
 }
 

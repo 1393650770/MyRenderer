@@ -13,9 +13,17 @@ layout(set = 0, binding = 5) writeonly buffer xout_Buf { float d[]; } xout;
 const uint NBR_MAX = 48u;
 const float H = 0.1;
 const float MASS = 1.0;
-const float REST_DENSITY = 8000.0;
-const float S_CORR_K = 0.1;
+// Slightly above the exact lattice sum (~8080): settled water reads as
+// under-dense -> C clamps to 0 -> no perpetual micro-corrections at rest.
+const float REST_DENSITY = 8400.0;
+// Anti-clustering term must stay well below the lambda scale (~1e-4 here),
+// otherwise it acts like gas pressure and pushes the fluid against the walls.
+const float S_CORR_K = 0.001;
 const float S_CORR_DQ = 0.03; // 0.3 * H
+// Per-iteration correction cap. Without it a jet-impact cell (several times
+// rest density) computes ~0.3m corrections that v=(x*-x)/dt turns into
+// explosion velocities; capped, over-pressure relaxes over a few frames.
+const float DP_MAX = 0.1 * H;
 const float PI = 3.14159265;
 // pool interior (open-top box): the whole sim domain
 const vec3 BOX_MIN = vec3(-1.4, 0.0, -1.0);
@@ -59,6 +67,8 @@ void main()
 		dp += (lam_i + lam.d[j] + s_corr) * spiky_grad(r);
 	}
 	dp *= MASS / REST_DENSITY;
+	float dp_len = length(dp);
+	if (dp_len > DP_MAX) dp *= DP_MAX / dp_len;
 
 	vec3 x_new = clamp(xi + dp, BOX_MIN + vec3(COLL_R), BOX_MAX - vec3(COLL_R));
 	xout.d[i * 4u + 0u] = x_new.x;

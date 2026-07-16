@@ -14,9 +14,16 @@ layout(set = 0, binding = 5) writeonly buffer vel_Buf { float d[]; } vel;
 const uint NBR_MAX = 48u;
 const float H = 0.1;
 const float MASS = 1.0;
-const float REST_DENSITY = 8000.0;
-const float XSPH_C = 0.02;
+const float REST_DENSITY = 8400.0; // must match fluid3d_deltapos.comp
+const float XSPH_C = 0.08;         // strong viscosity: calm, ink-like water
 const float PI = 3.14159265;
+const float MAX_SPEED = 5.0;      // solver-correction spikes must not become velocity
+const float DAMPING = 0.997;      // mild global damping so sloshing settles
+const float FLOOR_FRICTION = 0.92;
+// pool interior, must match fluid3d_deltapos.comp
+const vec3 BOX_MIN = vec3(-1.4, 0.0, -1.0);
+const vec3 BOX_MAX = vec3(1.4, 1.9, 1.0);
+const float COLL_R = 0.025;
 
 float poly6(float r2)
 {
@@ -54,6 +61,24 @@ void main()
 		dv += (vj - vi) * poly6(dot(r, r));
 	}
 	vi += XSPH_C * (MASS / REST_DENSITY) * dv;
+
+	// boundary treatment: kill outward velocity + friction where clamped
+	float eps = COLL_R + 0.01;
+	if (xi.y <= BOX_MIN.y + eps)
+	{
+		if (vi.y < 0.0) vi.y = 0.0;
+		vi.x *= FLOOR_FRICTION;
+		vi.z *= FLOOR_FRICTION;
+	}
+	if (xi.x <= BOX_MIN.x + eps && vi.x < 0.0) vi.x = 0.0;
+	if (xi.x >= BOX_MAX.x - eps && vi.x > 0.0) vi.x = 0.0;
+	if (xi.z <= BOX_MIN.z + eps && vi.z < 0.0) vi.z = 0.0;
+	if (xi.z >= BOX_MAX.z - eps && vi.z > 0.0) vi.z = 0.0;
+
+	// clamp speed and damp
+	float speed = length(vi);
+	if (speed > MAX_SPEED) vi *= MAX_SPEED / speed;
+	vi *= DAMPING;
 
 	vel.d[i * 4u + 0u] = vi.x;
 	vel.d[i * 4u + 1u] = vi.y;
