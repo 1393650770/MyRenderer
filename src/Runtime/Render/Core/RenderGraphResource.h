@@ -189,7 +189,22 @@ protected:
 			auto& ptr = std::get<std::unique_ptr<actual_type>>(actual);
 			if (ptr)
 			{
-				PushDeferredDestruction(std::move(ptr));
+				// Textures/buffers go back to the cross-frame pool (the object
+				// stays alive, so in-flight command buffers remain valid and the
+				// next Realize reuses it instead of re-allocating every frame).
+				// Other resource types fall back to deferred destruction.
+				if constexpr (std::is_same<actual_type, MXRender::RHI::Texture>::value)
+				{
+					ReturnPooledTexture(std::move(ptr), description);
+				}
+				else if constexpr (std::is_same<actual_type, MXRender::RHI::Buffer>::value)
+				{
+					ReturnPooledBuffer(std::move(ptr), description);
+				}
+				else
+				{
+					PushDeferredDestruction(std::move(ptr));
+				}
 				ptr = nullptr;
 			}
 		}

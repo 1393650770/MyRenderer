@@ -107,7 +107,7 @@ private:
 public:
 
 protected:
-	friend class RenderGraphTaskBuilder;
+	friend class RenderGraphPassBuilder;
 
 	MYRENDERER_BEGIN_STRUCT(RenderGraphStep)
 	public:

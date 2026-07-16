@@ -1,0 +1,39 @@
+#version 460
+// Fluid3D: vertical blur (float in via texelFetch, float out via imageStore).
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0) uniform sampler2D tex_in;
+layout(set = 0, binding = 1, rg32f) uniform writeonly image2D img_out;
+
+const uint W = 640u;
+const uint H = 480u;
+const float FAR_SENTINEL = 1e30;
+const float DEPTH_EDGE = 0.15;
+const float G[5] = float[5](0.2270270, 0.1945946, 0.1216216, 0.0540541, 0.0162162);
+
+void main()
+{
+	ivec2 px = ivec2(gl_GlobalInvocationID.xy);
+	if (px.x >= int(W) || px.y >= int(H)) return;
+
+	vec2 c = texelFetch(tex_in, px, 0).rg;
+	float dc = c.r;
+	float depth_sum = dc * G[0];
+	float thick_sum = c.g * G[0];
+
+	for (int k = 1; k <= 4; ++k)
+	{
+		ivec2 pu = ivec2(px.x, clamp(px.y - k * 2, 0, int(H) - 1));
+		ivec2 pd = ivec2(px.x, clamp(px.y + k * 2, 0, int(H) - 1));
+		vec2 u = texelFetch(tex_in, pu, 0).rg;
+		vec2 d = texelFetch(tex_in, pd, 0).rg;
+		float du = u.r;
+		float dd = d.r;
+		if (dc >= FAR_SENTINEL || du >= FAR_SENTINEL || abs(du - dc) > DEPTH_EDGE) du = dc;
+		if (dc >= FAR_SENTINEL || dd >= FAR_SENTINEL || abs(dd - dc) > DEPTH_EDGE) dd = dc;
+		depth_sum += (du + dd) * G[k];
+		thick_sum += (u.g + d.g) * G[k];
+	}
+
+	imageStore(img_out, px, vec4(depth_sum, thick_sum, 0.0, 0.0));
+}

@@ -1,0 +1,13 @@
+#version 460
+// Fluid3D: generic uint buffer fill (used to clear the grid cell counters).
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) readonly buffer fx_Buf { uint value; uint count; } fx;
+layout(set = 0, binding = 1) writeonly buffer dst_Buf { uint d[]; } dst;
+
+void main()
+{
+	uint i = gl_GlobalInvocationID.x;
+	if (i >= fx.count) return;
+	dst.d[i] = fx.value;
+}

@@ -23,8 +23,13 @@ void PushDeferredDestruction(std::unique_ptr<MXRender::RHI::RenderResource>&& re
 void ProcessDeferredDestruction()
 {
 	g_deferred_frame_counter++;
-	UInt64 safe_boundary = (g_deferred_frame_counter > DEFERRED_FRAME_DEPTH)
-		? (g_deferred_frame_counter - DEFERRED_FRAME_DEPTH) : 0;
+	// Nothing is safe to destroy until DEFERRED_FRAME_DEPTH frames have passed.
+	// Without this early-out the clamp below made frame-0 pushes (frame_number==0)
+	// eligible immediately (0 <= 0), destroying resources referenced by a command
+	// buffer that had not even been submitted yet.
+	if (g_deferred_frame_counter <= DEFERRED_FRAME_DEPTH)
+		return;
+	UInt64 safe_boundary = g_deferred_frame_counter - DEFERRED_FRAME_DEPTH;
 
 	for (Int i = (Int)g_deferred_queue.size() - 1; i >= 0; --i)
 	{

@@ -233,6 +233,16 @@ void VK_ShaderResourceBinding::SetResource(CONST String& name, CONST RenderResou
 			break;
 		}
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+		{
+			// Storage image (GLSL image2D/uimage2D): bound in GENERAL layout, no sampler.
+			VkDescriptorImageInfo image_info{};
+			image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+			image_info.imageView = STATIC_CAST(resource, CONST VK_Texture)->GetImageView();
+			image_info.sampler = VK_NULL_HANDLE;
+			pending_image_infos.push_back(image_info);
+			descriptor_write.pImageInfo = &pending_image_infos.back();
+			break;
+		}
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 		default:
 			CHECK_WITH_LOG(true, "RHI Error : invalid descriptor type to SetResource");

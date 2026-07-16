@@ -360,30 +360,35 @@ void RenderGraph::Compile()
 		for (auto* r : step.pass->read_resources) {
 			auto* res = const_cast<RenderGraphResourceBase*>(r);
 			if (!res->GetIsTransient()) continue;
+			// Use the access entry declared by THIS pass (not access_sequence.back(),
+			// which is the state of the LAST pass touching the resource and would
+			// transition too early when several passes need different states).
+			PassResourceAccess* cur_access = nullptr;
 			for (auto& acc : res->access_sequence)
-				if (acc.pass == step.pass) { acc.modification_stamp = global_stamp; break; }
-			if (!res->access_sequence.empty() && res->tracked_state != res->access_sequence.back().required_state) {
+				if (acc.pass == step.pass) { acc.modification_stamp = global_stamp; cur_access = &acc; break; }
+			if (cur_access && res->tracked_state != cur_access->required_state) {
 				RHIBarrierDesc bd; bd.resource = res;
 				bd.src_state = res->tracked_state;
-				bd.dst_state = res->access_sequence.back().required_state;
+				bd.dst_state = cur_access->required_state;
 				bd.is_prologue = true;
 				step.prologue_barriers.push_back(bd);
-				res->tracked_state = res->access_sequence.back().required_state;
+				res->tracked_state = cur_access->required_state;
 			}
 		}
 		for (auto* r : step.pass->write_resources) {
 			auto* res = const_cast<RenderGraphResourceBase*>(r);
 			if (!res->GetIsTransient()) continue;
 			global_stamp++;
+			PassResourceAccess* cur_access = nullptr;
 			for (auto& acc : res->access_sequence)
-				if (acc.pass == step.pass) { acc.modification_stamp = global_stamp; acc.is_write = true; break; }
-			if (!res->access_sequence.empty() && res->tracked_state != res->access_sequence.back().required_state) {
+				if (acc.pass == step.pass) { acc.modification_stamp = global_stamp; acc.is_write = true; cur_access = &acc; break; }
+			if (cur_access && res->tracked_state != cur_access->required_state) {
 				RHIBarrierDesc bd; bd.resource = res;
 				bd.src_state = res->tracked_state;
-				bd.dst_state = res->access_sequence.back().required_state;
+				bd.dst_state = cur_access->required_state;
 				bd.is_prologue = true;
 				step.prologue_barriers.push_back(bd);
-				res->tracked_state = res->access_sequence.back().required_state;
+				res->tracked_state = cur_access->required_state;
 			}
 		}
 		for (auto* r : step.pass->create_resources) {

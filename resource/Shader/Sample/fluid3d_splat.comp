@@ -1,0 +1,56 @@
+#version 460
+// Fluid3D: splat particles as spheres into screen-space depth/thickness images.
+// Depth uses atomicMin on the float bit pattern (positive floats keep order),
+// thickness accumulates the sphere chord length in fixed point.
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) readonly buffer fp_Buf { float d[]; } fp;
+layout(set = 0, binding = 1) readonly buffer pos_Buf { float d[]; } pos;
+layout(set = 0, binding = 2, r32ui) uniform uimage2D uimg_depth;
+layout(set = 0, binding = 3, r32ui) uniform uimage2D uimg_thick;
+
+const uint W = 640u;
+const uint H = 480u;
+const float DRAW_R = 0.045;
+const float THICK_SCALE = 1024.0;
+const int MAX_PX_R = 16;
+const float P11 = 2.4142135; // 1/tan(fovY/2), fovY = 45 deg
+
+void main()
+{
+	uint i = gl_GlobalInvocationID.x;
+	if (i >= uint(fp.d[1])) return;
+
+	vec3 x = vec3(pos.d[i * 4u + 0u], pos.d[i * 4u + 1u], pos.d[i * 4u + 2u]);
+	mat4 vp = mat4(
+		vec4(fp.d[16], fp.d[17], fp.d[18], fp.d[19]),
+		vec4(fp.d[20], fp.d[21], fp.d[22], fp.d[23]),
+		vec4(fp.d[24], fp.d[25], fp.d[26], fp.d[27]),
+		vec4(fp.d[28], fp.d[29], fp.d[30], fp.d[31]));
+	vec4 clip = vp * vec4(x, 1.0);
+	if (clip.w < 0.1) return;
+
+	vec2 ndc = clip.xy / clip.w;
+	// screen convention: px = ((ndc.x*0.5+0.5)*W, (0.5-0.5*ndc.y)*H), y down
+	vec2 center = vec2((ndc.x * 0.5 + 0.5) * float(W), (0.5 - 0.5 * ndc.y) * float(H));
+	float view_depth = clip.w;
+
+	float pr = clamp(DRAW_R * 0.5 * float(H) * P11 / view_depth, 1.0, float(MAX_PX_R));
+	int ipr = int(ceil(pr));
+	ivec2 ic = ivec2(center);
+
+	for (int dy = -ipr; dy <= ipr; ++dy)
+	for (int dx = -ipr; dx <= ipr; ++dx)
+	{
+		ivec2 p = ic + ivec2(dx, dy);
+		if (p.x < 0 || p.y < 0 || p.x >= int(W) || p.y >= int(H)) continue;
+		vec2 off = vec2(p) + vec2(0.5) - center;
+		float d2 = dot(off, off);
+		if (d2 > pr * pr) continue;
+		float nd = sqrt(1.0 - d2 / (pr * pr)); // sphere profile 0..1
+		float depth = view_depth - DRAW_R * nd;
+		imageAtomicMin(uimg_depth, p, floatBitsToUint(depth));
+		uint chord = uint(2.0 * DRAW_R * nd * THICK_SCALE);
+		imageAtomicAdd(uimg_thick, p, chord);
+	}
+}

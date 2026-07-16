@@ -503,6 +503,10 @@ namespace MXRender
 		{
 			usege_flags = usege_flags | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 		}
+		if (EnumHasAnyFlags(usage_type, ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_STORAGE))
+		{
+			usege_flags = usege_flags | VK_IMAGE_USAGE_STORAGE_BIT;
+		}
 		return usege_flags;
 		for (Int i = 0; i < 32; i++)
 		{
@@ -555,6 +559,11 @@ namespace MXRender
             return VK_IMAGE_TYPE_2D;
 			break;
 		}
+		case ENUM_TEXTURE_TYPE::ENUM_TYPE_3D:
+		{
+			return VK_IMAGE_TYPE_3D;
+			break;
+		}
         default:
             return VK_IMAGE_TYPE_MAX_ENUM;
             break;
@@ -595,6 +604,16 @@ namespace MXRender
 		case ENUM_TEXTURE_FORMAT::R16F:
 		{
 			vulkan_image_format = VK_FORMAT_R16_SFLOAT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::R32U:
+		{
+			vulkan_image_format = VK_FORMAT_R32_UINT;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::R32I:
+		{
+			vulkan_image_format = VK_FORMAT_R32_SINT;
 			break;
 		}
 		case ENUM_TEXTURE_FORMAT::R8:

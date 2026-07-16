@@ -1,0 +1,68 @@
+#version 460
+// Fluid3D: PBF position correction + artificial pressure + box collision.
+// Reads one x* buffer, writes the other (ping-pong, no torn reads).
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) readonly buffer fp_Buf { float d[]; } fp;
+layout(set = 0, binding = 1) readonly buffer xin_Buf { float d[]; } xin;
+layout(set = 0, binding = 2) readonly buffer lam_Buf { float d[]; } lam;
+layout(set = 0, binding = 3) readonly buffer nbr_Buf { uint d[]; } nbr;
+layout(set = 0, binding = 4) readonly buffer nc_Buf { uint d[]; } nc;
+layout(set = 0, binding = 5) writeonly buffer xout_Buf { float d[]; } xout;
+
+const uint NBR_MAX = 48u;
+const float H = 0.1;
+const float MASS = 1.0;
+const float REST_DENSITY = 8000.0;
+const float S_CORR_K = 0.1;
+const float S_CORR_DQ = 0.03; // 0.3 * H
+const float PI = 3.14159265;
+// pool interior (open-top box): the whole sim domain
+const vec3 BOX_MIN = vec3(-1.4, 0.0, -1.0);
+const vec3 BOX_MAX = vec3(1.4, 1.9, 1.0);
+const float COLL_R = 0.025;
+
+float poly6(float r2)
+{
+	float h2 = H * H;
+	if (r2 >= h2) return 0.0;
+	float t = h2 - r2;
+	return (315.0 / (64.0 * PI * pow(H, 9.0))) * t * t * t;
+}
+
+vec3 spiky_grad(vec3 r)
+{
+	float len = length(r);
+	if (len <= 1e-6 || len >= H) return vec3(0.0);
+	float t = H - len;
+	return (-45.0 / (PI * pow(H, 6.0))) * t * t * (r / len);
+}
+
+void main()
+{
+	uint i = gl_GlobalInvocationID.x;
+	if (i >= uint(fp.d[1])) return;
+
+	vec3 xi = vec3(xin.d[i * 4u + 0u], xin.d[i * 4u + 1u], xin.d[i * 4u + 2u]);
+	float lam_i = lam.d[i];
+	uint count = min(nc.d[i], NBR_MAX);
+
+	float w_dq = poly6(S_CORR_DQ * S_CORR_DQ);
+	vec3 dp = vec3(0.0);
+	for (uint k = 0u; k < count; ++k)
+	{
+		uint j = nbr.d[i * NBR_MAX + k];
+		vec3 xj = vec3(xin.d[j * 4u + 0u], xin.d[j * 4u + 1u], xin.d[j * 4u + 2u]);
+		vec3 r = xi - xj;
+		float w = poly6(dot(r, r)) / max(w_dq, 1e-12);
+		float s_corr = -S_CORR_K * w * w * w * w; // (W/W(dq))^4
+		dp += (lam_i + lam.d[j] + s_corr) * spiky_grad(r);
+	}
+	dp *= MASS / REST_DENSITY;
+
+	vec3 x_new = clamp(xi + dp, BOX_MIN + vec3(COLL_R), BOX_MAX - vec3(COLL_R));
+	xout.d[i * 4u + 0u] = x_new.x;
+	xout.d[i * 4u + 1u] = x_new.y;
+	xout.d[i * 4u + 2u] = x_new.z;
+	xout.d[i * 4u + 3u] = 0.0;
+}

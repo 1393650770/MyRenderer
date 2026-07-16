@@ -1,0 +1,61 @@
+#version 460
+// Fluid3D: PBF lambda (density constraint multiplier), Macklin & Muller 2013.
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) readonly buffer fp_Buf { float d[]; } fp;
+layout(set = 0, binding = 1) readonly buffer xin_Buf { float d[]; } xin;
+layout(set = 0, binding = 2) readonly buffer nbr_Buf { uint d[]; } nbr;
+layout(set = 0, binding = 3) readonly buffer nc_Buf { uint d[]; } nc;
+layout(set = 0, binding = 4) writeonly buffer lam_Buf { float d[]; } lam;
+
+const uint NBR_MAX = 48u;
+const float H = 0.1;
+const float MASS = 1.0;
+const float REST_DENSITY = 8000.0;
+const float EPS_CFM = 100.0;
+const float PI = 3.14159265;
+
+float poly6(float r2)
+{
+	float h2 = H * H;
+	if (r2 >= h2) return 0.0;
+	float t = h2 - r2;
+	return (315.0 / (64.0 * PI * pow(H, 9.0))) * t * t * t;
+}
+
+vec3 spiky_grad(vec3 r)
+{
+	float len = length(r);
+	if (len <= 1e-6 || len >= H) return vec3(0.0);
+	float t = H - len;
+	return (-45.0 / (PI * pow(H, 6.0))) * t * t * (r / len);
+}
+
+void main()
+{
+	uint i = gl_GlobalInvocationID.x;
+	if (i >= uint(fp.d[1])) return;
+
+	vec3 xi = vec3(xin.d[i * 4u + 0u], xin.d[i * 4u + 1u], xin.d[i * 4u + 2u]);
+	uint count = min(nc.d[i], NBR_MAX);
+
+	float density = MASS * poly6(0.0); // self contribution
+	vec3 grad_i = vec3(0.0);
+	float sum_grad2 = 0.0;
+
+	for (uint k = 0u; k < count; ++k)
+	{
+		uint j = nbr.d[i * NBR_MAX + k];
+		vec3 xj = vec3(xin.d[j * 4u + 0u], xin.d[j * 4u + 1u], xin.d[j * 4u + 2u]);
+		vec3 r = xi - xj;
+		density += MASS * poly6(dot(r, r));
+		vec3 g = spiky_grad(r) * (MASS / REST_DENSITY);
+		grad_i += g;
+		sum_grad2 += dot(g, g);
+	}
+	sum_grad2 += dot(grad_i, grad_i);
+
+	float C = density / REST_DENSITY - 1.0;
+	if (C < 0.0) C = 0.0; // no attraction from under-filled neighborhoods
+	lam.d[i] = -C / (sum_grad2 + EPS_CFM);
+}

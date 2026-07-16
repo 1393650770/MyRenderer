@@ -143,13 +143,14 @@ VK_PipelineState::VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipel
 		color_blend_attachment_state.resize(desc.blend_state.render_targets.size());
 		for(UINT i = 0; i < color_blend_attachment_state.size(); i++)
 		{
-			color_blend_attachment_state[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+			// ENUM_COLOR_MASK bits match VkColorComponentFlagBits (R=1,G=2,B=4,A=8) one-to-one.
+			color_blend_attachment_state[i].colorWriteMask = (VkColorComponentFlags)desc.blend_state.render_targets[i].write_mask;
 			color_blend_attachment_state[i].blendEnable = desc.blend_state.render_targets[i].blend_enable? VK_TRUE: VK_FALSE;
 			color_blend_attachment_state[i].srcColorBlendFactor = VK_Utils::Translate_BlendFactor_To_Vulkan(desc.blend_state.render_targets[i].src_color);
 			color_blend_attachment_state[i].dstColorBlendFactor = VK_Utils::Translate_BlendFactor_To_Vulkan(desc.blend_state.render_targets[i].dst_color);
 			color_blend_attachment_state[i].colorBlendOp = VK_Utils::Translate_BlendOp_To_Vulkan(desc.blend_state.render_targets[i].op_color);
 			color_blend_attachment_state[i].srcAlphaBlendFactor = VK_Utils::Translate_BlendFactor_To_Vulkan(desc.blend_state.render_targets[i].src_alpha);
-			color_blend_attachment_state[i].dstAlphaBlendFactor = VK_Utils::Translate_BlendFactor_To_Vulkan(desc.blend_state.render_targets[i].src_alpha);
+			color_blend_attachment_state[i].dstAlphaBlendFactor = VK_Utils::Translate_BlendFactor_To_Vulkan(desc.blend_state.render_targets[i].dst_alpha);
 			color_blend_attachment_state[i].alphaBlendOp = VK_Utils::Translate_BlendOp_To_Vulkan(desc.blend_state.render_targets[i].op_alpha);
 		}
 

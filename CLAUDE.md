@@ -1,4 +1,6 @@
-# MyRenderer — Project Documentation
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Overview
 
@@ -26,6 +28,9 @@ src/
         Services/       # Serializer, Builder, Validator, PassRegistry, EventBus
         Commands/       # Undo/Redo command system
         Templates/      # Pass template library
+  Sample/               # RendererSample-* demos (one dir per sample, see Samples section)
+  Reflect/meta_parser/  # MetaParser codegen tool (libclang)
+  _Generated/           # Generated reflection/serializer code (do not hand-edit)
 ```
 
 ## Layer Dependency (Strict One-Way)
@@ -42,7 +47,11 @@ Editor.exe  ──depends──>  Runtime.lib  ──includes──>  ThirdParty
 ## Build System
 
 - **xmake** (v2.9.2+), generate VS solution: `gen_vs_sln.bat`
-- Target: `xmake build Editor`
+- Build: `xmake build Editor` (or any `RendererSample-*` target)
+- Run: `xmake run <target>` — required; launching the exe directly fails to find glfw3.dll (shared libs live in the xmake package cache and `xmake run` injects the PATH). Working directory must be the output dir (`build/windows/x64/<mode>/`) because shaders load via relative `Shader/...` paths — `xmake run` handles this.
+- `Runtime` is a static lib in debug, shared lib in release/releasedbg
+- Pre-build (`CompileResource` target) runs automatically: ① MetaParser (libclang + mustache) generates reflection/serializer code into `src/_Generated/` ② `glslangValidator` compiles `resource/Shader/**` to `.spv` ③ `flatc` generates flatbuffers C++
+- Post-build `MoveResource` copies `.spv` (flattened!), textures, and dlls into the output dir
 - Key dependencies: vulkansdk, glfw, glm, imgui (docking), nlohmann_json, flatbuffers, boost, assimp
 - C++20, GBK encoding for .cpp/.h files
 
@@ -52,7 +61,32 @@ Editor.exe  ──depends──>  Runtime.lib  ──includes──>  ThirdParty
 - Type aliases: `String`, `Vector`, `Map`, `Bool`, `UInt32`, `Int`, etc. (from ConstDefine.h)
 - Namespaces: `MXRender::Render`, `MXRender::RHI`, `MXRender::UI`, `MXRender::RHI::Vulkan`
 - `#pragma region METHOD` / `#pragma region MEMBER` for class organization
-- GBK encoding for all .cpp/.h files
+- GBK encoding for all .cpp/.h files (keep comments ASCII to avoid transcoding issues)
+- **`CHECK(flag)` / `CHECK_WITH_LOG(flag, msg)` fire when the condition is TRUE** — inverted vs standard assert (e.g. `CHECK_WITH_LOG(vkCreate...(...) != VK_SUCCESS, "...")`)
+- Detailed conventions (namespace layout, macro system, file templates) live in the `myrenderer-conventions` skill
+
+## Samples (src/Sample/)
+
+Each sample is a single self-contained cpp with `main()`: a class deriving `MXRender::RenderInterface` overriding `OnInit_Logic / OnShutdown_Logic / OnUpdate / OnRender`, driven by `Window::Run`. `2-Texture/Texture.cpp` is the minimal RenderGraph template; `6-NeuralNetwork/` is the compute-shader reference (`ShaderHelper.h` for compute PSO creation); `7-Fluid2D/` combines both (compute sim + fullscreen draw in one RDG pass); `8-Fluid3D/` is the multi-pass RDG reference (PBF particle sim + storage-image splatting + transient textures flowing across 5 passes with RDG auto-barriers, glm camera + ray-picking).
+
+Adding a sample:
+1. New `src/Sample/X-Name/Name.cpp` (with `main`)
+2. Copy the 5-line target block in `xmake.lua` (`CommonProjectSetting()` + `add_files` + `set_group("Sample")` + `after_build(MoveResource)`)
+3. Shaders go in `resource/Shader/Sample/` — compiled and copied automatically, but the copy is **flattened** into `Shader/`, so prefix filenames uniquely (e.g. `fluid_*`); load at runtime as `"Shader/<name>.spv"`
+
+There is no input system: poll GLFW directly (`glfwGetMouseButton` / `glfwGetCursorPos` on `window->GetWindow()`) in `OnUpdate`. `Window.h` pulls in windows.h via GLFW/Vulkan — its min/max macros break `std::min/max`.
+
+## RHI Gotchas (verified in practice)
+
+- **Storage images (UAV textures) are supported**: create with `ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_STORAGE` (add `ENUM_TYPE_SHADERRESOURCE` to also sample it), bind GLSL `image2D/uimage2D` via `SetResource` (descriptor written with GENERAL layout). `imageAtomicMin/Add` need format `R32U` (`r32ui` in GLSL). Keep storage textures `mip_level = 1`. Transition with `TransitionTextureState(tex, UnorderedAccess)` before compute writes and `ShaderResource` before sampling (RDG does this automatically for transient resources declared with `Read/Write(res, state)`).
+- **Compute PSOs**: use `RenderGraphiPipelineStateDesc` with only `shaders[Shader_Compute]` filled + `RHICreateRenderPipelineState` (the separate `RHICreateComputePipelineState`/`ComputePipelineState` path has no CommandList bind entry point).
+- **PSO cache hashes shader pointers**: create ALL shaders first, then all PSOs, then delete the shaders — interleaving create/delete can recycle a heap address and silently return the wrong cached PSO.
+- **SRB binding is by GLSL instance name** (spirv_reflect); unknown names throw. `CreateShaderResourceBinding(srb, true)` is static/bind-once semantics (later `SetResource` silently ignored) — use `false` and bind once at init for ping-pong setups. SRBs referencing transient RDG textures must re-`SetResource` each frame in the execute lambda (`resource->GetActual()` may change).
+- **Shader param buffers must be `readonly buffer` (storage), not `uniform` blocks** — `ENUM_BUFFER_TYPE::Storage` buffers lack UNIFORM usage.
+- **Barriers**: use `cmd->ResourceBarrier(src_state, dst_state)`; `MemoryBarrier(ENUM_SHADER_STAGE, ...)` misuses shader-stage bits as pipeline-stage bits (known bug). RDG auto-barriers only apply to **transient** resources at pass boundaries (per-pass state from `Read/Write(res, state)`) — retained resources, buffers, and intra-pass hazards need manual barriers. Same-state UAV→UAV across passes emits nothing (`TransitionTextureState` early-outs on equal state) — use the Fluid2D double `ResourceBarrier` after each Dispatch.
+- **Frame sync**: default thread mode is `Single`, single frame in flight (`CommandList::Begin` waits the previous fence), so per-frame `RHIMapBuffer`/`RHIUnmapBuffer` inside an execute lambda is safe — but upload each buffer at most once per frame.
+- Inside one RDG pass execute lambda, "N × Dispatch then SetRenderTarget + Draw" is valid: Dispatch auto-ends the render pass and both Dispatch and SetRenderTarget flush pending barriers first.
+- Formats missing from `Translate_Texture_Format_To_Vulkan` throw at texture creation; `R32U/R32I` and 3D image type were added 2026-07, but many formats (R16 family int, ASTC, etc.) still fall through. `GetTextureFormatAttribs` has its own separate table (`RenderTexture.cpp`) — a format used with `TransitionTextureState` must exist in BOTH.
 
 ## RenderGraph Architecture
 
@@ -61,6 +95,7 @@ Editor.exe  ──depends──>  Runtime.lib  ──includes──>  ThirdParty
 - **RenderGraph**: Pass/resource container, Compile() → Execute() pipeline
   - `Compile()`: Reference counting → Culling → Topo sort → Timeline → Barrier generation → Aliasing
   - `Execute()`: Realize → Prologue barriers → Pass execute → Epilogue barriers → Derealize
+  - Transient resources (`builder.Create` + `Read/Write(res, state)`): realized from the cross-frame pool (`VK_ResourcePool`), returned to it on Derealize; passes with no declared resources have ref_count 0 and MUST call `SetIsCullable(false)` or they are dropped from the timeline. `8-Fluid3D` is the working example.
 - **RenderGraphPass<T>**: Template pass with typed data, setup lambda (declares deps), execute lambda (records commands)
 - **RenderGraphResource<Desc, Actual>**: Template resource with descriptor and actual RHI object
 - **RenderGraphDefinition**: Pure-data IR for serialization (JSON)

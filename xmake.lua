@@ -317,3 +317,10 @@ target("RendererSample-Fluid2D")
     set_group("Sample")
     after_build(MoveResource)
 
+--   3D Fluid Simulation Demo (PBF particles + screen-space ink-wash rendering)
+target("RendererSample-Fluid3D")
+    CommonProjectSetting()
+    add_files("src/Sample/8-Fluid3D/Fluid3D.cpp")
+    set_group("Sample")
+    after_build(MoveResource)
+
