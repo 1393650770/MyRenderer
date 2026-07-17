@@ -11,7 +11,10 @@ layout(set = 0, binding = 2) writeonly buffer fslots_Buf { uint d[]; } fslots;
 layout(set = 0, binding = 3) buffer fc_Buf { uint d[]; } fc; // [0]=push [1]=pop
 
 const uint MAX_PARTICLES = 786432u;
-const uint CELL_CAP = 16u;
+// Pure memory protection: rest packing is 8/cell, so 32 never triggers for
+// calm or normally-waving water - only extreme jet-impact packing. Culling
+// destroys water volume permanently, so it must stay rare.
+const uint CELL_CAP = 32u;
 
 void main()
 {

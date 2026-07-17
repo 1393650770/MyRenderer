@@ -8,6 +8,8 @@ layout(set = 0, binding = 0) writeonly buffer pos_Buf { float d[]; } pos;
 layout(set = 0, binding = 1) writeonly buffer vel_Buf { float d[]; } vel;
 layout(set = 0, binding = 2) writeonly buffer fslots_Buf { uint d[]; } fslots;
 layout(set = 0, binding = 3) writeonly buffer fc_Buf { uint d[]; } fc;
+layout(set = 0, binding = 4) writeonly buffer pa_Buf { float d[]; } pa;
+layout(set = 0, binding = 5) writeonly buffer pb_Buf { float d[]; } pb;
 
 const uint MAX_PARTICLES = 786432u;
 // calm sea lattice: 0.05 spacing, 120 x 80 per layer, 20 layers -> y in [0, 1.0]
@@ -15,6 +17,8 @@ const uint FILL_X = 120u;
 const uint FILL_Z = 80u;
 const uint FILL_LAYERS = 20u;
 const uint FILL_COUNT = FILL_X * FILL_Z * FILL_LAYERS; // 192000
+const uvec3 GRID = uvec3(60u, 30u, 40u);
+const uint NUM_CELLS = GRID.x * GRID.y * GRID.z;
 
 float hash1(uint x)
 {
@@ -49,6 +53,15 @@ void main()
 	vel.d[i * 4u + 1u] = 0.0;
 	vel.d[i * 4u + 2u] = 0.0;
 	vel.d[i * 4u + 3u] = 0.0;
+
+	// pressure buffers start at zero; the cross-frame warm start in the
+	// divergence/jacobi chain builds the hydrostatic gradient within ~0.5s
+	// and keeps it (a nonzero seed here is dt-dependent and can overshoot)
+	if (i < NUM_CELLS)
+	{
+		pa.d[i] = 0.0;
+		pb.d[i] = 0.0;
+	}
 
 	if (i == 0u)
 	{

@@ -177,10 +177,12 @@ void main()
 
 	vec3 col = bg_color(ro, rd);
 
-	vec2 dt_c = texture(ink_tex, inUV).rg;
-	float depth = dt_c.r;
-	float thick = dt_c.g;
+	vec3 dtf = texture(ink_tex, inUV).rgb;
+	float depth = dtf.r;
+	float thick = dtf.g;
+	float foam = 1.0 - exp(-0.6 * dtf.b);
 	float mask = depth < FAR_SENTINEL ? smoothstep(0.02, 0.30, thick) : 0.0;
+	float foam_mask = foam * mask;
 
 	if (mask > 0.001)
 	{
@@ -211,8 +213,12 @@ void main()
 		vec3 hlf = normalize(SUN_DIR + v);
 		float spec = pow(max(dot(n, hlf), 0.0), 250.0) * 1.5;
 
+		fresnel *= (1.0 - 0.7 * foam);   // whitewater damps reflection
+		spec *= (1.0 - foam);            // whitewater hides sun glint
 		vec3 water = mix(refr, refl, fresnel) + vec3(spec);
 		col = mix(col, water, mask);
+		// foam overlay: bright white where the blur chain accumulated density
+		col = mix(col, vec3(0.93, 0.95, 0.96), foam_mask);
 	}
 
 	// water gun indicator: nozzle dot + short stroke toward the aim ring

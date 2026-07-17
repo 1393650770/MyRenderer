@@ -48,7 +48,7 @@ static CONST Float32 BAY_X = 3.0f;
 static CONST Float32 BAY_Z = 2.0f;
 static CONST Float32 WATER_REF_Y = 1.0f;       // aim / interaction reference plane
 static CONST Float32 GRAVITY = 9.8f;
-static CONST Float32 JET_SPEED = 5.0f;
+static CONST Float32 JET_SPEED = 3.0f;
 // screen-space water buffers (fixed internal resolution, 4:3 like the window)
 static CONST UInt32 IRES_W = 640;
 static CONST UInt32 IRES_H = 480;
@@ -219,7 +219,8 @@ protected:
 	// retained screen-space textures (created at init, see SRB comment)
 	RHI::Texture* ink_depth_u = nullptr; // R32U, view-depth bits (imageAtomicMin)
 	RHI::Texture* ink_thick_u = nullptr; // R32U, fixed-point thickness (imageAtomicAdd)
-	RHI::Texture* ink_f_a = nullptr;     // RGBA16F, blur ping (r=depth g=thickness)
+	RHI::Texture* ink_foam_u = nullptr;  // R32U, fixed-point foam (imageAtomicAdd)
+	RHI::Texture* ink_f_a = nullptr;     // RGBA16F, blur ping (r=depth g=thickness b=foam)
 	RHI::Texture* ink_f_b = nullptr;     // RGBA16F, blur pong, sampled by display
 
 	// per-frame CPU state
@@ -286,6 +287,7 @@ void RenderTest::CreateFluidBuffers()
 
 	ink_depth_u = RHICreateTexture(ink_uint_desc);
 	ink_thick_u = RHICreateTexture(ink_uint_desc);
+	ink_foam_u = RHICreateTexture(ink_uint_desc);
 	ink_f_a = RHICreateTexture(ink_float_desc);
 	ink_f_b = RHICreateTexture(ink_float_desc);
 
@@ -366,6 +368,8 @@ void RenderTest::CreateFluidBindings()
 	srb_prefill->SetResource("vel", vel_buf);
 	srb_prefill->SetResource("fslots", free_slots);
 	srb_prefill->SetResource("fc", free_cnt);
+	srb_prefill->SetResource("pa", p_a);
+	srb_prefill->SetResource("pb", p_b);
 	srb_prefill->FlushDescriptorWrites();
 
 	pso_emit_prep->CreateShaderResourceBinding(srb_emit_prep, false);
@@ -427,7 +431,6 @@ void RenderTest::CreateFluidBindings()
 	srb_divergence->SetResource("gv", grid_v);
 	srb_divergence->SetResource("gw", grid_w);
 	srb_divergence->SetResource("dv", div_buf);
-	srb_divergence->SetResource("pa", p_a);
 	srb_divergence->FlushDescriptorWrites();
 
 	// jacobi ping-pong: [0] a->b, [1] b->a; JACOBI_ITERS even -> result in p_a
@@ -471,13 +474,16 @@ void RenderTest::CreateFluidBindings()
 	pso_splat->CreateShaderResourceBinding(srb_splat, false);
 	srb_splat->SetResource("fp", fp_buf);
 	srb_splat->SetResource("pos", pos_buf);
+	srb_splat->SetResource("vel", vel_buf);
 	srb_splat->SetResource("uimg_depth", ink_depth_u);
 	srb_splat->SetResource("uimg_thick", ink_thick_u);
+	srb_splat->SetResource("uimg_foam", ink_foam_u);
 	srb_splat->FlushDescriptorWrites();
 
 	pso_blur_h->CreateShaderResourceBinding(srb_blur_h, false);
 	srb_blur_h->SetResource("uimg_depth", ink_depth_u);
 	srb_blur_h->SetResource("uimg_thick", ink_thick_u);
+	srb_blur_h->SetResource("uimg_foam", ink_foam_u);
 	srb_blur_h->SetResource("img_out", ink_f_a);
 	srb_blur_h->FlushDescriptorWrites();
 
@@ -580,6 +586,7 @@ void RenderTest::RecordClear(RHI::CommandList* in_cmd_list)
 	CONST Float32 far_sentinel = std::numeric_limits<Float32>::infinity();
 	in_cmd_list->ClearTexture(ink_depth_u, { far_sentinel, 0.0f, 0.0f, 0.0f });
 	in_cmd_list->ClearTexture(ink_thick_u, { 0.0f, 0.0f, 0.0f, 0.0f });
+	in_cmd_list->ClearTexture(ink_foam_u, { 0.0f, 0.0f, 0.0f, 0.0f });
 }
 
 void RenderTest::RecordSplat(RHI::CommandList* in_cmd_list)
@@ -587,6 +594,7 @@ void RenderTest::RecordSplat(RHI::CommandList* in_cmd_list)
 	// CopyDest (after the clear pass) -> GENERAL for imageAtomic writes
 	in_cmd_list->TransitionTextureState(ink_depth_u, ENUM_RESOURCE_STATE::UnorderedAccess);
 	in_cmd_list->TransitionTextureState(ink_thick_u, ENUM_RESOURCE_STATE::UnorderedAccess);
+	in_cmd_list->TransitionTextureState(ink_foam_u, ENUM_RESOURCE_STATE::UnorderedAccess);
 
 	in_cmd_list->SetComputePipeline(pso_splat);
 	in_cmd_list->SetShaderResourceBinding(srb_splat);
@@ -680,6 +688,8 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 		"InkDepthU", ink_depth_u->GetTextureDesc(), ink_depth_u);
 	auto* ink_thick_res = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
 		"InkThickU", ink_thick_u->GetTextureDesc(), ink_thick_u);
+	auto* ink_foam_res = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
+		"InkFoamU", ink_foam_u->GetTextureDesc(), ink_foam_u);
 	auto* ink_f_a_res = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
 		"InkBlurA", ink_f_a->GetTextureDesc(), ink_f_a);
 	auto* ink_f_b_res = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
@@ -690,6 +700,7 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 	{
 		builder.Write(ink_depth_res, ENUM_RESOURCE_STATE::CopyDest);
 		builder.Write(ink_thick_res, ENUM_RESOURCE_STATE::CopyDest);
+		builder.Write(ink_foam_res, ENUM_RESOURCE_STATE::CopyDest);
 	},
 	[=](CONST Fluid3DData& data, CommandList* in_cmd_list)
 	{
@@ -713,6 +724,7 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 	{
 		builder.Write(ink_depth_res, ENUM_RESOURCE_STATE::UnorderedAccess);
 		builder.Write(ink_thick_res, ENUM_RESOURCE_STATE::UnorderedAccess);
+		builder.Write(ink_foam_res, ENUM_RESOURCE_STATE::UnorderedAccess);
 	},
 	[=](CONST Fluid3DData& data, CommandList* in_cmd_list)
 	{
@@ -723,8 +735,9 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 	auto* blur_h_pass = graph.AddRenderPass<Fluid3DData>("Fluid3DBlurHPass", &graph, cmd_list,
 	[&](Fluid3DData& data, RenderGraphPassBuilder& builder, CommandList* in_cmd_list)
 	{
-		builder.Read(ink_depth_res, ENUM_RESOURCE_STATE::UnorderedAccess); // imageLoad, stays GENERAL
+		builder.Read(ink_depth_res, ENUM_RESOURCE_STATE::UnorderedAccess);
 		builder.Read(ink_thick_res, ENUM_RESOURCE_STATE::UnorderedAccess);
+		builder.Read(ink_foam_res, ENUM_RESOURCE_STATE::UnorderedAccess);
 		builder.Write(ink_f_a_res, ENUM_RESOURCE_STATE::UnorderedAccess);
 	},
 	[=](CONST Fluid3DData& data, CommandList* in_cmd_list)
@@ -784,7 +797,7 @@ void RenderTest::OnShutdown_Logic()
 		delete buf;
 	}
 
-	RHI::Texture* textures[] = { ink_depth_u, ink_thick_u, ink_f_a, ink_f_b };
+	RHI::Texture* textures[] = { ink_depth_u, ink_thick_u, ink_foam_u, ink_f_a, ink_f_b };
 	for (auto* tex : textures)
 	{
 		delete tex;

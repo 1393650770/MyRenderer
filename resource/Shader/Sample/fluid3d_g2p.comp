@@ -18,11 +18,11 @@ const uvec3 GRID = uvec3(60u, 30u, 40u);
 const vec3 DOMAIN_MIN = vec3(-3.0, 0.0, -2.0);
 const vec3 DOMAIN_MAX = vec3(3.0, 3.0, 2.0);
 const float CELL = 0.1;
-const float FLIP_BLEND = 0.95; // 0.95 FLIP + 0.05 PIC
+const float FLIP_BLEND = 0.9; // 0.9 FLIP + 0.1 PIC (extra PIC damps drift packing)
 const float GRAVITY = 9.8;
-const float IMPULSE = 20.0;
-const float IMPULSE_R = 0.5;
-const float FOAM_DECAY = 1.2;
+const float IMPULSE = 30.0;
+const float IMPULSE_R = 2;
+const float FOAM_DECAY = 1.8;
 
 float sample_axis(vec3 g, int axis, bool use_old)
 {
@@ -112,10 +112,13 @@ void main()
 		}
 	}
 
-	// foam: churn (fast surface motion) charges it, otherwise it decays
+	// foam: speed threshold above the jet cruise speed keeps the stream
+	// clean; the lower impact threshold lets plunge points whiten
 	float speed = length(v);
+	float dv_impact = length(v_new - v_old);
 	foam *= exp(-FOAM_DECAY * dt);
-	if (speed > 2.0) foam = min(foam + (speed - 2.0) * 0.5 * dt * 8.0, 1.0);
+	if (speed > 4.0) foam = min(foam + (speed - 4.0) * 0.5 * dt * 8.0, 1.0);
+	if (dv_impact > 1.5) foam = min(foam + (dv_impact - 1.5) * 0.5 * dt * 8.0, 1.0);
 
 	// advect with the particle velocity: identical to the grid velocity in
 	// the bulk (PIC/FLIP blend), and robust for airborne spray where the

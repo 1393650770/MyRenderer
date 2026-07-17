@@ -16,24 +16,26 @@ void main()
 	ivec2 px = ivec2(gl_GlobalInvocationID.xy);
 	if (px.x >= int(W) || px.y >= int(H)) return;
 
-	vec2 c = texelFetch(tex_in, px, 0).rg;
+	vec3 c = texelFetch(tex_in, px, 0).rgb;
 	float dc = c.r;
 	float depth_sum = dc * G[0];
 	float thick_sum = c.g * G[0];
+	float foam_sum = c.b * G[0];
 
 	for (int k = 1; k <= 4; ++k)
 	{
 		ivec2 pu = ivec2(px.x, clamp(px.y - k * 2, 0, int(H) - 1));
 		ivec2 pd = ivec2(px.x, clamp(px.y + k * 2, 0, int(H) - 1));
-		vec2 u = texelFetch(tex_in, pu, 0).rg;
-		vec2 d = texelFetch(tex_in, pd, 0).rg;
+		vec3 u = texelFetch(tex_in, pu, 0).rgb;
+		vec3 d = texelFetch(tex_in, pd, 0).rgb;
 		float du = u.r;
 		float dd = d.r;
 		if (dc >= FAR_SENTINEL || du >= FAR_SENTINEL || abs(du - dc) > DEPTH_EDGE) du = dc;
 		if (dc >= FAR_SENTINEL || dd >= FAR_SENTINEL || abs(dd - dc) > DEPTH_EDGE) dd = dc;
 		depth_sum += (du + dd) * G[k];
 		thick_sum += (u.g + d.g) * G[k];
+		foam_sum += (u.b + d.b) * G[k];
 	}
 
-	imageStore(img_out, px, vec4(depth_sum, thick_sum, 0.0, 0.0));
+	imageStore(img_out, px, vec4(depth_sum, thick_sum, foam_sum, 0.0));
 }

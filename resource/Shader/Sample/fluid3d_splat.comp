@@ -5,15 +5,18 @@
 layout(local_size_x = 256) in;
 
 layout(set = 0, binding = 0) readonly buffer fp_Buf { float d[]; } fp;
-layout(set = 0, binding = 1) buffer pos_Buf { float d[]; } pos;
+layout(set = 0, binding = 1) readonly buffer pos_Buf { float d[]; } pos;
 layout(set = 0, binding = 2, r32ui) uniform uimage2D uimg_depth;
 layout(set = 0, binding = 3, r32ui) uniform uimage2D uimg_thick;
+layout(set = 0, binding = 4) readonly buffer vel_Buf { float d[]; } vel;
+layout(set = 0, binding = 5, r32ui) uniform uimage2D uimg_foam;
 
 const uint MAX_PARTICLES = 786432u;
 const uint W = 640u;
 const uint H = 480u;
 const float DRAW_R = 0.055;
 const float THICK_SCALE = 1024.0;
+const float FOAM_SCALE = 1024.0;
 const int MAX_PX_R = 16;
 const float P11 = 2.4142135; // 1/tan(fovY/2), fovY = 45 deg
 
@@ -23,6 +26,7 @@ void main()
 	if (i >= MAX_PARTICLES) return;
 	if (pos.d[i * 4u + 3u] < 0.5) return; // dead slot (free-list)
 
+	float foam = vel.d[i * 4u + 3u];
 	vec3 x = vec3(pos.d[i * 4u + 0u], pos.d[i * 4u + 1u], pos.d[i * 4u + 2u]);
 	mat4 vp = mat4(
 		vec4(fp.d[16], fp.d[17], fp.d[18], fp.d[19]),
@@ -54,5 +58,7 @@ void main()
 		imageAtomicMin(uimg_depth, p, floatBitsToUint(depth));
 		uint chord = uint(2.0 * DRAW_R * nd * THICK_SCALE);
 		imageAtomicAdd(uimg_thick, p, chord);
+		uint foam_chord = uint(2.0 * DRAW_R * nd * FOAM_SCALE * foam);
+		imageAtomicAdd(uimg_foam, p, foam_chord);
 	}
 }

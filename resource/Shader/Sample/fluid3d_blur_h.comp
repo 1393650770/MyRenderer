@@ -6,14 +6,15 @@ layout(local_size_x = 16, local_size_y = 16) in;
 
 layout(set = 0, binding = 0, r32ui) uniform readonly uimage2D uimg_depth;
 layout(set = 0, binding = 1, r32ui) uniform readonly uimage2D uimg_thick;
-layout(set = 0, binding = 2, rgba16f) uniform writeonly image2D img_out;
+layout(set = 0, binding = 2, r32ui) uniform readonly uimage2D uimg_foam;
+layout(set = 0, binding = 3, rgba16f) uniform writeonly image2D img_out;
 
 const uint W = 640u;
 const uint H = 480u;
 const float THICK_SCALE = 1024.0;
+const float FOAM_SCALE = 1024.0;
 const float FAR_SENTINEL = 1e30;
 const float DEPTH_EDGE = 0.15;
-// 9-tap gaussian
 const float G[5] = float[5](0.2270270, 0.1945946, 0.1216216, 0.0540541, 0.0162162);
 
 float load_depth(ivec2 p)
@@ -22,10 +23,8 @@ float load_depth(ivec2 p)
 	return isinf(d) ? FAR_SENTINEL : d;
 }
 
-float load_thick(ivec2 p)
-{
-	return float(imageLoad(uimg_thick, p).x) / THICK_SCALE;
-}
+float load_thick(ivec2 p) { return float(imageLoad(uimg_thick, p).x) / THICK_SCALE; }
+float load_foam(ivec2 p)  { return float(imageLoad(uimg_foam, p).x) / FOAM_SCALE; }
 
 void main()
 {
@@ -35,6 +34,7 @@ void main()
 	float dc = load_depth(px);
 	float depth_sum = dc * G[0];
 	float thick_sum = load_thick(px) * G[0];
+	float foam_sum = load_foam(px) * G[0];
 
 	for (int k = 1; k <= 4; ++k)
 	{
@@ -42,12 +42,12 @@ void main()
 		ivec2 pr = ivec2(clamp(px.x + k * 2, 0, int(W) - 1), px.y);
 		float dl = load_depth(pl);
 		float dr = load_depth(pr);
-		// bilateral: taps across the silhouette or empty pixels fall back to center
 		if (dc >= FAR_SENTINEL || dl >= FAR_SENTINEL || abs(dl - dc) > DEPTH_EDGE) dl = dc;
 		if (dc >= FAR_SENTINEL || dr >= FAR_SENTINEL || abs(dr - dc) > DEPTH_EDGE) dr = dc;
 		depth_sum += (dl + dr) * G[k];
 		thick_sum += (load_thick(pl) + load_thick(pr)) * G[k];
+		foam_sum += (load_foam(pl) + load_foam(pr)) * G[k];
 	}
 
-	imageStore(img_out, px, vec4(depth_sum, thick_sum, 0.0, 0.0));
+	imageStore(img_out, px, vec4(depth_sum, thick_sum, foam_sum, 0.0));
 }

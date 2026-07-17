@@ -1,6 +1,8 @@
 #version 460
-// FLIP: divergence of the face velocity field for fluid cells; also zero the
-// initial pressure guess (Jacobi warm start from 0).
+// FLIP: divergence of the face velocity field for fluid cells.
+// NOTE: the pressure buffer is intentionally NOT cleared here - last frame's
+// converged pressure is the Jacobi warm start (hydrostatic gradient persists
+// across frames; air cells are zeroed by the jacobi pass itself).
 layout(local_size_x = 256) in;
 
 layout(set = 0, binding = 0) readonly buffer cnt_Buf { uint d[]; } cnt;
@@ -8,7 +10,6 @@ layout(set = 0, binding = 1) readonly buffer gu_Buf { float d[]; } gu;
 layout(set = 0, binding = 2) readonly buffer gv_Buf { float d[]; } gv;
 layout(set = 0, binding = 3) readonly buffer gw_Buf { float d[]; } gw;
 layout(set = 0, binding = 4) writeonly buffer dv_Buf { float d[]; } dv;
-layout(set = 0, binding = 5) writeonly buffer pa_Buf { float d[]; } pa;
 
 const uvec3 GRID = uvec3(60u, 30u, 40u);
 const uint NC = GRID.x * GRID.y * GRID.z;
@@ -17,8 +18,6 @@ void main()
 {
 	uint i = gl_GlobalInvocationID.x;
 	if (i >= NC) return;
-
-	pa.d[i] = 0.0;
 
 	if (cnt.d[i] == 0u) { dv.d[i] = 0.0; return; }
 
