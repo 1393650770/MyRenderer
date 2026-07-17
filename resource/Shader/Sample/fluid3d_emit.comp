@@ -1,12 +1,15 @@
 #version 460
-// Fluid3D: ring-buffer particle emission from the water gun nozzle.
+// FLIP: spawn particles from the water gun using free-list slots reserved by
+// emit_prep. Fully GPU-side: the CPU never needs the live particle count.
 layout(local_size_x = 256) in;
 
 layout(set = 0, binding = 0) readonly buffer fp_Buf { float d[]; } fp;
-layout(set = 0, binding = 1) writeonly buffer pos_Buf { float d[]; } pos;
-layout(set = 0, binding = 2) writeonly buffer vel_Buf { float d[]; } vel;
+layout(set = 0, binding = 1) readonly buffer fc_Buf { uint d[]; } fc;
+layout(set = 0, binding = 2) readonly buffer fslots_Buf { uint d[]; } fslots;
+layout(set = 0, binding = 3) writeonly buffer pos_Buf { float d[]; } pos;
+layout(set = 0, binding = 4) writeonly buffer vel_Buf { float d[]; } vel;
 
-const uint MAX_PARTICLES = 655360u;
+const uint MAX_PARTICLES = 786432u;
 
 float hash1(uint x)
 {
@@ -19,16 +22,15 @@ float hash1(uint x)
 void main()
 {
 	uint tid = gl_GlobalInvocationID.x;
-	uint emit_count = uint(fp.d[3]);
-	if (tid >= emit_count) return;
+	if (tid >= fc.d[2]) return; // actual emit count from emit_prep
 
-	uint slot = (uint(fp.d[2]) + tid) % MAX_PARTICLES;
+	uint slot = fslots.d[(fc.d[3] + tid) % MAX_PARTICLES];
+
 	vec3 nozzle = vec3(fp.d[4], fp.d[5], fp.d[6]);
 	vec3 v0 = vec3(fp.d[8], fp.d[9], fp.d[10]);
 	uint seed = uint(fp.d[11]);
-	float dt = fp.d[0];
+	float dt = fp.d[0]; // substep dt; frame covers 2 substeps
 
-	// orthonormal basis around the jet direction
 	vec3 dir = normalize(v0);
 	vec3 up = abs(dir.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
 	vec3 t0 = normalize(cross(dir, up));
@@ -36,11 +38,10 @@ void main()
 
 	uint h = seed * 9781u + tid * 6271u;
 	float ang = hash1(h) * 6.2831853;
-	float rad = sqrt(hash1(h ^ 0x68bc21ebu)) * 0.06;   // nozzle disc jitter
-	float cone = hash1(h ^ 0x02e5be93u) * 0.10;        // ~6 deg velocity cone
-	// spread new particles along the jet over the whole frame (fp dt is the
-	// substep dt, the frame runs 2 substeps) to avoid clumping
-	float along = (float(tid) + hash1(h ^ 0x967a889bu)) / max(float(emit_count), 1.0);
+	float rad = sqrt(hash1(h ^ 0x68bc21ebu)) * 0.08;   // nozzle disc jitter
+	float cone = hash1(h ^ 0x02e5be93u) * 0.08;        // velocity cone
+	// spread along the jet over the whole frame (2 substeps) to avoid clumping
+	float along = (float(tid) + hash1(h ^ 0x967a889bu)) / max(float(fc.d[2]), 1.0);
 
 	vec3 side = t0 * cos(ang) + t1 * sin(ang);
 	vec3 p = nozzle + side * rad + dir * (along * 2.0 * dt * length(v0));
@@ -49,9 +50,9 @@ void main()
 	pos.d[slot * 4u + 0u] = p.x;
 	pos.d[slot * 4u + 1u] = p.y;
 	pos.d[slot * 4u + 2u] = p.z;
-	pos.d[slot * 4u + 3u] = 0.0;
+	pos.d[slot * 4u + 3u] = 1.0; // alive
 	vel.d[slot * 4u + 0u] = v.x;
 	vel.d[slot * 4u + 1u] = v.y;
 	vel.d[slot * 4u + 2u] = v.z;
-	vel.d[slot * 4u + 3u] = 0.0;
+	vel.d[slot * 4u + 3u] = 0.0; // foam factor
 }

@@ -158,11 +158,14 @@ public:
 			// Ensure GPU has finished with this CB before resetting.
 			// CheckCompletion no longer resets fences; Begin() is the sole point
 			// where the fence is reset for the next submit cycle.
-			if (!fence->CheckSignaled())
+			// MUST keep waiting on timeout: resetting a command buffer that is
+			// still executing on the GPU is undefined behavior (observed as a
+			// permanent GPU hang under heavy per-frame workloads).
+			while (!fence->CheckSignaled())
 			{
-				device->GetFenceManager()->WaitForFence(fence, 1000000000ULL); // 1s timeout
+				device->GetFenceManager()->WaitForFence(fence, 1000000000ULL); // 1s slices
 			}
-			fence->ResetFence(); // signaled → unsignaled (required for next vkQueueSubmit)
+			fence->ResetFence(); // signaled -> unsignaled (required for next vkQueueSubmit)
 			vkResetCommandBuffer(command_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 			command_state = EState::ReadyForBegin;
 		}

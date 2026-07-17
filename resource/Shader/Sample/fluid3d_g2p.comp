@@ -1,0 +1,133 @@
+#version 460
+// FLIP G2P: gather grid velocities back to particles (FLIP/PIC blend),
+// apply the interaction impulse, advect with RK2 and update the foam factor.
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) readonly buffer fp_Buf { float d[]; } fp;
+layout(set = 0, binding = 1) readonly buffer gu_Buf { float d[]; } gu;
+layout(set = 0, binding = 2) readonly buffer gv_Buf { float d[]; } gv;
+layout(set = 0, binding = 3) readonly buffer gw_Buf { float d[]; } gw;
+layout(set = 0, binding = 4) readonly buffer ou_Buf { float d[]; } ou;
+layout(set = 0, binding = 5) readonly buffer ov_Buf { float d[]; } ov;
+layout(set = 0, binding = 6) readonly buffer ow_Buf { float d[]; } ow;
+layout(set = 0, binding = 7) buffer pos_Buf { float d[]; } pos;
+layout(set = 0, binding = 8) buffer vel_Buf { float d[]; } vel;
+
+const uint MAX_PARTICLES = 786432u;
+const uvec3 GRID = uvec3(60u, 30u, 40u);
+const vec3 DOMAIN_MIN = vec3(-3.0, 0.0, -2.0);
+const vec3 DOMAIN_MAX = vec3(3.0, 3.0, 2.0);
+const float CELL = 0.1;
+const float FLIP_BLEND = 0.95; // 0.95 FLIP + 0.05 PIC
+const float GRAVITY = 9.8;
+const float IMPULSE = 20.0;
+const float IMPULSE_R = 0.5;
+const float FOAM_DECAY = 1.2;
+
+float sample_axis(vec3 g, int axis, bool use_old)
+{
+	// staggered sample coordinates per axis
+	vec3 s = axis == 0 ? vec3(g.x, g.y - 0.5, g.z - 0.5)
+	       : axis == 1 ? vec3(g.x - 0.5, g.y, g.z - 0.5)
+	       : vec3(g.x - 0.5, g.y - 0.5, g.z);
+	ivec3 lim = axis == 0 ? ivec3(int(GRID.x), int(GRID.y) - 1, int(GRID.z) - 1)
+	          : axis == 1 ? ivec3(int(GRID.x) - 1, int(GRID.y), int(GRID.z) - 1)
+	          : ivec3(int(GRID.x) - 1, int(GRID.y) - 1, int(GRID.z));
+	ivec3 b = ivec3(floor(s));
+	vec3 f = s - vec3(b);
+	float acc = 0.0;
+	for (int dz = 0; dz <= 1; ++dz)
+	for (int dy = 0; dy <= 1; ++dy)
+	for (int dx = 0; dx <= 1; ++dx)
+	{
+		ivec3 n = clamp(b + ivec3(dx, dy, dz), ivec3(0), lim);
+		float w = (dx == 1 ? f.x : 1.0 - f.x) * (dy == 1 ? f.y : 1.0 - f.y) * (dz == 1 ? f.z : 1.0 - f.z);
+		uint id;
+		float v;
+		if (axis == 0)
+		{
+			id = (uint(n.z) * GRID.y + uint(n.y)) * (GRID.x + 1u) + uint(n.x);
+			v = use_old ? ou.d[id] : gu.d[id];
+		}
+		else if (axis == 1)
+		{
+			id = (uint(n.z) * (GRID.y + 1u) + uint(n.y)) * GRID.x + uint(n.x);
+			v = use_old ? ov.d[id] : gv.d[id];
+		}
+		else
+		{
+			id = (uint(n.z) * GRID.y + uint(n.y)) * GRID.x + uint(n.x);
+			v = use_old ? ow.d[id] : gw.d[id];
+		}
+		acc += w * v;
+	}
+	return acc;
+}
+
+vec3 sample_vel(vec3 g, bool use_old)
+{
+	return vec3(sample_axis(g, 0, use_old), sample_axis(g, 1, use_old), sample_axis(g, 2, use_old));
+}
+
+void main()
+{
+	uint i = gl_GlobalInvocationID.x;
+	if (i >= MAX_PARTICLES) return;
+	if (pos.d[i * 4u + 3u] < 0.5) return; // dead
+
+	float dt = fp.d[0];
+	vec3 p = vec3(pos.d[i * 4u + 0u], pos.d[i * 4u + 1u], pos.d[i * 4u + 2u]);
+	vec3 vp = vec3(vel.d[i * 4u + 0u], vel.d[i * 4u + 1u], vel.d[i * 4u + 2u]);
+	float foam = vel.d[i * 4u + 3u];
+	vec3 g = (p - DOMAIN_MIN) / CELL;
+
+	vec3 v_new = sample_vel(g, false);
+	vec3 v_old = sample_vel(g, true);
+	vec3 v;
+	// Airborne particles (jet arc, spray) have no grid support: the grid
+	// reads back exactly zero there, so integrate them ballistically instead
+	// of freezing them at the sampled zero velocity.
+	if (dot(v_new, v_new) < 1e-12 && dot(v_old, v_old) < 1e-12)
+	{
+		v = vp;
+		v.y -= GRAVITY * dt;
+	}
+	else
+	{
+		vec3 v_pic = v_new;
+		vec3 v_flip = vp + (v_new - v_old);
+		v = mix(v_pic, v_flip, FLIP_BLEND);
+	}
+
+	// right-mouse pool disturbance: radial impulse around the picked point
+	if (fp.d[15] > 0.5)
+	{
+		vec3 ip = vec3(fp.d[12], fp.d[13], fp.d[14]);
+		vec3 dir = p - ip;
+		dir.y *= 0.5;
+		float len2 = dot(dir, dir);
+		if (len2 < IMPULSE_R * IMPULSE_R * 9.0 && len2 > 1e-8)
+		{
+			v += normalize(dir) * IMPULSE * exp(-len2 / (IMPULSE_R * IMPULSE_R)) * dt;
+		}
+	}
+
+	// foam: churn (fast surface motion) charges it, otherwise it decays
+	float speed = length(v);
+	foam *= exp(-FOAM_DECAY * dt);
+	if (speed > 2.0) foam = min(foam + (speed - 2.0) * 0.5 * dt * 8.0, 1.0);
+
+	// advect with the particle velocity: identical to the grid velocity in
+	// the bulk (PIC/FLIP blend), and robust for airborne spray where the
+	// grid has no samples
+	p += v * dt;
+	p = clamp(p, DOMAIN_MIN + vec3(0.03), DOMAIN_MAX - vec3(0.03));
+
+	pos.d[i * 4u + 0u] = p.x;
+	pos.d[i * 4u + 1u] = p.y;
+	pos.d[i * 4u + 2u] = p.z;
+	vel.d[i * 4u + 0u] = v.x;
+	vel.d[i * 4u + 1u] = v.y;
+	vel.d[i * 4u + 2u] = v.z;
+	vel.d[i * 4u + 3u] = foam;
+}

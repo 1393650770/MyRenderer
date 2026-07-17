@@ -13,11 +13,11 @@ layout(set = 0, binding = 1) uniform sampler2D ink_tex;
 const float W = 640.0;
 const float H = 480.0;
 const float FAR_SENTINEL = 1e20;
-// pool interior: floor y=0, walls up to y=0.8, footprint x[-1.4,1.4] z[-1.0,1.0]
-const vec3 POOL_MIN = vec3(-1.4, 0.0, -1.0);
-const vec3 POOL_MAX = vec3(1.4, 0.8, 1.0);
-const float DECK_Y = 0.8;
-const float TILE = 0.4;
+// bay interior: floor y=0, walls up to y=3, footprint x[-3,3] z[-2,2]
+const vec3 POOL_MIN = vec3(-3.0, 0.0, -2.0);
+const vec3 POOL_MAX = vec3(3.0, 3.0, 2.0);
+const float DECK_Y = 3.0;
+const float TILE = 0.5;
 const vec3 SUN_DIR = normalize(vec3(-0.4, 1.0, 0.3));
 const vec3 ABSORB = vec3(1.0, 0.4, 0.25);      // per-channel Beer-Lambert
 const vec3 SCATTER = vec3(0.05, 0.25, 0.35);   // deep-water in-scatter color

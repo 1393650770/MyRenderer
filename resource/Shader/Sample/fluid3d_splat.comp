@@ -5,10 +5,11 @@
 layout(local_size_x = 256) in;
 
 layout(set = 0, binding = 0) readonly buffer fp_Buf { float d[]; } fp;
-layout(set = 0, binding = 1) readonly buffer pos_Buf { float d[]; } pos;
+layout(set = 0, binding = 1) buffer pos_Buf { float d[]; } pos;
 layout(set = 0, binding = 2, r32ui) uniform uimage2D uimg_depth;
 layout(set = 0, binding = 3, r32ui) uniform uimage2D uimg_thick;
 
+const uint MAX_PARTICLES = 786432u;
 const uint W = 640u;
 const uint H = 480u;
 const float DRAW_R = 0.055;
@@ -19,7 +20,8 @@ const float P11 = 2.4142135; // 1/tan(fovY/2), fovY = 45 deg
 void main()
 {
 	uint i = gl_GlobalInvocationID.x;
-	if (i >= uint(fp.d[1])) return;
+	if (i >= MAX_PARTICLES) return;
+	if (pos.d[i * 4u + 3u] < 0.5) return; // dead slot (free-list)
 
 	vec3 x = vec3(pos.d[i * 4u + 0u], pos.d[i * 4u + 1u], pos.d[i * 4u + 2u]);
 	mat4 vp = mat4(

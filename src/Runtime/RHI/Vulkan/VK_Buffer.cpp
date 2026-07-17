@@ -104,7 +104,7 @@ void* VK_Buffer::Map(CONST ENUM_MAP_TYPE& map_type, CONST ENUM_MAP_FLAG& map_fla
 	Bool is_first_map =  0==lock_counter++;
 
 	//CHECK_WITH_LOG(!is_staging,"RHI Error: Buffer must be created as USAGE_STAGING or USAGE_UNIFIED to be mapped for reading!")
-	if (is_have_unified_memory||is_staging)
+	if (is_have_unified_memory || is_staging || is_dynamic)
 	{
 		data = allocation.GetMappedPointer(device);
 		lock_state = LockState::PersistentMapping;
@@ -160,8 +160,7 @@ void VK_Buffer::Unmap()
 	Bool is_uav = EnumHasAnyFlags(buffer_desc.type, ENUM_BUFFER_TYPE::Storage);
 	Bool is_staging = EnumHasAnyFlags(buffer_desc.type, ENUM_BUFFER_TYPE::Staging);
 	if (lock_state != LockState::PersistentMapping)
-	{
-		if (mapping.map_staging_buffer != nullptr && mapping.map_type == ENUM_MAP_TYPE::Read)
+	{		if (mapping.map_staging_buffer != nullptr && mapping.map_type == ENUM_MAP_TYPE::Read)
 		{
 			device->GetStagingBufferManager()->ReleaseStagingBuffer(mapping.map_staging_buffer,nullptr);
 		}
@@ -192,6 +191,12 @@ void VK_Buffer::Unmap()
 		{
 			CHECK_WITH_LOG(true, "RHI Error :  Invalid Unmap !")
 		}
+	}
+	else
+	{
+		// Persistent mapping: make CPU writes visible to the GPU
+		// (no-op on coherent memory, required on non-coherent heaps).
+		FlushMappedMemory();
 	}
 	lock_state = LockState::Unlocked;
 }
@@ -228,10 +233,17 @@ ENUM_VulkanAllocationFlags VK_Buffer::TranslateBufferTypeToVulkanAllocationFlags
 		break;
 	}
 	default:
-		// Storage and Indirect buffers: device-local, auto-bind (no host visibility needed)
+		// Storage and Indirect buffers: device-local, auto-bind. Adding the
+		// Dynamic bit requests a host-visible allocation (persistent map for
+		// per-frame CPU uploads - the staging+transfer path is NOT safe for
+		// buffers read by another queue every frame).
 		if (EnumHasAnyFlags(buffer_usage, ENUM_BUFFER_TYPE::Storage) ||
 			EnumHasAnyFlags(buffer_usage, ENUM_BUFFER_TYPE::Indirect))
+		{
 			allocation_flags = allocation_flags | ENUM_VulkanAllocationFlags::AutoBind;
+			if (EnumHasAnyFlags(buffer_usage, ENUM_BUFFER_TYPE::Dynamic))
+				allocation_flags = allocation_flags | ENUM_VulkanAllocationFlags::HostVisible;
+		}
 		else
 			CHECK_WITH_LOG(true, "RHI Error :  Not support this buffer usage type !")
 		break;

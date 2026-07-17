@@ -1,0 +1,78 @@
+#version 460
+// FLIP P2G: trilinear scatter of particle momentum/weight onto the staggered
+// MAC face arrays via fixed-point int atomics; also count particles per cell
+// (the atomic ticket doubles as the cull rank).
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) readonly buffer fp_Buf { float d[]; } fp;
+layout(set = 0, binding = 1) readonly buffer pos_Buf { float d[]; } pos;
+layout(set = 0, binding = 2) readonly buffer vel_Buf { float d[]; } vel;
+layout(set = 0, binding = 3) buffer mu_Buf { int d[]; } mu;
+layout(set = 0, binding = 4) buffer mv_Buf { int d[]; } mv;
+layout(set = 0, binding = 5) buffer mw_Buf { int d[]; } mw;
+layout(set = 0, binding = 6) buffer wu_Buf { int d[]; } wu;
+layout(set = 0, binding = 7) buffer wv_Buf { int d[]; } wv;
+layout(set = 0, binding = 8) buffer ww_Buf { int d[]; } ww;
+layout(set = 0, binding = 9) buffer cnt_Buf { uint d[]; } cnt;
+layout(set = 0, binding = 10) writeonly buffer rank_Buf { uint d[]; } rank;
+
+const uint MAX_PARTICLES = 786432u;
+const uvec3 GRID = uvec3(60u, 30u, 40u);
+const vec3 DOMAIN_MIN = vec3(-3.0, 0.0, -2.0);
+const float CELL = 0.1;
+const float FIXED_SCALE = 65536.0;
+
+void scatter(vec3 g, float value, int axis)
+{
+	ivec3 b = ivec3(floor(g));
+	vec3 f = g - vec3(b);
+	ivec3 lim = axis == 0 ? ivec3(int(GRID.x), int(GRID.y) - 1, int(GRID.z) - 1)
+	          : axis == 1 ? ivec3(int(GRID.x) - 1, int(GRID.y), int(GRID.z) - 1)
+	          : ivec3(int(GRID.x) - 1, int(GRID.y) - 1, int(GRID.z));
+	for (int dz = 0; dz <= 1; ++dz)
+	for (int dy = 0; dy <= 1; ++dy)
+	for (int dx = 0; dx <= 1; ++dx)
+	{
+		ivec3 n = b + ivec3(dx, dy, dz);
+		if (n.x < 0 || n.y < 0 || n.z < 0 || n.x > lim.x || n.y > lim.y || n.z > lim.z) continue;
+		float w = (dx == 1 ? f.x : 1.0 - f.x) * (dy == 1 ? f.y : 1.0 - f.y) * (dz == 1 ? f.z : 1.0 - f.z);
+		int iw = int(w * FIXED_SCALE);
+		int im = int(value * w * FIXED_SCALE);
+		if (axis == 0)
+		{
+			uint id = (uint(n.z) * GRID.y + uint(n.y)) * (GRID.x + 1u) + uint(n.x);
+			atomicAdd(mu.d[id], im); atomicAdd(wu.d[id], iw);
+		}
+		else if (axis == 1)
+		{
+			uint id = (uint(n.z) * (GRID.y + 1u) + uint(n.y)) * GRID.x + uint(n.x);
+			atomicAdd(mv.d[id], im); atomicAdd(wv.d[id], iw);
+		}
+		else
+		{
+			uint id = (uint(n.z) * GRID.y + uint(n.y)) * GRID.x + uint(n.x);
+			atomicAdd(mw.d[id], im); atomicAdd(ww.d[id], iw);
+		}
+	}
+}
+
+void main()
+{
+	uint i = gl_GlobalInvocationID.x;
+	if (i >= MAX_PARTICLES) return;
+	if (pos.d[i * 4u + 3u] < 0.5) return; // dead
+
+	vec3 p = vec3(pos.d[i * 4u + 0u], pos.d[i * 4u + 1u], pos.d[i * 4u + 2u]);
+	vec3 v = vec3(vel.d[i * 4u + 0u], vel.d[i * 4u + 1u], vel.d[i * 4u + 2u]);
+	vec3 g = (p - DOMAIN_MIN) / CELL; // grid-space position
+
+	// staggered offsets: U samples live at (i, j+.5, k+.5) etc.
+	scatter(vec3(g.x, g.y - 0.5, g.z - 0.5), v.x, 0);
+	scatter(vec3(g.x - 0.5, g.y, g.z - 0.5), v.y, 1);
+	scatter(vec3(g.x - 0.5, g.y - 0.5, g.z), v.z, 2);
+
+	// cell occupancy ticket (used by the cull pass)
+	ivec3 c = clamp(ivec3(floor(g)), ivec3(0), ivec3(GRID) - 1);
+	uint cell_id = (uint(c.z) * GRID.y + uint(c.y)) * GRID.x + uint(c.x);
+	rank.d[i] = atomicAdd(cnt.d[cell_id], 1u);
+}

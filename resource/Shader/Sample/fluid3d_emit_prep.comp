@@ -1,0 +1,21 @@
+#version 460
+// FLIP: single-thread emission bookkeeping. Computes how many particles can
+// actually be emitted this frame from the free-list (no leaked pop tickets)
+// and advances the pop cursor. Runs before the emit pass.
+layout(local_size_x = 1) in;
+
+layout(set = 0, binding = 0) readonly buffer fp_Buf { float d[]; } fp;
+// fc: [0]=push count, [1]=pop count, [2]=actual emit this frame, [3]=base pop index
+layout(set = 0, binding = 1) buffer fc_Buf { uint d[]; } fc;
+
+void main()
+{
+	uint request = uint(fp.d[3]);
+	uint push = fc.d[0];
+	uint pop = fc.d[1];
+	uint avail = push - pop; // both monotonic, push >= pop always
+	uint actual = request < avail ? request : avail;
+	fc.d[2] = actual;
+	fc.d[3] = pop;
+	fc.d[1] = pop + actual;
+}

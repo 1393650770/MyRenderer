@@ -1,0 +1,41 @@
+#version 460
+// FLIP: one Jacobi iteration of the pressure Poisson solve (ping-pong).
+// Solid (out-of-domain) neighbors: Neumann (use center pressure).
+// Air neighbors: Dirichlet (p = 0). Non-fluid cells output 0.
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) readonly buffer cnt_Buf { uint d[]; } cnt;
+layout(set = 0, binding = 1) readonly buffer dv_Buf { float d[]; } dv;
+layout(set = 0, binding = 2) readonly buffer pin_Buf { float d[]; } pin;
+layout(set = 0, binding = 3) writeonly buffer pout_Buf { float d[]; } pout;
+
+const uvec3 GRID = uvec3(60u, 30u, 40u);
+const uint NC = GRID.x * GRID.y * GRID.z;
+
+float neighbor_p(int x, int y, int z, float p_center)
+{
+	if (x < 0 || y < 0 || z < 0 || x >= int(GRID.x) || y >= int(GRID.y) || z >= int(GRID.z))
+		return p_center; // solid wall: Neumann
+	uint id = (uint(z) * GRID.y + uint(y)) * GRID.x + uint(x);
+	if (cnt.d[id] == 0u)
+		return 0.0;      // air: Dirichlet
+	return pin.d[id];
+}
+
+void main()
+{
+	uint i = gl_GlobalInvocationID.x;
+	if (i >= NC) return;
+	if (cnt.d[i] == 0u) { pout.d[i] = 0.0; return; }
+
+	int xi = int(i % GRID.x);
+	int yi = int((i / GRID.x) % GRID.y);
+	int zi = int(i / (GRID.x * GRID.y));
+	float pc = pin.d[i];
+
+	float s = neighbor_p(xi - 1, yi, zi, pc) + neighbor_p(xi + 1, yi, zi, pc)
+	        + neighbor_p(xi, yi - 1, zi, pc) + neighbor_p(xi, yi + 1, zi, pc)
+	        + neighbor_p(xi, yi, zi - 1, pc) + neighbor_p(xi, yi, zi + 1, pc);
+
+	pout.d[i] = (s - dv.d[i]) / 6.0;
+}

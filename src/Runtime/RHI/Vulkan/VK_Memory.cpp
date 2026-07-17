@@ -739,7 +739,10 @@ Bool VK_MemoryManager::AllocateBufferPooled(VK_Allocation& out_allocation, UInt3
 	{
 		allocation_flags |= VulkanAllocationFlagsCanEvict;
 	}
-	if (device_memory_allocation->CheckIsMapped())
+	// Map host-visible pages up front so sub-allocations get a persistent
+	// pointer (CheckIsMapped() only reports an EXISTING mapping - fresh pages
+	// are never mapped yet, which left GetMappedPointer() returning null).
+	if (device_memory_allocation->GetIsCanBeMapped())
 	{
 		device_memory_allocation->Map(buffer_size, 0);
 	}

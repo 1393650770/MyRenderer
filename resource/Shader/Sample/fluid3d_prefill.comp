@@ -1,0 +1,60 @@
+#version 460
+// FLIP: one-shot GPU-side initialization (first frame only). CPU staging
+// uploads to device-local buffers proved unreliable in this engine, so the
+// prefilled sea lattice, free-list and counters are all written by compute.
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) writeonly buffer pos_Buf { float d[]; } pos;
+layout(set = 0, binding = 1) writeonly buffer vel_Buf { float d[]; } vel;
+layout(set = 0, binding = 2) writeonly buffer fslots_Buf { uint d[]; } fslots;
+layout(set = 0, binding = 3) writeonly buffer fc_Buf { uint d[]; } fc;
+
+const uint MAX_PARTICLES = 786432u;
+// calm sea lattice: 0.05 spacing, 120 x 80 per layer, 20 layers -> y in [0, 1.0]
+const uint FILL_X = 120u;
+const uint FILL_Z = 80u;
+const uint FILL_LAYERS = 20u;
+const uint FILL_COUNT = FILL_X * FILL_Z * FILL_LAYERS; // 192000
+
+float hash1(uint x)
+{
+	x ^= x >> 16; x *= 0x7feb352du;
+	x ^= x >> 15; x *= 0x846ca68bu;
+	x ^= x >> 16;
+	return float(x) * (1.0 / 4294967296.0);
+}
+
+void main()
+{
+	uint i = gl_GlobalInvocationID.x;
+	if (i >= MAX_PARTICLES) return;
+
+	if (i < FILL_COUNT)
+	{
+		uint ix = i % FILL_X;
+		uint iz = (i / FILL_X) % FILL_Z;
+		uint iy = i / (FILL_X * FILL_Z);
+		float jitter = hash1(i) * 0.004;
+		pos.d[i * 4u + 0u] = -2.975 + float(ix) * 0.05 + jitter;
+		pos.d[i * 4u + 1u] = 0.025 + float(iy) * 0.05;
+		pos.d[i * 4u + 2u] = -1.975 + float(iz) * 0.05 + jitter;
+		pos.d[i * 4u + 3u] = 1.0; // alive
+	}
+	else
+	{
+		pos.d[i * 4u + 3u] = 0.0; // dead slot
+		fslots.d[i - FILL_COUNT] = i;
+	}
+	vel.d[i * 4u + 0u] = 0.0;
+	vel.d[i * 4u + 1u] = 0.0;
+	vel.d[i * 4u + 2u] = 0.0;
+	vel.d[i * 4u + 3u] = 0.0;
+
+	if (i == 0u)
+	{
+		fc.d[0] = MAX_PARTICLES - FILL_COUNT; // push
+		fc.d[1] = 0u;                         // pop
+		fc.d[2] = 0u;                         // actual emit
+		fc.d[3] = 0u;                         // base pop
+	}
+}

@@ -429,7 +429,10 @@ namespace MXRender
 	}
 	VkBufferUsageFlags VK_Utils::Translate_Buffer_usage_type_To_VulkanUsageFlag(const ENUM_BUFFER_TYPE& usage_type)
 	{
-		switch (usage_type)
+		// Static/Dynamic are residency modifiers, not usages: strip them so
+		// combos like Storage|Dynamic (host-visible storage) translate correctly.
+		ENUM_BUFFER_TYPE base_type = usage_type & ~(ENUM_BUFFER_TYPE::Dynamic | ENUM_BUFFER_TYPE::Static);
+		switch (base_type)
 		{
 		case ENUM_BUFFER_TYPE::Index:
 			return VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;

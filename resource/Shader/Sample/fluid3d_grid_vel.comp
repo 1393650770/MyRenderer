@@ -1,0 +1,57 @@
+#version 460
+// FLIP: normalize face velocities (mom/weight), snapshot pre-force state for
+// the FLIP delta, apply gravity to V faces, and zero the boundary faces.
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) readonly buffer fp_Buf { float d[]; } fp;
+layout(set = 0, binding = 1) readonly buffer mu_Buf { int d[]; } mu;
+layout(set = 0, binding = 2) readonly buffer mv_Buf { int d[]; } mv;
+layout(set = 0, binding = 3) readonly buffer mw_Buf { int d[]; } mw;
+layout(set = 0, binding = 4) readonly buffer wu_Buf { int d[]; } wu;
+layout(set = 0, binding = 5) readonly buffer wv_Buf { int d[]; } wv;
+layout(set = 0, binding = 6) readonly buffer ww_Buf { int d[]; } ww;
+layout(set = 0, binding = 7) writeonly buffer gu_Buf { float d[]; } gu;
+layout(set = 0, binding = 8) writeonly buffer gv_Buf { float d[]; } gv;
+layout(set = 0, binding = 9) writeonly buffer gw_Buf { float d[]; } gw;
+layout(set = 0, binding = 10) writeonly buffer ou_Buf { float d[]; } ou;
+layout(set = 0, binding = 11) writeonly buffer ov_Buf { float d[]; } ov;
+layout(set = 0, binding = 12) writeonly buffer ow_Buf { float d[]; } ow;
+
+const uvec3 GRID = uvec3(60u, 30u, 40u);
+const uint NU = (GRID.x + 1u) * GRID.y * GRID.z; // 73200
+const uint NV = GRID.x * (GRID.y + 1u) * GRID.z; // 74400
+const uint NW = GRID.x * GRID.y * (GRID.z + 1u); // 73800
+const float GRAVITY = 9.8;
+
+void main()
+{
+	uint i = gl_GlobalInvocationID.x;
+	float dt = fp.d[0];
+
+	if (i < NU)
+	{
+		float u = wu.d[i] > 0 ? float(mu.d[i]) / float(wu.d[i]) : 0.0;
+		// zero boundary faces (solid walls): x index 0 or GRID.x
+		uint xi = i % (GRID.x + 1u);
+		if (xi == 0u || xi == GRID.x) u = 0.0;
+		ou.d[i] = u; // snapshot BEFORE forces: FLIP delta then includes gravity
+		gu.d[i] = u;
+	}
+	if (i < NV)
+	{
+		float v = wv.d[i] > 0 ? float(mv.d[i]) / float(wv.d[i]) : 0.0;
+		uint yi = (i / GRID.x) % (GRID.y + 1u);
+		if (yi == 0u || yi == GRID.y) v = 0.0;
+		ov.d[i] = v;
+		if (wv.d[i] > 0 && yi != 0u && yi != GRID.y) v -= GRAVITY * dt;
+		gv.d[i] = v;
+	}
+	if (i < NW)
+	{
+		float w = ww.d[i] > 0 ? float(mw.d[i]) / float(ww.d[i]) : 0.0;
+		uint zi = i / (GRID.x * GRID.y);
+		if (zi == 0u || zi == GRID.z) w = 0.0;
+		ow.d[i] = w;
+		gw.d[i] = w;
+	}
+}
