@@ -1,0 +1,55 @@
+#version 460
+// One-shot GPU grid generation: writes vertex positions (x,z,u,v) and
+// triangle-list indices for a GRID_DIM × GRID_DIM quad mesh.
+// local_size = 16x16, 2 outputs: vertex buffer + index buffer.
+layout(local_size_x = 16, local_size_y = 16) in;
+
+const uint GRID_DIM = 512u;
+const float MESH_SIZE = 204.8;
+
+// vertex output: float4 (x, z, 0, 0) per grid point (GRID_DIM+1)x(GRID_DIM+1)
+layout(std430, set = 0, binding = 0) writeonly buffer VtxBuf { float v[]; } vtx;
+// index output: uint per triangle (GRID_DIM*GRID_DIM*6 indices)
+layout(std430, set = 0, binding = 1) writeonly buffer IdxBuf { uint i[]; } idx;
+
+void main()
+{
+	uvec2 tid = gl_GlobalInvocationID.xy;
+	if (tid.x >= GRID_DIM || tid.y >= GRID_DIM) return;
+
+	uint quad = tid.y * GRID_DIM + tid.x;
+
+	// 6 indices per quad (2 triangles)
+	uint i0 = tid.y * (GRID_DIM + 1u) + tid.x;          // top-left
+	uint i1 = i0 + 1u;                                   // top-right
+	uint i2 = i0 + (GRID_DIM + 1u);                     // bottom-left
+	uint i3 = i2 + 1u;                                   // bottom-right
+
+	uint base = quad * 6u;
+	idx.i[base + 0u] = i0;
+	idx.i[base + 1u] = i1;
+	idx.i[base + 2u] = i2;
+	idx.i[base + 3u] = i1;
+	idx.i[base + 4u] = i3;
+	idx.i[base + 5u] = i2;
+
+	// vertex data for this quad's 4 corners (each corner written by multiple quads,
+	// but all writers produce the same values, so no atomics needed)
+	vec2 corners[4] = vec2[4](
+		vec2(float(tid.x),     float(tid.y)),
+		vec2(float(tid.x + 1u), float(tid.y)),
+		vec2(float(tid.x),     float(tid.y + 1u)),
+		vec2(float(tid.x + 1u), float(tid.y + 1u))
+	);
+	uint vi[4] = uint[4](i0, i1, i2, i3);
+
+	for (int c = 0; c < 4; ++c) {
+		vec2 g = corners[c] / float(GRID_DIM) - 0.5;  // [0,1] -> [-0.5, 0.5]
+		vec2 xz = g * MESH_SIZE;
+		uint off = vi[c] * 4u;
+		vtx.v[off + 0u] = xz.x;
+		vtx.v[off + 1u] = xz.y;
+		vtx.v[off + 2u] = g.x + 0.5;  // u
+		vtx.v[off + 3u] = 1.0 - (g.y + 0.5); // v (flip for conventional UV)
+	}
+}

@@ -324,3 +324,10 @@ target("RendererSample-Fluid3D")
     set_group("Sample")
     after_build(MoveResource)
 
+--   FFT Spectral Ocean Demo (Tessendorf spectrum + GPU IFFT + optical water shading)
+target("RendererSample-Ocean")
+    CommonProjectSetting()
+    add_files("src/Sample/9-Ocean/Ocean.cpp")
+    set_group("Sample")
+    after_build(MoveResource)
+

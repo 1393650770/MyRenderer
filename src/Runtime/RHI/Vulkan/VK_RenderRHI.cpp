@@ -127,6 +127,13 @@ RenderPipelineState* VulkanRHI::CreateRenderPipelineState(CONST RenderGraphiPipe
 	{
 		rtv_formats.push_back(rtv->GetTextureDesc().format);
 	}
+
+		// Dynamic rendering: PSO must be created with VK_NULL_HANDLE render pass,
+		// with attachment formats passed via VkPipelineRenderingCreateInfo in pNext.
+		if (device->GetOptionalExtensions().HasKHRDynamicRendering)
+		{
+			return device->GetPipelineStateManager()->GetPipelineState(desc, nullptr);
+		}
 	RenderPassCacheKey key(desc.render_targets.size(), rtv_formats.data(), desc.depth_stencil_view->GetTextureDesc().format, desc.depth_stencil_view->GetTextureDesc().samples, false, false);
 	return device->GetPipelineStateManager()->GetPipelineState(desc, device->GetRenderPassManager()->GetRenderPass(key));
 }
@@ -286,7 +293,16 @@ void VulkanRHI::CreateInstance(Bool enable_validation_layers)
 	app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	app_info.pEngineName = "MxRender";
 	app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	app_info.apiVersion = VK_API_VERSION_1_0;
+	// Query the highest Vulkan instance version supported by the loader.
+		// Previously hardcoded to VK_API_VERSION_1_0 which caused 1.3 functions
+		// to be dispatched to no-op stubs when validation layers are absent.
+		uint32_t instance_version = VK_API_VERSION_1_0;
+		{
+			PFN_vkEnumerateInstanceVersion pfn =
+				(PFN_vkEnumerateInstanceVersion)vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion");
+			if (pfn) pfn(&instance_version);
+		}
+		app_info.apiVersion = instance_version;
 
 	VkInstanceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;

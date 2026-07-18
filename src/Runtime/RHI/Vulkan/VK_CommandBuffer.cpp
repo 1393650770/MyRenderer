@@ -285,6 +285,9 @@ void VK_CommandBuffer::BeginDynamicRendering(CONST Vector<Texture*>& render_targ
 	}
 	vkCmdBeginRendering(command_buffer, &ri);
 	command_state = EState::IsInsideRenderPass;
+	state_cache.render_pass = VK_NULL_HANDLE;
+	state_cache.framebuffer_width = width;
+	state_cache.framebuffer_height = height;
 }
 void VK_CommandBuffer::TransitionTextureState(Texture* texture, CONST ENUM_RESOURCE_STATE& required_state)
 {
@@ -852,6 +855,42 @@ void VK_CommandBuffer::Draw(CONST DrawAttribute& draw_attr)
 	vkCmdDraw(command_buffer, draw_attr.vertexCount, draw_attr.instanceCount, draw_attr.firstVertex, draw_attr.firstInstance);
 }
 
+void VK_CommandBuffer::SetVertexBuffer(Buffer* buffer, UInt32 slot, UInt32 stride, UInt32 offset)
+{
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdSetVertexBuffer>(buffer, slot, stride, offset)); return; }
+	VK_Buffer* vk_buf = STATIC_CAST(buffer, VK_Buffer);
+	VkBuffer vkb = vk_buf->GetBuffer();
+	VkDeviceSize off = vk_buf->GetOffset() + offset;
+	vkCmdBindVertexBuffers(command_buffer, slot, 1, &vkb, &off);
+}
+
+void VK_CommandBuffer::SetIndexBuffer(Buffer* buffer, UInt32 offset, Bool index32)
+{
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdSetIndexBuffer>(buffer, offset, index32)); return; }
+	VK_Buffer* vk_buf = STATIC_CAST(buffer, VK_Buffer);
+	vkCmdBindIndexBuffer(command_buffer, vk_buf->GetBuffer(), vk_buf->GetOffset() + offset, index32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
+}
+
+void VK_CommandBuffer::DrawIndexed(UInt32 indexCount, UInt32 instanceCount, UInt32 firstIndex, UInt32 vertexOffset, UInt32 firstInstance)
+{
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdDrawIndexed>(indexCount, instanceCount, firstIndex, vertexOffset, firstInstance)); return; }
+	VkViewport viewport{};
+	viewport.x = 0.0f; viewport.y = 0.0f;
+	viewport.width = state_cache.framebuffer_width;
+	viewport.height = state_cache.framebuffer_height;
+	viewport.minDepth = 0.0f; viewport.maxDepth = 1.0f;
+	vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+	VkRect2D scissor{};
+	scissor.offset = { 0, 0 };
+	scissor.extent = { static_cast<UInt32>(state_cache.framebuffer_width), static_cast<UInt32>(state_cache.framebuffer_height) };
+	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.graphics_pipeline);
+	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+	if (state_cache.srb) state_cache.srb->FlushDescriptorWrites();
+	if (state_cache.descriptor_sets != nullptr)
+		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.pipeline_layout, state_cache.first_set, state_cache.descriptor_sets_count, state_cache.descriptor_sets, 0, nullptr);
+	vkCmdDrawIndexed(command_buffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+}
+
 VK_CommandBufferManager::~VK_CommandBufferManager()
 {
 	for (UInt32 index = 0; index < graphic_cmd_buffers.size(); ++index)
@@ -947,6 +986,21 @@ void VK_CommandBuffer::Replay()
 		case RHICommandType::Draw:
 			Draw(static_cast<RHICmdDraw*>(cmd.get())->attr);
 			break;
+		case RHICommandType::SetVertexBuffer: {
+			auto* c = static_cast<RHICmdSetVertexBuffer*>(cmd.get());
+			SetVertexBuffer(c->buffer, c->slot, c->stride, c->offset);
+			break;
+		}
+		case RHICommandType::SetIndexBuffer: {
+			auto* c = static_cast<RHICmdSetIndexBuffer*>(cmd.get());
+			SetIndexBuffer(c->buffer, c->offset, c->index32);
+			break;
+		}
+		case RHICommandType::DrawIndexed: {
+			auto* c = static_cast<RHICmdDrawIndexed*>(cmd.get());
+			DrawIndexed(c->indexCount, c->instanceCount, c->firstIndex, c->vertexOffset, c->firstInstance);
+			break;
+		}
 		case RHICommandType::Dispatch: {
 			auto* c = static_cast<RHICmdDispatch*>(cmd.get());
 			Dispatch(c->gx, c->gy, c->gz);

@@ -50,6 +50,9 @@ enum class RHICommandType : UInt8
 	EndUI,
 	WriteTimestamp,
 	RenderImGui,
+	SetVertexBuffer,
+	SetIndexBuffer,
+	DrawIndexed,
 };
 
 struct RHICommand
@@ -185,6 +188,22 @@ struct RHICmdRenderImGui : RHICommand {
 	RHICmdRenderImGui(void* dd, void* ctx) : RHICommand(RHICommandType::RenderImGui), draw_data(dd), imgui_context(ctx) {}
 };
 
+struct RHICmdSetVertexBuffer : RHICommand {
+	class Buffer* buffer; UInt32 slot; UInt32 stride; UInt32 offset;
+	RHICmdSetVertexBuffer(class Buffer* b, UInt32 sl, UInt32 st, UInt32 off)
+		: RHICommand(RHICommandType::SetVertexBuffer), buffer(b), slot(sl), stride(st), offset(off) {}
+};
+struct RHICmdSetIndexBuffer : RHICommand {
+	class Buffer* buffer; UInt32 offset; Bool index32;
+	RHICmdSetIndexBuffer(class Buffer* b, UInt32 off, Bool i32)
+		: RHICommand(RHICommandType::SetIndexBuffer), buffer(b), offset(off), index32(i32) {}
+};
+struct RHICmdDrawIndexed : RHICommand {
+	UInt32 indexCount, instanceCount, firstIndex, vertexOffset, firstInstance;
+	RHICmdDrawIndexed(UInt32 ic, UInt32 in, UInt32 fi, UInt32 vo, UInt32 fin)
+		: RHICommand(RHICommandType::DrawIndexed), indexCount(ic), instanceCount(in), firstIndex(fi), vertexOffset(vo), firstInstance(fin) {}
+};
+
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(CommandList,public RenderResource)
 
 #pragma region METHOD
@@ -196,6 +215,9 @@ public:
 	VIRTUAL void METHOD(SetRenderTarget)(CONST Vector<Texture*>& render_targets, Texture* depth_stencil, CONST Vector<ClearValue>& clear_values, Bool has_dsv_clear_value) PURE;
 	VIRTUAL void METHOD(SetShaderResourceBinding)(ShaderResourceBinding* srb) PURE;
 	VIRTUAL void METHOD(Draw)(CONST DrawAttribute& draw_attr) PURE;
+	VIRTUAL void METHOD(SetVertexBuffer)(Buffer* buffer, UInt32 slot, UInt32 stride, UInt32 offset) {};
+	VIRTUAL void METHOD(SetIndexBuffer)(Buffer* buffer, UInt32 offset, Bool index32) {};
+	VIRTUAL void METHOD(DrawIndexed)(UInt32 indexCount, UInt32 instanceCount, UInt32 firstIndex, UInt32 vertexOffset, UInt32 firstInstance) {};
 	VIRTUAL void METHOD(Dispatch)(UInt32 groupX, UInt32 groupY, UInt32 groupZ) PURE;
 	VIRTUAL void METHOD(ComputeDispatch)(RenderPipelineState* pipeline, ShaderResourceBinding* srb, UInt32 groupX, UInt32 groupY, UInt32 groupZ) {}
 	VIRTUAL void METHOD(SetPushConstants)(UInt32 offset, UInt32 size, const void* data) PURE;

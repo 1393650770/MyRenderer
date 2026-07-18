@@ -1,0 +1,67 @@
+#version 460
+// Ocean: one-shot generation of the initial Phillips spectrum h0(k).
+// Output rg = h0(k), ba = conj(h0(-k)). The -k value re-runs the SAME
+// per-pixel hash sequence of the pixel that owns -k, so both stay consistent
+// (mismatch makes the surface drift sideways over time).
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0) readonly buffer op_Buf { float d[]; } op;
+layout(set = 0, binding = 1, rgba32f) uniform writeonly image2D h0_img;
+
+const uint N = 256u;
+const float PATCH_L = 51.2;
+const float GRAVITY = 9.81;
+const float PI = 3.14159265358979;
+const float SMALL_L = 0.30;      // exp(-k^2 l^2) short-wave suppression (30 cm)
+
+// PCG hash
+uint pcg(uint v)
+{
+	uint state = v * 747796405u + 2891336453u;
+	uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+	return (word >> 22u) ^ word;
+}
+
+// two independent gaussians via Box-Muller, seeded only by the pixel coord
+vec2 hash_gauss(uvec2 p)
+{
+	uint h1 = pcg(p.x + N * p.y + 7u);
+	uint h2 = pcg(h1);
+	float u1 = max(float(h1) / 4294967295.0, 1e-9);
+	float u2 = float(h2) / 4294967295.0;
+	float r = sqrt(-2.0 * log(u1));
+	return vec2(r * cos(2.0 * PI * u2), r * sin(2.0 * PI * u2));
+}
+
+float phillips(vec2 k)
+{
+	float amp = op.d[15];
+	float wind_speed = op.d[12];
+	vec2 wind_dir = normalize(vec2(op.d[13], op.d[14]));
+	float kl = length(k);
+	if (kl < 1e-6) return 0.0;
+	float lw = wind_speed * wind_speed / GRAVITY;   // largest wave from wind
+	float kk = kl * kl;
+	float dd = dot(k / kl, wind_dir);
+	float dir = dd * dd;
+	if (dd < 0.0) dir *= 0.25;                       // damp upwind waves
+	float p = amp * exp(-1.0 / (kk * lw * lw)) / (kk * kk) * dir;
+	p *= exp(-kk * SMALL_L * SMALL_L);
+	return p;
+}
+
+vec2 h0_at(uvec2 pix)
+{
+	vec2 k = 2.0 * PI * (vec2(pix) - vec2(float(N) * 0.5)) / PATCH_L;
+	return hash_gauss(pix) * sqrt(phillips(k) * 0.5);
+}
+
+void main()
+{
+	uvec2 pix = gl_GlobalInvocationID.xy;
+	if (pix.x >= N || pix.y >= N) return;
+	vec2 h0 = h0_at(pix);
+	uvec2 mpix = uvec2((N - pix.x) & (N - 1u), (N - pix.y) & (N - 1u));
+	vec2 h0m = h0_at(mpix);
+	imageStore(h0_img, ivec2(pix), vec4(h0, h0m.x, -h0m.y));
+}

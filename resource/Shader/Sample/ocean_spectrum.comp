@@ -1,0 +1,54 @@
+#version 460
+// Ocean: per-frame spectrum evolution H(k,t) = h0 e^{iwt} + conj(h0(-k)) e^{-iwt}.
+// Choppy displacement spectra fold into two complex signals for one IFFT chain:
+//   C1 = H + i*Sx = H * (1 + kx/|k|)   (Sx = -i*(kx/|k|)*H, so i*Sx = (kx/|k|)*H)
+//   C2 = Sz = -i*(kz/|k|)*H
+// After the IFFT: C1.re = height, C1.im = dx, C2.re = dz.
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0) readonly buffer op_Buf { float d[]; } op;
+layout(set = 0, binding = 1, rgba32f) uniform readonly image2D h0_img;
+layout(set = 0, binding = 2, rgba32f) uniform writeonly image2D spec_img;
+
+const uint N = 256u;
+const float PATCH_L = 51.2;
+const float GRAVITY = 9.81;
+const float PI = 3.14159265358979;
+
+void main()
+{
+	uvec2 pix = gl_GlobalInvocationID.xy;
+	if (pix.x >= N || pix.y >= N) return;
+
+	// debug (op[59]): delta spectrum -> a single k bin, expect clean sine
+	// stripes of wavelength PATCH_L after the IFFT chain
+	if (op.d[59] > 0.5)
+	{
+		vec4 v = (pix.x == 129u && pix.y == 128u) ? vec4(1.0, 0.0, 0.0, 0.0) : vec4(0.0);
+		imageStore(spec_img, ivec2(pix), v);
+		return;
+	}
+
+	float t = op.d[0];
+	vec2 k = 2.0 * PI * (vec2(pix) - vec2(float(N) * 0.5)) / PATCH_L;
+	float kl = length(k);
+
+	vec4 h0p = imageLoad(h0_img, ivec2(pix));
+	vec2 h0 = h0p.xy;
+	vec2 h0mc = h0p.zw;              // conj(h0(-k))
+
+	float w = sqrt(GRAVITY * kl);
+	vec2 ep = vec2(cos(w * t), sin(w * t));
+	// h0 * e^{iwt} + h0mc * e^{-iwt}, expanded complex multiplies
+	vec2 H = vec2(h0.x * ep.x - h0.y * ep.y, h0.x * ep.y + h0.y * ep.x)
+	       + vec2(h0mc.x * ep.x + h0mc.y * ep.y, -h0mc.x * ep.y + h0mc.y * ep.x);
+
+	vec2 c1 = H;
+	vec2 c2 = vec2(0.0);
+	if (kl > 1e-6)
+	{
+		c1 = H * (1.0 + k.x / kl);
+		c2 = vec2(H.y, -H.x) * (k.y / kl);
+	}
+	imageStore(spec_img, ivec2(pix), vec4(c1, c2));
+}

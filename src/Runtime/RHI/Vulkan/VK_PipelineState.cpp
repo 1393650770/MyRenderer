@@ -95,7 +95,7 @@ VK_PipelineState::VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipel
 		vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		Vector<VkVertexInputAttributeDescription> attribute_desc;
 		Vector<VkVertexInputBindingDescription> binding_desc;
-		auto& sort_input_layout = desc.GetSortedVertexInputLayout();
+		auto sort_input_layout = desc.GetSortedVertexInputLayout();
 		Map<UInt32,UInt32> binding_map;
 		Map<UInt32, UInt8> input_rate_map;
 		for(auto& input_layout : sort_input_layout)
@@ -211,10 +211,26 @@ VK_PipelineState::VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipel
 		pipeline_info.pColorBlendState = &color_blend_state;
 		pipeline_info.pDynamicState = &dynamic_state;
 		pipeline_info.layout = CreatePipelineLayout(desc);
-		pipeline_info.renderPass = render_pass->GetRenderPass();
+		VkPipelineRenderingCreateInfoKHR rendering_info{};
+		Vector<VkFormat> dyn_color_formats;
+		if (render_pass == nullptr)
+		{
+			rendering_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+			rendering_info.colorAttachmentCount = (UInt32)desc.render_targets.size();
+			for (auto& rtv : desc.render_targets)
+				dyn_color_formats.push_back(VK_Utils::Translate_Texture_Format_To_Vulkan(rtv->GetTextureDesc().format));
+			rendering_info.pColorAttachmentFormats = dyn_color_formats.data();
+			if (desc.depth_stencil_view)
+				rendering_info.depthAttachmentFormat = VK_Utils::Translate_Texture_Format_To_Vulkan(desc.depth_stencil_view->GetTextureDesc().format);
+			pipeline_info.pNext = &rendering_info;
+			pipeline_info.renderPass = VK_NULL_HANDLE;
+		}
+		else
+		{
+			pipeline_info.renderPass = render_pass->GetRenderPass();
+		}
 		pipeline_info.subpass = 0;
 		pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
-		pipeline_info.pNext = nullptr;
 		CHECK_WITH_LOG( vkCreateGraphicsPipelines(device->GetDevice(), pipeline_cache, 1, &pipeline_info, nullptr, &pipeline) != VK_SUCCESS,"RHI Error: Failed to create pipeline");
 	}
 }

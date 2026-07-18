@@ -95,6 +95,17 @@ void VK_Device::CreateDevice(Bool enable_validation_layers, CONST Vector<UniqueP
 		}
 	}
 
+	// Prepend Vulkan 1.3 physical-device features (dynamicRendering, synchronization2)
+	// to the pNext chain. Only chain core_1_3 — core_1_1 and core_1_2 features are
+	// already provided by individual extension structs (DescriptorIndexing, BufferDeviceAddress
+	// etc.), and adding both the per-extension struct AND the bundled VkPhysicalDeviceVulkan12Features
+	// violates VUID-VkDeviceCreateInfo-pNext-02830.
+	if (api_version >= VK_API_VERSION_1_3)
+	{
+		gpu_features.core_1_3.pNext = const_cast<void*>(create_info.pNext);
+		create_info.pNext = &gpu_features.core_1_3;
+	}
+
 	create_info.enabledExtensionCount = static_cast<uint32_t>(device_extensions.size());
 	create_info.ppEnabledExtensionNames = device_extensions.data();
 

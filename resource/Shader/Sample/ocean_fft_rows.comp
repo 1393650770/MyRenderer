@@ -1,0 +1,46 @@
+#version 460
+// Ocean: 256-point unnormalized inverse FFT along image ROWS, one workgroup
+// per row. Stockham radix-2 autosort: all 8 stages run in shared memory with
+// no bit-reversal pass. vec4 carries two complex signals (xy = C1, zw = C2).
+// Twiddle sign is +sin (inverse transform); amplitude is absorbed by the
+// Phillips constant, so no 1/N^2 normalization.
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, rgba32f) uniform readonly image2D src_img;
+layout(set = 0, binding = 1, rgba32f) uniform writeonly image2D dst_img;
+
+const float PI = 3.14159265358979;
+
+shared vec4 buf[2][256];
+
+vec2 cmul(vec2 a, vec2 b) { return vec2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x); }
+
+void main()
+{
+	uint tid = gl_LocalInvocationID.x;
+	uint row = gl_WorkGroupID.x;
+	buf[0][tid] = imageLoad(src_img, ivec2(tid, row));
+
+	uint src = 0u;
+	for (uint s = 0u; s < 8u; ++s)
+	{
+		barrier();
+		if (tid < 128u)
+		{
+			uint m = 1u << s;
+			uint l = 128u >> s;
+			uint j = tid >> s;
+			uint kk = tid & (m - 1u);
+			vec4 a = buf[src][j * m + kk];
+			vec4 b = buf[src][j * m + kk + 128u];
+			float ang = PI * float(j) / float(l);
+			vec2 w = vec2(cos(ang), sin(ang));
+			vec4 diff = a - b;
+			buf[1u - src][2u * j * m + kk] = a + b;
+			buf[1u - src][2u * j * m + kk + m] = vec4(cmul(w, diff.xy), cmul(w, diff.zw));
+		}
+		src = 1u - src;
+	}
+	barrier();
+	imageStore(dst_img, ivec2(tid, row), buf[src][tid]);
+}

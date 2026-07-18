@@ -472,9 +472,9 @@ public:
 		return !(*this == rhs);
 	};
 
-	CONST Vector<VertexInputLayout>& GetSortedVertexInputLayout() CONST
+	Vector<VertexInputLayout> GetSortedVertexInputLayout() CONST
 	{
-		static Vector<VertexInputLayout> sortedLayouts = vertex_input_layout;
+		Vector<VertexInputLayout> sortedLayouts = vertex_input_layout;
 		std::sort(sortedLayouts.begin(), sortedLayouts.end(), [](CONST VertexInputLayout& lhs, CONST VertexInputLayout& rhs)->Bool {
 			if (lhs.input_rate != rhs.input_rate)
 				return lhs.input_rate < rhs.input_rate;
