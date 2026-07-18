@@ -1,29 +1,42 @@
 #version 460
-// Ocean sky: UV.y gradient — zenith deep blue, horizon light, below-horizon grey.
-// Zero bindings. The ocean surface has an identical sky_color() copy for reflections.
+// Clean procedural sky: zenith blue, horizon light, sun disc + glow.
 layout(location = 0) in vec2 inUV;
 layout(location = 0) out vec4 outColor;
+layout(set = 0, binding = 0) readonly buffer op_Buf { float d[]; } op;
 
-const vec3 SUN_COL = vec3(1.0, 0.93, 0.82);
+void main() {
+	vec3 sun = normalize(vec3(op.d[8], op.d[9], op.d[10]));
 
-void main()
-{
-	// uv.y = 0 -> top of screen (zenith), uv.y ~ 0.45 -> horizon
-	float t = clamp(inUV.y * 2.2, 0.0, 1.0);   // horizon near uv.y=0.45
-	vec3 col = mix(vec3(0.28, 0.48, 0.78), vec3(0.76, 0.84, 0.93), pow(t, 0.55));
+	// elevation from UV.y (0=top, 0.5=horizon)
+	float elev = (0.5 - inUV.y) * 2.0;
 
-	// below-horizon fallback: fade to darker grey (mostly covered by ocean)
-	if (inUV.y > 0.5)
-		col = mix(col, vec3(0.16, 0.24, 0.32), (inUV.y - 0.5) * 4.0);
+	// sky gradient
+	float t = clamp(elev * 0.8 + 0.5, 0.0, 1.0);
+	vec3 zenith = vec3(0.18, 0.42, 0.78);
+	vec3 horizon = vec3(0.65, 0.78, 0.92);
+	vec3 col = mix(horizon, zenith, pow(t, 0.35));
 
-	// hard-coded sun (matches ocean_surface.frag sky_color for reflections)
-	vec3 sun = normalize(vec3(-0.55, 0.32, -0.60));
-	// approximate sun disc in screen space
-	vec2 sc = (inUV - vec2(0.55, 0.42)) * vec2(1.0, 1.3);  // sun position
-	float sun_dist = length(sc);
-	float sun_glow = exp(-sun_dist * 30.0) * 0.6;
-	float sun_disc = 1.0 - smoothstep(0.0, 0.012, sun_dist);
-	col += SUN_COL * (sun_disc * 5.0 + sun_glow);
+	// below horizon
+	if (elev < 0.0)
+		col = mix(col, vec3(0.08, 0.14, 0.22), clamp(-elev * 3.0, 0.0, 1.0));
+
+	// Mie scattering glow around sun
+	float sun_elev = sun.y;
+	float elev_diff = abs(elev - sun_elev);
+	float mie = exp(-elev_diff * 20.0) * 0.4;
+	vec3 sun_col = vec3(1.0, 0.92, 0.80);
+	col += sun_col * mie;
+
+	// sun disc
+	// approximate screen-space sun position
+	float sun_x = sun.x * 0.5 / max(abs(sun.z), 0.1);
+	float sun_y_screen = 0.5 - sun.y * 0.5;
+	vec2 sc = inUV - vec2(sun_x + 0.5, sun_y_screen);
+	float sun_d = length(sc * vec2(1.0, 1.2));
+	col += sun_col * (1.0 - smoothstep(0.0, 0.025, sun_d)) * 2.5;
+
+	// sun halo
+	col += sun_col * exp(-sun_d * 15.0) * 0.3;
 
 	outColor = vec4(col, 1.0);
 }

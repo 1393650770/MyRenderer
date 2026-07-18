@@ -1,0 +1,31 @@
+#version 460
+// Copy FFT displacement + normal maps into storage buffers for the graphics pass.
+// Avoids sampler2D in graphics PSO (known engine limitation).
+// local_size = 16x16, dispatch (16, 16, 1) for 256x256 textures.
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(rgba16f, set = 0, binding = 0) readonly restrict uniform image2D disp_img;
+layout(rgba16f, set = 0, binding = 1) readonly restrict uniform image2D norm_img;
+layout(std430, set = 0, binding = 2) writeonly restrict buffer DispBuf { float d[]; } disp_buf;
+layout(std430, set = 0, binding = 3) writeonly restrict buffer NormBuf { float d[]; } norm_buf;
+
+const uint N = 256u;
+
+void main() {
+	uvec2 pix = gl_GlobalInvocationID.xy;
+	if (pix.x >= N || pix.y >= N) return;
+
+	uint idx = (pix.y * N + pix.x) * 4u;
+
+	vec4 disp = imageLoad(disp_img, ivec2(pix));
+	disp_buf.d[idx + 0u] = disp.x;
+	disp_buf.d[idx + 1u] = disp.y;
+	disp_buf.d[idx + 2u] = disp.z;
+	disp_buf.d[idx + 3u] = disp.w;
+
+	vec4 norm = imageLoad(norm_img, ivec2(pix));
+	norm_buf.d[idx + 0u] = norm.x;
+	norm_buf.d[idx + 1u] = norm.y;
+	norm_buf.d[idx + 2u] = norm.z;
+	norm_buf.d[idx + 3u] = norm.w;
+}
