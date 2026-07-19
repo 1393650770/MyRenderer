@@ -1,0 +1,23 @@
+#version 460
+// VolumetricCloud: EMA temporal accumulation between current and previous frame.
+// blend=0.05 -> ~20 frame accumulation, eliminates temporal flicker.
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(set = 0, binding = 0) readonly buffer op_Buf { float d[]; } op;
+layout(set = 0, binding = 1) uniform sampler2D cloud_curr;
+layout(set = 0, binding = 2) uniform sampler2D cloud_hist;
+layout(set = 0, binding = 3, rgba16f) uniform writeonly image2D cloud_taa;
+
+void main() {
+	ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+	int hw = int(op.d[46] + 0.5), hh = int(op.d[47] + 0.5);
+	if (gid.x >= hw || gid.y >= hh) return;
+
+	vec2 uv = (vec2(gid) + 0.5) / vec2(float(hw), float(hh));
+	vec4 curr = texture(cloud_curr, uv);
+	vec4 hist = texture(cloud_hist, uv);
+
+	float fi = op.d[52];
+	float blend = (fi < 2.0) ? 1.0 : 0.05;
+	imageStore(cloud_taa, gid, mix(hist, curr, blend));
+}

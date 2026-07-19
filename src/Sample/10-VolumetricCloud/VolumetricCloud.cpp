@@ -1,6 +1,5 @@
-// VolumetricCloud: Hillaire-style sky LUTs (transmittance + sky-view, computed on GPU)
-// + Nubis-style raymarched clouds from tileable 3D noise textures.
-// First sample exercising the engine's 3D texture path (image3D write + sampler3D read).
+// VolumetricCloud: Hillaire-style sky LUTs + simplified raymarching (Unity ref).
+// Pipeline: March -> Filter -> TAA(EMA blend) -> Copy(hist) -> Composite
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -77,23 +76,27 @@ protected:
 	void CreateSRBs();
 	void RecNoise(RHI::CommandList*);
 	void RecAtmo(RHI::CommandList*);
+	void RecFilter(RHI::CommandList*);
+	void RecTAA(RHI::CommandList*);
+	void RecCopy(RHI::CommandList*);
 	void RecMarch(RHI::CommandList*);
 	Window* window = nullptr;
 	RHI::Buffer* op_buf = nullptr;
 	RHI::Texture *tex_shape=nullptr,*tex_detail=nullptr,*tex_weather=nullptr,
-	             *tex_trans=nullptr,*tex_skyview=nullptr,*tex_cloud=nullptr;
+	             *tex_trans=nullptr,*tex_skyview=nullptr,*tex_cloud=nullptr,
+	             *tex_cloud_filt=nullptr,*tex_cloud_hist=nullptr,*tex_cloud_taa=nullptr;
 	RHI::RenderPipelineState *pShape=nullptr,*pDetail=nullptr,*pWeather=nullptr,
-	                         *pTrans=nullptr,*pSky=nullptr,*pMarch=nullptr;
+	                         *pTrans=nullptr,*pSky=nullptr,*pMarch=nullptr,
+	                         *pFilter=nullptr,*pTAA=nullptr,*pCopy=nullptr;
 	RHI::ShaderResourceBinding *sShape=nullptr,*sDetail=nullptr,*sWeather=nullptr,
-	                           *sTrans=nullptr,*sSky=nullptr,*sMarch=nullptr;
+	                           *sTrans=nullptr,*sSky=nullptr,*sMarch=nullptr,
+	                           *sFilter=nullptr,*sTAA=nullptr,*sCopy=nullptr;
 	UInt32 fi = 0; Float32 ts = 0;
-	// look-around camera: drag = yaw/pitch, wheel = camera height (fly into the clouds)
 	Float32 cam_yaw=0.2f, cam_pitch=0.12f, cam_h=5.0f; Bool drag=false; Float64 lcx=0,lcy=0;
 	glm::vec3 eye = glm::vec3(0,5,0);
 	glm::mat4 vp = glm::mat4(1), ivp = glm::mat4(1);
-	// sun (radians) + cloud params
 	Float32 sun_azim=0.35f, sun_elev=0.55f;
-	Float32 coverage=0.55f, density=1.0f, wind_speed=12.0f, exposure=1.2f;
+	Float32 coverage=0.55f, density=0.2f, wind_speed=12.0f, exposure=1.2f;
 	glm::vec2 wind_off = glm::vec2(0);
 	glm::vec3 sun = glm::vec3(0,1,0);
 	Int dm = 0; Bool kp[5] = {};
@@ -119,18 +122,23 @@ void RT::CreateRes() {
 	tex_shape = mk3d(SHAPE_N); tex_detail = mk3d(DETAIL_N);
 	tex_weather = mk2d(WEATHER_N, WEATHER_N);
 	tex_trans = mk2d(TRANS_W, TRANS_H); tex_skyview = mk2d(SKY_W, SKY_H);
-	tex_cloud = mk2d(HALF_W, HALF_H);
+	tex_cloud = mk2d(HALF_W, HALF_H); tex_cloud_filt = mk2d(HALF_W, HALF_H);
+	tex_cloud_hist = mk2d(HALF_W, HALF_H); tex_cloud_taa = mk2d(HALF_W, HALF_H);
 }
 void RT::CreateCSO() {
-	Shader* cs[6] = {
+	Shader* cs[9] = {
 		LF(ENUM_SHADER_STAGE::Shader_Compute,"Shader/cloud_noise_shape.comp.spv"),
 		LF(ENUM_SHADER_STAGE::Shader_Compute,"Shader/cloud_noise_detail.comp.spv"),
 		LF(ENUM_SHADER_STAGE::Shader_Compute,"Shader/cloud_noise_weather.comp.spv"),
 		LF(ENUM_SHADER_STAGE::Shader_Compute,"Shader/cloud_atmo_transmittance.comp.spv"),
 		LF(ENUM_SHADER_STAGE::Shader_Compute,"Shader/cloud_atmo_skyview.comp.spv"),
-		LF(ENUM_SHADER_STAGE::Shader_Compute,"Shader/cloud_march.comp.spv") };
+		LF(ENUM_SHADER_STAGE::Shader_Compute,"Shader/cloud_march.comp.spv"),
+		LF(ENUM_SHADER_STAGE::Shader_Compute,"Shader/cloud_filter.comp.spv"),
+		LF(ENUM_SHADER_STAGE::Shader_Compute,"Shader/cloud_taa.comp.spv"),
+		LF(ENUM_SHADER_STAGE::Shader_Compute,"Shader/cloud_copy.comp.spv") };
 	pShape=MkPSO(cs[0]); pDetail=MkPSO(cs[1]); pWeather=MkPSO(cs[2]);
 	pTrans=MkPSO(cs[3]); pSky=MkPSO(cs[4]); pMarch=MkPSO(cs[5]);
+	pFilter=MkPSO(cs[6]); pTAA=MkPSO(cs[7]); pCopy=MkPSO(cs[8]);
 	for (auto* s : cs) delete s;
 }
 void RT::CreateSRBs() {
@@ -151,10 +159,26 @@ void RT::CreateSRBs() {
 	sMarch->SetResource("weather_tex", tex_weather); sMarch->SetResource("trans_lut", tex_trans);
 	sMarch->SetResource("skyview_tex", tex_skyview); sMarch->SetResource("cloud_img", tex_cloud);
 	sMarch->FlushDescriptorWrites();
+	pFilter->CreateShaderResourceBinding(sFilter, false);
+	sFilter->SetResource("op", op_buf);
+	sFilter->SetResource("cloud_in", tex_cloud);
+	sFilter->SetResource("cloud_out", tex_cloud_filt);
+	sFilter->FlushDescriptorWrites();
+	pTAA->CreateShaderResourceBinding(sTAA, false);
+	sTAA->SetResource("op", op_buf);
+	sTAA->SetResource("cloud_curr", tex_cloud_filt);
+	sTAA->SetResource("cloud_hist", tex_cloud_hist);
+	sTAA->SetResource("cloud_taa", tex_cloud_taa);
+	sTAA->FlushDescriptorWrites();
+	pCopy->CreateShaderResourceBinding(sCopy, false);
+	sCopy->SetResource("op", op_buf);
+	sCopy->SetResource("src_tex", tex_cloud_taa);
+	sCopy->SetResource("dst_img", tex_cloud_hist);
+	sCopy->FlushDescriptorWrites();
 }
 
 void RT::RecNoise(RHI::CommandList* c) {
-	if (fi != 0) return; // one-shot bake at frame 0
+	if (fi != 0) return;
 	auto rc = [c](RenderPipelineState* pso, ShaderResourceBinding* s, UInt32 x, UInt32 y, UInt32 z) {
 		c->SetComputePipeline(pso); c->SetShaderResourceBinding(s); c->Dispatch(x, y, z);
 		c->ResourceBarrier(ENUM_RESOURCE_STATE::UnorderedAccess, ENUM_RESOURCE_STATE::ShaderResource);
@@ -178,6 +202,7 @@ void RT::RecAtmo(RHI::CommandList* c) {
 	p[40]=wind_off.x; p[41]=wind_off.y; p[42]=coverage; p[43]=density;
 	p[44]=CLOUD_BOTTOM; p[45]=CLOUD_TOP; p[46]=(Float32)HALF_W; p[47]=(Float32)HALF_H;
 	p[48]=wind_speed; p[49]=exposure; p[50]=FOG_DENSITY; p[51]=ts*0.05f;
+	p[52]=(Float32)(fi % 8);
 	UF(op_buf, p, 64);
 	auto rc = [c](RenderPipelineState* pso, ShaderResourceBinding* s, UInt32 x, UInt32 y) {
 		c->SetComputePipeline(pso); c->SetShaderResourceBinding(s); c->Dispatch(x, y, 1);
@@ -185,7 +210,6 @@ void RT::RecAtmo(RHI::CommandList* c) {
 		c->ResourceBarrier(ENUM_RESOURCE_STATE::UnorderedAccess, ENUM_RESOURCE_STATE::UnorderedAccess);
 	};
 	if (fi == 0) {
-		// transmittance depends only on atmosphere composition: bake once
 		c->TransitionTextureState(tex_trans, ENUM_RESOURCE_STATE::UnorderedAccess);
 		rc(pTrans, sTrans, TRANS_W / 8, TRANS_H / 8);
 		c->TransitionTextureState(tex_trans, ENUM_RESOURCE_STATE::ShaderResource);
@@ -194,6 +218,30 @@ void RT::RecAtmo(RHI::CommandList* c) {
 	rc(pSky, sSky, SKY_W / 8, (SKY_H + 7) / 8);
 	c->TransitionTextureState(tex_skyview, ENUM_RESOURCE_STATE::ShaderResource);
 	fi++;
+}
+void RT::RecFilter(RHI::CommandList* c) {
+	c->TransitionTextureState(tex_cloud_filt, ENUM_RESOURCE_STATE::UnorderedAccess);
+	c->SetComputePipeline(pFilter); c->SetShaderResourceBinding(sFilter);
+	c->Dispatch(HALF_W / 8, HALF_H / 8, 1);
+	c->ResourceBarrier(ENUM_RESOURCE_STATE::UnorderedAccess, ENUM_RESOURCE_STATE::ShaderResource);
+	c->ResourceBarrier(ENUM_RESOURCE_STATE::UnorderedAccess, ENUM_RESOURCE_STATE::UnorderedAccess);
+	c->TransitionTextureState(tex_cloud_filt, ENUM_RESOURCE_STATE::ShaderResource);
+}
+void RT::RecTAA(RHI::CommandList* c) {
+	c->TransitionTextureState(tex_cloud_taa, ENUM_RESOURCE_STATE::UnorderedAccess);
+	c->SetComputePipeline(pTAA); c->SetShaderResourceBinding(sTAA);
+	c->Dispatch(HALF_W / 8, HALF_H / 8, 1);
+	c->ResourceBarrier(ENUM_RESOURCE_STATE::UnorderedAccess, ENUM_RESOURCE_STATE::ShaderResource);
+	c->ResourceBarrier(ENUM_RESOURCE_STATE::UnorderedAccess, ENUM_RESOURCE_STATE::UnorderedAccess);
+	c->TransitionTextureState(tex_cloud_taa, ENUM_RESOURCE_STATE::ShaderResource);
+}
+void RT::RecCopy(RHI::CommandList* c) {
+	c->TransitionTextureState(tex_cloud_hist, ENUM_RESOURCE_STATE::UnorderedAccess);
+	c->SetComputePipeline(pCopy); c->SetShaderResourceBinding(sCopy);
+	c->Dispatch(HALF_W / 8, HALF_H / 8, 1);
+	c->ResourceBarrier(ENUM_RESOURCE_STATE::UnorderedAccess, ENUM_RESOURCE_STATE::ShaderResource);
+	c->ResourceBarrier(ENUM_RESOURCE_STATE::UnorderedAccess, ENUM_RESOURCE_STATE::UnorderedAccess);
+	c->TransitionTextureState(tex_cloud_hist, ENUM_RESOURCE_STATE::ShaderResource);
 }
 void RT::RecMarch(RHI::CommandList* c) {
 	c->TransitionTextureState(tex_cloud, ENUM_RESOURCE_STATE::UnorderedAccess);
@@ -221,6 +269,9 @@ void RT::OnInit_Logic(Application::Window* in_window) {
 	auto* trn = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>("TransLUT", tex_trans->GetTextureDesc(), tex_trans);
 	auto* sky = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>("SkyViewLUT", tex_skyview->GetTextureDesc(), tex_skyview);
 	auto* cld = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>("CloudBuf", tex_cloud->GetTextureDesc(), tex_cloud);
+	auto* flt = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>("CloudFilt", tex_cloud_filt->GetTextureDesc(), tex_cloud_filt);
+	auto* hst = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>("CloudHist", tex_cloud_hist->GetTextureDesc(), tex_cloud_hist);
+	auto* taa = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>("CloudTAA", tex_cloud_taa->GetTextureDesc(), tex_cloud_taa);
 
 	auto ap = [&](const char* name, auto setup, auto exec) {
 		auto* p = graph.AddRenderPass<PD>(name, &graph, cl, setup, exec); p->SetIsCullable(false); return p;
@@ -247,12 +298,31 @@ void RT::OnInit_Logic(Application::Window* in_window) {
 			b.Write(cld, ENUM_RESOURCE_STATE::UnorderedAccess);
 		},
 		[=](CONST PD&, CommandList* c) { RecMarch(c); });
+	ap("CloudFilter",
+		[&](PD&, RenderGraphPassBuilder& b, CommandList*) {
+			b.Read(cld, ENUM_RESOURCE_STATE::ShaderResource);
+			b.Write(flt, ENUM_RESOURCE_STATE::UnorderedAccess);
+		},
+		[=](CONST PD&, CommandList* c) { RecFilter(c); });
+	ap("CloudTAA",
+		[&](PD&, RenderGraphPassBuilder& b, CommandList*) {
+			b.Read(flt, ENUM_RESOURCE_STATE::ShaderResource);
+			b.Read(hst, ENUM_RESOURCE_STATE::ShaderResource);
+			b.Write(taa, ENUM_RESOURCE_STATE::UnorderedAccess);
+		},
+		[=](CONST PD&, CommandList* c) { RecTAA(c); });
+	ap("CloudCopy",
+		[&](PD&, RenderGraphPassBuilder& b, CommandList*) {
+			b.Read(taa, ENUM_RESOURCE_STATE::ShaderResource);
+			b.Write(hst, ENUM_RESOURCE_STATE::UnorderedAccess);
+		},
+		[=](CONST PD&, CommandList* c) { RecCopy(c); });
 
 	auto* p4 = graph.AddRenderPass<PD>("CloudComposite", &graph, cl,
 	[&](PD& d, RenderGraphPassBuilder& b, CommandList*) {
 		b.Read(trn, ENUM_RESOURCE_STATE::ShaderResource);
 		b.Read(sky, ENUM_RESOURCE_STATE::ShaderResource);
-		b.Read(cld, ENUM_RESOURCE_STATE::ShaderResource);
+		b.Read(taa, ENUM_RESOURCE_STATE::ShaderResource);
 		b.Write(rt); if (dv) b.Write(dv);
 		Shader* vs = LF(ENUM_SHADER_STAGE::Shader_Vertex, "Shader/cloud_fullscreen.vert.spv");
 		Shader* ps = LF(ENUM_SHADER_STAGE::Shader_Pixel, "Shader/cloud_composite.frag.spv");
@@ -266,7 +336,7 @@ void RT::OnInit_Logic(Application::Window* in_window) {
 		d.srb->SetResource("op", op_buf);
 		d.srb->SetResource("trans_lut", tex_trans);
 		d.srb->SetResource("skyview_tex", tex_skyview);
-		d.srb->SetResource("cloud_tex", tex_cloud);
+		d.srb->SetResource("cloud_tex", tex_cloud_taa);
 		d.srb->SetResource("shape_tex", tex_shape);
 		d.srb->SetResource("weather_tex", tex_weather);
 		d.srb->FlushDescriptorWrites();
@@ -285,9 +355,9 @@ void RT::OnInit_Logic(Application::Window* in_window) {
 }
 void RT::OnShutdown_Logic() {
 	graph.Release();
-	for (auto* s : { sShape,sDetail,sWeather,sTrans,sSky,sMarch }) delete s;
-	for (auto* t : { tex_shape,tex_detail,tex_weather,tex_trans,tex_skyview,tex_cloud }) delete t;
-	delete op_buf; // compute PSOs are owned by the pipeline-state manager
+	for (auto* s : { sShape,sDetail,sWeather,sTrans,sSky,sMarch,sFilter,sTAA,sCopy }) delete s;
+	for (auto* t : { tex_shape,tex_detail,tex_weather,tex_trans,tex_skyview,tex_cloud,tex_cloud_filt,tex_cloud_hist,tex_cloud_taa }) delete t;
+	delete op_buf;
 }
 void RT::OnUpdate(float dt) {
 	GLFWwindow* w = window->GetWindow(); int ww, wh; glfwGetWindowSize(w, &ww, &wh);
@@ -300,14 +370,12 @@ void RT::OnUpdate(float dt) {
 	drag = dn; lcx = cx; lcy = cy2;
 	cam_h = glm::clamp(cam_h * powf(1.25f, g_scroll), 2.0f, 6000.0f); g_scroll = 0;
 
-	// number keys 0-4: debug view
 	CONST Int ks[5] = { GLFW_KEY_0,GLFW_KEY_1,GLFW_KEY_2,GLFW_KEY_3,GLFW_KEY_4 };
 	for (Int i = 0; i < 5; ++i) {
 		Bool kn = glfwGetKey(w, ks[i]) == GLFW_PRESS;
 		if (kn && !kp[i]) dm = i;
 		kp[i] = kn;
 	}
-	// arrows: sun; Q/A coverage; W/S density; E/D wind speed (continuous)
 	if (glfwGetKey(w, GLFW_KEY_LEFT) == GLFW_PRESS)  sun_azim -= 0.6f * dt;
 	if (glfwGetKey(w, GLFW_KEY_RIGHT) == GLFW_PRESS) sun_azim += 0.6f * dt;
 	if (glfwGetKey(w, GLFW_KEY_UP) == GLFW_PRESS)    sun_elev += 0.4f * dt;

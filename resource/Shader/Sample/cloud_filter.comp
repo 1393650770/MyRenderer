@@ -1,0 +1,57 @@
+#version 460
+// VolumetricCloud: 5x5 joint-bilateral filter on the half-res (640x480) cloud buffer.
+// Smooths out the low-sample-count blockiness while preserving sharp cloud edges.
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(set = 0, binding = 0) readonly buffer op_Buf { float d[]; } op;
+layout(set = 0, binding = 1) uniform sampler2D cloud_in;
+layout(set = 0, binding = 2, rgba16f) uniform writeonly image2D cloud_out;
+
+const float SIGMA_SPATIAL = 1.5;
+const float SIGMA_COLOR = 0.15;
+
+void main()
+{
+	ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+	int hw = int(op.d[46] + 0.5), hh = int(op.d[47] + 0.5);
+	if (gid.x >= hw || gid.y >= hh) return;
+
+	vec2 uv = (vec2(gid) + 0.5) / vec2(float(hw), float(hh));
+	vec2 ts = 1.0 / vec2(float(hw), float(hh)); // texel size
+
+	vec4 center = texture(cloud_in, uv);
+	vec4 sum = center;
+	float wsum = 1.0;
+
+	// 5x5 bilateral kernel: smooth flat areas, preserve edges
+	const int R = 2; // radius
+	float inv2s2 = -1.0 / (2.0 * SIGMA_SPATIAL * SIGMA_SPATIAL);
+	float inv2c2 = -1.0 / (2.0 * SIGMA_COLOR * SIGMA_COLOR);
+
+	for (int dy = -R; dy <= R; ++dy)
+	{
+		for (int dx = -R; dx <= R; ++dx)
+		{
+			if (dx == 0 && dy == 0) continue;
+
+			vec2 off = uv + vec2(float(dx), float(dy)) * ts;
+			vec4 spl = texture(cloud_in, off);
+
+			float d2 = float(dx * dx + dy * dy);
+			float ws = exp(d2 * inv2s2);
+
+			// Range weight: max of per-channel differences (preserves sharp transitions)
+			float dr = abs(spl.r - center.r);
+			float dg = abs(spl.g - center.g);
+			float db = abs(spl.b - center.b);
+			float dc = max(max(dr, dg), db);
+			float wr = exp(dc * dc * inv2c2);
+
+			float w = ws * wr;
+			sum += spl * w;
+			wsum += w;
+		}
+	}
+
+	imageStore(cloud_out, gid, sum / wsum);
+}

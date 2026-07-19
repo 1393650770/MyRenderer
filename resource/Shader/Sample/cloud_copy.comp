@@ -1,0 +1,15 @@
+#version 460
+// Simple texel copy: src -> dst. Used to feed TAA history for next frame.
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(set = 0, binding = 0) readonly buffer op_Buf { float d[]; } op;
+layout(set = 0, binding = 1) uniform sampler2D src_tex;
+layout(set = 0, binding = 2, rgba16f) uniform writeonly image2D dst_img;
+
+void main() {
+	ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+	int hw = int(op.d[46] + 0.5), hh = int(op.d[47] + 0.5);
+	if (gid.x >= hw || gid.y >= hh) return;
+	vec4 c = texelFetch(src_tex, gid, 0);
+	imageStore(dst_img, gid, c);
+}

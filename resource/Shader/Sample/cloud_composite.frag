@@ -105,8 +105,12 @@ void main()
 		bg += st * pow(max(cs, 0.0), 2048.0) * 2.0;
 	}
 
+	// Simple bilinear upsample from the pre-filtered half-res cloud buffer.
+	// The spatial filter pass (cloud_filter.comp) handles smoothing/deblocking,
+	// so composite just needs to sample the result.
 	vec4 cloud = texture(cloud_tex, inUV);
-	vec3 col = bg * cloud.a + cloud.rgb;
+
+	vec3 col = bg * cloud.a + cloud.rgb;  // UE blend: scene * transmittance + luminance
 
 	outColor = vec4(tonemap(col * exposure), 1.0);
 }
