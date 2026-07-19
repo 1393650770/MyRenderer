@@ -164,6 +164,9 @@ function MoveResource(target)
         os.cp(gen_shader_pth, root_taget_shader_path)
     end
     os.cp("$(projectdir)/resource/Texture", root_taget_texture_path)
+    if os.isdir("$(projectdir)/resource/Mesh") then
+        os.cp("$(projectdir)/resource/Mesh", root_taget_path .. "/Mesh")
+    end
     os.cp("$(projectdir)/resource/Editor", root_taget_editor_path)
     if os.isdir("$(projectdir)/resource/Dataset") then
         os.cp("$(projectdir)/resource/Dataset", root_taget_dataset_path)
@@ -328,6 +331,19 @@ target("RendererSample-Fluid3D")
 target("RendererSample-Ocean")
     CommonProjectSetting()
     add_files("src/Sample/9-Ocean/Ocean.cpp")
+    set_group("Sample")
+    after_build(MoveResource)
+
+target("RendererSample-Mesh")
+    CommonProjectSetting()
+    add_files("src/Sample/11-Mesh/MeshSample.cpp")
+    set_group("Sample")
+    after_build(MoveResource)
+
+--   Volumetric Cloud + Atmosphere Demo (Hillaire sky LUTs + Nubis-style raymarched clouds)
+target("RendererSample-VolumetricCloud")
+    CommonProjectSetting()
+    add_files("src/Sample/10-VolumetricCloud/VolumetricCloud.cpp")
     set_group("Sample")
     after_build(MoveResource)
 

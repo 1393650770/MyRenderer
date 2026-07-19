@@ -38,6 +38,7 @@ CONST Texture::TextureFormatAttribs& Texture::GetTextureFormatAttribs(ENUM_TEXTU
 	#define INIT_TEX_FORMAT_INFO(TexFmt, ComponentSize, NumComponents, ComponentType, IsTypeless, BlockWidth, BlockHeight) \
 					format_attribs_map[ (UInt32)TexFmt ] = TextureFormatAttribs{ TexFmt,ComponentType, NumComponents, ComponentSize , BlockWidth, BlockHeight, IsTypeless};
 			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::RGBA32F, 4, 4, ENUM_TEXTURE_COMPONENT_FORMAT::Float, false, 1, 1)
+			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::RGB32F, 4, 3, ENUM_TEXTURE_COMPONENT_FORMAT::Float, false, 1, 1)
 			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::RGBA16F, 2, 4, ENUM_TEXTURE_COMPONENT_FORMAT::Float, false, 1, 1)
 			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::RG32F, 4, 2, ENUM_TEXTURE_COMPONENT_FORMAT::Float, false, 1, 1)
 			INIT_TEX_FORMAT_INFO(ENUM_TEXTURE_FORMAT::R32F, 4, 1, ENUM_TEXTURE_COMPONENT_FORMAT::Float, false, 1, 1)

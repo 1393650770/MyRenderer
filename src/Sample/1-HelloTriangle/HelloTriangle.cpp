@@ -1,155 +1,76 @@
-#include "Render/Core/RenderGraphSerializer.h"
-#include<iostream>
-#include <fstream>
-#include "Application/Window.h"
-#include "Render/RenderInterface.h"
+// Sample 1-HelloTriangle, migrated onto Application::SampleApp - serves as
+// the regression reference for the base class (the image must be identical
+// to the pre-migration version).
+#include "Application/SampleApp.h"
+#include "Tool/ShaderLibrary.h"
 #include "Render/Core/RenderGraph.h"
-#include "RHI/RenderRource.h"
 #include "Render/Core/RenderGraphPass.h"
-#include "RHI/RenderPass.h"
 #include "RHI/RenderRHI.h"
+#include "RHI/RenderRource.h"
 #include "RHI/RenderCommandList.h"
-#include "RHI/Vulkan/VK_Viewport.h"
-#include "RHI/RenderTexture.h"
-#include "RHI/RenderShader.h"
 #include "RHI/RenderPipelineState.h"
-#include "Render/Core/RenderGraphDefinition.h"
+#include <iostream>
+using namespace MXRender;
 using namespace MXRender::RHI;
 using namespace MXRender::Render;
 using namespace MXRender::Application;
-using namespace MXRender::RHI::Vulkan;
-using namespace MXRender;
 
-
-Vector<UInt32> ReadShader(CONST String& filename)
+struct TriPassData : public RenderGraphPassDataBase
 {
-	std::ifstream file(filename, std::ios::ate | std::ios::binary);
+	RenderPipelineState* pipeline_state = nullptr;
+	ShaderResourceBinding* srb = nullptr;
+	VIRTUAL ~TriPassData() { Release(); }
+	void Release()
+	{
+		if (srb) { delete srb; srb = nullptr; }
+	}
+};
 
-	CHECK_WITH_LOG(!file.is_open(), " App Error: fail to open the shader file! ")
-
-	size_t fileSize = (size_t)file.tellg();
-	Vector<UInt32> buffer(fileSize / sizeof(UInt32));
-
-	file.seekg(0);
-	file.read((char*)buffer.data(), fileSize);
-
-	file.close();
-
-	return std::move(buffer);
-}
-
-MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderTest,public MXRender::RenderInterface)
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderTest, public Application::SampleApp)
 #pragma region METHOD
 public:
-	RenderTest(Window* in_window);
 	RenderTest() MYDEFAULT;
 	VIRTUAL ~RenderTest() MYDEFAULT;
 
-	VIRTUAL void OnInit_Logic(Application::Window* in_window) OVERRIDE FINAL;
-	VIRTUAL void OnShutdown_Logic() OVERRIDE FINAL;
-	VIRTUAL void OnUpdate(float dt) OVERRIDE FINAL;
-	VIRTUAL void OnRender() OVERRIDE FINAL;
-	
-
-	Window* GetWindow();
+	VIRTUAL void OnInitScene() OVERRIDE FINAL;
+	VIRTUAL void OnShutdownScene() OVERRIDE FINAL;
 protected:
 
 private:
 
 #pragma endregion
-
-#pragma region MEMBER
-public:
-
-protected:
-	Window* window;
-private:
-
-#pragma endregion
-
 MYRENDERER_END_CLASS
 
-void RenderTest::OnInit_Logic(Application::Window* in_window)
+void RenderTest::OnInitScene()
 {
-	window = in_window;
 	std::cout << "Hello Triangle" << std::endl;
 
-	RHI::CommandList* cmd_list = RHIGetImmediateCommandList();
-
-	// Step 1: Register external resources (BackBuffer + DepthStencil)
-	RHI::Texture* backbuffer_rtv = window->GetViewport()->GetCurrentBackBufferRTV();
-	RHI::Texture* backbuffer_dsv = window->GetViewport()->GetCurrentBackBufferDSV();
-
-	RHI::TextureDesc rt_desc = backbuffer_rtv->GetTextureDesc();
-	auto* rt_resource = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
-		"BackBuffer", rt_desc, backbuffer_rtv);
-
-	RenderGraphResource<RHI::TextureDesc, RHI::Texture>* ds_resource = nullptr;
-	if (backbuffer_dsv)
+	auto* rdg_pass = graph.AddRenderPass<TriPassData>("MainPass", &graph, RHIGetImmediateCommandList(),
+	[&](TriPassData& data, RenderGraphPassBuilder& builder, CommandList* in_cmd_list)
 	{
-		RHI::TextureDesc ds_desc = backbuffer_dsv->GetTextureDesc();
-		ds_resource = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
-			"DepthStencil", ds_desc, backbuffer_dsv);
-	}
+		builder.Write(GetBackBufferResource());
+		if (GetDepthStencilResource()) builder.Write(GetDepthStencilResource());
 
-	// Step 2: Add render pass with proper RDG resource declarations
-	struct TestData :public RenderGraphPassDataBase
-	{
-		RenderPipelineState* pipeline_state = nullptr;
-		ShaderResourceBinding* srb = nullptr;
-		VIRTUAL ~TestData() { Release(); }
-		void Release()
-		{
-			if (srb) { delete srb; srb = nullptr; }
-		}
-	};
+		Shader* vs_shader = Tool::ShaderLibrary::LoadShader(ENUM_SHADER_STAGE::Shader_Vertex, "Shader/triangle_test.vert.spv");
+		Shader* ps_shader = Tool::ShaderLibrary::LoadShader(ENUM_SHADER_STAGE::Shader_Pixel, "Shader/triangle_test.frag.spv");
 
-	auto* rdg_pass = graph.AddRenderPass<TestData>("MainPass",&graph, cmd_list,
-	[&](TestData& data, RenderGraphPassBuilder& builder, CommandList* in_cmd_list)
-	{
-		// Declare resource dependencies
-		builder.Write(rt_resource);
-		if (ds_resource) builder.Write(ds_resource);
-
-		// Create pipeline state
-		ShaderDesc shader_desc;
-		ShaderDataPayload shader_data;
 		RenderGraphiPipelineStateDesc pipeline_state_desc;
-
-		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Vertex;
-		shader_desc.shader_name = "TestVS";
-		shader_data.data = ReadShader("Shader/triangle_test.vert.spv");
-		Shader* vs_shader = RHICreateShader(shader_desc,shader_data);
-
-		shader_desc.shader_type = ENUM_SHADER_STAGE::Shader_Pixel;
-		shader_desc.shader_name = "TestPS";
-		shader_data.data = ReadShader("Shader/triangle_test.frag.spv");
-		Shader* ps_shader = RHICreateShader(shader_desc, shader_data);
-
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] = vs_shader;
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Pixel] = ps_shader;
 		pipeline_state_desc.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
-		Vector<Texture*> rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
-		pipeline_state_desc.render_targets = rtvs;
-		pipeline_state_desc.depth_stencil_view = backbuffer_dsv;
+		pipeline_state_desc.render_targets = { GetBackBuffer() };
+		pipeline_state_desc.depth_stencil_view = GetDepthStencil();
 		pipeline_state_desc.raster_state.sample_count = 1;
-		pipeline_state_desc.blend_state.render_targets.resize(rtvs.size());
+		pipeline_state_desc.blend_state.render_targets.resize(1);
 
 		data.pipeline_state = RHICreateRenderPipelineState(pipeline_state_desc);
 		data.pipeline_state->CreateShaderResourceBinding(data.srb);
 		delete vs_shader;
 		delete ps_shader;
 	},
-	[=](CONST TestData& data, CommandList* in_cmd_list)
+	[=](CONST TriPassData& data, CommandList* in_cmd_list)
 	{
-		Vector<ClearValue> clear_values;
-		Vector<Texture*> rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
-		Texture* dsv = this->GetWindow()->GetViewport()->GetCurrentBackBufferDSV();
-		for (auto rtv : rtvs)
-			clear_values.push_back(rtv->GetTextureDesc().clear_value);
-		if (dsv)
-			clear_values.push_back(dsv->GetTextureDesc().clear_value);
-		in_cmd_list->SetRenderTarget(rtvs, dsv, clear_values, dsv != nullptr);
+		BindBackBufferTarget(in_cmd_list);
 		in_cmd_list->SetGraphicsPipeline(data.pipeline_state);
 		in_cmd_list->SetShaderResourceBinding(data.srb);
 		DrawAttribute draw_attr;
@@ -161,80 +82,16 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 	rdg_pass->SetIsCullable(false);
 	rdg_pass->SetShaderPath("Shader/triangle_test");
 	rdg_pass->SetVertexCount(3);
-	graph.Compile();
 }
 
-void RenderTest::OnShutdown_Logic()
+void RenderTest::OnShutdownScene()
 {
 	// Serialize RDG to JSON for Editor loading
-	Render::RenderGraphDefinition def;
-	def.graph_name = "HelloTriangle";
-	def.version = 2;
-
-	for (auto& res : graph.GetResources())
-	{
-		Render::RDGResourceDef rd;
-		rd.name = res->GetName();
-		rd.is_transient = res->GetIsTransient();
-		if (auto* tex = res->GetAsTexture())
-		{
-			rd.desc = tex->GetTextureDesc();
-		}
-		else if (res->GetAsBuffer())
-		{
-			rd.desc = res->GetAsBuffer()->GetBufferDesc();
-		}
-		def.resources.push_back(rd);
-	}
-
-	for (auto& pass : graph.GetPasses())
-	{
-		Render::RDGPassDef pd;
-		pd.name = pass->GetName();
-		pd.pass_kind = Render::RDGPassKind::Graphics;
-		pd.shader_path = pass->GetShaderPath();
-		pd.vertex_count = pass->GetVertexCount();
-		for (auto* r : pass->GetReadResources())  pd.read_resources.push_back(r->GetName());
-		for (auto* w : pass->GetWriteResources()) pd.write_resources.push_back(w->GetName());
-		for (auto* c : pass->GetCreateResources()) pd.create_resources.push_back(c->GetName());
-		def.passes.push_back(pd);
-	}
-
-	// Serialize to JSON using nlohmann::json
-	Render::RenderGraphSerializer::SaveGraph(def, "hello_triangle.rgraph.json");
-	std::cout << "[Sample] Graph saved to hello_triangle.rgraph.json" << std::endl;
-
-		graph.Release();
-}
-
-void RenderTest::OnUpdate(float dt)
-{
-
-}
-
-void RenderTest::OnRender()
-{
-	graph.Execute();
-}
-
-
-RenderTest::RenderTest(Window* in_window):window(in_window)
-{
-
-}
-
-MXRender::Application::Window* RenderTest::GetWindow()
-{
-	return window;
+	SaveGraphDefinition("HelloTriangle", "hello_triangle.rgraph.json");
 }
 
 int main()
 {
-	Window window;
-	RenderTest render(&window);
-	window.InitWindow();
-	window.Run(&render);
-	system("pause");
-
-	return 0;
+	RenderTest app;
+	return MXRender::Application::SampleApp::RunSample(app);
 }

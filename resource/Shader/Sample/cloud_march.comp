@@ -1,0 +1,168 @@
+#version 460
+// VolumetricCloud: half-res (640x480) cloud raymarch.
+// Output RGB = in-scattered light, A = transmittance along the view ray.
+// Cloud shell is a flat slab [bottom, top] in world meters; atmosphere LUTs are in km.
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(set = 0, binding = 0) readonly buffer op_Buf { float d[]; } op;
+layout(set = 0, binding = 1) uniform sampler3D shape_tex;
+layout(set = 0, binding = 2) uniform sampler3D detail_tex;
+layout(set = 0, binding = 3) uniform sampler2D weather_tex;
+layout(set = 0, binding = 4) uniform sampler2D trans_lut;
+layout(set = 0, binding = 5) uniform sampler2D skyview_tex;
+layout(set = 0, binding = 6, rgba16f) uniform writeonly image2D cloud_img;
+
+const float PI = 3.14159265;
+const float RG = 6360.0, RT = 6460.0;
+const float SUN_I = 20.0;
+const float SIGMA = 0.025;          // cloud extinction, 1/m (scaled by density param)
+const float SHAPE_SCALE = 6000.0;   // shape noise tile, m
+const float DETAIL_SCALE = 400.0;   // detail noise tile, m
+const float WEATHER_SCALE = 40000.0;
+const int   STEPS = 48;
+const int   LIGHT_STEPS = 6;
+
+float remap(float x, float a, float b, float c, float dd)
+{
+	return c + clamp((x - a) / (b - a), 0.0, 1.0) * (dd - c);
+}
+
+vec3 sampleTrans(float h_km, float mu)
+{
+	float u = clamp((mu + 0.2) / 1.2, 0.0, 1.0);
+	float v = clamp(h_km / (RT - RG - 0.01), 0.0, 1.0);
+	return texture(trans_lut, vec2(u, v)).rgb;
+}
+
+vec2 dirToSkyUV(vec3 dir, vec3 sun)
+{
+	float elev = asin(clamp(dir.y, -1.0, 1.0));
+	float s = sign(elev) * sqrt(abs(elev) / (PI * 0.5));
+	float v = s * 0.5 + 0.5;
+	vec2 sd = sun.xz;
+	sd = (dot(sd, sd) < 1e-8) ? vec2(0.0, 1.0) : normalize(sd);
+	vec2 dd = dir.xz;
+	dd = (dot(dd, dd) < 1e-8) ? sd : normalize(dd);
+	float az = atan(sd.x * dd.y - sd.y * dd.x, dot(sd, dd));
+	return vec2(az / (2.0 * PI) + 0.5, v);
+}
+
+float hg(float c, float g)
+{
+	float g2 = g * g;
+	return (1.0 - g2) / (4.0 * PI * pow(1.0 + g2 - 2.0 * g * c, 1.5));
+}
+
+// cheap = skip detail erosion (used for the light march)
+float sampleDensity(vec3 p, float bottom, float top, float coverage, float dens, vec2 wind, bool cheap)
+{
+	float hf = clamp((p.y - bottom) / (top - bottom), 0.0, 1.0);
+
+	vec2 wuv = fract((p.xz - wind * 3.0) / WEATHER_SCALE);
+	vec3 w = texture(weather_tex, wuv).rgb;
+	float cov = w.r * coverage;
+	if (cov <= 0.01) return 0.0;
+
+	// vertical profile: soft base, top set by weather. Type widens tall clouds.
+	float top_h = mix(0.35, 1.0, w.b);
+	float prof = smoothstep(0.0, 0.08, hf) * (1.0 - smoothstep(top_h * 0.65, top_h, hf));
+	prof *= mix(0.7, 1.0, w.g);
+	if (prof <= 0.0) return 0.0;
+
+	vec3 sp = fract((p - vec3(wind.x, 0.0, wind.y)) / SHAPE_SCALE);
+	vec4 sn = texture(shape_tex, sp);
+	float base = remap(sn.r, (sn.g * 0.625 + sn.b * 0.25 + sn.a * 0.125) - 1.0, 1.0, 0.0, 1.0);
+	base *= prof;
+	base = remap(base, 1.0 - cov, 1.0, 0.0, 1.0) * cov;
+	if (base <= 0.0) return 0.0;
+
+	if (!cheap)
+	{
+		vec3 dp = fract((p - vec3(wind.x, 0.0, wind.y) * 1.3) / DETAIL_SCALE);
+		vec3 dn = texture(detail_tex, dp).rgb;
+		float dfbm = dn.r * 0.625 + dn.g * 0.25 + dn.b * 0.125;
+		float dmod = mix(dfbm, 1.0 - dfbm, clamp(hf * 3.0, 0.0, 1.0)); // wispy base, billowy top
+		base = remap(base, dmod * 0.35, 1.0, 0.0, 1.0);
+	}
+	return clamp(base, 0.0, 1.0) * dens;
+}
+
+void main()
+{
+	ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+	int hw = int(op.d[46] + 0.5), hh = int(op.d[47] + 0.5);
+	if (gid.x >= hw || gid.y >= hh) return;
+
+	mat4 ivp;
+	for (int i = 0; i < 4; ++i)
+		ivp[i] = vec4(op.d[16 + i * 4], op.d[17 + i * 4], op.d[18 + i * 4], op.d[19 + i * 4]);
+	vec3 eye = vec3(op.d[32], op.d[33], op.d[34]);
+	vec3 sun = normalize(vec3(op.d[36], op.d[37], op.d[38]));
+	vec2 wind = vec2(op.d[40], op.d[41]);
+	float coverage = op.d[42], dens = op.d[43];
+	float bottom = op.d[44], top = op.d[45];
+
+	vec2 uv = (vec2(gid) + 0.5) / vec2(float(hw), float(hh));
+	vec2 ndc = uv * 2.0 - 1.0;
+	vec4 pa = ivp * vec4(ndc, 0.0, 1.0); pa /= pa.w;
+	vec4 pb = ivp * vec4(ndc, 1.0, 1.0); pb /= pb.w;
+	vec3 dir = normalize(pb.xyz - pa.xyz);
+
+	// slab entry/exit (camera assumed below the top of the layer in practice)
+	float t0, t1;
+	if (eye.y < bottom)
+	{
+		if (dir.y < 0.015) { imageStore(cloud_img, gid, vec4(0, 0, 0, 1)); return; }
+		t0 = (bottom - eye.y) / dir.y;
+		t1 = (top - eye.y) / dir.y;
+	}
+	else if (eye.y > top)
+	{
+		if (dir.y > -0.015) { imageStore(cloud_img, gid, vec4(0, 0, 0, 1)); return; }
+		t0 = (top - eye.y) / dir.y;
+		t1 = (bottom - eye.y) / dir.y;
+	}
+	else
+	{
+		t0 = 0.0;
+		t1 = (abs(dir.y) < 0.015) ? 25000.0
+		   : (dir.y > 0.0 ? (top - eye.y) / dir.y : (bottom - eye.y) / dir.y);
+	}
+	t1 = min(t1, t0 + 25000.0);
+
+	float dt = (t1 - t0) / float(STEPS);
+	float cth = dot(dir, sun);
+	float phase = 0.55 * hg(cth, 0.75) + 0.45 * hg(cth, -0.25);
+	vec3 sun_col = SUN_I * sampleTrans((bottom + top) * 0.0005, sun.y); // mid-layer altitude, km
+	vec3 amb = texture(skyview_tex, dirToSkyUV(vec3(0, 1, 0), sun)).rgb;
+
+	vec3 acc = vec3(0.0);
+	float T = 1.0;
+	for (int i = 0; i < STEPS; ++i)
+	{
+		vec3 p = eye + dir * (t0 + (float(i) + 0.5) * dt);
+		float rho = sampleDensity(p, bottom, top, coverage, dens, wind, false);
+		if (rho > 1e-3)
+		{
+			// secondary march toward the sun, growing steps
+			float tauL = 0.0, ls = 100.0;
+			vec3 lp = p;
+			for (int j = 0; j < LIGHT_STEPS; ++j)
+			{
+				lp += sun * ls;
+				tauL += sampleDensity(lp, bottom, top, coverage, dens, wind, true) * ls;
+				ls *= 1.5;
+			}
+			float beer = exp(-tauL * SIGMA);
+			float powder = 1.0 - exp(-2.0 * (tauL + rho * dt) * SIGMA);
+			float hf = clamp((p.y - bottom) / (top - bottom), 0.0, 1.0);
+			vec3 S = (sun_col * beer * mix(1.0, powder, 0.6) * phase
+			        + amb * (0.3 + 0.7 * hf) * 0.5) * rho * SIGMA;
+			float stepT = exp(-rho * SIGMA * dt);
+			acc += T * (S - S * stepT) / max(rho * SIGMA, 1e-6);
+			T *= stepT;
+			if (T < 0.01) { T = 0.0; break; }
+		}
+	}
+	imageStore(cloud_img, gid, vec4(acc, T));
+}

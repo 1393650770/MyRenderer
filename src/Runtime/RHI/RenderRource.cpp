@@ -25,6 +25,7 @@ UInt64 RenderGraphiPipelineStateDesc::GetHash() CONST
 				h = HashCombine(h, (UInt64)i);
 		}
 		h = HashCombine(h, (UInt64)primitive_topology);
+		h = HashCombine(h, (UInt64)patch_control_points);
 		h = HashCombine(h, (UInt64)raster_state.fill_mode);
 		h = HashCombine(h, (UInt64)raster_state.cull_mode);
 		h = HashCombine(h, (UInt64)raster_state.sample_count);

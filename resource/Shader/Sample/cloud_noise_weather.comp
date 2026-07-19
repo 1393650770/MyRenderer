@@ -1,0 +1,59 @@
+#version 460
+// VolumetricCloud: bake 512^2 tileable weather map (one-shot).
+// R = coverage (low-freq FBM), G = cloud type (0 stratus .. 1 cumulus), B = cloud-top multiplier.
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0, rgba16f) uniform writeonly image2D weather_img;
+
+const float N = 512.0;
+
+vec2 hash22(vec2 p)
+{
+	uvec2 q = uvec2(ivec2(p)) * uvec2(1597334673u, 3812015801u);
+	q = (q.x ^ q.y) * uvec2(1597334673u, 3812015801u);
+	return vec2(q) * (1.0 / 4294967295.0);
+}
+
+// tileable 2D gradient noise
+float perlin2(vec2 uv, float freq)
+{
+	vec2 id = floor(uv * freq);
+	vec2 f = fract(uv * freq);
+	vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+	float v00 = dot(hash22(mod(id + vec2(0, 0), freq)) * 2.0 - 1.0, f - vec2(0, 0));
+	float v10 = dot(hash22(mod(id + vec2(1, 0), freq)) * 2.0 - 1.0, f - vec2(1, 0));
+	float v01 = dot(hash22(mod(id + vec2(0, 1), freq)) * 2.0 - 1.0, f - vec2(0, 1));
+	float v11 = dot(hash22(mod(id + vec2(1, 1), freq)) * 2.0 - 1.0, f - vec2(1, 1));
+	return mix(mix(v00, v10, u.x), mix(v01, v11, u.x), u.y);
+}
+
+float fbm2(vec2 p, float freq, int octaves)
+{
+	float amp = 0.5, sum = 0.0;
+	for (int i = 0; i < octaves; ++i)
+	{
+		sum += amp * perlin2(p, freq);
+		freq *= 2.0;
+		amp *= 0.5;
+	}
+	return sum;
+}
+
+void main()
+{
+	ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+	if (gid.x >= int(N) || gid.y >= int(N)) return;
+	vec2 uv = (vec2(gid) + 0.5) / N;
+
+	// coverage: broad patches, biased so a good part of the sky stays clear
+	float cov = fbm2(uv, 3.0, 5) * 0.5 + 0.5;
+	cov = smoothstep(0.35, 0.95, cov);
+
+	// cloud type: independent low-freq field
+	float typ = clamp(fbm2(uv + vec2(37.2, 11.7), 2.0, 4) * 0.5 + 0.55, 0.0, 1.0);
+
+	// cloud-top multiplier: taller clouds where coverage is dense
+	float top = clamp(0.45 + 0.55 * cov + 0.25 * fbm2(uv + vec2(5.3, 71.1), 4.0, 3), 0.2, 1.0);
+
+	imageStore(weather_img, gid, vec4(cov, typ, top, 1.0));
+}

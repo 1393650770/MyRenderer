@@ -891,6 +891,69 @@ void VK_CommandBuffer::DrawIndexed(UInt32 indexCount, UInt32 instanceCount, UInt
 	vkCmdDrawIndexed(command_buffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 }
 
+void VK_CommandBuffer::DrawIndirect(Buffer* args_buffer, UInt32 args_offset, UInt32 draw_count, UInt32 stride)
+{
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdDrawIndirect>(args_buffer, args_offset, draw_count, stride)); return; }
+	VkViewport viewport{};
+	viewport.x = 0.0f; viewport.y = 0.0f;
+	viewport.width = state_cache.framebuffer_width;
+	viewport.height = state_cache.framebuffer_height;
+	viewport.minDepth = 0.0f; viewport.maxDepth = 1.0f;
+	vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+	VkRect2D scissor{};
+	scissor.offset = { 0, 0 };
+	scissor.extent = { static_cast<UInt32>(state_cache.framebuffer_width), static_cast<UInt32>(state_cache.framebuffer_height) };
+	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.graphics_pipeline);
+	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+	if (state_cache.srb) state_cache.srb->FlushDescriptorWrites();
+	if (state_cache.descriptor_sets != nullptr)
+		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.pipeline_layout, state_cache.first_set, state_cache.descriptor_sets_count, state_cache.descriptor_sets, 0, nullptr);
+	// GetOffset(): sub-allocation offset within the pooled VkBuffer (see SetVertexBuffer)
+	VK_Buffer* vk_buf = STATIC_CAST(args_buffer, VK_Buffer);
+	vkCmdDrawIndirect(command_buffer, vk_buf->GetBuffer(), (VkDeviceSize)vk_buf->GetOffset() + args_offset, draw_count, stride);
+}
+
+void VK_CommandBuffer::DrawIndexedIndirect(Buffer* args_buffer, UInt32 args_offset, UInt32 draw_count, UInt32 stride)
+{
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdDrawIndexedIndirect>(args_buffer, args_offset, draw_count, stride)); return; }
+	VkViewport viewport{};
+	viewport.x = 0.0f; viewport.y = 0.0f;
+	viewport.width = state_cache.framebuffer_width;
+	viewport.height = state_cache.framebuffer_height;
+	viewport.minDepth = 0.0f; viewport.maxDepth = 1.0f;
+	vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+	VkRect2D scissor{};
+	scissor.offset = { 0, 0 };
+	scissor.extent = { static_cast<UInt32>(state_cache.framebuffer_width), static_cast<UInt32>(state_cache.framebuffer_height) };
+	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.graphics_pipeline);
+	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+	if (state_cache.srb) state_cache.srb->FlushDescriptorWrites();
+	if (state_cache.descriptor_sets != nullptr)
+		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state_cache.pipeline_layout, state_cache.first_set, state_cache.descriptor_sets_count, state_cache.descriptor_sets, 0, nullptr);
+	VK_Buffer* vk_buf = STATIC_CAST(args_buffer, VK_Buffer);
+	vkCmdDrawIndexedIndirect(command_buffer, vk_buf->GetBuffer(), (VkDeviceSize)vk_buf->GetOffset() + args_offset, draw_count, stride);
+}
+
+void VK_CommandBuffer::DispatchIndirect(Buffer* args_buffer, UInt32 args_offset)
+{
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdDispatchIndirect>(args_buffer, args_offset)); return; }
+	// Compute dispatches must happen outside an active render pass
+	if (state_cache.render_pass != VK_NULL_HANDLE)
+	{
+		EndRenderPass();
+	}
+	FlushBarriers();
+	// Flush any deferred descriptor writes before binding
+	if (state_cache.srb)
+		state_cache.srb->FlushDescriptorWrites();
+	if (state_cache.compute_pipeline != VK_NULL_HANDLE)
+		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, state_cache.compute_pipeline);
+	if (state_cache.descriptor_sets != nullptr)
+		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, state_cache.pipeline_layout, state_cache.first_set, state_cache.descriptor_sets_count, state_cache.descriptor_sets, 0, nullptr);
+	VK_Buffer* vk_buf = STATIC_CAST(args_buffer, VK_Buffer);
+	vkCmdDispatchIndirect(command_buffer, vk_buf->GetBuffer(), (VkDeviceSize)vk_buf->GetOffset() + args_offset);
+}
+
 VK_CommandBufferManager::~VK_CommandBufferManager()
 {
 	for (UInt32 index = 0; index < graphic_cmd_buffers.size(); ++index)
@@ -1001,9 +1064,24 @@ void VK_CommandBuffer::Replay()
 			DrawIndexed(c->indexCount, c->instanceCount, c->firstIndex, c->vertexOffset, c->firstInstance);
 			break;
 		}
+		case RHICommandType::DrawIndirect: {
+			auto* c = static_cast<RHICmdDrawIndirect*>(cmd.get());
+			DrawIndirect(c->buffer, c->offset, c->draw_count, c->stride);
+			break;
+		}
+		case RHICommandType::DrawIndexedIndirect: {
+			auto* c = static_cast<RHICmdDrawIndexedIndirect*>(cmd.get());
+			DrawIndexedIndirect(c->buffer, c->offset, c->draw_count, c->stride);
+			break;
+		}
 		case RHICommandType::Dispatch: {
 			auto* c = static_cast<RHICmdDispatch*>(cmd.get());
 			Dispatch(c->gx, c->gy, c->gz);
+			break;
+		}
+		case RHICommandType::DispatchIndirect: {
+			auto* c = static_cast<RHICmdDispatchIndirect*>(cmd.get());
+			DispatchIndirect(c->buffer, c->offset);
 			break;
 		}
 		case RHICommandType::TransitionTexture: {

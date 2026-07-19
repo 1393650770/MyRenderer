@@ -53,6 +53,18 @@ MYRENDERER_BEGIN_NAMESPACE(MXRender)
 
 		NumStages,
 
+		// --- Ray tracing stages (placeholder: enum + VK stage translation only;
+		// AS build / SBT / RT pipeline / TraceRays are a future iteration) ---
+		// Values deliberately start at 16 so they (1) never fall inside any
+		// `for i < NumStages` loop over the graphics shader slots and
+		// (2) stay clear of MaxNumSets = 8 mixed into this enum below.
+		Shader_RayGen = 16,
+		Shader_Miss = 17,
+		Shader_ClosestHit = 18,
+		Shader_AnyHit = 19,
+		Shader_Intersection = 20,
+		Shader_Callable = 21,
+
 		MaxNumSets = 8,
 
 		Invalid = -1,

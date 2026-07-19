@@ -204,50 +204,14 @@ void VK_Buffer::Unmap()
 
 ENUM_VulkanAllocationFlags VK_Buffer::TranslateBufferTypeToVulkanAllocationFlags(const ENUM_BUFFER_TYPE& buffer_usage)
 {
-	ENUM_VulkanAllocationFlags allocation_flags = ENUM_VulkanAllocationFlags::None;
-	switch (buffer_usage)
-	{
-	case ENUM_BUFFER_TYPE::Index:
-	{
-		allocation_flags= allocation_flags| ENUM_VulkanAllocationFlags::AutoBind;
-		break;
-	}
-	case ENUM_BUFFER_TYPE::Vertex:
-	{
-		allocation_flags = allocation_flags | ENUM_VulkanAllocationFlags::AutoBind | ENUM_VulkanAllocationFlags::HostVisible;
-		break;
-	}
-	case ENUM_BUFFER_TYPE::Uniform:
-	{
-		allocation_flags = allocation_flags | ENUM_VulkanAllocationFlags::AutoBind ;
-		break;
-	}
-	case ENUM_BUFFER_TYPE::Staging:
-	{
-		allocation_flags = allocation_flags | ENUM_VulkanAllocationFlags::AutoBind | ENUM_VulkanAllocationFlags::HostVisible;
-		break;
-	}
-	case ENUM_BUFFER_TYPE::None:
-	{
-		allocation_flags = allocation_flags | ENUM_VulkanAllocationFlags::AutoBind;
-		break;
-	}
-	default:
-		// Storage and Indirect buffers: device-local, auto-bind. Adding the
-		// Dynamic bit requests a host-visible allocation (persistent map for
-		// per-frame CPU uploads - the staging+transfer path is NOT safe for
-		// buffers read by another queue every frame).
-		if (EnumHasAnyFlags(buffer_usage, ENUM_BUFFER_TYPE::Storage) ||
-			EnumHasAnyFlags(buffer_usage, ENUM_BUFFER_TYPE::Indirect))
-		{
-			allocation_flags = allocation_flags | ENUM_VulkanAllocationFlags::AutoBind;
-			if (EnumHasAnyFlags(buffer_usage, ENUM_BUFFER_TYPE::Dynamic))
-				allocation_flags = allocation_flags | ENUM_VulkanAllocationFlags::HostVisible;
-		}
-		else
-			CHECK_WITH_LOG(true, "RHI Error :  Not support this buffer usage type !")
-		break;
-	}
+	// Usage bits may be combined (Vertex|Dynamic, Storage|Indirect, ...): every
+	// buffer is auto-bound and host visibility is expressed solely by the
+	// Staging/Dynamic bits. The Dynamic bit requests a host-visible allocation
+	// (persistent map for per-frame CPU uploads - the staging+transfer path is
+	// NOT safe for buffers read by another queue every frame).
+	ENUM_VulkanAllocationFlags allocation_flags = ENUM_VulkanAllocationFlags::AutoBind;
+	if (EnumHasAnyFlags(buffer_usage, ENUM_BUFFER_TYPE::Staging | ENUM_BUFFER_TYPE::Dynamic))
+		allocation_flags = allocation_flags | ENUM_VulkanAllocationFlags::HostVisible;
 	return allocation_flags;
 }
 

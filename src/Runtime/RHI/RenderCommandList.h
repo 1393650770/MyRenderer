@@ -16,6 +16,34 @@ public:
 	UInt32                                    firstInstance = 0;
 MYRENDERER_END_STRUCT
 
+// ---- Indirect argument structs ----
+// Field layout matches the Vulkan indirect command structs one-to-one so a
+// CPU-filled (or compute-written) args buffer can be consumed directly.
+
+MYRENDERER_BEGIN_STRUCT(DrawIndirectArgs)          // = VkDrawIndirectCommand
+public:
+	UInt32                                    vertex_count = 0;
+	UInt32                                    instance_count = 0;
+	UInt32                                    first_vertex = 0;
+	UInt32                                    first_instance = 0;
+MYRENDERER_END_STRUCT
+
+MYRENDERER_BEGIN_STRUCT(DrawIndexedIndirectArgs)   // = VkDrawIndexedIndirectCommand
+public:
+	UInt32                                    index_count = 0;
+	UInt32                                    instance_count = 0;
+	UInt32                                    first_index = 0;
+	Int                                       vertex_offset = 0;
+	UInt32                                    first_instance = 0;
+MYRENDERER_END_STRUCT
+
+MYRENDERER_BEGIN_STRUCT(DispatchIndirectArgs)      // = VkDispatchIndirectCommand
+public:
+	UInt32                                    group_x = 0;
+	UInt32                                    group_y = 0;
+	UInt32                                    group_z = 0;
+MYRENDERER_END_STRUCT
+
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 class RenderPipelineState;
 class ShaderResourceBinding;
@@ -53,6 +81,9 @@ enum class RHICommandType : UInt8
 	SetVertexBuffer,
 	SetIndexBuffer,
 	DrawIndexed,
+	DrawIndirect,
+	DrawIndexedIndirect,
+	DispatchIndirect,
 };
 
 struct RHICommand
@@ -203,6 +234,23 @@ struct RHICmdDrawIndexed : RHICommand {
 	RHICmdDrawIndexed(UInt32 ic, UInt32 in, UInt32 fi, UInt32 vo, UInt32 fin)
 		: RHICommand(RHICommandType::DrawIndexed), indexCount(ic), instanceCount(in), firstIndex(fi), vertexOffset(vo), firstInstance(fin) {}
 };
+// Indirect commands record the Buffer* itself (same convention as RHICmdSetVertexBuffer:
+// the pointer stays valid during replay thanks to the WaitFrameComplete sync window).
+struct RHICmdDrawIndirect : RHICommand {
+	class Buffer* buffer; UInt32 offset; UInt32 draw_count; UInt32 stride;
+	RHICmdDrawIndirect(class Buffer* b, UInt32 off, UInt32 dc, UInt32 st)
+		: RHICommand(RHICommandType::DrawIndirect), buffer(b), offset(off), draw_count(dc), stride(st) {}
+};
+struct RHICmdDrawIndexedIndirect : RHICommand {
+	class Buffer* buffer; UInt32 offset; UInt32 draw_count; UInt32 stride;
+	RHICmdDrawIndexedIndirect(class Buffer* b, UInt32 off, UInt32 dc, UInt32 st)
+		: RHICommand(RHICommandType::DrawIndexedIndirect), buffer(b), offset(off), draw_count(dc), stride(st) {}
+};
+struct RHICmdDispatchIndirect : RHICommand {
+	class Buffer* buffer; UInt32 offset;
+	RHICmdDispatchIndirect(class Buffer* b, UInt32 off)
+		: RHICommand(RHICommandType::DispatchIndirect), buffer(b), offset(off) {}
+};
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(CommandList,public RenderResource)
 
@@ -218,7 +266,13 @@ public:
 	VIRTUAL void METHOD(SetVertexBuffer)(Buffer* buffer, UInt32 slot, UInt32 stride, UInt32 offset) {};
 	VIRTUAL void METHOD(SetIndexBuffer)(Buffer* buffer, UInt32 offset, Bool index32) {};
 	VIRTUAL void METHOD(DrawIndexed)(UInt32 indexCount, UInt32 instanceCount, UInt32 firstIndex, UInt32 vertexOffset, UInt32 firstInstance) {};
+	// Indirect draws read their arguments from args_buffer (create with ENUM_BUFFER_TYPE::Indirect;
+	// combine with Storage when a compute shader writes the args). If the args are GPU-written,
+	// insert ResourceBarrier(UnorderedAccess, IndirectArgument) between the producing pass and the draw.
+	VIRTUAL void METHOD(DrawIndirect)(Buffer* args_buffer, UInt32 args_offset, UInt32 draw_count, UInt32 stride = (UInt32)sizeof(DrawIndirectArgs)) {};
+	VIRTUAL void METHOD(DrawIndexedIndirect)(Buffer* args_buffer, UInt32 args_offset, UInt32 draw_count, UInt32 stride = (UInt32)sizeof(DrawIndexedIndirectArgs)) {};
 	VIRTUAL void METHOD(Dispatch)(UInt32 groupX, UInt32 groupY, UInt32 groupZ) PURE;
+	VIRTUAL void METHOD(DispatchIndirect)(Buffer* args_buffer, UInt32 args_offset) {};
 	VIRTUAL void METHOD(ComputeDispatch)(RenderPipelineState* pipeline, ShaderResourceBinding* srb, UInt32 groupX, UInt32 groupY, UInt32 groupZ) {}
 	VIRTUAL void METHOD(SetPushConstants)(UInt32 offset, UInt32 size, const void* data) PURE;
 	VIRTUAL void METHOD(SetPushConstants)(UInt32 offset, UInt32 size, const void* data, ENUM_SHADER_STAGE stage) {}

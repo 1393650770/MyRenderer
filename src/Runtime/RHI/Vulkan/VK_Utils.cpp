@@ -432,31 +432,22 @@ namespace MXRender
 		// Static/Dynamic are residency modifiers, not usages: strip them so
 		// combos like Storage|Dynamic (host-visible storage) translate correctly.
 		ENUM_BUFFER_TYPE base_type = usage_type & ~(ENUM_BUFFER_TYPE::Dynamic | ENUM_BUFFER_TYPE::Static);
-		switch (base_type)
-		{
-		case ENUM_BUFFER_TYPE::Index:
-			return VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-			break;
-		case ENUM_BUFFER_TYPE::Uniform:
-			return VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-			break;
-		case ENUM_BUFFER_TYPE::Vertex:
-			return VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-			break;
-		case ENUM_BUFFER_TYPE::Staging:
-			return VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-			break;
-		case ENUM_BUFFER_TYPE::Storage:
-			return VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-			break;
-		case ENUM_BUFFER_TYPE::Indirect:
-			return VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-			break;
-		default:
-			CHECK_WITH_LOG(true, "RHI Error: usage type error");
-			return VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-		}
-		return VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		// Usage bits are accumulated so combinations translate correctly
+		// (e.g. Storage|Indirect for GPU-driven args written by compute).
+		// Staging carries only the transfer bits shared by every buffer.
+		CHECK_WITH_LOG(base_type == ENUM_BUFFER_TYPE::None, "RHI Error: usage type error");
+		VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		if (EnumHasAnyFlags(base_type, ENUM_BUFFER_TYPE::Index))
+			usage_flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		if (EnumHasAnyFlags(base_type, ENUM_BUFFER_TYPE::Vertex))
+			usage_flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		if (EnumHasAnyFlags(base_type, ENUM_BUFFER_TYPE::Uniform))
+			usage_flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		if (EnumHasAnyFlags(base_type, ENUM_BUFFER_TYPE::Storage))
+			usage_flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		if (EnumHasAnyFlags(base_type, ENUM_BUFFER_TYPE::Indirect))
+			usage_flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+		return usage_flags;
 	}
 
 	VkImageLayout VK_Utils::Translate_Texture_usage_type_To_Vulkan(const ENUM_TEXTURE_USAGE_TYPE& usage_type)
@@ -1418,6 +1409,24 @@ namespace MXRender
 			break;
 		case MXRender::Shader_Compute:
 			return VK_SHADER_STAGE_COMPUTE_BIT;
+			break;
+		case MXRender::Shader_RayGen:
+			return VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+			break;
+		case MXRender::Shader_Miss:
+			return VK_SHADER_STAGE_MISS_BIT_KHR;
+			break;
+		case MXRender::Shader_ClosestHit:
+			return VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+			break;
+		case MXRender::Shader_AnyHit:
+			return VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+			break;
+		case MXRender::Shader_Intersection:
+			return VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+			break;
+		case MXRender::Shader_Callable:
+			return VK_SHADER_STAGE_CALLABLE_BIT_KHR;
 			break;
 		case MXRender::Invalid:
 			return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;

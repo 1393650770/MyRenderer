@@ -242,7 +242,10 @@ public:
 	__forceinline VIRTUAL void METHOD(SetVertexBuffer)(Buffer* buffer, UInt32 slot, UInt32 stride, UInt32 offset) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(SetIndexBuffer)(Buffer* buffer, UInt32 offset, Bool index32) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(DrawIndexed)(UInt32 indexCount, UInt32 instanceCount, UInt32 firstIndex, UInt32 vertexOffset, UInt32 firstInstance) OVERRIDE FINAL;
+	__forceinline VIRTUAL void METHOD(DrawIndirect)(Buffer* args_buffer, UInt32 args_offset, UInt32 draw_count, UInt32 stride = (UInt32)sizeof(DrawIndirectArgs)) OVERRIDE FINAL;
+	__forceinline VIRTUAL void METHOD(DrawIndexedIndirect)(Buffer* args_buffer, UInt32 args_offset, UInt32 draw_count, UInt32 stride = (UInt32)sizeof(DrawIndexedIndirectArgs)) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(Dispatch)(UInt32 groupX, UInt32 groupY, UInt32 groupZ) OVERRIDE FINAL;
+	__forceinline VIRTUAL void METHOD(DispatchIndirect)(Buffer* args_buffer, UInt32 args_offset) OVERRIDE FINAL;
 	__forceinline VIRTUAL void METHOD(SetPushConstants)(UInt32 offset, UInt32 size, const void* data) OVERRIDE FINAL;
 	// --   Stage-aware push constants overload
 	__forceinline VIRTUAL void METHOD(SetPushConstants)(UInt32 offset, UInt32 size, const void* data, ENUM_SHADER_STAGE stage) OVERRIDE FINAL;

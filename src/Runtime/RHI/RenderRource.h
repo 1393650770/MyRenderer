@@ -440,6 +440,8 @@ public:
 
 	Shader* shaders[ENUM_SHADER_STAGE::NumStages]{nullptr};
 	ENUM_PRIMITIVE_TYPE primitive_topology{ ENUM_PRIMITIVE_TYPE::TriangleList };
+	// Tessellation: only used when primitive_topology == PatchList; 0 is treated as 3
+	UInt32 patch_control_points = 0;
 	BlenderState blend_state;
 	DepthStencilState depth_stencil_state;
 	RasterizerState raster_state;
@@ -460,8 +462,9 @@ public:
 			if (vertex_input_layout[i] != rhs.vertex_input_layout[i])
 				return false;
 		}
-		return 
+		return
 			primitive_topology == rhs.primitive_topology &&
+			patch_control_points == rhs.patch_control_points &&
 			blend_state == rhs.blend_state &&
 			depth_stencil_state == rhs.depth_stencil_state &&
 			raster_state == rhs.raster_state;

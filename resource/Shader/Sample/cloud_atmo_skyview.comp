@@ -1,0 +1,93 @@
+#version 460
+// VolumetricCloud: 192x108 sky-view LUT, rebuilt every frame (sun moves).
+// Observer fixed at ground + 0.2 km. LUT space is sun-relative:
+// u -> azimuth relative to sun in [-PI, PI], v -> elevation with sqrt compression
+// (v = 0.5 is the horizon, elev = s*|s|*PI/2 where s = v*2-1).
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(set = 0, binding = 0) readonly buffer op_Buf { float d[]; } op;
+layout(set = 0, binding = 1) uniform sampler2D trans_lut;
+layout(set = 0, binding = 2, rgba16f) uniform writeonly image2D skyview_img;
+
+const float W = 192.0, H = 108.0;
+const float PI = 3.14159265;
+const float RG = 6360.0, RT = 6460.0;
+const vec3  BETA_R = vec3(5.802, 13.558, 33.1) * 1e-3;
+const float BETA_M_SCA = 3.996e-3;
+const float BETA_M_EXT = (3.996 + 4.4) * 1e-3;
+const vec3  BETA_O = vec3(0.650, 1.881, 0.085) * 1e-3;
+const float SUN_I = 20.0;
+
+float raySphere(vec3 o, vec3 d, float r)
+{
+	float b = dot(o, d);
+	float c = dot(o, o) - r * r;
+	float disc = b * b - c;
+	if (disc < 0.0) return -1.0;
+	float s = sqrt(disc);
+	float t = -b - s;
+	if (t > 0.0) return t;
+	t = -b + s;
+	return t > 0.0 ? t : -1.0;
+}
+
+vec3 sampleTrans(float h, float mu)
+{
+	float u = clamp((mu + 0.2) / 1.2, 0.0, 1.0);
+	float v = clamp(h / (RT - RG - 0.01), 0.0, 1.0);
+	return texture(trans_lut, vec2(u, v)).rgb;
+}
+
+float phaseR(float c) { return 3.0 / (16.0 * PI) * (1.0 + c * c); }
+float phaseM(float c)
+{
+	const float g = 0.8, g2 = g * g;
+	return 3.0 / (8.0 * PI) * (1.0 - g2) * (1.0 + c * c) / ((2.0 + g2) * pow(1.0 + g2 - 2.0 * g * c, 1.5));
+}
+
+void main()
+{
+	ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+	if (gid.x >= int(W) || gid.y >= int(H)) return;
+	vec2 uv = (vec2(gid) + 0.5) / vec2(W, H);
+
+	vec3 sun = normalize(vec3(op.d[36], op.d[37], op.d[38]));
+	float sun_elev = asin(clamp(sun.y, -1.0, 1.0));
+	vec3 sun_lut = vec3(0.0, sin(sun_elev), cos(sun_elev)); // sun sits at azimuth 0 in LUT space
+
+	float azim = (uv.x * 2.0 - 1.0) * PI;
+	float s = uv.y * 2.0 - 1.0;
+	float elev = s * abs(s) * (PI * 0.5);
+	vec3 dir = vec3(cos(elev) * sin(azim), sin(elev), cos(elev) * cos(azim));
+
+	vec3 pos = vec3(0.0, RG + 0.2, 0.0);
+	float t_end = raySphere(pos, dir, RT);
+	float tg = raySphere(pos, dir, RG);
+	if (tg > 0.0) t_end = tg; // ground blocks the view ray
+	if (t_end <= 0.0) t_end = 0.001;
+
+	const int STEPS = 32;
+	float ds = t_end / float(STEPS);
+	float cth = dot(dir, sun_lut);
+	vec3 inscatter = vec3(0.0);
+	vec3 T = vec3(1.0);
+	for (int i = 0; i < STEPS; ++i)
+	{
+		vec3 p = pos + dir * ((float(i) + 0.5) * ds);
+		float hh = max(0.0, length(p) - RG);
+		float rho_r = exp(-hh / 8.0);
+		float rho_m = exp(-hh / 1.2);
+		float rho_o = max(0.0, 1.0 - abs(hh - 25.0) / 15.0);
+		vec3 ext = BETA_R * rho_r + vec3(BETA_M_EXT) * rho_m + BETA_O * rho_o;
+
+		vec3 up = normalize(p);
+		float mu_s = dot(up, sun_lut);
+		vec3 t_sun = sampleTrans(hh, mu_s);
+		vec3 scat = (BETA_R * rho_r * phaseR(cth) + vec3(BETA_M_SCA) * rho_m * phaseM(cth)) * t_sun * SUN_I;
+
+		vec3 stepT = exp(-ext * ds);
+		inscatter += T * (scat - scat * stepT) / max(ext, vec3(1e-6));
+		T *= stepT;
+	}
+	imageStore(skyview_img, gid, vec4(inscatter, 1.0));
+}

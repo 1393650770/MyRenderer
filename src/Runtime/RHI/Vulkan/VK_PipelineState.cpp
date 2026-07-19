@@ -198,6 +198,11 @@ VK_PipelineState::VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipel
 		dynamic_state.dynamicStateCount = 2;
 		dynamic_state.pDynamicStates = dynamic_state_enables.data();
 
+		// Tessellation state: required when the topology is PatchList (hull/domain shaders)
+		VkPipelineTessellationStateCreateInfo tessellation_state{};
+		tessellation_state.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+		tessellation_state.patchControlPoints = desc.patch_control_points ? desc.patch_control_points : 3;
+
 		VkGraphicsPipelineCreateInfo pipeline_info{};
 		pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipeline_info.stageCount = shader_stages.size();
@@ -210,6 +215,8 @@ VK_PipelineState::VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipel
 		pipeline_info.pDepthStencilState = &depth_stencil_state;
 		pipeline_info.pColorBlendState = &color_blend_state;
 		pipeline_info.pDynamicState = &dynamic_state;
+		if (desc.primitive_topology == ENUM_PRIMITIVE_TYPE::PatchList)
+			pipeline_info.pTessellationState = &tessellation_state;
 		pipeline_info.layout = CreatePipelineLayout(desc);
 		VkPipelineRenderingCreateInfoKHR rendering_info{};
 		Vector<VkFormat> dyn_color_formats;
