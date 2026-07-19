@@ -96,7 +96,7 @@ protected:
 	glm::vec3 eye = glm::vec3(0,5,0);
 	glm::mat4 vp = glm::mat4(1), ivp = glm::mat4(1);
 	Float32 sun_azim=0.35f, sun_elev=0.55f;
-	Float32 coverage=0.55f, density=0.2f, wind_speed=12.0f, exposure=1.2f;
+	Float32 coverage=0.55f, density=0.15f, wind_speed=12.0f, exposure=1.2f;
 	glm::vec2 wind_off = glm::vec2(0);
 	glm::vec3 sun = glm::vec3(0,1,0);
 	Int dm = 0; Bool kp[5] = {};

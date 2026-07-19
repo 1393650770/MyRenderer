@@ -35,6 +35,18 @@ vec2 dirToSkyUV(vec3 dir, vec3 sun)
 	return vec2(az / (2.0 * PI) + 0.5, v);
 }
 
+// Simplified density for ground cloud shadow (no detail_tex available here)
+float shadowDensity(vec3 p, float t, float dscale) {
+	float bottom = 1500.0, top = 4000.0;
+	if (p.y < bottom || p.y > top) return 0.0;
+	float hf = (p.y - bottom) / (top - bottom);
+	float prof = smoothstep(0.0, 0.06, hf) * (1.0 - smoothstep(0.35, 0.85, hf));
+	vec3 sp = fract(p / 6000.0 + vec3(0.012, 0.0, 0.009) * t);
+	vec4 sn = texture(shape_tex, sp);
+	float noise = sn.r * 0.55 + sn.g * 0.25 + sn.b * 0.20;
+	return max(noise * prof * dscale - 0.04, 0.0);
+}
+
 vec3 tonemap(vec3 c)
 {
 	c = c / (1.0 + c);
@@ -93,6 +105,15 @@ void main()
 		vec3 sun_g = sampleTrans(0.0, sun.y);
 		vec3 lit = alb * (sun_g * clamp(sun.y, 0.0, 1.0) * 18.0 * (1.0 / PI) + vec3(0.35));
 		vec3 fog_col = texture(skyview_tex, dirToSkyUV(normalize(vec3(dir.x, 0.02, dir.z)), sun)).rgb;
+		// Cloud shadow on ground: march from ground point toward sun
+		float shadowTau = 0.0;
+		float shadowStep = 180.0;
+		vec3 sp2 = wp;
+		for (int si = 0; si < 16; si++) {
+			sp2 += sun * shadowStep;
+			shadowTau += shadowDensity(sp2, op.d[35], op.d[43]) * shadowStep;
+		}
+		lit *= exp(-shadowTau * 0.01);
 		bg = mix(lit, fog_col, 1.0 - exp(-t * fog_density));
 	}
 	else

@@ -1,6 +1,6 @@
 #version 460
-// VolumetricCloud: Unity-style density + UE-style Frostbite integration lighting.
-// Output: RGB=inscattered luminance, A=view transmittance (UE output convention).
+// VolumetricCloud: time-driven noise for visible wind + improved self-shadowing.
+// Output: RGB=inscattered luminance, A=view transmittance.
 layout(local_size_x = 8, local_size_y = 8) in;
 
 layout(set = 0, binding = 0) readonly buffer op_Buf { float d[]; } op;
@@ -16,13 +16,17 @@ const float SHAPE_SCALE = 6000.0;
 const float DETAIL_SCALE = 400.0;
 const float WEATHER_SCALE = 40000.0;
 const int   STEPS = 64;
-const int   LIGHT_STEPS = 8;
-const float LIGHT_MAX_DIST = 3000.0;
-const float CULL_THRESHOLD = 0.06;
-const float SIGMA_E = 0.02; // extinction, 1/m
-const float ALBEDO = 0.95;  // single-scattering albedo
-const float SUN_I = 20.0;
-const float HG_G1 = 0.8, HG_G2 = -0.3;
+const int   LIGHT_STEPS = 20;
+const float LIGHT_MAX_DIST = 6000.0;
+const float CULL_THRESHOLD = 0.04;
+const float SIGMA_E = 0.08;   // extinction per unit density, 1/m
+const float ALBEDO = 0.95;
+const float SUN_I = 25.0;
+const float HG_G1 = 0.7, HG_G2 = -0.2;
+
+// Animation speeds (noise-space UV scroll per second)
+const vec3 WIND_SHAPE  = vec3(0.012, 0.0, 0.009);
+const vec3 WIND_DETAIL = vec3(0.018, 0.0, 0.013);
 
 float hash21(vec2 p) {
 	uvec2 q = uvec2(p) * uvec2(1597334673u, 3812015801u);
@@ -36,24 +40,25 @@ float hg(float c, float g) {
 	return (1.0 - g2) / (4.0 * PI * denom * sqrt(max(denom, 1e-6)));
 }
 
-// Unity-style simple density model
-float sampleDensity(vec3 p, float bottom, float top, float dscale, vec2 wind) {
+// Unity-style density, now with time-driven wind
+float sampleDensity(vec3 p, float bottom, float top, float dscale, float t) {
 	float hf = clamp((p.y - bottom) / (top - bottom), 0.0, 1.0);
 	float prof = smoothstep(0.0, 0.06, hf) * (1.0 - smoothstep(0.35, 0.85, hf));
 
-	vec2 wuv = fract((p.xz - wind * 3.0) / WEATHER_SCALE);
+	vec2 wuv = fract(p.xz / WEATHER_SCALE); // weather is static
 	vec3 w = texture(weather_tex, wuv).rgb;
 	prof *= mix(0.6, 1.0, w.r) * mix(0.7, 1.2, w.g);
 	if (prof <= 0.001) return 0.0;
 
-	vec3 sp = fract((p - vec3(wind.x, 0.0, wind.y)) / SHAPE_SCALE);
+	// Time-driven wind: scroll noise UV instead of offsetting world pos
+	vec3 sp = fract(p / SHAPE_SCALE + WIND_SHAPE * t);
 	vec4 sn = texture(shape_tex, sp);
 	float noise = sn.r * 0.55 + sn.g * 0.25 + sn.b * 0.20;
 
-	vec3 dp = fract((p - vec3(wind.x, 0.0, wind.y) * 1.3) / DETAIL_SCALE);
+	vec3 dp = fract(p / DETAIL_SCALE + WIND_DETAIL * t);
 	vec3 dn = texture(detail_tex, dp).rgb;
 	float dtl = dn.r * 0.5 + dn.g * 0.3 + dn.b * 0.2;
-	noise = mix(noise, noise - dtl * 0.25, clamp(hf * 2.0, 0.0, 1.0));
+	noise = mix(noise, noise - dtl * 0.3, clamp(hf * 2.0, 0.0, 1.0));
 
 	return max(noise * prof * dscale - CULL_THRESHOLD, 0.0);
 }
@@ -68,7 +73,7 @@ void main() {
 		ivp[i] = vec4(op.d[16 + i * 4], op.d[17 + i * 4], op.d[18 + i * 4], op.d[19 + i * 4]);
 	vec3 eye = vec3(op.d[32], op.d[33], op.d[34]);
 	vec3 sun = normalize(vec3(op.d[36], op.d[37], op.d[38]));
-	vec2 wind = vec2(op.d[40], op.d[41]);
+	float t = op.d[35]; // time (from C++ ts)
 	float dscale = op.d[43];
 	float bottom = op.d[44], top = op.d[45];
 
@@ -78,7 +83,6 @@ void main() {
 	vec4 pb = ivp * vec4(ndc, 1.0, 1.0); pb /= pb.w;
 	vec3 dir = normalize(pb.xyz - pa.xyz);
 
-	// Slab entry/exit
 	float t0, t1;
 	if (eye.y < bottom) {
 		if (dir.y < 0.015) { imageStore(cloud_img, gid, vec4(0,0,0,1)); return; }
@@ -95,48 +99,47 @@ void main() {
 
 	float dt = (t1 - t0) / float(STEPS);
 	float cth = dot(dir, sun);
-	float phase = hg(cth, HG_G1) * 0.5 + hg(cth, HG_G2) * 0.5;
-	float sigma_s = SIGMA_E * ALBEDO; // scattering = albedo * extinction (UE model)
-
-	vec3 sunColor = SUN_I * vec3(1.0, 0.95, 0.85);
-	vec3 ambLight = vec3(0.4, 0.5, 0.7); // skylight contribution to cloud
+	float phase = hg(cth, HG_G1) * 0.55 + hg(cth, HG_G2) * 0.45;
+	float sigma_s = SIGMA_E * ALBEDO;
+	vec3 sunColor = SUN_I * vec3(1.0, 0.93, 0.82);
+	vec3 ambLight = vec3(0.5, 0.6, 0.8);
 
 	float jit = hash21(vec2(gid)) - 0.5;
 	float ljit = hash21(vec2(gid) + 100.0);
 
-	// === UE-style Frostbite improved integration ===
 	vec3 luminance = vec3(0.0);
 	float T_view = 1.0;
 
 	for (int i = 0; i < STEPS; ++i) {
 		vec3 p = eye + dir * (t0 + (float(i) + 0.5 + jit) * dt);
-		float rho = sampleDensity(p, bottom, top, dscale, wind);
+		float rho = sampleDensity(p, bottom, top, dscale, t);
 		if (rho <= 0.0) continue;
 
 		float sigma_e_loc = SIGMA_E * rho;
 		float sigma_s_loc = sigma_s * rho;
 
-		// Light march toward sun -> optical depth
+		// Light march: x^2 non-linear distribution (UE ref), dense near sample point
 		float tauL = 0.0;
-		float ls = LIGHT_MAX_DIST / float(LIGHT_STEPS);
-		vec3 lp = p + sun * ljit * ls;
-		for (int j = 0; j < LIGHT_STEPS; ++j) {
-			lp += sun * ls;
-			tauL += sampleDensity(lp, bottom, top, dscale, wind) * ls;
+		float invN = 1.0 / float(LIGHT_STEPS);
+		float prevT = 0.0;
+		for (int j = 1; j <= LIGHT_STEPS; ++j) {
+			float curT = (float(j) * invN);
+			curT *= curT; // x^2 mapping
+			float stepDist = (curT - prevT) * LIGHT_MAX_DIST;
+			prevT = curT;
+			vec3 lp = p + sun * (curT * LIGHT_MAX_DIST + ljit * stepDist);
+			tauL += sampleDensity(lp, bottom, top, dscale, t) * stepDist;
 		}
 
-		// Beer-Lambert light attenuation
+		// Strong self-shadowing: extinction proportional to optical depth
 		float T_light = exp(-tauL * SIGMA_E);
 
-		// In-scattered radiance at this point
-		vec3 S = sunColor * T_light * phase * sigma_s_loc + ambLight * rho * 0.05;
+		vec3 S = sunColor * T_light * phase * sigma_s_loc + ambLight * rho * 0.08;
 
-		// Frostbite improved integration: L += T_view * (S - S*exp(-sigma_e*dt)) / sigma_e
+		// Frostbite improved integration
 		float T_seg = exp(-sigma_e_loc * dt);
 		vec3 L_contrib = (S - S * T_seg) / max(sigma_e_loc, 1e-6);
 		luminance += T_view * L_contrib;
-
-		// Update view transmittance
 		T_view *= T_seg;
 
 		if (T_view < 0.01) { T_view = 0.0; break; }
