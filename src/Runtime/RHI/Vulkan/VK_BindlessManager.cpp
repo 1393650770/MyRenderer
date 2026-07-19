@@ -16,11 +16,18 @@ VK_BindlessManager::VK_BindlessManager(VK_Device* in_device)
 		return; // Bindless not supported on this device
 	}
 
-	// Initialize slot tracking
-	slot_used_2d.resize(MAX_TEXTURES_2D, false);
-	free_slots_2d.reserve(MAX_TEXTURES_2D);
-	slot_used_cube.resize(MAX_TEXTURES_CUBE, false);
-	free_slots_cube.reserve(MAX_TEXTURES_CUBE);
+	// Initialize slot tracking — generation-protected free list
+	slot_meta_2d.resize(MAX_TEXTURES_2D);
+	for (UInt32 i = 1; i < MAX_TEXTURES_2D - 1; ++i)
+		slot_meta_2d[i].next_free = i + 1;
+	slot_meta_2d[MAX_TEXTURES_2D - 1].next_free = 0;
+	free_head_2d = 1;
+
+	slot_meta_cube.resize(MAX_TEXTURES_CUBE);
+	for (UInt32 i = 1; i < MAX_TEXTURES_CUBE - 1; ++i)
+		slot_meta_cube[i].next_free = i + 1;
+	slot_meta_cube[MAX_TEXTURES_CUBE - 1].next_free = 0;
+	free_head_cube = 1;
 
 	CreateBindlessPool();
 	CreateBindlessLayout();
@@ -93,9 +100,6 @@ void VK_BindlessManager::CreateBindlessLayout()
 	bindings[2].pImmutableSamplers = nullptr;
 
 	// Per-binding flags for bindless (update-after-bind + partially bound)
-	// NOTE: VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT is NOT used here
-	// because it can only be set on the last binding (highest binding number).
-	// We allocate the full fixed-size arrays (4096+256+64), so variable count is unnecessary.
 	VkDescriptorBindingFlags binding_flags[3] = {};
 	binding_flags[0] = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
 		| VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
@@ -137,13 +141,13 @@ void VK_BindlessManager::CreateBindlessDescriptorSet()
 		"RHI Error: Failed to allocate bindless descriptor set");
 }
 
-// RHI::Texture* overloads — cast to VK_Texture internally
-UInt32 VK_BindlessManager::AllocateTexture2DSlot(MXRender::RHI::Texture* in_texture)
+// RHI::Texture* overloads — cast to VK_Texture internally, return typed handle
+BindlessSlotHandle VK_BindlessManager::AllocateTexture2DSlot(MXRender::RHI::Texture* in_texture)
 {
 	return AllocateTexture2DSlot(static_cast<VK_Texture*>(in_texture));
 }
 
-UInt32 VK_BindlessManager::AllocateTextureCubeSlot(MXRender::RHI::Texture* in_texture)
+BindlessCubeSlotHandle VK_BindlessManager::AllocateTextureCubeSlot(MXRender::RHI::Texture* in_texture)
 {
 	return AllocateTextureCubeSlot(static_cast<VK_Texture*>(in_texture));
 }
@@ -153,34 +157,41 @@ void VK_BindlessManager::UpdateTexture2DSlot(UInt32 index, MXRender::RHI::Textur
 	UpdateTexture2DSlot(index, static_cast<VK_Texture*>(in_texture));
 }
 
-UInt32 VK_BindlessManager::AllocateTexture2DSlot(VK_Texture* texture)
+BindlessSlotHandle VK_BindlessManager::AllocateTexture2DSlot(VK_Texture* texture)
 {
-	if (!is_enabled || !texture) return 0;
+	if (!is_enabled || !texture) return BindlessSlotHandle{};
 
-	UInt32 index;
-	if (!free_slots_2d.empty())
-	{
-		index = free_slots_2d.back();
-		free_slots_2d.pop_back();
-	}
-	else
-	{
-		index = next_free_index_2d++;
-		CHECK_WITH_LOG(index >= MAX_TEXTURES_2D, "RHI Error: Bindless 2D texture slots exhausted!");
-	}
+	if (free_head_2d == 0) return BindlessSlotHandle{}; // exhausted
 
-	slot_used_2d[index] = true;
-	UpdateTexture2DSlot(index, texture);
-	return index;
+	UInt32 idx = free_head_2d;
+	auto REF slot = slot_meta_2d[idx];
+	free_head_2d = slot.next_free;
+
+	UInt32 gen = slot.generation;
+	slot.next_free = 0;
+
+	UpdateTexture2DSlot(idx, texture);
+
+	return BindlessSlotHandle::Make(idx, gen);
 }
 
-void VK_BindlessManager::FreeTexture2DSlot(UInt32 index)
+void VK_BindlessManager::FreeTexture2DSlot(BindlessSlotHandle handle)
 {
-	if (!is_enabled || index >= MAX_TEXTURES_2D) return;
-	if (!slot_used_2d[index]) return;
+	if (!is_enabled) return;
 
-	slot_used_2d[index] = false;
-	free_slots_2d.push_back(index);
+	UInt32 idx = handle.GetIndex();
+	UInt32 gen = handle.GetGeneration();
+
+	if (idx == 0 || idx >= MAX_TEXTURES_2D) return;
+
+	auto REF slot = slot_meta_2d[idx];
+	if (slot.generation != gen) return; // stale handle — already freed
+
+	// Bump generation so all existing handles to this slot become stale
+	slot.generation = ((gen + 1) & kHandleGenMask);
+	if (slot.generation == 0) slot.generation = 1;
+	slot.next_free = free_head_2d;
+	free_head_2d = idx;
 }
 
 void VK_BindlessManager::UpdateTexture2DSlot(UInt32 index, VK_Texture* texture)
@@ -204,23 +215,18 @@ void VK_BindlessManager::UpdateTexture2DSlot(UInt32 index, VK_Texture* texture)
 	vkUpdateDescriptorSets(device->GetDevice(), 1, &write, 0, nullptr);
 }
 
-UInt32 VK_BindlessManager::AllocateTextureCubeSlot(VK_Texture* texture)
+BindlessCubeSlotHandle VK_BindlessManager::AllocateTextureCubeSlot(VK_Texture* texture)
 {
-	if (!is_enabled || !texture) return 0;
+	if (!is_enabled || !texture) return BindlessCubeSlotHandle{};
 
-	UInt32 index;
-	if (!free_slots_cube.empty())
-	{
-		index = free_slots_cube.back();
-		free_slots_cube.pop_back();
-	}
-	else
-	{
-		index = next_free_index_cube++;
-		CHECK_WITH_LOG(index >= MAX_TEXTURES_CUBE, "RHI Error: Bindless cube texture slots exhausted!");
-	}
+	if (free_head_cube == 0) return BindlessCubeSlotHandle{}; // exhausted
 
-	slot_used_cube[index] = true;
+	UInt32 idx = free_head_cube;
+	auto REF slot = slot_meta_cube[idx];
+	free_head_cube = slot.next_free;
+
+	UInt32 gen = slot.generation;
+	slot.next_free = 0;
 
 	VkDescriptorImageInfo image_info{};
 	image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -231,23 +237,33 @@ UInt32 VK_BindlessManager::AllocateTextureCubeSlot(VK_Texture* texture)
 	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write.dstSet = descriptor_set;
 	write.dstBinding = BINDLESS_TEXTURE_CUBE_BINDING;
-	write.dstArrayElement = index;
+	write.dstArrayElement = idx;
 	write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	write.descriptorCount = 1;
 	write.pImageInfo = &image_info;
 
 	vkUpdateDescriptorSets(device->GetDevice(), 1, &write, 0, nullptr);
 
-	return index;
+	return BindlessCubeSlotHandle::Make(idx, gen);
 }
 
-void VK_BindlessManager::FreeTextureCubeSlot(UInt32 index)
+void VK_BindlessManager::FreeTextureCubeSlot(BindlessCubeSlotHandle handle)
 {
-	if (!is_enabled || index >= MAX_TEXTURES_CUBE) return;
-	if (!slot_used_cube[index]) return;
+	if (!is_enabled) return;
 
-	slot_used_cube[index] = false;
-	free_slots_cube.push_back(index);
+	UInt32 idx = handle.GetIndex();
+	UInt32 gen = handle.GetGeneration();
+
+	if (idx == 0 || idx >= MAX_TEXTURES_CUBE) return;
+
+	auto REF slot = slot_meta_cube[idx];
+	if (slot.generation != gen) return; // stale handle
+
+	// Bump generation
+	slot.generation = ((gen + 1) & kHandleGenMask);
+	if (slot.generation == 0) slot.generation = 1;
+	slot.next_free = free_head_cube;
+	free_head_cube = idx;
 }
 
 VkDescriptorSetLayout VK_BindlessManager::GetLayout() CONST

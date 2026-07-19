@@ -119,7 +119,7 @@ void PropertiesPanel::DrawPassProperties(RenderGraphPassNode* pass_node)
 			ImGui::SameLine();
 			if (ImGui::SmallButton((String("X##delin_") + std::to_string(pin->GetSelfID())).c_str()))
 			{
-				pass_node->DeletePin(pin->GetSelfID());
+				pass_node->DeletePin(PinHandle{pin->GetSelfHandle()});
 				break;
 			}
 		}
@@ -138,7 +138,7 @@ void PropertiesPanel::DrawPassProperties(RenderGraphPassNode* pass_node)
 			ImGui::SameLine();
 			if (ImGui::SmallButton((String("X##delout_") + std::to_string(pin->GetSelfID())).c_str()))
 			{
-				pass_node->DeletePin(pin->GetSelfID());
+				pass_node->DeletePin(PinHandle{pin->GetSelfHandle()});
 				break;
 			}
 		}

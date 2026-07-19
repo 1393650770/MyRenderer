@@ -1,10 +1,10 @@
-
 #pragma once
 #ifndef _BASENODE_
 #define _BASENODE_
 
 #include "Core/ConstDefine.h"
 #include "BaseItem.h"
+#include "EditorItemHandle.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
@@ -27,11 +27,10 @@ public:
 	VIRTUAL BaseNode* METHOD(AsNode)() { return this; }
 	void METHOD(AddInput)(CONST String& in_name = "");
 	void METHOD(AddOutput)(CONST String& in_name = "");
-	
-	void METHOD(DeletePin)(UInt64 id);
 
+	void METHOD(DeletePin)(PinHandle h);
 
-	BasePin* METHOD(GetPin)(UInt64 id);
+	BasePin* METHOD(GetPin)(PinHandle h);
 	BasePin* METHOD(GetPinByName)(CONST String& name);
 	void METHOD(SetSetNeedRecalcSize)();
 

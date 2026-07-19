@@ -7,12 +7,12 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
-ModifyPinCmd::ModifyPinCmd(RenderGraphPanel* in_panel, UInt64 in_node_id, EAction in_action)
+ModifyPinCmd::ModifyPinCmd(RenderGraphPanel* in_panel, NodeHandle in_node_id, EAction in_action)
 	: panel(in_panel), node_id(in_node_id), action(in_action)
 {
 }
 
-ModifyPinCmd::ModifyPinCmd(RenderGraphPanel* in_panel, UInt64 in_node_id, UInt64 in_pin_id, EAction in_action, const String& in_new_name)
+ModifyPinCmd::ModifyPinCmd(RenderGraphPanel* in_panel, NodeHandle in_node_id, PinHandle in_pin_id, EAction in_action, const String& in_new_name)
 	: panel(in_panel), node_id(in_node_id), pin_id(in_pin_id), action(in_action), new_name(in_new_name)
 {
 }
@@ -22,7 +22,7 @@ void ModifyPinCmd::Execute()
 	if (is_executed) return;
 	is_executed = true;
 
-	auto* node = panel->GetNode(node_id);
+	auto* node = panel->GetNodeByHandle(node_id);
 	if (!node) return;
 
 	switch (action)
@@ -66,28 +66,24 @@ void ModifyPinCmd::Undo()
 	if (!is_executed) return;
 	is_executed = false;
 
-	auto* node = panel->GetNode(node_id);
+	auto* node = panel->GetNodeByHandle(node_id);
 	if (!node) return;
 
 	switch (action)
 	{
 	case EAction::AddInput:
-		// Remove the last input pin
 		if (!node->GetInputPins().empty())
-			node->DeletePin(node->GetInputPins().back()->GetSelfID());
+			node->DeletePin(PinHandle{ node->GetInputPins().back()->GetSelfHandle() });
 		break;
 
 	case EAction::AddOutput:
 		if (!node->GetOutputPins().empty())
-			node->DeletePin(node->GetOutputPins().back()->GetSelfID());
+			node->DeletePin(PinHandle{ node->GetOutputPins().back()->GetSelfHandle() });
 		break;
 
 	case EAction::Delete:
-		// Restore the deleted pin (simplified: not perfect for all node types)
 		if (owned_pin)
 		{
-			// Pin was deleted, cannot fully restore in current architecture
-			// Add a placeholder pin with the old name
 			node->AddInput(old_name);
 		}
 		break;

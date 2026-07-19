@@ -21,12 +21,16 @@ public:
 	BaseLink& operator=(CONST BaseLink& other) MYDELETE;
 	BaseLink& operator=(BaseLink&& other) MYDELETE;
 
-	VIRTUAL void METHOD(Init)( UInt64 start_id = 0, UInt64 end_id = 0);
+	VIRTUAL void METHOD(Init)( PinHandle start_pin = {}, PinHandle end_pin = {});
 	VIRTUAL void METHOD(Draw)();
 	VIRTUAL void METHOD(Release)();
 	VIRTUAL BaseLink* METHOD(AsLink)() { return this; }
-	UInt64 METHOD(GetStartID)() CONST { return start_id; }
-	UInt64 METHOD(GetEndID)() CONST { return end_id; }
+	PinHandle METHOD(GetStartHandle)() CONST { return start_handle; }
+	PinHandle METHOD(GetEndHandle)() CONST { return end_handle; }
+
+	//  --  --  --  --  --  --   ID  --  --  --
+	UInt64 METHOD(GetStartID)() CONST { return start_handle.GetIndex(); }
+	UInt64 METHOD(GetEndID)()   CONST { return end_handle.GetIndex(); }
 
 	// Link color by access type
 	void METHOD(SetLinkAccess)(PinAccess a) { link_access = a; }
@@ -41,7 +45,7 @@ private:
 public:
 
 protected:
-	UInt64 start_id = 0, end_id = 0;
+	PinHandle start_handle, end_handle;
 	PinAccess link_access = PinAccess::Read;
 private:
 #pragma endregion

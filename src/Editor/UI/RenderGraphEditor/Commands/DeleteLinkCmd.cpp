@@ -5,7 +5,7 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
-DeleteLinkCmd::DeleteLinkCmd(RenderGraphPanel* in_panel, UInt64 in_link_id)
+DeleteLinkCmd::DeleteLinkCmd(RenderGraphPanel* in_panel, LinkHandle in_link_id)
 	: panel(in_panel), link_id(in_link_id)
 {
 }
@@ -17,7 +17,7 @@ void DeleteLinkCmd::Execute()
 	auto& links = panel->GetLinks();
 	for (UInt32 i = 0; i < links.size(); ++i)
 	{
-		if (links[i] && links[i]->GetSelfID() == link_id)
+		if (links[i] && links[i]->GetSelfHandle() == link_id.value)
 		{
 			owned_link = links[i];
 			links.erase(links.begin() + i);

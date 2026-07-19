@@ -3,6 +3,7 @@
 #define _RENDERGRAPHPANNEL_
 #include <imgui.h>
 #include "UI/BasePanel.h"
+#include "UI/EditorItemHandle.h"
 #include "UI/RenderGraphEditor/Commands/CommandHistory.h"
 #include "UI/RenderGraphEditor/Commands/EditorCommandQueue.h"
 #include "Render/Core/RenderGraphDefinition.h"
@@ -64,6 +65,7 @@ public:
 
 	// Node/Link access (used by external Command classes)
 	BaseNode* METHOD(GetNode)(UInt64 id);
+	BaseNode* METHOD(GetNodeByHandle)(NodeHandle h);
 	void METHOD(DeleteNode)(UInt64 id);
 	void METHOD(DeleteLink)(UInt64 id);
 

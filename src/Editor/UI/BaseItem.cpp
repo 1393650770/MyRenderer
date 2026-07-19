@@ -1,33 +1,25 @@
 #include "BaseItem.h"
+#include "EditorItemRegistry.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
+//  --  --  --  --  --  --  --  --  --  --  --  --
+static EditorItemRegistry* s_registry = nullptr;
 
-UInt64 g_editor_item_id = 1;
-Vector<BaseItem*> g_all_items;
-UInt64 GetNextEditorItemID()
+EditorItemRegistry* GetEditorRegistry()
 {
-	return g_editor_item_id++;
-}
-
-BaseItem* GetItemByID(UInt64 id)
-{
-	for (auto& item : g_all_items)
+	if (s_registry == nullptr)
 	{
-		if (item->GetSelfID() == id)
-		{
-			return item;
-		}
+		s_registry = new EditorItemRegistry();
+		g_editor_registry = s_registry;
 	}
-	return nullptr;
+	return s_registry;
 }
-
 
 BaseItem::BaseItem(CONST String& in_name, Bool in_show /*= true*/) : name(in_name), is_show(in_show)
 {
-	self_id = GetNextEditorItemID();
-	g_all_items.push_back(this);
+	self_handle = kInvalidHandle;
 }
 
 
@@ -39,9 +31,19 @@ void BaseItem::Release()
 {
 }
 
-UInt64 BaseItem::GetSelfID() CONST
+GenericHandle BaseItem::GetSelfHandle() CONST
 {
-	return self_id;
+	return self_handle;
+}
+
+void BaseItem::SetSelfHandle(GenericHandle h)
+{
+	self_handle = h;
+}
+
+CONST String& BaseItem::GetName()
+{
+	return name;
 }
 
 void BaseItem::SetName(CONST String& in_name)
@@ -49,9 +51,17 @@ void BaseItem::SetName(CONST String& in_name)
 	name = in_name;
 }
 
-CONST String& BaseItem::GetName()
+//  --  --  --  --  --  --  --   handle  --  --  --   index  --  --  ID  --  --
+UInt64 BaseItem::GetSelfID() CONST
 {
-	return name;
+	return GetHandleIndex(self_handle);
+}
+
+BaseItem* BaseItem::FindByIndex(UInt32 index)
+{
+	auto* reg = GetEditorRegistry();
+	BaseItem* item = reg->ResolveItemByIndex(index);
+	return item;
 }
 
 MYRENDERER_END_NAMESPACE

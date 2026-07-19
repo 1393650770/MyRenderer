@@ -1,6 +1,7 @@
 #include "BaseNode.h"
 #include "ThirdParty/imgui_node_editor/imgui_node_editor.h"
 #include "BasePin.h"
+#include "EditorItemRegistry.h"
 #include "UI/RenderGraphEditor/Core/RenderGraphNodeColors.h"
 
 
@@ -15,23 +16,28 @@ BaseNode::BaseNode(CONST String& in_name, Bool in_show /*= true*/) : BaseItem(in
 
 void BaseNode::AddInput(CONST String& in_name)
 {
-	input_pins.push_back(new BasePin(PinType::Input, this, PinAccess::Read, in_name));
+	auto* pin = new BasePin(PinType::Input, NodeHandle{ self_handle }, PinAccess::Read, in_name);
+	GetEditorRegistry()->RegisterPin(pin);
+	input_pins.push_back(pin);
 	is_need_resize = true;
 }
 
 void BaseNode::AddOutput(CONST String& in_name)
 {
-	output_pins.push_back(new BasePin(PinType::Output, this, PinAccess::Write, in_name));
+	auto* pin = new BasePin(PinType::Output, NodeHandle{ self_handle }, PinAccess::Write, in_name);
+	GetEditorRegistry()->RegisterPin(pin);
+	output_pins.push_back(pin);
 	is_need_resize = true;
 }
 
-void BaseNode::DeletePin(UInt64 id)
+void BaseNode::DeletePin(PinHandle h)
 {
 	for (Int i = 0; i < input_pins.size(); ++i)
 	{
-		if (input_pins[i]->GetSelfID() == id)
+		if (input_pins[i]->GetSelfHandle() == h.value)
 		{
 			input_pins[i]->Release();
+			GetEditorRegistry()->RemovePin(h);
 			delete input_pins[i];
 			input_pins.erase(input_pins.begin() + i);
 			is_need_resize = true;
@@ -40,9 +46,10 @@ void BaseNode::DeletePin(UInt64 id)
 	}
 	for (Int i = 0; i < output_pins.size(); ++i)
 	{
-		if (output_pins[i]->GetSelfID() == id)
+		if (output_pins[i]->GetSelfHandle() == h.value)
 		{
 			output_pins[i]->Release();
+			GetEditorRegistry()->RemovePin(h);
 			delete output_pins[i];
 			output_pins.erase(output_pins.begin() + i);
 			is_need_resize = true;
@@ -51,18 +58,18 @@ void BaseNode::DeletePin(UInt64 id)
 	}
 }
 
-BasePin* BaseNode::GetPin(UInt64 id)
+BasePin* BaseNode::GetPin(PinHandle h)
 {
 	for (auto& pin : input_pins)
 	{
-		if (pin->GetSelfID() == id)
+		if (pin->GetSelfHandle() == h.value)
 		{
 			return pin;
 		}
 	}
 	for (auto& pin : output_pins)
 	{
-		if (pin->GetSelfID() == id)
+		if (pin->GetSelfHandle() == h.value)
 		{
 			return pin;
 		}
@@ -104,16 +111,16 @@ void BaseNode::Draw()
 	// Apply deferred position (set by SyncRuntimeToEditor before first draw)
 	if (has_pending_pos)
 	{
-		ed::SetNodePosition(self_id, ImVec2(pending_pos_x, pending_pos_y));
+		ed::SetNodePosition(GetHandleIndex(self_handle), ImVec2(pending_pos_x, pending_pos_y));
 		has_pending_pos = false;
 	}
 
-	ed::BeginNode(self_id);
+	ed::BeginNode(GetHandleIndex(self_handle));
 	ImGui::Text(name.c_str());
 	Int maxpin_size = max(input_pins.size(), output_pins.size());
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 	ImVec2 p = ImGui::GetCursorScreenPos();
-	Float32 lineWidth = max( node_single_line_width+10 , ImGui::CalcTextSize(name.c_str()).x); // ���÷ָ����ĳ���
+	Float32 lineWidth = max( node_single_line_width+10 , ImGui::CalcTextSize(name.c_str()).x);
 	draw_list->AddLine(ImVec2(p.x, p.y), ImVec2(p.x + lineWidth, p.y), IM_COL32(255, 255, 255, 255), 2.0f);
 	ImGui::Dummy(ImVec2(0, 5));
 	for (Int i = 0; i < maxpin_size; ++i)
@@ -149,15 +156,20 @@ void BaseNode::Draw()
 
 void BaseNode::Release()
 {
+	auto* reg = GetEditorRegistry();
 	for (auto& pin : input_pins)
 	{
+		PinHandle ph{ pin->GetSelfHandle() };
 		pin->Release();
+		reg->RemovePin(ph);
 		delete pin;
 	}
 	input_pins.clear();
 	for (auto& pin : output_pins)
 	{
+		PinHandle ph{ pin->GetSelfHandle() };
 		pin->Release();
+		reg->RemovePin(ph);
 		delete pin;
 	}
 }

@@ -146,12 +146,16 @@ parser_header.o: \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ConstGlobals.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/QuadTree.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ReflectionRegister.h \
+  D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ResourceHandle.h \
+  D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\functional \
+  D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ResourceRegistry.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/TypeHash.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/FileDialog.h \
   Core/ConstDefine.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/FileSystem.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Platform.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderBindlessManager.h \
+  Core/ResourceHandle.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderRource.h \
   RHI/RenderEnum.h Core/BaseObject.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\algorithm \
@@ -169,6 +173,8 @@ parser_header.o: \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderTexture.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderUtils.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderViewport.h \
+  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/ResourceManager.h \
+  Core/ResourceRegistry.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_BindlessManager.h \
   vulkan/vulkan_core.h RHI/RenderBindlessManager.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Buffer.h \
@@ -189,7 +195,7 @@ parser_header.o: \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Memory.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Extension.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/Vk_Device.h \
-  D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\functional \
+  RHI/ResourceManager.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_CommandBuffer.h \
   RHI/RenderCommandList.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Fence.h \

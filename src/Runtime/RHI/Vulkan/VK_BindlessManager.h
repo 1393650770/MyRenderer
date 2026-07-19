@@ -4,6 +4,7 @@
 
 #include <vulkan/vulkan_core.h>
 #include "Core/ConstDefine.h"
+#include "Core/ResourceHandle.h"
 #include "RHI/RenderBindlessManager.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -33,17 +34,17 @@ public:
 	VK_BindlessManager(VK_Device* in_device);
 	~VK_BindlessManager();
 
-	// 2D texture slot management
-	VIRTUAL UInt32 METHOD(AllocateTexture2DSlot)(MXRender::RHI::Texture* texture) OVERRIDE FINAL;
-	UInt32 METHOD(AllocateTexture2DSlot)(VK_Texture* texture);
-	VIRTUAL void   METHOD(FreeTexture2DSlot)(UInt32 index) OVERRIDE FINAL;
+	// 2D texture slot management — generation-protected handles
+	VIRTUAL BindlessSlotHandle METHOD(AllocateTexture2DSlot)(MXRender::RHI::Texture* texture) OVERRIDE FINAL;
+	BindlessSlotHandle METHOD(AllocateTexture2DSlot)(VK_Texture* texture);
+	VIRTUAL void   METHOD(FreeTexture2DSlot)(BindlessSlotHandle handle) OVERRIDE FINAL;
 	void   METHOD(UpdateTexture2DSlot)(UInt32 index, VK_Texture* texture);
 	void   METHOD(UpdateTexture2DSlot)(UInt32 index, MXRender::RHI::Texture* texture);
 
-	// Cube texture slot management
-	VIRTUAL UInt32 METHOD(AllocateTextureCubeSlot)(MXRender::RHI::Texture* texture) OVERRIDE FINAL;
-	UInt32 METHOD(AllocateTextureCubeSlot)(VK_Texture* texture);
-	VIRTUAL void   METHOD(FreeTextureCubeSlot)(UInt32 index) OVERRIDE FINAL;
+	// Cube texture slot management — generation-protected handles
+	VIRTUAL BindlessCubeSlotHandle METHOD(AllocateTextureCubeSlot)(MXRender::RHI::Texture* texture) OVERRIDE FINAL;
+	BindlessCubeSlotHandle METHOD(AllocateTextureCubeSlot)(VK_Texture* texture);
+	VIRTUAL void   METHOD(FreeTextureCubeSlot)(BindlessCubeSlotHandle handle) OVERRIDE FINAL;
 
 	// Global shared descriptor set (all pipelines referencing Set 3 share this)
 	VkDescriptorSetLayout METHOD(GetLayout)() CONST;
@@ -67,15 +68,23 @@ protected:
 	VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
 	Bool is_enabled = false;
 
-	// 2D slot management
-	Vector<UInt32> free_slots_2d;
-	Vector<Bool>   slot_used_2d;
-	UInt32 next_free_index_2d = 0;
+	// 2D slot management — generation-protected sparse array + free list
+	struct SlotEntry2D
+	{
+		UInt32 generation = 1;
+		UInt32 next_free = 0;  // free-list pointer, 0 = no next
+	};
+	Vector<SlotEntry2D> slot_meta_2d;
+	UInt32 free_head_2d = 0;
 
-	// Cube slot management
-	Vector<UInt32> free_slots_cube;
-	Vector<Bool>   slot_used_cube;
-	UInt32 next_free_index_cube = 0;
+	// Cube slot management — generation-protected sparse array + free list
+	struct SlotEntryCube
+	{
+		UInt32 generation = 1;
+		UInt32 next_free = 0;
+	};
+	Vector<SlotEntryCube> slot_meta_cube;
+	UInt32 free_head_cube = 0;
 
 private:
 #pragma endregion

@@ -15,6 +15,7 @@
 #include "VK_Extension.h"
 #include "VK_ResourcePool.h"
 #include "VK_BindlessManager.h"
+#include "RHI/ResourceManager.h"
 #include "Render/Core/RenderGraphResource.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -152,6 +153,8 @@ void VK_Device::Init(Int device_index,Bool enable_validation_layers,CONST Vector
 	bindless_manager = new VK_BindlessManager(this);
 	resource_pool = new VK_ResourcePool();
 	MXRender::Render::g_resource_pool = resource_pool;
+	resource_manager = new MXRender::RHI::ResourceManager();
+	MXRender::RHI::g_resource_manager = resource_manager;
 
 	// --   Set global device handle for RenderDoc debug object names
 	extern VkDevice g_debug_name_device;
@@ -350,7 +353,13 @@ void VK_Device::Destroy()
 	{
 		delete bindless_manager;
 		bindless_manager = nullptr;
-	}
+		}
+		if (resource_manager)
+		{
+		MXRender::RHI::g_resource_manager = nullptr;
+		delete resource_manager;
+		resource_manager = nullptr;
+		}
 		if (resource_pool)
 		{
 			MXRender::Render::g_resource_pool = nullptr;

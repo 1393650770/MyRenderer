@@ -4,6 +4,7 @@
 
 #include "UI/RenderGraphEditor/Commands/CommandHistory.h"
 #include "Core/ConstDefine.h"
+#include "UI/EditorItemHandle.h"
 #include "imgui.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -28,7 +29,7 @@ private:
 	BaseNode* node_raw = nullptr;       // panel��nodes �е�raw pointer
 	ImVec2 position;
 	Bool is_in_panel = false;           // �ڵ��Ƿ��ڵ�ǰ��panel��
-	Vector<UInt64> owned_link_ids;      // undoʱ��Ҫɾ����������
+	Vector<LinkHandle> owned_link_ids;   // undo时需要删除的link
 #pragma endregion
 MYRENDERER_END_CLASS
 

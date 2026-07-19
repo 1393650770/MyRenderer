@@ -4,6 +4,7 @@
 
 #include "UI/RenderGraphEditor/Commands/CommandHistory.h"
 #include "Core/ConstDefine.h"
+#include "Core/ResourceHandle.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
@@ -13,7 +14,7 @@ class RenderGraphPanel;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenameCmd, public Command)
 #pragma region METHOD
 public:
-	RenameCmd(RenderGraphPanel* in_panel, UInt64 in_item_id, CONST String& in_old_name, CONST String& in_new_name);
+	RenameCmd(RenderGraphPanel* in_panel, GenericHandle in_item_id, CONST String& in_old_name, CONST String& in_new_name);
 
 	VIRTUAL void METHOD(Execute)() OVERRIDE FINAL;
 	VIRTUAL void METHOD(Undo)() OVERRIDE FINAL;
@@ -24,7 +25,7 @@ public:
 #pragma region MEMBER
 private:
 	RenderGraphPanel* panel;
-	UInt64 item_id;
+	GenericHandle item_id;
 	String old_name;
 	String new_name;
 #pragma endregion

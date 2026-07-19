@@ -1,9 +1,10 @@
-
 #pragma once
 #ifndef _BASEGLOBAL_
 #define _BASEGLOBAL_
 
 #include "Core/ConstDefine.h"
+#include "Core/ResourceHandle.h"
+#include "EditorItemHandle.h"
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -12,11 +13,10 @@ class BaseItem;
 class BaseLink;
 class BaseNode;
 class BasePin;
+class EditorItemRegistry;
 
-extern UInt64 g_editor_item_id ;
-extern UInt64 GetNextEditorItemID();
-extern Vector<BaseItem*> g_all_items;
-extern BaseItem* GetItemByID(UInt64 id);
+//  --  --  --  --  --  --  --  --  --  --  --  --
+extern EditorItemRegistry* GetEditorRegistry();
 
 MYRENDERER_BEGIN_CLASS(BaseItem)
 #pragma region METHOD
@@ -36,9 +36,16 @@ public:
 	VIRTUAL BaseNode* METHOD(AsNode)() {return nullptr;}
 	VIRTUAL BasePin* METHOD(AsPin)() { return nullptr; }
 
-	UInt64 METHOD(GetSelfID)() CONST;
+	GenericHandle METHOD(GetSelfHandle)() CONST;
+	void METHOD(SetSelfHandle)(GenericHandle h);
 	CONST String& METHOD(GetName)();
 	void METHOD(SetName)(CONST String& in_name);
+
+	//  --  --  --  --  --  --  --  --  --  --
+	UInt64 METHOD(GetSelfID)() CONST;
+
+	// --  --  --  --  --  --  --  --（Panel  --  --  ax::NodeEditor  --  UInt64 ID）
+	static BaseItem* METHOD(FindByIndex)(UInt32 index);
 protected:
 
 private:
@@ -50,7 +57,7 @@ public:
 	Bool is_show = true;
 protected:
 	String name = "";
-	UInt64 self_id = 0;
+	GenericHandle self_handle = kInvalidHandle;
 private:
 #pragma endregion
 MYRENDERER_END_CLASS

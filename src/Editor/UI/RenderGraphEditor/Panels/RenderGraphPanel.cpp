@@ -91,8 +91,8 @@ void RenderGraphPanel::Draw()
 				Map<String, UInt64> res_writer, res_reader;
 				for (auto* link : links) {
 					if (!link) continue;
-					BasePin* sp = GetItemByID(link->GetStartID()) ? GetItemByID(link->GetStartID())->AsPin() : nullptr;
-					BasePin* ep = GetItemByID(link->GetEndID())   ? GetItemByID(link->GetEndID())->AsPin()   : nullptr;
+					BasePin* sp = BaseItem::FindByIndex((UInt32)link->GetStartID()) ? BaseItem::FindByIndex((UInt32)link->GetStartID())->AsPin() : nullptr;
+					BasePin* ep = BaseItem::FindByIndex((UInt32)link->GetEndID())   ? BaseItem::FindByIndex((UInt32)link->GetEndID())->AsPin()   : nullptr;
 					if (!sp || !ep) continue;
 					BaseNode* sn = sp->GetBelongNode(), * en = ep->GetBelongNode();
 					if (!sn || !en) continue;
@@ -286,7 +286,7 @@ void RenderGraphPanel::CreateOperator()
 		{
 			ImGui::OpenPopup("PinContextMenu");
 			hover_pin_id = pin_id.Get();
-			BasePin* pin = GetItemByID(hover_pin_id)->AsPin();
+			BasePin* pin = BaseItem::FindByIndex((UInt32)hover_pin_id)->AsPin();
 			hover_node_id = pin ? pin->GetBelongNode()->GetSelfID() : 0;
 		}
 
@@ -497,8 +497,8 @@ void RenderGraphPanel::BaseOperator()
 		{
 			if (input_pin_id && output_pin_id)
 			{
-				BasePin* start_pin = GetItemByID(output_pin_id.Get())->AsPin();
-				BasePin* end_pin = GetItemByID(input_pin_id.Get())->AsPin();
+				BasePin* start_pin = BaseItem::FindByIndex((UInt32)output_pin_id.Get())->AsPin();
+				BasePin* end_pin = BaseItem::FindByIndex((UInt32)input_pin_id.Get())->AsPin();
 
 				ConnectionResult result = RenderGraphConnectionValidator::Validate(start_pin, end_pin);
 
@@ -562,7 +562,7 @@ void RenderGraphPanel::BaseOperator()
 			}
 			for (auto* link : links) {
 				if (!link) continue;
-				BaseItem* si = GetItemByID(link->GetStartID()); BaseItem* ei = GetItemByID(link->GetEndID());
+				BaseItem* si = BaseItem::FindByIndex((UInt32)link->GetStartID()); BaseItem* ei = BaseItem::FindByIndex((UInt32)link->GetEndID());
 				if (!si || !ei) continue; BasePin* sp = si->AsPin(); BasePin* ep = ei->AsPin();
 				if (!sp || !ep || !sp->GetBelongNode() || !ep->GetBelongNode()) continue;
 				if (snames.count(sp->GetBelongNode()->GetName()) && snames.count(ep->GetBelongNode()->GetName())) {
@@ -794,6 +794,16 @@ BaseNode* RenderGraphPanel::GetNode(UInt64 id)
 	return nullptr;
 }
 
+BaseNode* RenderGraphPanel::GetNodeByHandle(NodeHandle h)
+{
+	for (auto& node : nodes)
+	{
+		if (node->GetSelfHandle() == h.value)
+			return node;
+	}
+	return nullptr;
+}
+
 // ---- BuildDefinition / LoadDefinition ----
 
 Render::RenderGraphDefinition RenderGraphPanel::BuildDefinition() CONST
@@ -864,8 +874,8 @@ Render::RenderGraphDefinition RenderGraphPanel::BuildDefinition() CONST
 		// Save link edges
 		for (auto* link : links)
 		{
-			BasePin* start_pin = GetItemByID(link->GetStartID()) ? GetItemByID(link->GetStartID())->AsPin() : nullptr;
-			BasePin* end_pin = GetItemByID(link->GetEndID()) ? GetItemByID(link->GetEndID())->AsPin() : nullptr;
+			BasePin* start_pin = BaseItem::FindByIndex((UInt32)link->GetStartID()) ? BaseItem::FindByIndex((UInt32)link->GetStartID())->AsPin() : nullptr;
+			BasePin* end_pin = BaseItem::FindByIndex((UInt32)link->GetEndID()) ? BaseItem::FindByIndex((UInt32)link->GetEndID())->AsPin() : nullptr;
 			if (!start_pin || !end_pin) continue;
 			if (!start_pin->GetBelongNode() || !end_pin->GetBelongNode()) continue;
 
@@ -1108,7 +1118,7 @@ void RenderGraphPanel::SyncRuntimeToEditor(Render::RenderGraph* graph)
 		bool dup = false;
 		for (auto* l : links) if (l->GetStartID() == src->GetSelfID() && l->GetEndID() == dst->GetSelfID()) { dup = true; break; }
 		if (dup) return;
-		auto* l = new BaseLink("Link"); l->Init(src->GetSelfID(), dst->GetSelfID()); l->SetLinkAccess(access);
+		auto* l = new BaseLink("Link"); l->Init(PinHandle{src->GetSelfHandle()}, PinHandle{dst->GetSelfHandle()}); l->SetLinkAccess(access);
 		links.push_back(l);
 	};
 

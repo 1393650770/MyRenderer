@@ -4,6 +4,7 @@
 
 #include "CommandHistory.h"
 #include "Core/ConstDefine.h"
+#include "UI/EditorItemHandle.h"
 #include <memory>
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -24,8 +25,8 @@ public:
 		Rename,
 	};
 
-	ModifyPinCmd(RenderGraphPanel* in_panel, UInt64 in_node_id, EAction action);
-	ModifyPinCmd(RenderGraphPanel* in_panel, UInt64 in_node_id, UInt64 in_pin_id, EAction action, const String& new_name = "");
+	ModifyPinCmd(RenderGraphPanel* in_panel, NodeHandle in_node_id, EAction action);
+	ModifyPinCmd(RenderGraphPanel* in_panel, NodeHandle in_node_id, PinHandle in_pin_id, EAction action, const String& new_name = "");
 	virtual ~ModifyPinCmd() = default;
 
 	void Execute() override;
@@ -34,8 +35,8 @@ public:
 
 private:
 	RenderGraphPanel* panel;
-	UInt64 node_id;
-	UInt64 pin_id = 0;
+	NodeHandle node_id;
+	PinHandle pin_id;
 	EAction action;
 	String new_name;
 	String old_name;

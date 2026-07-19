@@ -1,4 +1,3 @@
-
 #pragma once
 #ifndef _BASEPIN_
 #define _BASEPIN_
@@ -7,6 +6,7 @@
 
 #include "Core/ConstDefine.h"
 #include "BaseItem.h"
+#include "EditorItemHandle.h"
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -28,7 +28,7 @@ friend class BaseNode;
 public:
 	VIRTUAL ~BasePin() MYDEFAULT;
 	BasePin() MYDEFAULT;
-	BasePin(PinType in_pin_type, BaseNode* in_owner, PinAccess in_access = (PinAccess)0, CONST String& in_name="", Bool in_show = true);
+	BasePin(PinType in_pin_type, NodeHandle in_owner, PinAccess in_access = (PinAccess)0, CONST String& in_name="", Bool in_show = true);
 	BasePin(CONST BasePin& other) MYDELETE;
 	BasePin(BasePin&& other) MYDELETE;
 	BasePin& operator=(CONST BasePin& other) MYDELETE;
@@ -40,6 +40,7 @@ public:
 	VIRTUAL ImVec2 METHOD(GetSize)();
 	VIRTUAL BasePin* METHOD(AsPin)() { return this; }
 	BaseNode* METHOD(GetBelongNode)();
+	NodeHandle METHOD(GetOwnerHandle)() CONST { return owner_handle; }
 	CONST PinType& METHOD(GetPinType)() CONST { return pin_type; }
 	CONST PinAccess& METHOD(GetPinAccess)() CONST { return access_type; }
 	void METHOD(SetPinAccess)(PinAccess in_access) { access_type = in_access; }
@@ -54,8 +55,8 @@ public:
 
 protected:
 	PinType pin_type = PinType::Input;
-	PinAccess access_type = (PinAccess)0; // Read/Write/Create — default Read
-	BaseNode* owner = nullptr;
+	PinAccess access_type = (PinAccess)0; // Read/Write/Create -- default Read
+	NodeHandle owner_handle;
 private:
 #pragma endregion
 

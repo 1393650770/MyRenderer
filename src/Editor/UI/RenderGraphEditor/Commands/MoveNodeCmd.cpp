@@ -7,19 +7,19 @@ namespace ed = ax::NodeEditor;
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
-MoveNodeCmd::MoveNodeCmd(RenderGraphPanel* in_panel, UInt64 in_node_id, ImVec2 in_old_pos, ImVec2 in_new_pos)
+MoveNodeCmd::MoveNodeCmd(RenderGraphPanel* in_panel, NodeHandle in_node_id, ImVec2 in_old_pos, ImVec2 in_new_pos)
 	: panel(in_panel), node_id(in_node_id), old_pos(in_old_pos), new_pos(in_new_pos)
 {
 }
 
 void MoveNodeCmd::Execute()
 {
-	ed::SetNodePosition(node_id, new_pos);
+	ed::SetNodePosition(node_id.GetIndex(), new_pos);
 }
 
 void MoveNodeCmd::Undo()
 {
-	ed::SetNodePosition(node_id, old_pos);
+	ed::SetNodePosition(node_id.GetIndex(), old_pos);
 }
 
 Bool MoveNodeCmd::CanMerge(CONST Command& other) CONST

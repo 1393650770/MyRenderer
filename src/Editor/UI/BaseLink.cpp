@@ -10,16 +10,16 @@ BaseLink::BaseLink(CONST String& in_name, Bool in_show /*= true*/) : BaseItem(in
 
 }
 
-void BaseLink::Init(UInt64 start_id /*= 0*/, UInt64 end_id /*= 0*/)
+void BaseLink::Init(PinHandle start_pin /*= {}*/, PinHandle end_pin /*= {}*/)
 {
-	this->start_id = start_id;
-	this->end_id = end_id;
+	this->start_handle = start_pin;
+	this->end_handle = end_pin;
 }
 
 void BaseLink::Draw()
 {
 	ImColor color = RenderGraphColors::GetLinkColor(link_access);
-	ed::Link(self_id, start_id, end_id, color);
+	ed::Link(GetHandleIndex(self_handle), start_handle.GetIndex(), end_handle.GetIndex(), color);
 }
 
 void BaseLink::Release()

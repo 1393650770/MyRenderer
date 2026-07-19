@@ -55,7 +55,8 @@ struct PBRPassData : public RenderGraphPassDataBase {
 	ShaderResourceBinding* srb = nullptr;
 	TextureAsset* basecolor=nullptr, *normal=nullptr, *aorm=nullptr, *cubemap=nullptr, *irradiance=nullptr;
 	Buffer* mvp_ubo=nullptr, *camera_ubo=nullptr, *material_ubo=nullptr;
-	UInt32 bc_idx=0, n_idx=0, a_idx=0, cm_idx=0, irr_idx=0, lut_idx=0;
+	BindlessSlotHandle bc_idx, n_idx, a_idx, lut_idx;
+	BindlessCubeSlotHandle cm_idx, irr_idx;
 	RHI::BindlessManager* bindless_mgr = nullptr;
 	Texture* fallback_lut = nullptr;
 	void Release() {
@@ -241,9 +242,9 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 		d.lut_idx= bindless_mgr->AllocateTexture2DSlot(fl);
 
 		// Material UBO
-		BindlessMaterialDataGPU mat{}; mat.basecolorIndex=d.bc_idx; mat.normalIndex=d.n_idx;
-		mat.aormIndex=d.a_idx; mat.cubemapIndex=d.cm_idx; mat.irradianceIndex=d.irr_idx;
-		mat.iblLutIndex=d.lut_idx; mat.metallicFactor=0; mat.roughnessFactor=0.5f;
+		BindlessMaterialDataGPU mat{}; mat.basecolorIndex=d.bc_idx.GetIndex(); mat.normalIndex=d.n_idx.GetIndex();
+		mat.aormIndex=d.a_idx.GetIndex(); mat.cubemapIndex=d.cm_idx.GetIndex(); mat.irradianceIndex=d.irr_idx.GetIndex();
+		mat.iblLutIndex=d.lut_idx.GetIndex(); mat.metallicFactor=0; mat.roughnessFactor=0.5f;
 		void* mp=RHIMapBuffer(d.material_ubo,ENUM_MAP_TYPE::Write,ENUM_MAP_FLAG::None);
 		memcpy(mp,&mat,sizeof(mat)); RHIUnmapBuffer(d.material_ubo);
 		std::cout << "  Bindless ready." << std::endl;

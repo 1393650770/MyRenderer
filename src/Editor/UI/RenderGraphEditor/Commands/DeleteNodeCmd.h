@@ -4,6 +4,7 @@
 
 #include "UI/RenderGraphEditor/Commands/CommandHistory.h"
 #include "Core/ConstDefine.h"
+#include "UI/EditorItemHandle.h"
 #include "imgui.h"
 #include <memory>
 
@@ -17,7 +18,7 @@ class RenderGraphPanel;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(DeleteNodeCmd, public Command)
 #pragma region METHOD
 public:
-	DeleteNodeCmd(RenderGraphPanel* in_panel, UInt64 node_id);
+	DeleteNodeCmd(RenderGraphPanel* in_panel, NodeHandle node_id);
 	VIRTUAL ~DeleteNodeCmd() MYDEFAULT;
 
 	VIRTUAL void METHOD(Execute)() OVERRIDE FINAL;
@@ -27,7 +28,7 @@ public:
 #pragma region MEMBER
 private:
 	RenderGraphPanel* panel;
-	UInt64 node_id;
+	NodeHandle node_id;
 	BaseNode* owned_node = nullptr;                  // ������Ȩ
 	Vector<BaseLink*> owned_links;                   // ����������
 	ImVec2 saved_position;

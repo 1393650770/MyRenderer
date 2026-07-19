@@ -3,11 +3,12 @@
 #include "UI/BaseNode.h"
 #include "UI/BasePin.h"
 #include "UI/BaseItem.h"
+#include "UI/EditorItemRegistry.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
-RenameCmd::RenameCmd(RenderGraphPanel* in_panel, UInt64 in_item_id, CONST String& in_old_name, CONST String& in_new_name)
+RenameCmd::RenameCmd(RenderGraphPanel* in_panel, GenericHandle in_item_id, CONST String& in_old_name, CONST String& in_new_name)
 	: panel(in_panel), item_id(in_item_id), old_name(in_old_name), new_name(in_new_name)
 {
 }
@@ -16,7 +17,7 @@ void RenameCmd::Execute()
 {
 	if (!panel) return;
 
-	BaseItem* item = GetItemByID(item_id);
+	BaseItem* item = GetEditorRegistry()->ResolveItem(item_id);
 	if (item)
 	{
 		item->SetName(new_name);
@@ -29,7 +30,7 @@ void RenameCmd::Undo()
 {
 	if (!panel) return;
 
-	BaseItem* item = GetItemByID(item_id);
+	BaseItem* item = GetEditorRegistry()->ResolveItem(item_id);
 	if (item)
 	{
 		item->SetName(old_name);

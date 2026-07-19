@@ -1,6 +1,7 @@
 #include "BasePin.h"
 #include "ThirdParty/imgui_node_editor/imgui_node_editor.h"
 #include "BaseNode.h"
+#include "EditorItemRegistry.h"
 #include "UI/RenderGraphEditor/Core/RenderGraphNodeColors.h"
 
 namespace ed = ax::NodeEditor;
@@ -9,15 +10,15 @@ MYRENDERER_BEGIN_NAMESPACE(UI)
 
 
 
-BasePin::BasePin(PinType in_pin_type, BaseNode* in_owner, PinAccess in_access, CONST String& in_name/*=""*/, Bool in_show /*= true*/) : BaseItem(in_name, in_show)
+BasePin::BasePin(PinType in_pin_type, NodeHandle in_owner, PinAccess in_access, CONST String& in_name/*=""*/, Bool in_show /*= true*/) : BaseItem(in_name, in_show)
 {
 	pin_type = in_pin_type;
-	owner = in_owner;
+	owner_handle = in_owner;
 	access_type = in_access;
 }
 void BasePin::Draw()
 {
-	ed::PinId id = self_id;
+	ed::PinId id = GetHandleIndex(self_handle);
 	ed::BeginPin(id, ed::PinKind(pin_type));
 
 	// Draw colored circle indicator for pin access type
@@ -68,7 +69,7 @@ ImVec2 BasePin::GetSize()
 
 BaseNode* BasePin::GetBelongNode()
 {
-	return owner;
+	return GetEditorRegistry()->ResolveNode(owner_handle);
 }
 
 MYRENDERER_END_NAMESPACE

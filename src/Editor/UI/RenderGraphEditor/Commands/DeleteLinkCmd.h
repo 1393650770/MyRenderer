@@ -4,6 +4,7 @@
 
 #include "UI/RenderGraphEditor/Commands/CommandHistory.h"
 #include "Core/ConstDefine.h"
+#include "UI/EditorItemHandle.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
@@ -14,7 +15,7 @@ class RenderGraphPanel;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(DeleteLinkCmd, public Command)
 #pragma region METHOD
 public:
-	DeleteLinkCmd(RenderGraphPanel* in_panel, UInt64 link_id);
+	DeleteLinkCmd(RenderGraphPanel* in_panel, LinkHandle link_id);
 	VIRTUAL ~DeleteLinkCmd() MYDEFAULT;
 
 	VIRTUAL void METHOD(Execute)() OVERRIDE FINAL;
@@ -24,7 +25,7 @@ public:
 #pragma region MEMBER
 private:
 	RenderGraphPanel* panel;
-	UInt64 link_id;
+	LinkHandle link_id;
 	BaseLink* owned_link = nullptr;
 	Bool is_executed = false;
 #pragma endregion

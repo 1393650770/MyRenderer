@@ -1,6 +1,7 @@
 #include "UI/RenderGraphEditor/Nodes/RenderGraphPassNode.h"
 #include "ThirdParty/imgui_node_editor/imgui_node_editor.h"
 #include "UI/BasePin.h"
+#include "UI/EditorItemRegistry.h"
 
 namespace ed = ax::NodeEditor;
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -14,7 +15,8 @@ RenderGraphPassNode::RenderGraphPassNode(CONST String& in_name, PassNodeType in_
 
 BasePin* RenderGraphPassNode::AddInputPin(CONST String& in_name, PinAccess access)
 {
-	BasePin* pin = new BasePin(PinType::Input, this, access, in_name);
+	BasePin* pin = new BasePin(PinType::Input, NodeHandle{ self_handle }, access, in_name);
+	GetEditorRegistry()->RegisterPin(pin);
 	input_pins.push_back(pin);
 	is_need_resize = true;
 	return pin;
@@ -22,7 +24,8 @@ BasePin* RenderGraphPassNode::AddInputPin(CONST String& in_name, PinAccess acces
 
 BasePin* RenderGraphPassNode::AddOutputPin(CONST String& in_name, PinAccess access)
 {
-	BasePin* pin = new BasePin(PinType::Output, this, access, in_name);
+	BasePin* pin = new BasePin(PinType::Output, NodeHandle{ self_handle }, access, in_name);
+	GetEditorRegistry()->RegisterPin(pin);
 	output_pins.push_back(pin);
 	is_need_resize = true;
 	return pin;
@@ -37,10 +40,10 @@ void RenderGraphPassNode::Draw()
 {
 	if (has_pending_pos)
 	{
-		ed::SetNodePosition(self_id, ImVec2(pending_pos_x, pending_pos_y));
+		ed::SetNodePosition(GetHandleIndex(self_handle), ImVec2(pending_pos_x, pending_pos_y));
 		has_pending_pos = false;
 	}
-	ed::BeginNode(self_id);
+	ed::BeginNode(GetHandleIndex(self_handle));
 
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 	ImVec2 node_pos = ImGui::GetCursorScreenPos();

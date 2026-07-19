@@ -8,6 +8,7 @@
 #include "VK_RenderRHI.h"
 #include "VK_Memory.h"
 #include "VK_Extension.h"
+#include "RHI/ResourceManager.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
@@ -228,6 +229,7 @@ protected:
 	VK_FrameBufferManager* frame_buffer_manager = nullptr;
 	VK_DescriptsetAllocator* descriptset_allocator = nullptr;
 	VK_BindlessManager* bindless_manager = nullptr;
+	MXRender::RHI::ResourceManager* resource_manager = nullptr;
 public:
 
 
