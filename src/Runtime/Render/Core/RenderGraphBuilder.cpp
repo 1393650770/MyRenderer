@@ -38,7 +38,7 @@ struct MinimalPassData : public RenderGraphPassDataBase
 	UInt32 vertex_count = 3; // -- 
 	void Release() override {
 		if (srb) { delete srb; srb = nullptr; }
-		if (pipeline) { delete pipeline; pipeline = nullptr; }
+		// pipeline is owned by VK_PipelineStateManager — do NOT delete
 	}
 };
 

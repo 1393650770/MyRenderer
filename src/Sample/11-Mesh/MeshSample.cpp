@@ -28,7 +28,7 @@ struct MeshPassData : public RenderGraphPassDataBase
 	RenderPipelineState* pso = nullptr;
 	ShaderResourceBinding* srb = nullptr;
 	VIRTUAL ~MeshPassData() MYDEFAULT;
-	VIRTUAL void Release() OVERRIDE { delete pso; pso = nullptr; delete srb; srb = nullptr; }
+	VIRTUAL void Release() OVERRIDE { delete srb; srb = nullptr; }
 };
 
 // matches the `Params` readonly buffer in meshsample_lit.vert/.frag

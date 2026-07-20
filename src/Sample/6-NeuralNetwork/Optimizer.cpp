@@ -68,7 +68,7 @@ Adam::Adam(Params in_p) : p_(in_p) {
 Adam::~Adam() {
 	for (auto* s : temp_srbs_) delete s;
 	delete srb_;
-	delete pipeline_;
+	// pipeline_ owned by VK_PipelineStateManager
 	for (auto& kv : v_map_) delete kv.second;
 }
 void Adam::Update(CommandList* in_cmd, Tensor& in_params, Tensor& in_grads,

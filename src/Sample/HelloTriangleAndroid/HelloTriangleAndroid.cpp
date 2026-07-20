@@ -37,7 +37,7 @@ struct SampleState
 	void Release()
 	{
 		if (srb) { delete srb; srb = nullptr; }
-		if (pipeline) { delete pipeline; pipeline = nullptr; }
+		// pipeline owned by VK_PipelineStateManager
 	}
 };
 

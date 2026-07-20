@@ -59,7 +59,7 @@ static void UF(Buffer* b, CONST Float32* d, UInt32 n) {
 struct PD : public RenderGraphPassDataBase {
 	RenderPipelineState* pso = nullptr; ShaderResourceBinding* srb = nullptr;
 	VIRTUAL ~PD() MYDEFAULT;
-	VIRTUAL void Release() OVERRIDE { delete pso; delete srb; }
+	VIRTUAL void Release() OVERRIDE { delete srb; }
 };
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RT, public MXRender::RenderInterface)
