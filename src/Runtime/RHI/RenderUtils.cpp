@@ -1,5 +1,6 @@
 #include "RenderUtils.h"
 #include "RenderBuffer.h"
+#include "ResourceManager.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 
@@ -10,13 +11,13 @@ StreamingBuffer::StreamingBuffer(ENUM_BUFFER_TYPE in_buffer_type, UInt32 in_size
 	desc.size = in_size;
 	desc.type = in_buffer_type;
 	desc.stride = in_size;
-	buffer = RHICreateBuffer(desc);
+	buffer_handle = RHICreateBuffer(desc);
 }
 
 StreamingBuffer::~StreamingBuffer()
 {
-	delete buffer;
-	buffer = nullptr;
+	if (buffer_handle.IsValid() && g_resource_manager)
+		g_resource_manager->DestroyBuffer(buffer_handle);
 }
 
 void StreamingBuffer::AllowPersistentMapping(Bool AllowMapping)
@@ -31,7 +32,7 @@ void* StreamingBuffer::GetMappedCPUAddress(UInt32 ctx_num)
 
 Buffer* StreamingBuffer::GetBuffer()
 {
-	return buffer;
+	return RHI::Resolve(buffer_handle);
 }
 
 void StreamingBuffer::Flush(UInt32 ctx_num)
@@ -51,14 +52,16 @@ void StreamingBuffer::Release(UInt32 ctx_num)
 UInt32 StreamingBuffer::Allocate(UInt32 in_size, UInt32 ctx_num)
 {
 	auto& map_info = map_infos[ctx_num];
-	if (map_info.curr_offset + in_size > buffer->GetBufferDesc().size)
+	Buffer* buf = GetBuffer();
+	if (!buf) return 0;
+	if (map_info.curr_offset + in_size > buf->GetBufferDesc().size)
 	{
 		Flush(ctx_num);
 	}
 
 	if (map_info.mapped_data == nullptr)
 	{
-		map_info.mapped_data.Map(buffer,ENUM_MAP_TYPE::Write, map_info.curr_offset == 0 ? ENUM_MAP_FLAG::Discard : ENUM_MAP_FLAG::NoOverwrite);
+		map_info.mapped_data.Map(buf, ENUM_MAP_TYPE::Write, map_info.curr_offset == 0 ? ENUM_MAP_FLAG::Discard : ENUM_MAP_FLAG::NoOverwrite);
 	}
 	auto offset = map_info.curr_offset;
 	map_info.curr_offset += in_size;
@@ -68,4 +71,3 @@ UInt32 StreamingBuffer::Allocate(UInt32 in_size, UInt32 ctx_num)
 MYRENDERER_END_NAMESPACE
 
 MYRENDERER_END_NAMESPACE
-

@@ -94,7 +94,7 @@ void MeshSampleApp::OnInitScene()
 	ind_desc.size = (UInt32)sizeof(DrawIndexedIndirectArgs);
 	ind_desc.stride = (UInt32)sizeof(DrawIndexedIndirectArgs);
 	ind_desc.type = ENUM_BUFFER_TYPE::Indirect | ENUM_BUFFER_TYPE::Dynamic;
-	indirect_buf = RHICreateBuffer(ind_desc);
+	indirect_buf = g_render_rhi->CreateBuffer(ind_desc);
 	Tool::BufferUtils::Upload(indirect_buf, &args, sizeof(args));
 
 	camera.Attach(GetWindow()->GetWindow());
@@ -131,7 +131,7 @@ void MeshSampleApp::OnInitScene()
 		pd.depth_stencil_state.depth_write_enable = true;
 		pd.depth_stencil_state.depth_func = ENUM_STENCIL_FUNCTION::ENUM_LESS;
 		pd.blend_state.render_targets.resize(1);
-		data.pso = RHICreateRenderPipelineState(pd);
+		data.pso = g_render_rhi->CreateRenderPipelineState(pd);
 		data.pso->CreateShaderResourceBinding(data.srb, false);
 		data.srb->SetResource("params", param_buf);
 		data.srb->FlushDescriptorWrites();

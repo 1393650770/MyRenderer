@@ -203,7 +203,7 @@ protected:
 				}
 				else
 				{
-					PushDeferredDestruction(std::move(ptr));
+					ptr.release();
 				}
 				ptr = nullptr;
 			}

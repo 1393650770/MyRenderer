@@ -129,7 +129,7 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 	// Create fallback IBL LUT texture
 	TextureDesc td; td.format=ENUM_TEXTURE_FORMAT::BGRA8; td.width=2; td.height=2;
 	td.type=ENUM_TEXTURE_TYPE::ENUM_TYPE_2D; td.usage=ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
-	Texture* fl = RHICreateTexture(td);
+	Texture* fl = g_render_rhi->CreateTexture(td);
 	Char w[16]={-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 	TextureDataPayload lp; lp.data=Vector<Char>(w,w+16); lp.width=2; lp.height=2;
 	lp.format=ENUM_TEXTURE_FORMAT::BGRA8; lp.type=ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
@@ -141,7 +141,7 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 	// Register UBOs
 	auto RegBuf = [&](const char* name) {
 		BufferDesc ub; ub.type=ENUM_BUFFER_TYPE::Uniform; ub.size=256;
-		Buffer* b = RHICreateBuffer(ub);
+		Buffer* b = g_render_rhi->CreateBuffer(ub);
 		auto* res = graph.AddRetainedResource<RHI::BufferDesc, RHI::Buffer>(name, ub, b);
 		buffer_resources.push_back(res);
 		return b;
@@ -177,7 +177,7 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 		pd.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
 		Vector<Texture*> rtvs = { bb }; pd.render_targets = rtvs; pd.depth_stencil_view = ds;
 		pd.raster_state.sample_count = 1; pd.blend_state.render_targets.resize(1);
-		d.pipeline = RHICreateRenderPipelineState(pd);
+		d.pipeline = g_render_rhi->CreateRenderPipelineState(pd);
 		d.pipeline->CreateShaderResourceBinding(d.srb, true);
 		d.cubemap_asset = sky_asset;
 		delete sv; delete sps;
@@ -223,7 +223,7 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 		pd.depth_stencil_state.depth_test_enable = true;
 		pd.depth_stencil_state.depth_write_enable = true;
 		pd.blend_state.render_targets.resize(1);
-		d.pipeline = RHICreateRenderPipelineState(pd);
+		d.pipeline = g_render_rhi->CreateRenderPipelineState(pd);
 		d.pipeline->CreateShaderResourceBinding(d.srb, false);
 		delete pv; delete pps;
 

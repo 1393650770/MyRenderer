@@ -43,14 +43,14 @@ Vector<UInt32> RS(CONST String& fn) {
 }
 static Shader* LF(ENUM_SHADER_STAGE st, CONST String& fn) {
 	ShaderDesc d; d.shader_type = st; d.entry_name = "main"; d.shader_name = fn;
-	ShaderDataPayload p; p.data = RS(fn); return RHICreateShader(d, p);
+	ShaderDataPayload p; p.data = RS(fn); return g_render_rhi->CreateShader(d, p);
 }
 static RenderPipelineState* MkPSO(Shader* cs) {
 	RenderGraphiPipelineStateDesc d{};
 	d.shaders[ENUM_SHADER_STAGE::Shader_Compute] = cs;
 	d.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
 	d.raster_state.sample_count = 1;
-	return RHICreateRenderPipelineState(d);
+	return g_render_rhi->CreateRenderPipelineState(d);
 }
 static void UF(Buffer* b, CONST Float32* d, UInt32 n) {
 	void* p = RHIMapBuffer(b, ENUM_MAP_TYPE::Write, ENUM_MAP_FLAG::None);
@@ -92,22 +92,22 @@ MYRENDERER_END_CLASS
 
 void RT::CreateRes() {
 	BufferDesc od; od.type=ENUM_BUFFER_TYPE::Storage|ENUM_BUFFER_TYPE::Dynamic;
-	od.size=od.stride=64*sizeof(Float32); op_buf=RHICreateBuffer(od);
+	od.size=od.stride=64*sizeof(Float32); op_buf=g_render_rhi->CreateBuffer(od);
 	Float32 z[64]={}; UF(op_buf,z,64);
 
 	RHI::TextureDesc fd{}; fd.width=FFT_N; fd.height=FFT_N;
 	fd.format=ENUM_TEXTURE_FORMAT::RGBA32F; fd.type=ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
 	fd.usage=ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_STORAGE;
-	h0=RHICreateTexture(fd); spec=RHICreateTexture(fd); tmp=RHICreateTexture(fd); spat=RHICreateTexture(fd);
+	h0=g_render_rhi->CreateTexture(fd); spec=g_render_rhi->CreateTexture(fd); tmp=g_render_rhi->CreateTexture(fd); spat=g_render_rhi->CreateTexture(fd);
 
 	RHI::TextureDesc md{}; md.width=FFT_N; md.height=FFT_N;
 	md.format=ENUM_TEXTURE_FORMAT::RGBA16F; md.type=ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
 	md.usage=ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_STORAGE|ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
-	dmap=RHICreateTexture(md); nmap=RHICreateTexture(md);
+	dmap=g_render_rhi->CreateTexture(md); nmap=g_render_rhi->CreateTexture(md);
 
 	BufferDesc bd; bd.type=ENUM_BUFFER_TYPE::Storage|ENUM_BUFFER_TYPE::Dynamic;
 	bd.size=bd.stride=BUF_ELMS*sizeof(Float32);
-	disp_buf=RHICreateBuffer(bd); norm_buf=RHICreateBuffer(bd);
+	disp_buf=g_render_rhi->CreateBuffer(bd); norm_buf=g_render_rhi->CreateBuffer(bd);
 }
 void RT::CreateCSO() {
 	Shader* cs[6]={
@@ -224,7 +224,7 @@ void RT::OnInit_Logic(Application::Window* in_window) {
 		Vector<Texture*> rts={bb}; pd.render_targets=rts; pd.depth_stencil_view=ds;
 		pd.raster_state.sample_count=1; pd.raster_state.cull_mode=ENUM_RASTER_CULLMODE::None;
 		pd.blend_state.render_targets.resize(1);
-		d.pso=RHICreateRenderPipelineState(pd);
+		d.pso=g_render_rhi->CreateRenderPipelineState(pd);
 		d.pso->CreateShaderResourceBinding(d.srb,false);
 		d.srb->SetResource("op",op_buf);
 		d.srb->FlushDescriptorWrites();
@@ -253,7 +253,7 @@ void RT::OnInit_Logic(Application::Window* in_window) {
 		pd.depth_stencil_state.depth_write_enable=true;
 		pd.depth_stencil_state.depth_func=ENUM_STENCIL_FUNCTION::ENUM_LESS;
 		pd.blend_state.render_targets.resize(1);
-		d.pso=RHICreateRenderPipelineState(pd);
+		d.pso=g_render_rhi->CreateRenderPipelineState(pd);
 		d.pso->CreateShaderResourceBinding(d.srb,false);
 		d.srb->SetResource("op",op_buf);
 		d.srb->SetResource("disp",disp_buf);   // binding 1 in VS

@@ -3,6 +3,7 @@
 #include "Vulkan/VK_RenderPass.h"
 #include "Vulkan/VK_RenderRHI.h"
 #include "Vulkan/VK_BindlessManager.h"
+#include "ResourceManager.h"
 #include "RenderTexture.h"
 
 MXRender::RHI::RenderRHI* g_render_rhi = nullptr;
@@ -33,14 +34,20 @@ MXRender::RHI::Viewport* RHICreateViewport(void* window_handle, Int width, Int h
 	return g_render_rhi->CreateViewport(window_handle, width, height, is_full_screen);
 }
 
-MXRender::RHI::Texture* RHICreateTexture(CONST MXRender::RHI::TextureDesc& texture_desc)
+MXRender::RHI::TextureHandle RHICreateTexture(CONST MXRender::RHI::TextureDesc& texture_desc, CONST String& name)
 {
-	return g_render_rhi->CreateTexture(texture_desc);
+	if (MXRender::RHI::g_resource_manager)
+		return MXRender::RHI::g_resource_manager->CreateTexture(texture_desc, name);
+	MXRender::RHI::Texture* raw = g_render_rhi->CreateTexture(texture_desc);
+	return MXRender::RHI::TextureHandle{};
 }
 
-MXRender::RHI::Buffer* RHICreateBuffer(CONST MXRender::RHI::BufferDesc& buffer_desc)
+MXRender::RHI::BufferHandle RHICreateBuffer(CONST MXRender::RHI::BufferDesc& buffer_desc, CONST String& name)
 {
-	return g_render_rhi->CreateBuffer(buffer_desc);
+	if (MXRender::RHI::g_resource_manager)
+		return MXRender::RHI::g_resource_manager->CreateBuffer(buffer_desc, name);
+	MXRender::RHI::Buffer* raw = g_render_rhi->CreateBuffer(buffer_desc);
+	return MXRender::RHI::BufferHandle{};
 }
 
 MXRender::RHI::Shader* RHICreateShader(CONST MXRender::RHI::ShaderDesc& desc, CONST MXRender::RHI::ShaderDataPayload& data)
@@ -48,9 +55,12 @@ MXRender::RHI::Shader* RHICreateShader(CONST MXRender::RHI::ShaderDesc& desc, CO
 	return g_render_rhi->CreateShader(desc,data);
 }
 
-MXRender::RHI::RenderPipelineState* RHICreateRenderPipelineState(CONST MXRender::RHI::RenderGraphiPipelineStateDesc& desc)
+MXRender::RHI::PSOHandle RHICreateRenderPipelineState(CONST MXRender::RHI::RenderGraphiPipelineStateDesc& desc, CONST String& name)
 {
-	return g_render_rhi->CreateRenderPipelineState(desc);
+	if (MXRender::RHI::g_resource_manager)
+		return MXRender::RHI::g_resource_manager->CreatePipelineState(desc, name);
+	MXRender::RHI::RenderPipelineState* raw = g_render_rhi->CreateRenderPipelineState(desc);
+	return MXRender::RHI::PSOHandle{};
 }
 
 // --  

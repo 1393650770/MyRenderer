@@ -173,6 +173,15 @@ void BaseNode::Release()
 		delete pin;
 	}
 }
+BasePin* BaseNode::GetPinByIndex(UInt32 index)
+{
+	for (auto& pin : input_pins)
+		if (GetHandleIndex(pin->GetSelfHandle()) == index) return pin;
+	for (auto& pin : output_pins)
+		if (GetHandleIndex(pin->GetSelfHandle()) == index) return pin;
+	return nullptr;
+}
+
 BasePin* BaseNode::GetPinByName(CONST String& name)
 {
 	for (auto* p : input_pins) if (p->GetName() == name) return p;

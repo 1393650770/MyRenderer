@@ -2,6 +2,7 @@
 #ifndef _MESHREASSET_
 #define _MESHREASSET_
 #include "Core/ConstDefine.h"
+#include "RHI/RHIHandleTypes.h"
 #include <atomic>
 #include <future>
 
@@ -66,6 +67,8 @@ public:
 protected:
 	RHI::Buffer* vertex_buffer = nullptr;
 	RHI::Buffer* index_buffer = nullptr;
+	RHI::BufferHandle vertex_buffer_handle;
+		RHI::BufferHandle index_buffer_handle;
 	UInt32 vertex_count = 0;
 	UInt32 index_count = 0;
 	std::atomic_bool is_loaded = false;

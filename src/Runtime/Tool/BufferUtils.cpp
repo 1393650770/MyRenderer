@@ -13,7 +13,7 @@ RHI::Buffer* BufferUtils::CreateStorageBuffer(UInt32 in_size_bytes, UInt32 in_st
 	desc.size = in_size_bytes;
 	desc.stride = in_stride;
 	desc.type = ENUM_BUFFER_TYPE::Storage | in_extra_flags;
-	return RHICreateBuffer(desc);
+	return g_render_rhi->CreateBuffer(desc);
 }
 
 RHI::Buffer* BufferUtils::CreateDynamicParamBuffer(UInt32 in_size_bytes)
@@ -22,7 +22,7 @@ RHI::Buffer* BufferUtils::CreateDynamicParamBuffer(UInt32 in_size_bytes)
 	desc.size = in_size_bytes;
 	desc.stride = in_size_bytes;
 	desc.type = ENUM_BUFFER_TYPE::Storage | ENUM_BUFFER_TYPE::Dynamic;
-	return RHICreateBuffer(desc);
+	return g_render_rhi->CreateBuffer(desc);
 }
 
 void BufferUtils::Upload(RHI::Buffer* in_buffer, CONST void* in_data, UInt32 in_size_bytes, UInt32 in_dst_offset)

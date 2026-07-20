@@ -24,7 +24,6 @@ void CreateNodeCmd::Execute()
 		is_in_panel = true;
 	}
 
-	// ���õ�һ��ִ��ʱ�Ľڵ�λ��
 	node_raw->SetPendingPosition(position.x, position.y);
 }
 
@@ -32,31 +31,28 @@ void CreateNodeCmd::Undo()
 {
 	if (!node_raw || !panel) return;
 
-	// ɨ�貢ɾ����ýڵ� Pin ����������
 	owned_link_ids.clear();
 	auto& links = panel->GetLinks();
 	Vector<BaseLink*> remaining;
 	for (auto* link : links)
 	{
 		if (!link) continue;
-		UInt64 sid = link->GetStartID();
-		UInt64 eid = link->GetEndID();
-		// �������� Pin �Ƿ����ڴ˽ڵ�
+		PinHandle sid = link->GetStartHandle();
+		PinHandle eid = link->GetEndHandle();
 		Bool connected = false;
 		for (auto* pin : node_raw->GetInputPins())
-			if (pin && (pin->GetSelfID() == sid || pin->GetSelfID() == eid))
+			if (pin && (pin->GetSelfHandle() == sid.value || pin->GetSelfHandle() == eid.value))
 				connected = true;
 		for (auto* pin : node_raw->GetOutputPins())
-			if (pin && (pin->GetSelfID() == sid || pin->GetSelfID() == eid))
+			if (pin && (pin->GetSelfHandle() == sid.value || pin->GetSelfHandle() == eid.value))
 				connected = true;
 		if (connected)
-			owned_link_ids.push_back(link->GetSelfID());
+			owned_link_ids.push_back(LinkHandle{ link->GetSelfHandle() });
 		else
 			remaining.push_back(link);
 	}
 	links = remaining;
 
-	// �ӽڵ��б����Ƴ�
 	auto& nodes = panel->GetNodes();
 	for (UInt32 i = 0; i < nodes.size(); ++i)
 	{

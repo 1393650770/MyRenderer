@@ -31,6 +31,7 @@ public:
 	void METHOD(DeletePin)(PinHandle h);
 
 	BasePin* METHOD(GetPin)(PinHandle h);
+	BasePin* METHOD(GetPinByIndex)(UInt32 index);
 	BasePin* METHOD(GetPinByName)(CONST String& name);
 	void METHOD(SetSetNeedRecalcSize)();
 

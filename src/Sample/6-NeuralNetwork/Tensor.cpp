@@ -28,7 +28,7 @@ Tensor::Tensor(CONST Vector<UInt32>& in_shape, ENUM_TENSOR_DTYPE in_dtype) // --
 		desc.stride = (UInt32)element_count_ * sizeof(Float32);
 		desc.size = (UInt32)element_count_ * sizeof(Float32);
 	}
-	buffer_ = RHICreateBuffer(desc);
+	buffer_ = g_render_rhi->CreateBuffer(desc);
 }
 
 Tensor::~Tensor()

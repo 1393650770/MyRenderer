@@ -78,7 +78,7 @@ static Shader* LoadShaderFile(ENUM_SHADER_STAGE stage, CONST String& filename)
 	desc.shader_name = filename;
 	ShaderDataPayload payload;
 	payload.data = ReadShader(filename);
-	return RHICreateShader(desc, payload);
+	return g_render_rhi->CreateShader(desc, payload);
 }
 
 static RenderPipelineState* CreateComputePSO(Shader* cs)
@@ -87,7 +87,7 @@ static RenderPipelineState* CreateComputePSO(Shader* cs)
 	desc.shaders[ENUM_SHADER_STAGE::Shader_Compute] = cs;
 	desc.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
 	desc.raster_state.sample_count = 1;
-	return RHICreateRenderPipelineState(desc);
+	return g_render_rhi->CreateRenderPipelineState(desc);
 }
 
 static Buffer* CreateStorageBuffer(UInt32 element_count, ENUM_BUFFER_TYPE type = ENUM_BUFFER_TYPE::Storage)
@@ -96,7 +96,7 @@ static Buffer* CreateStorageBuffer(UInt32 element_count, ENUM_BUFFER_TYPE type =
 	desc.type = type;
 	desc.size = (UInt32)(element_count * sizeof(Float32));
 	desc.stride = (UInt32)(element_count * sizeof(Float32));
-	Buffer* buffer = RHICreateBuffer(desc);
+	Buffer* buffer = g_render_rhi->CreateBuffer(desc);
 	void* ptr = RHIMapBuffer(buffer, ENUM_MAP_TYPE::Write, ENUM_MAP_FLAG::None);
 	std::memset(ptr, 0, element_count * sizeof(Float32));
 	RHIUnmapBuffer(buffer);
@@ -285,11 +285,11 @@ void RenderTest::CreateFluidBuffers()
 	ink_float_desc.type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
 	ink_float_desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_STORAGE | ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
 
-	ink_depth_u = RHICreateTexture(ink_uint_desc);
-	ink_thick_u = RHICreateTexture(ink_uint_desc);
-	ink_foam_u = RHICreateTexture(ink_uint_desc);
-	ink_f_a = RHICreateTexture(ink_float_desc);
-	ink_f_b = RHICreateTexture(ink_float_desc);
+	ink_depth_u = g_render_rhi->CreateTexture(ink_uint_desc);
+	ink_thick_u = g_render_rhi->CreateTexture(ink_uint_desc);
+	ink_foam_u = g_render_rhi->CreateTexture(ink_uint_desc);
+	ink_f_a = g_render_rhi->CreateTexture(ink_float_desc);
+	ink_f_b = g_render_rhi->CreateTexture(ink_float_desc);
 
 	// NOTE: no CPU-side prefill here. Staging uploads to device-local buffers
 	// proved unreliable; the fluid3d_prefill.comp pass initializes the sea
@@ -341,7 +341,7 @@ void RenderTest::CreateFluidPipelines()
 	display_desc.depth_stencil_view = window->GetViewport()->GetCurrentBackBufferDSV();
 	display_desc.raster_state.sample_count = 1;
 	display_desc.blend_state.render_targets.resize(rtvs.size());
-	pso_display = RHICreateRenderPipelineState(display_desc);
+	pso_display = g_render_rhi->CreateRenderPipelineState(display_desc);
 
 	delete cs_prefill;
 	delete cs_emit_prep;

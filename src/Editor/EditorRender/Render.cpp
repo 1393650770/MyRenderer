@@ -180,7 +180,7 @@ void EditorRenderPipeline::OnInit_Render()
 		pipeline_state_desc.raster_state.sample_count = 1;
 		pipeline_state_desc.blend_state.render_targets.resize(rtvs.size());
 
-		data.pipeline_state = RHICreateRenderPipelineState(pipeline_state_desc);
+		data.pipeline_state = g_render_rhi->CreateRenderPipelineState(pipeline_state_desc);
 		data.pipeline_state->CreateShaderResourceBinding(data.srb, true);
 
 		data.bind_texture = new Asset::TextureAsset("Texture/pbr_stone/pbr_stone_aorm.dds");
@@ -190,7 +190,7 @@ void EditorRenderPipeline::OnInit_Render()
 		bufferdesc.size = sizeof(float);
 		bufferdesc.stride = sizeof(float);
 		bufferdesc.type = ENUM_BUFFER_TYPE::Uniform;
-		data.const_buffer = RHICreateBuffer(bufferdesc);
+		data.const_buffer = g_render_rhi->CreateBuffer(bufferdesc);
 		data.srb->SetResource("constants", data.const_buffer);
 	},
 		[=](CONST TestData& data, RHI::CommandList* in_cmd_list)
@@ -255,7 +255,7 @@ void EditorRenderPipeline::InitRenderPasses()
 		pd.render_targets = { window->GetViewport()->GetCurrentBackBufferRTV() };
 		pd.depth_stencil_view = window->GetViewport()->GetCurrentBackBufferDSV();
 		pd.raster_state.sample_count = 1; pd.blend_state.render_targets.resize(1);
-		skybox_pipeline = RHICreateRenderPipelineState(pd);
+		skybox_pipeline = g_render_rhi->CreateRenderPipelineState(pd);
 		skybox_pipeline->CreateShaderResourceBinding(skybox_srb, true);
 	}
 	Render::RenderGraphBuilder::RegisterPassExecute("SkyboxPass",

@@ -17,7 +17,7 @@ std::unique_ptr<MXRender::RHI::Texture> RealizeResource<MXRender::RHI::TextureDe
 {
 	auto pooled = AcquirePooledTexture(description);
 	if (pooled) return pooled;
-	std::unique_ptr<MXRender::RHI::Texture> texture(RHICreateTexture(description));
+	std::unique_ptr<MXRender::RHI::Texture> texture(g_render_rhi->CreateTexture(description));
 	return std::move(texture);
 }
 
@@ -26,7 +26,7 @@ std::unique_ptr<MXRender::RHI::Buffer> RealizeResource<MXRender::RHI::BufferDesc
 {
 	auto pooled = AcquirePooledBuffer(description);
 	if (pooled) return pooled;
-	std::unique_ptr<MXRender::RHI::Buffer> buffer(RHICreateBuffer(description));
+	std::unique_ptr<MXRender::RHI::Buffer> buffer(g_render_rhi->CreateBuffer(description));
 	return std::move(buffer);
 }
 
@@ -47,7 +47,7 @@ std::unique_ptr<MXRender::RHI::FrameBuffer> RealizeResource<MXRender::RHI::Frame
 template<>
 std::unique_ptr<MXRender::RHI::RenderPipelineState> RealizeResource<MXRender::RHI::RenderGraphiPipelineStateDesc, MXRender::RHI::RenderPipelineState>(CONST MXRender::RHI::RenderGraphiPipelineStateDesc& description)
 {
-	std::unique_ptr<MXRender::RHI::RenderPipelineState> render_pipeline_state(RHICreateRenderPipelineState(description));
+	std::unique_ptr<MXRender::RHI::RenderPipelineState> render_pipeline_state(g_render_rhi->CreateRenderPipelineState(description));
 	return std::move(render_pipeline_state);
 }
 

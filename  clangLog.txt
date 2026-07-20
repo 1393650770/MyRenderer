@@ -154,6 +154,8 @@ parser_header.o: \
   Core/ConstDefine.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/FileSystem.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Platform.h \
+  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/DeviceProfile.h \
+  vulkan/vulkan_core.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderBindlessManager.h \
   Core/ResourceHandle.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderRource.h \
@@ -169,6 +171,7 @@ parser_header.o: \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderPipelineState.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderRHI.h \
   Core/ConstGlobals.h \
+  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RHIHandleTypes.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderShader.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderTexture.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderUtils.h \
@@ -176,7 +179,7 @@ parser_header.o: \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/ResourceManager.h \
   Core/ResourceRegistry.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_BindlessManager.h \
-  vulkan/vulkan_core.h RHI/RenderBindlessManager.h \
+  RHI/RenderBindlessManager.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Buffer.h \
   RHI/RenderBuffer.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Device.h \
@@ -227,6 +230,7 @@ parser_header.o: \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Asset/FileSystem/Win/WinFileSystem.h \
   Asset/FileSystem/BasicFileSystem.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Asset/MeshAsset.h \
+  RHI/RHIHandleTypes.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\future \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\condition_variable \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\mutex \
@@ -245,6 +249,8 @@ parser_header.o: \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Tool/ToolUtils.h \
   Render/Core/RenderGraphDefinition.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/UIBase.h imgui.h \
+  D:/Project/GameDevelop/MyRenderer/src/Runtime/Application/Android/AndroidApp.h \
+  D:/Project/GameDevelop/MyRenderer/src/Runtime/Application/Android/TouchOrbitCamera.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Application/CameraController.h \
   Render/View/SceneView.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Application/SampleApp.h \
@@ -286,16 +292,19 @@ parser_header.o: \
   D:/Project/GameDevelop/MyRenderer/src/Editor/ThirdParty/imgui_node_editor/imgui_node_editor_internal.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/ThirdParty/imgui_node_editor/imgui_node_editor_internal.inl \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/BaseItem.h \
+  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/EditorItemHandle.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/BaseLink.h \
   UI/RenderGraphEditor/Core/RenderGraphNodeColors.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/BaseNode.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/BasePanel.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/BasePin.h \
+  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/EditorItemRegistry.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/CommandHistory.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/CompositeCmd.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/CreateLinkCmd.h \
   UI/RenderGraphEditor/Commands/CommandHistory.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/CreateNodeCmd.h \
+  UI/EditorItemHandle.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/DeleteLinkCmd.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/DeleteNodeCmd.h \
   D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/EditorCommandQueue.h \

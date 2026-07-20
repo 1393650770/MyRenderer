@@ -116,7 +116,7 @@ private:
 public:
 
 protected:
-	Buffer* buffer;
+	BufferHandle buffer_handle;
 	String name;
 	Bool allow_persistent_map = false;
 	MYRENDERER_BEGIN_STRUCT(MapInfo)

@@ -418,16 +418,16 @@ void RenderGraphPanel::CreateOperator()
 			if (ImGui::MenuItem("Add Input Pin"))
 			{
 				if (auto* pass = dynamic_cast<RenderGraphPassNode*>(node))
-					QUEUE_CMD(ModifyPinCmd, node->GetSelfID(), ModifyPinCmd::EAction::AddInput);
+					QUEUE_CMD(ModifyPinCmd, NodeHandle{node->GetSelfHandle()}, ModifyPinCmd::EAction::AddInput);
 				else if (node)
-					QUEUE_CMD(ModifyPinCmd, node->GetSelfID(), ModifyPinCmd::EAction::AddInput);
+					QUEUE_CMD(ModifyPinCmd, NodeHandle{node->GetSelfHandle()}, ModifyPinCmd::EAction::AddInput);
 			}
 			if (ImGui::MenuItem("Add Output Pin"))
 			{
 				if (auto* pass = dynamic_cast<RenderGraphPassNode*>(node))
-					QUEUE_CMD(ModifyPinCmd, node->GetSelfID(), ModifyPinCmd::EAction::AddOutput);
+					QUEUE_CMD(ModifyPinCmd, NodeHandle{node->GetSelfHandle()}, ModifyPinCmd::EAction::AddOutput);
 				else if (node)
-					QUEUE_CMD(ModifyPinCmd, node->GetSelfID(), ModifyPinCmd::EAction::AddOutput);
+					QUEUE_CMD(ModifyPinCmd, NodeHandle{node->GetSelfHandle()}, ModifyPinCmd::EAction::AddOutput);
 			}
 
 			ImGui::Separator();
@@ -435,7 +435,7 @@ void RenderGraphPanel::CreateOperator()
 			if (ImGui::MenuItem("Delete Node"))
 			{
 				if (node)
-					QUEUE_CMD(DeleteNodeCmd, node->GetSelfID());
+					QUEUE_CMD(DeleteNodeCmd, NodeHandle{node->GetSelfHandle()});
 			}
 
 			ImGui::EndPopup();
@@ -445,7 +445,7 @@ void RenderGraphPanel::CreateOperator()
 		if (ImGui::BeginPopup("PinContextMenu"))
 		{
 			BaseNode* node = GetNode(hover_node_id);
-			BasePin* pin = node ? node->GetPin(hover_pin_id) : nullptr;
+			BasePin* pin = node ? node->GetPinByIndex((UInt32)hover_pin_id) : nullptr;
 			if (pin)
 			{
 				static Char pin_name_buf[256];
@@ -459,15 +459,15 @@ void RenderGraphPanel::CreateOperator()
 					UInt64 hid = hover_pin_id;
 					UInt64 nid = hover_node_id;
 					QUEUE_LAMBDA("Rename Pin",
-						{ auto* n = GetNode(nid); if (n) { auto* p = n->GetPin(hid); if (p) { p->SetName(newName); n->SetSetNeedRecalcSize(); } } },
-						{ auto* n = GetNode(nid); if (n) { auto* p = n->GetPin(hid); if (p) { p->SetName(oldName); n->SetSetNeedRecalcSize(); } } }
+						{ auto* n = GetNode(nid); if (n) { auto* p = n->GetPinByIndex((UInt32)hid); if (p) { p->SetName(newName); n->SetSetNeedRecalcSize(); } } },
+						{ auto* n = GetNode(nid); if (n) { auto* p = n->GetPinByIndex((UInt32)hid); if (p) { p->SetName(oldName); n->SetSetNeedRecalcSize(); } } }
 					);
 				}
 				ImGui::PopItemWidth();
 
 				if (ImGui::MenuItem("Delete Pin"))
 				{
-					QUEUE_CMD(ModifyPinCmd, node->GetSelfID(), pin->GetSelfID(), ModifyPinCmd::EAction::Delete);
+					QUEUE_CMD(ModifyPinCmd, NodeHandle{node->GetSelfHandle()}, PinHandle{pin->GetSelfHandle()}, ModifyPinCmd::EAction::Delete);
 				}
 			}
 			ImGui::EndPopup();
@@ -478,7 +478,7 @@ void RenderGraphPanel::CreateOperator()
 		{
 			if (ImGui::MenuItem("Delete Link"))
 			{
-				QUEUE_CMD(DeleteLinkCmd, hover_link_id);
+				QUEUE_CMD(DeleteLinkCmd, LinkHandle::Make((UInt32)hover_link_id, 0));
 			}
 			ImGui::EndPopup();
 		}
@@ -507,7 +507,7 @@ void RenderGraphPanel::BaseOperator()
 					if (ed::AcceptNewItem())
 					{
 						BaseLink* link = new BaseLink("Link");
-						link->Init(output_pin_id.Get(), input_pin_id.Get());
+						link->Init(PinHandle{start_pin->GetSelfHandle()}, PinHandle{end_pin->GetSelfHandle()});
 						QUEUE_CMD(CreateLinkCmd, link);
 						// Determine link color by dataflow direction
 						PinAccess link_access = PinAccess::Read;
@@ -602,7 +602,7 @@ void RenderGraphPanel::BaseOperator()
 			if(!ns||!nt)continue;
 			BasePin*sp=ns->GetPinByName(ed.source_pin_name);BasePin*tp=nt->GetPinByName(ed.target_pin_name);
 			if(!sp||!tp)continue;
-			BaseLink* l=new BaseLink("Link");l->Init(sp->GetSelfID(),tp->GetSelfID());l->SetLinkAccess((PinAccess)ed.edge_type);
+			BaseLink* l=new BaseLink("Link");l->Init(PinHandle{sp->GetSelfHandle()},PinHandle{tp->GetSelfHandle()});l->SetLinkAccess((PinAccess)ed.edge_type);
 			QUEUE_CMD(CreateLinkCmd, l);
 		}
 		END_TXN();
@@ -616,7 +616,7 @@ void RenderGraphPanel::BaseOperator()
 		{
 			if (ed::AcceptDeletedItem())
 			{
-				QUEUE_CMD(DeleteLinkCmd, deleted_link_id.Get());
+				QUEUE_CMD(DeleteLinkCmd, LinkHandle::Make((UInt32)deleted_link_id.Get(), 0));
 			}
 		}
 		ed::NodeId deleted_node_id;
@@ -624,7 +624,7 @@ void RenderGraphPanel::BaseOperator()
 		{
 			if (ed::AcceptDeletedItem())
 			{
-				QUEUE_CMD(DeleteNodeCmd, deleted_node_id.Get());
+				QUEUE_CMD(DeleteNodeCmd, NodeHandle::Make((UInt32)deleted_node_id.Get(), 0));
 			}
 		}
 	}
@@ -640,9 +640,9 @@ void RenderGraphPanel::BaseOperator()
 		ed::GetSelectedLinks(selected_links.data(), selected_count);
 		BEGIN_TXN("Delete Selected");
 		for (auto& nid : selected_nodes)
-			if (nid) QUEUE_CMD(DeleteNodeCmd, nid.Get());
+			if (nid) QUEUE_CMD(DeleteNodeCmd, NodeHandle::Make((UInt32)nid.Get(), 0));
 		for (auto& lid : selected_links)
-			if (lid) QUEUE_CMD(DeleteLinkCmd, lid.Get());
+			if (lid) QUEUE_CMD(DeleteLinkCmd, LinkHandle::Make((UInt32)lid.Get(), 0));
 		END_TXN();
 	}
 }
@@ -659,12 +659,12 @@ void RenderGraphPanel::AddLinkWithCmd(BaseLink* link)
 
 void RenderGraphPanel::DeleteNodeWithCmd(UInt64 node_id)
 {
-	cmd_queue.Enqueue(std::make_unique<DeleteNodeCmd>(this, node_id));
+	cmd_queue.Enqueue(std::make_unique<DeleteNodeCmd>(this, NodeHandle::Make((UInt32)node_id, 0)));
 }
 
 void RenderGraphPanel::DeleteLinkWithCmd(UInt64 link_id)
 {
-	cmd_queue.Enqueue(std::make_unique<DeleteLinkCmd>(this, link_id));
+	cmd_queue.Enqueue(std::make_unique<DeleteLinkCmd>(this, LinkHandle::Make((UInt32)link_id, 0)));
 }
 
 void RenderGraphPanel::GraphMenu()
@@ -976,7 +976,7 @@ void RenderGraphPanel::LoadDefinition(CONST Render::RenderGraphDefinition& def)
 				if (!res_pin) continue;
 
 				BaseLink* link = new BaseLink("Link");
-				link->Init(res_pin->GetSelfID(), pin->GetSelfID());
+				link->Init(PinHandle{res_pin->GetSelfHandle()}, PinHandle{pin->GetSelfHandle()});
 				link->SetLinkAccess(PinAccess::Read);
 				links.push_back(link);
 			}
@@ -990,7 +990,7 @@ void RenderGraphPanel::LoadDefinition(CONST Render::RenderGraphDefinition& def)
 				if (!res_pin) continue;
 
 				BaseLink* link = new BaseLink("Link");
-				link->Init(pin->GetSelfID(), res_pin->GetSelfID());
+				link->Init(PinHandle{pin->GetSelfHandle()}, PinHandle{res_pin->GetSelfHandle()});
 				link->SetLinkAccess(PinAccess::Write);
 				links.push_back(link);
 			}
@@ -1009,7 +1009,7 @@ void RenderGraphPanel::LoadDefinition(CONST Render::RenderGraphDefinition& def)
 			if (!src_pin || !tgt_pin) continue;
 
 			BaseLink* link = new BaseLink("Link");
-			link->Init(src_pin->GetSelfID(), tgt_pin->GetSelfID());
+			link->Init(PinHandle{src_pin->GetSelfHandle()}, PinHandle{tgt_pin->GetSelfHandle()});
 			link->SetLinkAccess((PinAccess)ed.edge_type);
 			links.push_back(link);
 		}

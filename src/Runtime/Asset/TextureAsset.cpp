@@ -2,6 +2,7 @@
 #include "Tool/TextureLoader.h"
 #include <future>
 #include "RHI/RenderRHI.h"
+#include "RHI/ResourceManager.h"
 #include "RHI/RenderTexture.h"
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Asset)
@@ -20,35 +21,42 @@ void TextureAsset::LoadTexture(CONST String& path)
 RHI::Texture* TextureAsset::GetTexture()
 {
 	if (texture != nullptr)
-	{
 		return texture;
-	}
-	else if (is_loaded)
+	if (is_loaded && texture == nullptr)
 	{
-		if (texture == nullptr)
-		{
-			RHI::TextureDesc desc;
-			desc.format = data->format;
-			desc.width = data->width;
-			desc.height = data->height;
-			desc.depth = data->depth;
-			desc.mip_level = data->mip_level;
-			desc.layer_count = data->layer_count;
-			desc.type = data->type;
-			desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
-			texture = RHICreateTexture(desc);
-			texture->UpdateTextureData(*data);
-			delete data;
-			data = nullptr;
-		}
-		return texture;
+		RHI::TextureDesc desc;
+		desc.format = data->format;
+		desc.width = data->width;
+		desc.height = data->height;
+		desc.depth = data->depth;
+		desc.mip_level = data->mip_level;
+		desc.layer_count = data->layer_count;
+		desc.type = data->type;
+		desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
+		texture_handle = RHICreateTexture(desc);
+		texture = RHI::Resolve(texture_handle);
+		texture->UpdateTextureData(*data);
+		delete data;
+		data = nullptr;
 	}
-	return nullptr;
+	return texture;
+}
+
+RHI::TextureHandle TextureAsset::GetTextureHandle()
+{
+	if (!texture_handle.IsValid() && is_loaded)
+		GetTexture(); // trigger creation + handle registration
+	return texture_handle;
 }
 
 TextureAsset::~TextureAsset()
 {
-	if (texture != nullptr)
+	if (texture_handle.IsValid() && RHI::g_resource_manager)
+	{
+		RHI::g_resource_manager->DestroyTexture(texture_handle);
+		texture = nullptr;
+	}
+	else if (texture != nullptr)
 	{
 		delete texture;
 		texture = nullptr;
@@ -58,7 +66,6 @@ TextureAsset::~TextureAsset()
 		delete data;
 		data = nullptr;
 	}
-
 }
 
 TextureAsset::TextureAsset(CONST String& path)

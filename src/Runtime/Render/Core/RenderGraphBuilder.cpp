@@ -81,7 +81,7 @@ Bool RenderGraphBuilder::BuildRuntimeGraph(
 				auto desc = std::get<RHI::BufferDesc>(rd.desc);
 				if (!rd.buffer_data.empty()) {
 					// --   Create GPU buffer from serialized data
-					RHI::Buffer* buf = RHICreateBuffer(desc);
+					RHI::Buffer* buf = g_render_rhi->CreateBuffer(desc);
 					void* p = RHIMapBuffer(buf, ENUM_MAP_TYPE::Write, ENUM_MAP_FLAG::None);
 					memcpy(p, rd.buffer_data.data(), rd.buffer_data.size());
 					RHIUnmapBuffer(buf);
@@ -179,7 +179,7 @@ Bool RenderGraphBuilder::BuildRuntimeGraph(
 						if (ds_it != resource_map.end() && ds_it->second->GetAsTexture())
 							ps_desc.depth_stencil_view = ds_it->second->GetAsTexture();
 						ps_desc.blend_state.render_targets.resize(1);
-						data.pipeline = RHICreateRenderPipelineState(ps_desc);
+						data.pipeline = g_render_rhi->CreateRenderPipelineState(ps_desc);
 						data.pipeline->CreateShaderResourceBinding(data.srb);
 						delete vs; delete ps;
 					} else {

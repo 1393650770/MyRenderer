@@ -37,7 +37,7 @@ RHI::RenderPipelineState* ShaderLibrary::CreateComputePSO(RHI::Shader* in_comput
 	desc.shaders[ENUM_SHADER_STAGE::Shader_Compute] = in_compute_shader;
 	desc.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
 	desc.raster_state.sample_count = 1;
-	return RHICreateRenderPipelineState(desc);
+	return g_render_rhi->CreateRenderPipelineState(desc);
 }
 
 RHI::RenderPipelineState* ShaderLibrary::CreateComputePSOFromFile(CONST String& in_filename)

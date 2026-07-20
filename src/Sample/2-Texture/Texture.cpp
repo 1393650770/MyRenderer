@@ -148,7 +148,7 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 		pipeline_state_desc.raster_state.sample_count = 1;
 		pipeline_state_desc.blend_state.render_targets.resize(rtvs.size());
 
-		data.pipeline_state = RHICreateRenderPipelineState(pipeline_state_desc);
+		data.pipeline_state = g_render_rhi->CreateRenderPipelineState(pipeline_state_desc);
 		data.pipeline_state->CreateShaderResourceBinding(data.srb,true);
 
 		data.bind_texture = tex_asset;

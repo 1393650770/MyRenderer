@@ -9,6 +9,7 @@
 #include "RenderRource.h"
 #include "Core/ConstGlobals.h"
 #include "RenderBindlessManager.h"
+#include "RHIHandleTypes.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -99,10 +100,10 @@ extern CORE_API void METHOD(RHIInit)();
 extern CORE_API void METHOD(RHIShutdown)();
 
 extern CORE_API MXRender::RHI::Viewport* METHOD(RHICreateViewport)(void* window_handle, Int width, Int height, Bool is_full_screen);
-extern CORE_API MXRender::RHI::Texture* METHOD(RHICreateTexture)(CONST MXRender::RHI::TextureDesc& texture_desc);
-extern CORE_API MXRender::RHI::Buffer* METHOD(RHICreateBuffer)(CONST MXRender::RHI::BufferDesc& buffer_desc);
+extern CORE_API MXRender::RHI::TextureHandle METHOD(RHICreateTexture)(CONST MXRender::RHI::TextureDesc& texture_desc, CONST String& name = "");
+extern CORE_API MXRender::RHI::BufferHandle METHOD(RHICreateBuffer)(CONST MXRender::RHI::BufferDesc& buffer_desc, CONST String& name = "");
 extern CORE_API MXRender::RHI::Shader* METHOD(RHICreateShader)(CONST MXRender::RHI::ShaderDesc& desc, CONST MXRender::RHI::ShaderDataPayload& data);
-extern CORE_API MXRender::RHI::RenderPipelineState* METHOD(RHICreateRenderPipelineState)(CONST MXRender::RHI::RenderGraphiPipelineStateDesc& desc);
+extern CORE_API MXRender::RHI::PSOHandle METHOD(RHICreateRenderPipelineState)(CONST MXRender::RHI::RenderGraphiPipelineStateDesc& desc, CONST String& name = "");
 extern CORE_API MXRender::RHI::RenderPass* METHOD(RHICreateRenderPass)(CONST MXRender::RHI::RenderPassDesc& desc);
 extern CORE_API MXRender::RHI::FrameBuffer* METHOD(RHICreateFrameBuffer)(CONST MXRender::RHI::FrameBufferDesc& desc);
 extern CORE_API MXRender::RHI::CommandList* METHOD(RHIGetImmediateCommandList)();
