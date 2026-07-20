@@ -37,7 +37,7 @@ MXRender::RHI::Viewport* RHICreateViewport(void* window_handle, Int width, Int h
 MXRender::RHI::TextureHandle RHICreateTexture(CONST MXRender::RHI::TextureDesc& texture_desc, CONST String& name)
 {
 	if (MXRender::RHI::g_resource_manager)
-		return MXRender::RHI::g_resource_manager->CreateTexture(texture_desc, name);
+		return Create<MXRender::RHI::TextureHandle>(texture_desc, name);
 	MXRender::RHI::Texture* raw = g_render_rhi->CreateTexture(texture_desc);
 	return MXRender::RHI::TextureHandle{};
 }
@@ -45,7 +45,7 @@ MXRender::RHI::TextureHandle RHICreateTexture(CONST MXRender::RHI::TextureDesc& 
 MXRender::RHI::BufferHandle RHICreateBuffer(CONST MXRender::RHI::BufferDesc& buffer_desc, CONST String& name)
 {
 	if (MXRender::RHI::g_resource_manager)
-		return MXRender::RHI::g_resource_manager->CreateBuffer(buffer_desc, name);
+		return Create<MXRender::RHI::BufferHandle>(buffer_desc, name);
 	MXRender::RHI::Buffer* raw = g_render_rhi->CreateBuffer(buffer_desc);
 	return MXRender::RHI::BufferHandle{};
 }
@@ -58,7 +58,7 @@ MXRender::RHI::Shader* RHICreateShader(CONST MXRender::RHI::ShaderDesc& desc, CO
 MXRender::RHI::PSOHandle RHICreateRenderPipelineState(CONST MXRender::RHI::RenderGraphiPipelineStateDesc& desc, CONST String& name)
 {
 	if (MXRender::RHI::g_resource_manager)
-		return MXRender::RHI::g_resource_manager->CreatePipelineState(desc, name);
+		return Create<MXRender::RHI::PSOHandle>(desc, name);
 	MXRender::RHI::RenderPipelineState* raw = g_render_rhi->CreateRenderPipelineState(desc);
 	return MXRender::RHI::PSOHandle{};
 }

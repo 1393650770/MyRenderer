@@ -25,14 +25,6 @@ using PSOHandle       = ResourceHandle<TagPipelineState>;
 using SRBHandle       = ResourceHandle<TagSRB>;
 using SamplerHandle   = ResourceHandle<TagSampler>;
 
-// Handle resolution — lightweight wrapper, hides g_resource_manager from callers.
-// Implemented in ResourceManager.cpp.
-class Texture;
-class Buffer;
-class RenderPipelineState;
-Texture*             Resolve(TextureHandle h);
-Buffer*              Resolve(BufferHandle h);
-RenderPipelineState* Resolve(PSOHandle h);
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

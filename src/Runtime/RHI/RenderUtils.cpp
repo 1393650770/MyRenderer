@@ -16,8 +16,7 @@ StreamingBuffer::StreamingBuffer(ENUM_BUFFER_TYPE in_buffer_type, UInt32 in_size
 
 StreamingBuffer::~StreamingBuffer()
 {
-	if (buffer_handle.IsValid() && g_resource_manager)
-		g_resource_manager->DestroyBuffer(buffer_handle);
+Destroy<BufferHandle>(buffer_handle);
 }
 
 void StreamingBuffer::AllowPersistentMapping(Bool AllowMapping)
@@ -32,7 +31,7 @@ void* StreamingBuffer::GetMappedCPUAddress(UInt32 ctx_num)
 
 Buffer* StreamingBuffer::GetBuffer()
 {
-	return RHI::Resolve(buffer_handle);
+	return Resolve(buffer_handle);
 }
 
 void StreamingBuffer::Flush(UInt32 ctx_num)

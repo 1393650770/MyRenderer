@@ -34,7 +34,7 @@ RHI::Texture* TextureAsset::GetTexture()
 		desc.type = data->type;
 		desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
 		texture_handle = RHICreateTexture(desc);
-		texture = RHI::Resolve(texture_handle);
+		texture = Resolve(texture_handle);
 		texture->UpdateTextureData(*data);
 		delete data;
 		data = nullptr;
@@ -51,16 +51,8 @@ RHI::TextureHandle TextureAsset::GetTextureHandle()
 
 TextureAsset::~TextureAsset()
 {
-	if (texture_handle.IsValid() && RHI::g_resource_manager)
-	{
-		RHI::g_resource_manager->DestroyTexture(texture_handle);
-		texture = nullptr;
-	}
-	else if (texture != nullptr)
-	{
-		delete texture;
-		texture = nullptr;
-	}
+Destroy<RHI::TextureHandle>(texture_handle);
+	if (texture) { delete texture; texture = nullptr; }
 	if (data != nullptr)
 	{
 		delete data;

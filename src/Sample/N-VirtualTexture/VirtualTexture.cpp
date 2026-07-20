@@ -136,8 +136,8 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 		pipeline_state_desc.raster_state.sample_count = 1;
 		pipeline_state_desc.blend_state.render_targets.resize(rtvs.size());
 
-		data.pipeline_state = g_resource_manager->CreatePipelineState(pipeline_state_desc, "MainPass");
-		auto* _pso_ = RHI::Resolve(data.pipeline_state); if (_pso_) _pso_->CreateShaderResourceBinding(data.srb, true);
+		data.pipeline_state = Create<PSOHandle>(pipeline_state_desc, "MainPass");
+		auto* _pso_ = Resolve(data.pipeline_state); if (_pso_) _pso_->CreateShaderResourceBinding(data.srb, true);
 
 		data.bind_texture = new TextureAsset("Texture/Skybox/bolonga_lod.dds");
 		delete vs_shader;
@@ -159,7 +159,7 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 			if (dsv)
 				clear_values.push_back(dsv->GetTextureDesc().clear_value);
 			in_cmd_list->SetRenderTarget(rtvs, dsv, clear_values, dsv != nullptr);
-			in_cmd_list->SetGraphicsPipeline(RHI::Resolve(data.pipeline_state));
+			in_cmd_list->SetGraphicsPipeline(Resolve(data.pipeline_state));
 			data.srb->SetResource("cubemap_sampler", data.bind_texture->GetTexture());
 			in_cmd_list->SetShaderResourceBinding(data.srb);
 			DrawAttribute draw_attr;

@@ -73,14 +73,14 @@ void MeshAsset::CreateBuffersIfReady()
 	vb_desc.size = vertex_count * Tool::MeshDataPayload::GetVertexStride();
 	vb_desc.stride = Tool::MeshDataPayload::GetVertexStride();
 	vb_desc.type = ENUM_BUFFER_TYPE::Vertex | ENUM_BUFFER_TYPE::Dynamic;
-	vertex_buffer_handle = RHICreateBuffer(vb_desc, "MeshVB"); vertex_buffer = MXRender::RHI::g_resource_manager ? MXRender::RHI::Resolve(vertex_buffer_handle) : nullptr;
+	vertex_buffer_handle = RHICreateBuffer(vb_desc, "MeshVB"); vertex_buffer = Resolve(vertex_buffer_handle);
 	Tool::BufferUtils::Upload(vertex_buffer, payload->vertices.data(), vb_desc.size);
 
 	RHI::BufferDesc ib_desc;
 	ib_desc.size = index_count * (UInt32)sizeof(UInt32);
 	ib_desc.stride = (UInt32)sizeof(UInt32);
 	ib_desc.type = ENUM_BUFFER_TYPE::Index | ENUM_BUFFER_TYPE::Dynamic;
-	index_buffer_handle = RHICreateBuffer(ib_desc, "MeshIB"); index_buffer = MXRender::RHI::g_resource_manager ? MXRender::RHI::Resolve(index_buffer_handle) : nullptr;
+	index_buffer_handle = RHICreateBuffer(ib_desc, "MeshIB"); index_buffer = Resolve(index_buffer_handle);
 	Tool::BufferUtils::Upload(index_buffer, payload->indices.data(), ib_desc.size);
 
 	// CPU data no longer needed after the GPU upload

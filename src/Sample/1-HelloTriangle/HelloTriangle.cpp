@@ -64,15 +64,15 @@ void RenderTest::OnInitScene()
 		pipeline_state_desc.raster_state.sample_count = 1;
 		pipeline_state_desc.blend_state.render_targets.resize(1);
 
-		data.pipeline_state = g_resource_manager->CreatePipelineState(pipeline_state_desc, "MainPass");
-		auto* _pso_ = RHI::Resolve(data.pipeline_state); if (_pso_) _pso_->CreateShaderResourceBinding(data.srb);
+		data.pipeline_state = Create<PSOHandle>(pipeline_state_desc, "MainPass");
+		auto* _pso_ = Resolve(data.pipeline_state); if (_pso_) _pso_->CreateShaderResourceBinding(data.srb);
 		delete vs_shader;
 		delete ps_shader;
 	},
 	[=](CONST TriPassData& data, CommandList* in_cmd_list)
 	{
 		BindBackBufferTarget(in_cmd_list);
-		in_cmd_list->SetGraphicsPipeline(RHI::Resolve(data.pipeline_state));
+		in_cmd_list->SetGraphicsPipeline(Resolve(data.pipeline_state));
 		in_cmd_list->SetShaderResourceBinding(data.srb);
 		DrawAttribute draw_attr;
 		draw_attr.vertexCount = 3;
