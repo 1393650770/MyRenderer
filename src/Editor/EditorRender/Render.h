@@ -24,12 +24,12 @@ MYRENDERER_BEGIN_CLASS_WITH_DERIVE(EditorRenderPipeline, public MXRender::Render
 
 #pragma region METHOD
 public:
-	EditorRenderPipeline(MXRender::Application::Window* in_window);
+	EditorRenderPipeline(MXRender::PlatformWindow* in_window);
 	VIRTUAL ~EditorRenderPipeline() MYDEFAULT;
 	EditorRenderPipeline() MYDEFAULT;
 
 	//  Logic thread lifecycle
-	VIRTUAL void METHOD(OnInit_Logic)(Application::Window* window) OVERRIDE;
+	VIRTUAL void METHOD(OnInit_Logic)(PlatformWindow* in_window, RHI::Viewport* in_viewport) OVERRIDE;
 	VIRTUAL void METHOD(OnShutdown_Logic)() OVERRIDE;
 
 	//  Render thread lifecycle
@@ -48,7 +48,7 @@ public:
 	// --  Rebuild runtime graph from editor definition
 	void METHOD(RebuildFromDefinition)(CONST MXRender::Render::RenderGraphDefinition& def);
 
-	Application::Window* METHOD(GetWindow)();
+	PlatformWindow* METHOD(GetWindow)();
 protected:
 
 private:
@@ -60,7 +60,8 @@ private:
 public:
 
 protected:
-	Window* window;
+	PlatformWindow* m_window = nullptr;
+	RHI::Viewport* m_viewport = nullptr;
 	EditorUI editor_ui;
 
 	Bool has_deferred_rebuild = false;

@@ -835,6 +835,36 @@ namespace MXRender
 			vulkan_image_format = VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK;
 			break;
 		}
+		case ENUM_TEXTURE_FORMAT::ASTC4x4:
+		{
+			vulkan_image_format = VK_FORMAT_ASTC_4x4_UNORM_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::ASTC5x5:
+		{
+			vulkan_image_format = VK_FORMAT_ASTC_5x5_UNORM_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::ASTC6x6:
+		{
+			vulkan_image_format = VK_FORMAT_ASTC_6x6_UNORM_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::ASTC8x5:
+		{
+			vulkan_image_format = VK_FORMAT_ASTC_8x5_UNORM_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::ASTC8x6:
+		{
+			vulkan_image_format = VK_FORMAT_ASTC_8x6_UNORM_BLOCK;
+			break;
+		}
+		case ENUM_TEXTURE_FORMAT::ASTC10x5:
+		{
+			vulkan_image_format = VK_FORMAT_ASTC_10x5_UNORM_BLOCK;
+			break;
+		}
 		case ENUM_TEXTURE_FORMAT::BGRA8:
 		{
 			vulkan_image_format = VK_FORMAT_B8G8R8A8_UNORM;

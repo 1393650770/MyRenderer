@@ -4,12 +4,38 @@
 #include "RHI/RenderRource.h"
 #include "RHI/RenderShader.h"
 #include "RHI/RenderPipelineState.h"
+#if PLATFORM_ANDROID
+#include <android/asset_manager.h>
+#endif
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Tool)
 
+#if PLATFORM_ANDROID
+AAssetManager* ShaderLibrary::s_asset_manager = nullptr;
+
+void ShaderLibrary::SetAssetManager(AAssetManager* in_mgr)
+{
+	s_asset_manager = in_mgr;
+}
+#endif
+
 Vector<UInt32> ShaderLibrary::ReadSpirv(CONST String& in_filename)
 {
+#if PLATFORM_ANDROID
+	if (s_asset_manager)
+	{
+		AAsset* asset = AAssetManager_open(s_asset_manager, in_filename.c_str(), AASSET_MODE_BUFFER);
+		if (asset)
+		{
+			size_t file_size = (size_t)AAsset_getLength(asset);
+			Vector<UInt32> buffer(file_size / sizeof(UInt32));
+			AAsset_read(asset, buffer.data(), file_size);
+			AAsset_close(asset);
+			return buffer;
+		}
+	}
+#endif
 	std::ifstream file(in_filename, std::ios::ate | std::ios::binary);
 	CHECK_WITH_LOG(!file.is_open(), "Tool Error: fail to open the shader file: " + in_filename)
 	size_t file_size = (size_t)file.tellg();

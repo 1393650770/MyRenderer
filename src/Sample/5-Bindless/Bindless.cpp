@@ -4,6 +4,7 @@
 #include <chrono>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include "Platform/PlatformWindow.h"
 #include "Application/Window.h"
 #include "Render/RenderInterface.h"
 #include "Render/Core/RenderGraph.h"
@@ -76,16 +77,17 @@ struct PBRPassData : public RenderGraphPassDataBase {
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderTest, public MXRender::RenderInterface)
 public:
-	RenderTest(Window* w) : window(w) {}
+	RenderTest(PlatformWindow* w) : m_window(w) {}
 	RenderTest() MYDEFAULT;
 	~RenderTest() MYDEFAULT;
-	void OnInit_Logic(Application::Window* in_window) OVERRIDE FINAL;
+	void OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport) OVERRIDE FINAL;
 	void OnShutdown_Logic() OVERRIDE FINAL;
 	void OnUpdate(float dt) OVERRIDE FINAL {}
 	void OnRender() OVERRIDE FINAL { GetRenderGraph().Execute(); }
-	Window* GetWindow() { return window; }
+	PlatformWindow* GetPlatformWindow() { return m_window; }
+	RHI::Viewport* m_viewport = nullptr;
 protected:
-	Window* window;
+	PlatformWindow* m_window;
 
 	// Resource pointers for serialization
 	RenderGraphResource<RHI::TextureDesc, RHI::Texture>* rt_resource = nullptr;
@@ -94,12 +96,13 @@ protected:
 	Vector<RenderGraphResource<RHI::BufferDesc, RHI::Buffer>*> buffer_resources;
 MYRENDERER_END_CLASS
 
-void RenderTest::OnInit_Logic(Application::Window* in_window)
+void RenderTest::OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport)
 {
-	window = in_window;
+	m_window = in_window;
+	m_viewport = in_viewport;
 	std::cout << "=== Bindless PBR ===" << std::endl;
 	CommandList* cmd_list = RHIGetImmediateCommandList();
-	auto* vp = window->GetViewport();
+	auto* vp = m_viewport;
 
 	// Step 1: Register external BackBuffer + DepthStencil
 	RHI::Texture* bb = vp->GetCurrentBackBufferRTV();
@@ -185,7 +188,7 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 	[=](CONST SkyboxPassData& d, CommandList* cmd)
 	{
 		if (!d.cubemap_asset->GetTexture()) return;
-		auto* vp = this->GetWindow()->GetViewport();
+		auto* vp = m_viewport;
 		Vector<ClearValue> cc; cc.push_back({0.2f,0.2f,0.3f,1.0f});
 		Texture* dsv = vp->GetCurrentBackBufferDSV();
 		if(dsv) cc.push_back({1.0f, 0});
@@ -336,7 +339,7 @@ void RenderTest::OnShutdown_Logic()
 }
 
 int main() {
-	Window window; RenderTest render(&window);
-	window.InitWindow(); window.Run(&render);
+	Window m_window; RenderTest render(m_window.GetPlatformWindow());
+	m_window.InitWindow(); m_window.Run(&render);
 	system("pause"); return 0;
 }

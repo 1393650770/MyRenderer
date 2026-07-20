@@ -4,6 +4,7 @@
 #include <fstream>
 #include <cstring>
 #include <limits>
+#include "Platform/PlatformWindow.h"
 #include "Application/Window.h"
 #include "Render/RenderInterface.h"
 #include "Render/Core/RenderGraph.h"
@@ -126,16 +127,17 @@ struct Fluid3DData : public RenderGraphPassDataBase
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderTest, public MXRender::RenderInterface)
 #pragma region METHOD
 public:
-	RenderTest(Window* in_window);
+	RenderTest(PlatformWindow* in_window);
 	RenderTest() MYDEFAULT;
 	VIRTUAL ~RenderTest() MYDEFAULT;
 
-	VIRTUAL void OnInit_Logic(Application::Window* in_window) OVERRIDE FINAL;
+	VIRTUAL void OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport) OVERRIDE FINAL;
 	VIRTUAL void OnShutdown_Logic() OVERRIDE FINAL;
 	VIRTUAL void OnUpdate(float dt) OVERRIDE FINAL;
 	VIRTUAL void OnRender() OVERRIDE FINAL;
 
-	Window* GetWindow();
+	PlatformWindow* GetPlatformWindow();
+	RHI::Viewport* m_viewport = nullptr;
 protected:
 	void METHOD(CreateFluidBuffers)();
 	void METHOD(CreateFluidPipelines)();
@@ -154,7 +156,7 @@ private:
 public:
 
 protected:
-	Window* window = nullptr;
+	PlatformWindow* m_window = nullptr;
 
 	// particle buffers (vec4 packed as float arrays; pos.w = alive, vel.w = foam)
 	RHI::Buffer* pos_buf = nullptr;
@@ -336,9 +338,9 @@ void RenderTest::CreateFluidPipelines()
 	display_desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] = vs_fullscreen;
 	display_desc.shaders[ENUM_SHADER_STAGE::Shader_Pixel] = ps_display;
 	display_desc.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
-	Vector<Texture*> rtvs = { window->GetViewport()->GetCurrentBackBufferRTV() };
+	Vector<Texture*> rtvs = { m_viewport->GetCurrentBackBufferRTV() };
 	display_desc.render_targets = rtvs;
-	display_desc.depth_stencil_view = window->GetViewport()->GetCurrentBackBufferDSV();
+	display_desc.depth_stencil_view = m_viewport->GetCurrentBackBufferDSV();
 	display_desc.raster_state.sample_count = 1;
 	display_desc.blend_state.render_targets.resize(rtvs.size());
 	pso_display = g_render_rhi->CreateRenderPipelineState(display_desc);
@@ -634,8 +636,8 @@ void RenderTest::RecordDisplay(RHI::CommandList* in_cmd_list)
 	in_cmd_list->TransitionTextureState(ink_f_b, ENUM_RESOURCE_STATE::ShaderResource);
 
 	Vector<ClearValue> clear_values;
-	Vector<Texture*> rtvs = { window->GetViewport()->GetCurrentBackBufferRTV() };
-	Texture* dsv = window->GetViewport()->GetCurrentBackBufferDSV();
+	Vector<Texture*> rtvs = { m_viewport->GetCurrentBackBufferRTV() };
+	Texture* dsv = m_viewport->GetCurrentBackBufferDSV();
 	for (auto rtv : rtvs)
 		clear_values.push_back(rtv->GetTextureDesc().clear_value);
 	if (dsv)
@@ -649,16 +651,17 @@ void RenderTest::RecordDisplay(RHI::CommandList* in_cmd_list)
 	in_cmd_list->Draw(draw_attr);
 }
 
-void RenderTest::OnInit_Logic(Application::Window* in_window)
+void RenderTest::OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport)
 {
-	window = in_window;
+	m_window = in_window;
+	m_viewport = in_viewport;
 	std::cout << "Hello Fluid3D (FLIP bay)" << std::endl;
 
 	RHI::CommandList* cmd_list = RHIGetImmediateCommandList();
 
 	// Step 1: Register external resources (BackBuffer + DepthStencil)
-	RHI::Texture* backbuffer_rtv = window->GetViewport()->GetCurrentBackBufferRTV();
-	RHI::Texture* backbuffer_dsv = window->GetViewport()->GetCurrentBackBufferDSV();
+	RHI::Texture* backbuffer_rtv = m_viewport->GetCurrentBackBufferRTV();
+	RHI::Texture* backbuffer_dsv = m_viewport->GetCurrentBackBufferDSV();
 
 	RHI::TextureDesc rt_desc = backbuffer_rtv->GetTextureDesc();
 	auto* rt_resource = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
@@ -806,13 +809,13 @@ void RenderTest::OnShutdown_Logic()
 
 void RenderTest::OnUpdate(float dt)
 {
-	GLFWwindow* glfw_win = window->GetWindow();
+	PlatformWindow* pw = GetPlatformWindow();
 	int win_w = 0, win_h = 0;
-	glfwGetWindowSize(glfw_win, &win_w, &win_h);
+	pw->GetFramebufferSize(win_w, win_h);
 	Float64 cx = 0.0, cy = 0.0;
-	glfwGetCursorPos(glfw_win, &cx, &cy);
-	firing = glfwGetMouseButton(glfw_win, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
-	interacting = glfwGetMouseButton(glfw_win, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
+	pw->GetCursorPos(cx, cy);
+	firing = pw->GetMouseButton(MXRender::MouseButton::Left);
+	interacting = pw->GetMouseButton(MXRender::MouseButton::Right);
 
 	if (win_w <= 0 || win_h <= 0)
 	{
@@ -859,20 +862,20 @@ void RenderTest::OnRender()
 	graph.Execute();
 }
 
-RenderTest::RenderTest(Window* in_window) :window(in_window)
+RenderTest::RenderTest(PlatformWindow* in_window) :m_window(in_window)
 {
 
 }
 
-MXRender::Application::Window* RenderTest::GetWindow()
+MXRender::PlatformWindow* RenderTest::GetPlatformWindow()
 {
-	return window;
+	return m_window;
 }
 
 int main()
 {
 	Window window;
-	RenderTest render(&window);
+	RenderTest render(window.GetPlatformWindow());
 	window.InitWindow();
 	window.Run(&render);
 	system("pause");

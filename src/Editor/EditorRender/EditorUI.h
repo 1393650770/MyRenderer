@@ -28,7 +28,7 @@ public:
 	VIRTUAL ~EditorUI() MYDEFAULT;
 	EditorUI() MYDEFAULT;
 
-	void METHOD(Init)(Window* in_window);
+	void METHOD(Init)(PlatformWindow* in_window, RHI::Viewport* in_viewport);
 	//  Logic thread: ImGui NewFrame + widgets + Render → returns ImDrawData
 	ImDrawData* METHOD(DrawFrame_Logic)();
 	//  Render thread: record ImGui GPU commands
@@ -54,7 +54,8 @@ private:
 #pragma region MEMBER
 public:
 	Bool show_editor = true; // -- 
-	Window* window = nullptr;
+	PlatformWindow* m_window = nullptr;
+	RHI::Viewport* m_viewport = nullptr;
 protected:
 	Vector<UI::BasePanel*> panels;
 	Render::RenderGraph* graph_ptr = nullptr;

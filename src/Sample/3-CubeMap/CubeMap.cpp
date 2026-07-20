@@ -1,6 +1,7 @@
 #include "Render/Core/RenderGraphSerializer.h"
 #include<iostream>
 #include <fstream>
+#include "Platform/PlatformWindow.h"
 #include "Application/Window.h"
 #include "Render/RenderInterface.h"
 #include "Render/Core/RenderGraph.h"
@@ -43,17 +44,18 @@ Vector<UInt32> ReadShader(CONST String& filename)
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderTest,public MXRender::RenderInterface)
 #pragma region METHOD
 public:
-	RenderTest(Window* in_window);
+	RenderTest(PlatformWindow* in_window);
 	RenderTest() MYDEFAULT;
 	VIRTUAL ~RenderTest() MYDEFAULT;
 
-	VIRTUAL void OnInit_Logic(Application::Window* in_window) OVERRIDE FINAL;
+	VIRTUAL void OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport) OVERRIDE FINAL;
 	VIRTUAL void OnShutdown_Logic() OVERRIDE FINAL;
 	VIRTUAL void OnUpdate(float dt) OVERRIDE FINAL;
 	VIRTUAL void OnRender() OVERRIDE FINAL;
 	
 
-	Window* GetWindow();
+	PlatformWindow* GetPlatformWindow();
+	RHI::Viewport* m_viewport = nullptr;
 protected:
 
 private:
@@ -64,23 +66,24 @@ private:
 public:
 
 protected:
-	Window* window;
+	PlatformWindow* m_window;
 private:
 
 #pragma endregion
 
 MYRENDERER_END_CLASS
 
-void RenderTest::OnInit_Logic(Application::Window* in_window)
+void RenderTest::OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport)
 {
-	window = in_window;
+	m_window = in_window;
+	m_viewport = in_viewport;
 	std::cout << "Hello CubeMap" << std::endl;
 
 	RHI::CommandList* cmd_list = RHIGetImmediateCommandList();
 
 	// Step 1: Register external resources (BackBuffer + DepthStencil)
-	RHI::Texture* backbuffer_rtv = window->GetViewport()->GetCurrentBackBufferRTV();
-	RHI::Texture* backbuffer_dsv = window->GetViewport()->GetCurrentBackBufferDSV();
+	RHI::Texture* backbuffer_rtv = in_viewport->GetCurrentBackBufferRTV();
+	RHI::Texture* backbuffer_dsv = in_viewport->GetCurrentBackBufferDSV();
 
 	RHI::TextureDesc rt_desc = backbuffer_rtv->GetTextureDesc();
 	auto* rt_resource = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
@@ -142,7 +145,7 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] = vs_shader;
 		pipeline_state_desc.shaders[ENUM_SHADER_STAGE::Shader_Pixel] = ps_shader;
 		pipeline_state_desc.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
-		Vector<Texture*> rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
+		Vector<Texture*> rtvs = { this->m_viewport->GetCurrentBackBufferRTV() };
 		pipeline_state_desc.render_targets = rtvs;
 		pipeline_state_desc.depth_stencil_view = backbuffer_dsv;
 		pipeline_state_desc.raster_state.sample_count = 1;
@@ -160,8 +163,8 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 		if (data.bind_texture->GetTexture())
 		{
 			Vector<ClearValue> clear_values;
-			Vector<Texture*> rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
-			Texture* dsv = this->GetWindow()->GetViewport()->GetCurrentBackBufferDSV();
+			Vector<Texture*> rtvs = { this->m_viewport->GetCurrentBackBufferRTV() };
+			Texture* dsv = this->m_viewport->GetCurrentBackBufferDSV();
 			for (auto rtv : rtvs)
 				clear_values.push_back(rtv->GetTextureDesc().clear_value);
 			if (dsv)
@@ -226,17 +229,14 @@ void RenderTest::OnRender() { graph.Execute(); }
 
 
 
-RenderTest::RenderTest(Window* in_window):window(in_window) {}
+RenderTest::RenderTest(PlatformWindow* in_window):m_window(in_window) {}
 
-MXRender::Application::Window* RenderTest::GetWindow() { return window; }
+MXRender::PlatformWindow* RenderTest::GetPlatformWindow() { return m_window; }
 
-int main()
-{
+int main() {
 	Window window;
-	RenderTest render(&window);
+	RenderTest render(window.GetPlatformWindow());
 	window.InitWindow();
 	window.Run(&render);
-	system("pause");
-
 	return 0;
 }

@@ -2,8 +2,10 @@
 #include "VK_RenderRHI.h"
 
 #include "VK_Device.h"
+#if !PLATFORM_ANDROID
 #define  GLFW_INCLUDE_VULKAN
 #include "GLFW/glfw3.h"
+#endif
 #include "VK_Buffer.h"
 #include "VK_Viewport.h"
 #include "VK_Shader.h"
@@ -26,11 +28,9 @@ CONST Vector<CONST Char*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
 };
 
+// Hard-required: only swapchain. descriptor_indexing probed via optional VK_Extension path.
 Vector<CONST Char*> deviceExtensions = {
-	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-	"VK_EXT_sampler_filter_minmax",
-	"VK_EXT_descriptor_indexing",
-	"VK_KHR_deferred_host_operations"
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
@@ -234,11 +234,18 @@ void VulkanRHI::CreateDevice(Bool enable_validation_layers)
 
 Vector<CONST Char*> VulkanRHI::GetRequiredExtensions(Bool enable_validation_layers)
 {
+#if PLATFORM_ANDROID
+	std::vector<CONST Char*> extensions = {
+		"VK_KHR_surface",
+		"VK_KHR_android_surface"
+	};
+#else
 	uint32_t glfwExtensionCount = 0;
 	CONST Char** glfwExtensions;
 	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
 	std::vector<CONST Char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+#endif
 
 	if (enable_validation_layers) {
 		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);

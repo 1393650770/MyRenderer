@@ -1,6 +1,7 @@
 #include<iostream>
 #include <fstream>
 #include <map>
+#include "Platform/PlatformWindow.h"
 #include "Application/Window.h"
 #include "Render/RenderInterface.h"
 #include "Render/Core/RenderGraph.h"
@@ -45,17 +46,18 @@ Vector<UInt32> ReadShader(CONST String& filename)
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderTest, public MXRender::RenderInterface)
 #pragma region METHOD
 public:
-	RenderTest(Window* in_window);
+	RenderTest(PlatformWindow* in_window);
 	RenderTest() MYDEFAULT;
 	VIRTUAL ~RenderTest() MYDEFAULT;
 
-	VIRTUAL void OnInit_Logic(Application::Window* in_window) OVERRIDE FINAL;
+	VIRTUAL void OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport) OVERRIDE FINAL;
 	VIRTUAL void OnShutdown_Logic() OVERRIDE FINAL;
 	VIRTUAL void OnUpdate(float dt) OVERRIDE FINAL;
 	VIRTUAL void OnRender() OVERRIDE FINAL;
 	
 
-	Window* GetWindow();
+	PlatformWindow* GetPlatformWindow();
+	RHI::Viewport* m_viewport = nullptr;
 protected:
 
 private:
@@ -67,14 +69,14 @@ public:
 
 protected:
 	RenderGraph graph;
-	Window* window;
+	PlatformWindow* m_window;
 private:
 
 #pragma endregion
 
 MYRENDERER_END_CLASS
 
-void RenderTest::OnInit_Logic(Application::Window* in_window)
+void RenderTest::OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport)
 {
 	std::cout << "Hello Texture" << std::endl;
 
@@ -129,8 +131,8 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 		pipeline_state_desc.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
 		Vector<Texture*> rtvs;
 		Texture* dsv;
-		rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
-		dsv = this->GetWindow()->GetViewport()->GetCurrentBackBufferDSV();
+		rtvs = { this->m_viewport->GetCurrentBackBufferRTV() };
+		dsv = this->m_viewport->GetCurrentBackBufferDSV();
 		pipeline_state_desc.render_targets = rtvs;
 		pipeline_state_desc.depth_stencil_view = dsv;
 		pipeline_state_desc.raster_state.sample_count = 1;
@@ -150,8 +152,8 @@ void RenderTest::OnInit_Logic(Application::Window* in_window)
 			Vector<ClearValue> clear_values;
 			Vector<Texture*> rtvs;
 			Texture* dsv;
-			rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
-			dsv = this->GetWindow()->GetViewport()->GetCurrentBackBufferDSV();
+			rtvs = { this->m_viewport->GetCurrentBackBufferRTV() };
+			dsv = this->m_viewport->GetCurrentBackBufferDSV();
 			for (auto rtv : rtvs)
 			{
 				clear_values.push_back(rtv->GetTextureDesc().clear_value);
@@ -192,25 +194,20 @@ void RenderTest::OnRender()
 
 
 
-RenderTest::RenderTest(Window* in_window) :window(in_window)
+RenderTest::RenderTest(PlatformWindow* in_window) :m_window(in_window)
 {
 
 }
 
-MXRender::Application::Window* RenderTest::GetWindow()
+MXRender::PlatformWindow* RenderTest::GetPlatformWindow()
 {
-	return window;
+	return m_window;
 }
 
-int main()
-{
+int main() {
 	Window window;
-	RenderTest render(&window);
+	RenderTest render(window.GetPlatformWindow());
 	window.InitWindow();
 	window.Run(&render);
-	VirtualTextureQuadTree tree(5120, 64);
-	tree.ParseAllLevelNodeToDebug();
-
-
 	return 0;
 }

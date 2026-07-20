@@ -150,10 +150,14 @@ parser_header.o: \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\functional \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ResourceRegistry.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/TypeHash.h \
+  D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Android/AndroidWindow.h \
+  D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Desktop/DesktopWindow.h \
+  Platform/PlatformWindow.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/FileDialog.h \
   Core/ConstDefine.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/FileSystem.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Platform.h \
+  D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/PlatformWindow.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/DeviceProfile.h \
   vulkan/vulkan_core.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderBindlessManager.h \
@@ -249,14 +253,13 @@ parser_header.o: \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Tool/ToolUtils.h \
   Render/Core/RenderGraphDefinition.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/UIBase.h imgui.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Application/Android/AndroidApp.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Application/Android/TouchOrbitCamera.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Application/CameraController.h \
   Render/View/SceneView.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Application/SampleApp.h \
   Render/RenderInterface.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Application/Window.h \
-  Render/Core/RenderFrameSync.h MTScheduler.h GLFW/glfw3.h \
+  Render/Core/RenderFrameSync.h MTScheduler.h \
   D:/Project/GameDevelop/MyRenderer/src/Sample/4-Reflect/ReflectTestClass.h \
   D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/Activation.h \
   D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/Layer.h \

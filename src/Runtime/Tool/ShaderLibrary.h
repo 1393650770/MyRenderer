@@ -4,6 +4,10 @@
 #include "Core/ConstDefine.h"
 #include "RHI/RenderEnum.h"
 
+#if PLATFORM_ANDROID
+struct AAssetManager;
+#endif
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 class Shader;
@@ -20,6 +24,9 @@ MYRENDERER_BEGIN_NAMESPACE(Tool)
 MYRENDERER_BEGIN_CLASS(ShaderLibrary)
 #pragma region METHOD
 public:
+#if PLATFORM_ANDROID
+	static void METHOD(SetAssetManager)(AAssetManager* in_mgr);
+#endif
 	// Read a compiled .spv binary (path relative to the working directory,
 	// e.g. "Shader/xxx.vert.spv"). Keep filenames ASCII to avoid GBK/ACP issues.
 	static Vector<UInt32> METHOD(ReadSpirv)(CONST String& in_filename);
@@ -45,7 +52,9 @@ private:
 public:
 
 protected:
-
+#if PLATFORM_ANDROID
+	static AAssetManager* s_asset_manager;
+#endif
 private:
 
 #pragma endregion

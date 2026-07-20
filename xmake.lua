@@ -1,9 +1,13 @@
-add_requireconfs("**.glfw", {override = true, version = "3.4",configs = {shared = true,debug=true}})
+if is_plat("windows") then
+    add_requireconfs("**.glfw", {override = true, version = "3.4",configs = {shared = true,debug=true}})
+end
 add_requires("vulkansdk", "glm","assimp","tinyobjloader","lz4","nlohmann_json","gli","optick","rttr")
 add_requires("imgui v1.89.9-docking", {configs = { glfw_vulkan = true, debug = true, shared = true }})
 add_requires("flatbuffers v1.12.0")
 add_requires("boost",{ version = "1.84.0",configs = {shared = true,debug=true,cmake=false}})
-add_requires("glfw 3.4", {configs = {shared = true,debug=true}})
+if is_plat("windows") then
+    add_requires("glfw 3.4", {configs = {shared = true,debug=true}})
+end
 add_requires("glslang", {configs = {binaryonly = true}})
 add_rules("mode.debug", "mode.release", "mode.releasedbg")
 add_rules("plugin.vsxmake.autoupdate")
@@ -43,6 +47,17 @@ function PlatformSettings()
         add_defines("PLATFORM_LINUX")
     elseif is_plat("macosx") then
         add_defines("PLATFORM_MACOS")
+    elseif is_plat("android") then
+        add_defines("PLATFORM_ANDROID")
+        local config_file = path.join(os.projectdir(), ".xmake", "android_config.json")
+        if os.isfile(config_file) then
+            local json = import("core.base.json")
+            local cfg = json.loadfile(config_file)
+            if cfg and cfg.ndk_path then
+                print("[MXRender] Android NDK: " .. cfg.ndk_path)
+                set_toolchains("ndk", {ndk = cfg.ndk_path})
+            end
+        end
     end
 end
 
@@ -66,8 +81,15 @@ function CommonLibrarySetting()
     add_includedirs("src/ThirdParty", {public = true})
     add_includedirs("src/ThirdParty/TaskScheduler/Scheduler/Include", {public = true})
     add_files("src/ThirdParty/TaskScheduler/Scheduler/Source/**.cpp")
-    add_files("src/ThirdParty/TaskScheduler/Scheduler/Include/Platform/Windows/**.cpp")
-    add_packages("vulkansdk", "glfw", "glm","assimp","tinyobjloader","imgui","lz4","nlohmann_json","gli","optick","boost","flatbuffers","rttr")
+    if is_plat("windows") then
+        add_files("src/ThirdParty/TaskScheduler/Scheduler/Include/Platform/Windows/**.cpp")
+    elseif is_plat("android") then
+        add_files("src/ThirdParty/TaskScheduler/Scheduler/Include/Platform/Posix/**.cpp")
+    end
+    add_packages("vulkansdk", "glm","assimp","tinyobjloader","imgui","lz4","nlohmann_json","gli","optick","boost","flatbuffers","rttr")
+    if not is_plat("android") then
+        add_packages("glfw")
+    end
 end
 
 
@@ -176,14 +198,17 @@ function MoveResource(target)
 end
 
 function CommonProjectSetting()
-    set_kind("binary")  
-    set_languages("clatest", "cxx20") 
+    set_kind("binary")
+    set_languages("clatest", "cxx20")
     add_deps("Runtime")
-    add_files("src/_Generated/**.cpp", {public = true}) 
+    add_files("src/_Generated/**.cpp", {public = true})
     add_includedirs("src/_Generated", {public = true})
     add_includedirs("src/Runtime", {public = true})
     add_includedirs("src/ThirdParty", {public = true})
-    add_packages("vulkansdk", "glfw", "glm","assimp","tinyobjloader","imgui","boost","flatbuffers","rttr","nlohmann_json")
+    add_packages("vulkansdk", "glm","assimp","tinyobjloader","imgui","boost","flatbuffers","rttr","nlohmann_json")
+    if not is_plat("android") then
+        add_packages("glfw")
+    end
 end
 
 target("CompileResource")
@@ -346,4 +371,5 @@ target("RendererSample-VolumetricCloud")
     add_files("src/Sample/10-VolumetricCloud/VolumetricCloud.cpp")
     set_group("Sample")
     after_build(MoveResource)
+
 

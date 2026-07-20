@@ -97,7 +97,7 @@ void MeshSampleApp::OnInitScene()
 	indirect_buf = g_render_rhi->CreateBuffer(ind_desc);
 	Tool::BufferUtils::Upload(indirect_buf, &args, sizeof(args));
 
-	camera.Attach(GetWindow()->GetWindow());
+	camera.Attach(GetPlatformWindow());
 	camera.distance = 5.0f;
 	scene_view.SetPerspective(glm::radians(45.0f), 0.1f, 100.0f);
 
@@ -169,8 +169,11 @@ void MeshSampleApp::OnUpdate(float dt)
 {
 	camera.Update(dt, scene_view);
 
-	GLFWwindow* w = GetWindow()->GetWindow();
+	#if 0 // TODO: keyboard via PlatformWindow (GLFW not portable)
+	void* w = GetPlatformWindow()->GetNativeHandle();
 	Bool key_now = glfwGetKey(w, GLFW_KEY_I) == GLFW_PRESS;
+#endif
+	Bool key_now = false; // stub until PlatformWindow keyboard
 	if (key_now && !indirect_key_prev)
 	{
 		use_indirect = !use_indirect;

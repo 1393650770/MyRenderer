@@ -1,6 +1,7 @@
 #include "SampleApp.h"
 #include <iostream>
 #include <cstdlib>
+#include "Platform/PlatformWindow.h"
 #include "Application/Window.h"
 #include "RHI/RenderViewport.h"
 #include "RHI/RenderTexture.h"
@@ -12,22 +13,31 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
 
+void* SampleApp::s_platform_data = nullptr;
+
+void SampleApp::SetPlatformData(void* data)
+{
+	s_platform_data = data;
+}
+
 Int SampleApp::RunSample(SampleApp& in_app, CONST String& in_title)
 {
-	Window window(in_title);
+	Window window(in_title, 1280, 960, s_platform_data);
 	window.InitWindow();
 	window.Run(&in_app);
+#if PLATFORM_WIN32
 	system("pause");
+#endif
 	return 0;
 }
 
-void SampleApp::OnInit_Logic(Application::Window* in_window)
+void SampleApp::OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport)
 {
-	window = in_window;
+	platform_window = in_window;
+	viewport = in_viewport;
 
-	// Register the swapchain backbuffer (+ depth) as retained RDG resources
-	RHI::Texture* backbuffer_rtv = window->GetViewport()->GetCurrentBackBufferRTV();
-	RHI::Texture* backbuffer_dsv = window->GetViewport()->GetCurrentBackBufferDSV();
+	RHI::Texture* backbuffer_rtv = viewport->GetCurrentBackBufferRTV();
+	RHI::Texture* backbuffer_dsv = viewport->GetCurrentBackBufferDSV();
 
 	backbuffer_resource = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>(
 		"BackBuffer", backbuffer_rtv->GetTextureDesc(), backbuffer_rtv);
@@ -56,12 +66,12 @@ void SampleApp::OnRender()
 
 RHI::Texture* SampleApp::GetBackBuffer() CONST
 {
-	return window->GetViewport()->GetCurrentBackBufferRTV();
+	return viewport->GetCurrentBackBufferRTV();
 }
 
 RHI::Texture* SampleApp::GetDepthStencil() CONST
 {
-	return window->GetViewport()->GetCurrentBackBufferDSV();
+	return viewport->GetCurrentBackBufferDSV();
 }
 
 void SampleApp::BindBackBufferTarget(RHI::CommandList* in_cmd) CONST

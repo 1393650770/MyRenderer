@@ -22,9 +22,9 @@ MYRENDERER_BEGIN_NAMESPACE(Application)
 using namespace Render;
 using namespace RHI;
 using namespace UI;
-void EditorUI::Init(Window* in_window)
+void EditorUI::Init(PlatformWindow* in_window, RHI::Viewport* in_viewport)
 {
-	window = in_window;
+	m_window = in_window;
 	IMGUI_CHECKVERSION();
 	ImGuiContext* context = ImGui::CreateContext();
 	CHECK_WITH_LOG(context ==nullptr,"Failed to create ImGui context!");
@@ -47,10 +47,10 @@ void EditorUI::Init(Window* in_window)
 	io.Fonts->Build();
 	//ImFont* font1 = io.Fonts->AddFontDefault();
 
-	GLFWwindow* glfw_window = window->GetWindow();
+	GLFWwindow* glfw_window = (GLFWwindow*)in_window->GetNativeHandle();
 
 	CHECK_WITH_LOG(ImGui_ImplGlfw_InitForVulkan(glfw_window, true) == false, "Failed to init ImGui for Vulkan!");
-	in_window->GetViewport()->AttachUiLayer(this);
+	in_viewport->AttachUiLayer(this);
 
 	// Register all panels (DockSpace will auto-arrange them)
 	AddPanelUI(RenderGraphPanel::GetTypeName());
@@ -131,7 +131,7 @@ void EditorUI::DrawFrame_Render(ImDrawData* draw_data, RHI::CommandList* cmd)
 	if (!draw_data || !cmd) return;
 
 	Vector<RHI::Texture*> rtvs;
-	rtvs = { window->GetViewport()->GetCurrentBackBufferRTV() };
+	rtvs = { m_viewport->GetCurrentBackBufferRTV() };
 	cmd->SetRenderTarget(rtvs, nullptr, {}, false);
 
 	if (cmd->IsBypass()) {

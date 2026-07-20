@@ -1,6 +1,7 @@
 #include "Window.h"
+#include "Application/SampleApp.h"
 
-#include<iostream>
+#include <iostream>
 #include <memory>
 #include "RHI/RenderRHI.h"
 #include "RHI/RenderViewport.h"
@@ -9,33 +10,22 @@
 #include "Render/Core/CommandQueue.h"
 #include <limits>
 #include <thread>
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
 
-Window::Window(CONST String& in_title) : title(in_title)
+Window::Window(CONST String& in_title, UInt32 in_w, UInt32 in_h, void* platform_data)
+	: title(in_title), width(in_w), height(in_h)
 {
+	if (!platform_data)
+		platform_data = SampleApp::GetPlatformData();
+	platform_window = CreatePlatformWindow(title, width, height, platform_data);
+}
 
-	if (!glfwInit())
-	{
-		return;
-	}
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfw_window = glfwCreateWindow(width,height, title.c_str(),NULL, NULL);
-	if (!glfw_window)
-	{
-		glfwTerminate();
-		return;
-	}
-	glfwSetWindowUserPointer(glfw_window, this);
-
-	//glfwSetWindowSizeCallback(window, on_window_size_callback);
-
- }
-
-Window::~Window()
+void Window::InitWindow()
 {
-    glfwDestroyWindow(glfw_window);
-    glfwTerminate();
+	RHIInit();
+	viewport = RHICreateViewport(platform_window->GetNativeHandle(), width, height, is_full_screen);
 }
 
 void Window::Run(RenderInterface* render)
@@ -48,23 +38,20 @@ void Window::Run(RenderInterface* render)
 		RHIStartRHIThread();
 	}
 	if (use_render_thread) {
-		// ThreeThread: Logic init on main, Render init on Render thread
-		render->OnInit_Logic(this);
+		render->OnInit_Logic(platform_window.get(), viewport);
 		frame_sync.StartRenderThread(render, viewport);
 	} else {
-		// Single / RHIThread: compat wrapper calls OnInit_Logic + OnInit_Render
-		render->OnInit(this);
+		render->OnInit(platform_window.get(), viewport);
 	}
 
-	Int width = 0, height = 0;
+	Int fw = 0, fh = 0;
 
-	while (!glfwWindowShouldClose(glfw_window))
+	while (!platform_window->ShouldClose())
 	{
-		float currentFrame = static_cast<float>(glfwGetTime());
+		float currentFrame = static_cast<float>(platform_window->GetTime());
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-		glfwPollEvents();
-
+		platform_window->PollEvents();
 
 		render->OnUpdate(deltaTime);
 
@@ -118,8 +105,6 @@ void Window::Run(RenderInterface* render)
 				ctx->viewport_width = this->width;
 				ctx->viewport_height = this->height;
 				ctx->frame_number = g_frame_number_render_thread;
-
-				// ImGui CPU work (NewFrame+widgets+Render) in OnPrepareFrameContext
 				render->OnPrepareFrameContext(*ctx);
 			}
 
@@ -135,17 +120,15 @@ void Window::Run(RenderInterface* render)
 		}
 		g_frame_number_render_thread = (g_frame_number_render_thread + 1) % g_max_frame_number;
 
-		glfwSwapBuffers(glfw_window);
-
-		glfwGetFramebufferSize(glfw_window, &width, &height);
-		while (width == 0 || height == 0)
+		platform_window->GetFramebufferSize(fw, fh);
+		while (fw == 0 || fh == 0)
 		{
-			glfwGetFramebufferSize(glfw_window, &width, &height);
-			glfwWaitEvents();
+			platform_window->GetFramebufferSize(fw, fh);
+			// PlatformWindow does not have WaitEvents — the loop itself is the wait
 		}
-		this->width = width;
-		this->height = height;
-		viewport->Resize(width, height);
+		this->width = (UInt32)fw;
+		this->height = (UInt32)fh;
+		viewport->Resize((UInt32)fw, (UInt32)fh);
 	}
 
 	if (use_render_thread) {
@@ -161,15 +144,9 @@ void Window::Run(RenderInterface* render)
 	RHIShutdown();
 }
 
-GLFWwindow* Window::GetWindow() CONST
+PlatformWindow* Window::GetPlatformWindow() CONST
 {
-    return glfw_window;
-}
-
-void Window::InitWindow()
-{
-	RHIInit();
-	viewport = RHICreateViewport((void*)glfw_window, width, height, is_full_screen);
+	return platform_window.get();
 }
 
 MXRender::RHI::Viewport* Window::GetViewport() CONST

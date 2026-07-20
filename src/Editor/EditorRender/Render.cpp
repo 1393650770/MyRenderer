@@ -41,11 +41,11 @@ Vector<UInt32> ReadShader(CONST String& filename)
 }
 
 //  Logic thread: ImGui init, editor UI (GLFW-dependent)
-void EditorRenderPipeline::OnInit_Logic(Application::Window* in_window)
+void EditorRenderPipeline::OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport)
 {
-	window = in_window;
+	m_window = in_window; m_viewport = in_viewport;
 	std::cout << "Hello Editor" << std::endl;
-	editor_ui.Init(window);
+	editor_ui.Init(m_window, m_viewport);
 }
 
 //  Render thread: shaders, pipelines, RenderGraph passes, compile
@@ -55,8 +55,8 @@ void EditorRenderPipeline::OnInit_Render()
 
 	// Register backbuffer as retained (imported) resources so the RDG knows about them.
 	// This enables the editor to visualize pass-resource dependencies.
-	RHI::Texture* backbuffer_rtv = window->GetViewport()->GetCurrentBackBufferRTV();
-	RHI::Texture* backbuffer_dsv = window->GetViewport()->GetCurrentBackBufferDSV();
+	RHI::Texture* backbuffer_rtv = m_viewport->GetCurrentBackBufferRTV();
+	RHI::Texture* backbuffer_dsv = m_viewport->GetCurrentBackBufferDSV();
 
 	RHI::TextureDesc rt_desc = backbuffer_rtv->GetTextureDesc();
 	Render::RenderGraphResource<RHI::TextureDesc, RHI::Texture>* rt_resource =
@@ -93,8 +93,8 @@ void EditorRenderPipeline::OnInit_Render()
 		Vector<RHI::ClearValue> clear_values;
 		Vector<RHI::Texture*> rtvs;
 		RHI::Texture* dsv;
-		rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
-		dsv = this->GetWindow()->GetViewport()->GetCurrentBackBufferDSV();
+		rtvs = { this->m_viewport->GetCurrentBackBufferRTV() };
+		dsv = this->m_viewport->GetCurrentBackBufferDSV();
 		for (auto rtv : rtvs)
 		{
 			clear_values.push_back(rtv->GetTextureDesc().clear_value);
@@ -173,8 +173,8 @@ void EditorRenderPipeline::OnInit_Render()
 		pipeline_state_desc.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
 		Vector<RHI::Texture*> rtvs;
 		RHI::Texture* dsv;
-		rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
-		dsv = this->GetWindow()->GetViewport()->GetCurrentBackBufferDSV();
+		rtvs = { this->m_viewport->GetCurrentBackBufferRTV() };
+		dsv = this->m_viewport->GetCurrentBackBufferDSV();
 		pipeline_state_desc.render_targets = rtvs;
 		pipeline_state_desc.depth_stencil_view = dsv;
 		pipeline_state_desc.raster_state.sample_count = 1;
@@ -200,8 +200,8 @@ void EditorRenderPipeline::OnInit_Render()
 			Vector<RHI::ClearValue> clear_values;
 			Vector<RHI::Texture*> rtvs;
 			RHI::Texture* dsv;
-			rtvs = { this->GetWindow()->GetViewport()->GetCurrentBackBufferRTV() };
-			dsv = this->GetWindow()->GetViewport()->GetCurrentBackBufferDSV();
+			rtvs = { this->m_viewport->GetCurrentBackBufferRTV() };
+			dsv = this->m_viewport->GetCurrentBackBufferDSV();
 			for (auto rtv : rtvs)
 			{
 				clear_values.push_back(rtv->GetTextureDesc().clear_value);
@@ -252,8 +252,8 @@ void EditorRenderPipeline::InitRenderPasses()
 		skybox_ps = RHICreateShader(ps_desc, ps_data);
 		RHI::RenderGraphiPipelineStateDesc pd; pd.shaders[ENUM_SHADER_STAGE::Shader_Vertex] = skybox_vs; pd.shaders[ENUM_SHADER_STAGE::Shader_Pixel] = skybox_ps;
 		pd.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
-		pd.render_targets = { window->GetViewport()->GetCurrentBackBufferRTV() };
-		pd.depth_stencil_view = window->GetViewport()->GetCurrentBackBufferDSV();
+		pd.render_targets = { m_viewport->GetCurrentBackBufferRTV() };
+		pd.depth_stencil_view = m_viewport->GetCurrentBackBufferDSV();
 		pd.raster_state.sample_count = 1; pd.blend_state.render_targets.resize(1);
 		skybox_pipeline = g_render_rhi->CreateRenderPipelineState(pd);
 		skybox_pipeline->CreateShaderResourceBinding(skybox_srb, true);
@@ -261,8 +261,8 @@ void EditorRenderPipeline::InitRenderPasses()
 	Render::RenderGraphBuilder::RegisterPassExecute("SkyboxPass",
 		[this](RHI::CommandList* cmd, Map<String, Render::RenderGraphResourceBase*>& res) {
 			//   Get current swapchain image each frame (swapchain rotates images)
-			auto* rt_tex = this->window->GetViewport()->GetCurrentBackBufferRTV();
-			auto* ds_tex = this->window->GetViewport()->GetCurrentBackBufferDSV();
+			auto* rt_tex = this->m_viewport->GetCurrentBackBufferRTV();
+			auto* ds_tex = this->m_viewport->GetCurrentBackBufferDSV();
 			std::cout << "[SkyboxPass] rt=" << (void*)rt_tex << " ds=" << (void*)ds_tex << " res_count=" << res.size() << std::endl;
 			if (!rt_tex) { std::cout << "[SkyboxPass] no rt_tex!" << std::endl; return; }
 			Vector<RHI::ClearValue> cvs = { RHI::ClearValue{0.2f,0.2f,0.3f,1.0f} };
@@ -279,8 +279,8 @@ void EditorRenderPipeline::InitRenderPasses()
 	Render::RenderGraphBuilder::RegisterPassExecute("PBRPass",
 		[this](RHI::CommandList* cmd, Map<String, Render::RenderGraphResourceBase*>& res) {
 			//   Get current swapchain image each frame (swapchain rotates images)
-			auto* rt_tex = this->window->GetViewport()->GetCurrentBackBufferRTV();
-			auto* ds_tex = this->window->GetViewport()->GetCurrentBackBufferDSV();
+			auto* rt_tex = this->m_viewport->GetCurrentBackBufferRTV();
+			auto* ds_tex = this->m_viewport->GetCurrentBackBufferDSV();
 			if (!rt_tex) return;
 			cmd->SetRenderTarget({rt_tex}, ds_tex, {}, ds_tex != nullptr);
 			cmd->SetGraphicsPipeline(skybox_pipeline); cmd->SetShaderResourceBinding(skybox_srb);
@@ -292,10 +292,10 @@ void EditorRenderPipeline::InitRenderPasses()
 
 void EditorRenderPipeline::RebuildFromDefinition(CONST MXRender::Render::RenderGraphDefinition& def)
 {
-	if (!window) return;
+	if (!m_window) return;
 	Vector<Render::ExternalResourceBinding> externals;
-	RHI::Texture* backbuffer_rtv = window->GetViewport()->GetCurrentBackBufferRTV();
-	RHI::Texture* backbuffer_dsv = window->GetViewport()->GetCurrentBackBufferDSV();
+	RHI::Texture* backbuffer_rtv = m_viewport->GetCurrentBackBufferRTV();
+	RHI::Texture* backbuffer_dsv = m_viewport->GetCurrentBackBufferDSV();
 	externals.push_back({"BackBuffer", backbuffer_rtv, nullptr});
 	if (backbuffer_dsv) externals.push_back({"DepthStencil", backbuffer_dsv, nullptr});
 	if (Render::RenderGraphBuilder::BuildRuntimeGraph(def, &graph, externals))
@@ -312,8 +312,8 @@ void EditorRenderPipeline::RebuildFromDefinition(CONST MXRender::Render::RenderG
 				if (ds) builder.Write(ds);
 			},
 			[this](CONST ClearData&, RHI::CommandList* cmd) {
-				auto* rt = this->window->GetViewport()->GetCurrentBackBufferRTV();
-				auto* dsv = this->window->GetViewport()->GetCurrentBackBufferDSV();
+				auto* rt = this->m_viewport->GetCurrentBackBufferRTV();
+				auto* dsv = this->m_viewport->GetCurrentBackBufferDSV();
 				Vector<RHI::ClearValue> cvs = { rt->GetTextureDesc().clear_value };
 				if (dsv) cvs.push_back(dsv->GetTextureDesc().clear_value);
 				cmd->SetRenderTarget({rt}, dsv, cvs, dsv != nullptr);
@@ -423,8 +423,8 @@ void EditorRenderPipeline::OnPreRender(Render::FrameContext& ctx)
 	}
 
 	// Update backbuffer retained resources (safe on Render thread)
-	RHI::Texture* rtv = window->GetViewport()->GetCurrentBackBufferRTV();
-	RHI::Texture* dsv = window->GetViewport()->GetCurrentBackBufferDSV();
+	RHI::Texture* rtv = m_viewport->GetCurrentBackBufferRTV();
+	RHI::Texture* dsv = m_viewport->GetCurrentBackBufferDSV();
 
 	if (auto* bb = graph.GetRetainedResource<RHI::TextureDesc, RHI::Texture>("BackBuffer"))
 		bb->UpdateRetainedPtr(rtv);
@@ -452,14 +452,14 @@ void EditorRenderPipeline::OnPostRender(Render::FrameContext& ctx)
 	ImGui::SetCurrentContext(prev_ctx);
 }
 
-EditorRenderPipeline::EditorRenderPipeline(MXRender::Application::Window* in_window)
+EditorRenderPipeline::EditorRenderPipeline(MXRender::PlatformWindow* in_window)
 {
 	// window will be set in OnInit
 }
 
-MXRender::Application::Window* EditorRenderPipeline::GetWindow()
+MXRender::PlatformWindow* EditorRenderPipeline::GetWindow()
 {
-	return window;
+	return m_window;
 }
 
 MYRENDERER_END_NAMESPACE

@@ -622,12 +622,12 @@ VK_MemoryManager::VK_MemoryManager(VK_Device* in_device):device_memory_manager(i
                 resource_heaps[index]->is_support_lazily_allocated = ((memory_properties.memoryTypes[index].propertyFlags & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT) == VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
 				auto& page_size_buckets = resource_heaps[index]->page_size_buckets;
 
-/*#if PLATFORM_ANDROID
-				FVulkanPageSizeBucket BucketImage = { UINT64_MAX, (UInt32)ANDROID_MAX_HEAP_IMAGE_PAGE_SIZE, FVulkanPageSizeBucket::BUCKET_MASK_IMAGE };
-				FVulkanPageSizeBucket BucketBuffer = { UINT64_MAX, (UInt32)ANDROID_MAX_HEAP_BUFFER_PAGE_SIZE, FVulkanPageSizeBucket::BUCKET_MASK_BUFFER };
-				PageSizeBuckets.Add(BucketImage);
-				PageSizeBuckets.Add(BucketBuffer);
-#else*/
+#if PLATFORM_ANDROID
+				VK_VulkanPageSizeBucket BucketImage = { UINT64_MAX, (UInt32)ANDROID_MAX_HEAP_IMAGE_PAGE_SIZE, VK_VulkanPageSizeBucket::BUCKET_MASK_IMAGE };
+				VK_VulkanPageSizeBucket BucketBuffer = { UINT64_MAX, (UInt32)ANDROID_MAX_HEAP_BUFFER_PAGE_SIZE, VK_VulkanPageSizeBucket::BUCKET_MASK_BUFFER };
+				page_size_buckets.push_back(BucketImage);
+				page_size_buckets.push_back(BucketBuffer);
+#else
 				UInt32 small_allocation_threshold = 2 << 20;
                 UInt32 large_allocation_threshold = VK_MEMORY_MAX_SUB_ALLOCATION;
 				VkDeviceSize small_page_size = 8llu << 20;
@@ -643,6 +643,7 @@ VK_MemoryManager::VK_MemoryManager(VK_Device* in_device):device_memory_manager(i
                 page_size_buckets.push_back(bucket_small_buffer);
                 page_size_buckets.push_back(bucket_large_buffer);
                 page_size_buckets.push_back(bucket_remainder);
+#endif
 			}
 		}
 	}

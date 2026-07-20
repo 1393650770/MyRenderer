@@ -1,18 +1,15 @@
 #include "RenderInterface.h"
-
-#include "RenderInterface.h"
-#include "Application/Window.h"
+#include "Platform/PlatformWindow.h"
+#include "RHI/RenderViewport.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 
-//  Backward compat: OnInit calls split lifecycle methods
-void RenderInterface::OnInit(Application::Window* window)
+void RenderInterface::OnInit(PlatformWindow* in_window, RHI::Viewport* in_viewport)
 {
-	OnInit_Logic(window);
+	OnInit_Logic(in_window, in_viewport);
 	OnInit_Render();
 }
 
-//  Backward compat: OnShutdown calls split lifecycle methods
 void RenderInterface::OnShutdown()
 {
 	OnShutdown_Render();

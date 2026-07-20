@@ -5,7 +5,7 @@
 #if PLATFORM_ANDROID
 
 #include "Core/ConstDefine.h"
-#include "Application/Android/AndroidApp.h"
+#include "Platform/PlatformWindow.h"
 #include "Render/View/SceneView.h"
 #include <glm/glm.hpp>
 
