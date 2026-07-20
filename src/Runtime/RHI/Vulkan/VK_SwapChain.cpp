@@ -1,6 +1,8 @@
 #include "VK_SwapChain.h"
+#if !PLATFORM_ANDROID
 #define  GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#endif
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>

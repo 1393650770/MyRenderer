@@ -1,10 +1,24 @@
 if is_plat("windows") then
     add_requireconfs("**.glfw", {override = true, version = "3.4",configs = {shared = true,debug=true}})
 end
-add_requires("vulkansdk", "glm","assimp","tinyobjloader","lz4","nlohmann_json","gli","optick","rttr")
-add_requires("imgui v1.89.9-docking", {configs = { glfw_vulkan = true, debug = true, shared = true }})
+if is_plat("android") then
+    add_requires("glm","tinyobjloader","nlohmann_json","gli","optick","rttr")
+    add_syslinks("vulkan") -- libvulkan.so on device, headers from NDK
+else
+    add_requires("vulkansdk", "glm","tinyobjloader","nlohmann_json","gli","optick","rttr")
+end
+if not is_plat("android") then
+    add_requires("assimp","lz4")
+end
+if is_plat("android") then
+    add_requires("imgui v1.89.9-docking", {configs = { debug = true, shared = true }})
+else
+    add_requires("imgui v1.89.9-docking", {configs = { glfw_vulkan = true, debug = true, shared = true }})
+end
 add_requires("flatbuffers v1.12.0")
-add_requires("boost",{ version = "1.84.0",configs = {shared = true,debug=true,cmake=false}})
+if not is_plat("android") then
+    add_requires("boost",{ version = "1.84.0",configs = {shared = true,debug=true,cmake=false}})
+end
 if is_plat("windows") then
     add_requires("glfw 3.4", {configs = {shared = true,debug=true}})
 end
@@ -48,16 +62,8 @@ function PlatformSettings()
     elseif is_plat("macosx") then
         add_defines("PLATFORM_MACOS")
     elseif is_plat("android") then
-        add_defines("PLATFORM_ANDROID")
-        local config_file = path.join(os.projectdir(), ".xmake", "android_config.json")
-        if os.isfile(config_file) then
-            local json = import("core.base.json")
-            local cfg = json.loadfile(config_file)
-            if cfg and cfg.ndk_path then
-                print("[MXRender] Android NDK: " .. cfg.ndk_path)
-                set_toolchains("ndk", {ndk = cfg.ndk_path})
-            end
-        end
+        add_defines("PLATFORM_ANDROID", "_XOPEN_SOURCE=700")
+        add_includedirs("D:/Project/AndroidNDK/android-ndk-r27d-windows/android-ndk-r27d/sources/android/native_app_glue", {public = true})
     end
 end
 
@@ -66,6 +72,15 @@ function CommonLibrarySetting()
     PlatformSettings()
     add_headerfiles("src/Runtime/**.h")
     add_files("src/Runtime/**.cpp")
+    -- Exclude platform-specific files
+    if is_plat("android") then
+        remove_files("src/Runtime/Platform/Desktop/**.cpp")
+        remove_files("src/Runtime/Application/Android/TouchOrbitCamera.cpp")
+        remove_files("src/Runtime/Tool/MeshLoader.cpp")
+        remove_files("src/Runtime/Asset/MeshAsset.cpp")
+    else
+        remove_files("src/Runtime/Platform/Android/**.cpp")
+    end
     -- Platform-specific file dialog: exclude the wrong platform implementation
     if is_plat("windows") then
         remove_files("src/Runtime/Platform/FileDialogStub.cpp")
@@ -86,7 +101,13 @@ function CommonLibrarySetting()
     elseif is_plat("android") then
         add_files("src/ThirdParty/TaskScheduler/Scheduler/Include/Platform/Posix/**.cpp")
     end
-    add_packages("vulkansdk", "glm","assimp","tinyobjloader","imgui","lz4","nlohmann_json","gli","optick","boost","flatbuffers","rttr")
+    if not is_plat("android") then
+        add_packages("vulkansdk")
+    end
+    add_packages("glm","tinyobjloader","imgui","nlohmann_json","gli","optick","flatbuffers","rttr")
+    if not is_plat("android") then
+        add_packages("assimp","lz4")
+    end
     if not is_plat("android") then
         add_packages("glfw")
     end
@@ -127,12 +148,13 @@ function CompileFunc()
     print("----\n")
     
     print("[compile shader] shader to spirv..")
-    local vulkan_sdk = find_package("vulkansdk") --定位到vulkansdk的路径
-    local glslang_validator_dir =vulkan_sdk["bindir"].."\\glslangValidator.exe" --获取到glslangValidator.exe的路径
-    -- 遍历$(projectdir)/engine/shaders/中除了.spv后缀的所有文件
-    for _, shader_path in ipairs(os.files("$(projectdir)/resource/Shader/**|**.spv|**.bat|**.exe|**.h|**.glsl")) do
-        print("[compile shader] : "..shader_path)
-        os.runv(glslang_validator_dir,{"-V", "-g", shader_path,"-o", shader_path..".spv"}) --执行系统命令
+    local vulkan_sdk = find_package("vulkansdk")
+    if vulkan_sdk then
+        local glslang_validator_dir = vulkan_sdk["bindir"].."\\glslangValidator.exe"
+        for _, shader_path in ipairs(os.files("$(projectdir)/resource/Shader/**|**.spv|**.bat|**.exe|**.h|**.glsl")) do
+            print("[compile shader] : "..shader_path)
+            os.runv(glslang_validator_dir,{"-V", "-g", shader_path,"-o", shader_path..".spv"})
+        end
     end
 
     print("----\n")
@@ -200,14 +222,18 @@ end
 function CommonProjectSetting()
     set_kind("binary")
     set_languages("clatest", "cxx20")
+    PlatformSettings()
     add_deps("Runtime")
     add_files("src/_Generated/**.cpp", {public = true})
     add_includedirs("src/_Generated", {public = true})
     add_includedirs("src/Runtime", {public = true})
     add_includedirs("src/ThirdParty", {public = true})
-    add_packages("vulkansdk", "glm","assimp","tinyobjloader","imgui","boost","flatbuffers","rttr","nlohmann_json")
     if not is_plat("android") then
-        add_packages("glfw")
+        add_packages("vulkansdk")
+    end
+    add_packages("glm","tinyobjloader","imgui","flatbuffers","rttr","nlohmann_json")
+    if not is_plat("android") then
+        add_packages("assimp","lz4","glfw")
     end
 end
 

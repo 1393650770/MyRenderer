@@ -37,6 +37,7 @@
 
 #else
 
+#if 0 // disabled on Android (no ucontext)
 
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE
@@ -58,8 +59,6 @@
 
 #include <MTAppInterop.h>
 #include "MTAtomic.h"
-
-#endif
 
 
 namespace MT
@@ -193,5 +192,8 @@ namespace MT
 
 }
 
+#endif // #if 0 (disabled ucontext)
 
-#endif
+#endif // #if MT_USE_BOOST_CONTEXT
+
+#endif // __MT_FIBER__

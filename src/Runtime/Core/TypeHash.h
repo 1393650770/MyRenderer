@@ -44,8 +44,13 @@ UInt64 METHOD(ComputeHash)(CONST FirstArgType& FirstArg, CONST RestArgsType&... 
 }
 
 #include <stdlib.h>
+#ifdef _MSC_VER
 #define bswap_32(x) _byteswap_ulong(x)
 #define bswap_64(x) _byteswap_uint64(x)
+#else
+#define bswap_32(x) __builtin_bswap32(x)
+#define bswap_64(x) __builtin_bswap64(x)
+#endif
 
 
 struct Uint128_64

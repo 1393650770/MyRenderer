@@ -145,6 +145,9 @@ parser_header.o: \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/Reflection.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ConstGlobals.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/QuadTree.h \
+  D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\algorithm \
+  D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\__msvc_int128.hpp \
+  D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\__msvc_minmax.hpp \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ReflectionRegister.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ResourceHandle.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\functional \
@@ -164,9 +167,6 @@ parser_header.o: \
   Core/ResourceHandle.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderRource.h \
   RHI/RenderEnum.h Core/BaseObject.h \
-  D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\algorithm \
-  D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\__msvc_int128.hpp \
-  D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\__msvc_minmax.hpp \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderBuffer.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderEnum.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderCommandList.h \

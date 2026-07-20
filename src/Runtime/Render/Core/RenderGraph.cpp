@@ -1,5 +1,7 @@
 #include "RenderGraph.h"
+#ifdef _MSC_VER
 #include <xutility>
+#endif
 #include <fstream>
 #include <functional>
 #include <queue>

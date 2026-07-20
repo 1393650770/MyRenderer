@@ -153,7 +153,7 @@ namespace MT
 
 #if MT_PLATFORM_OSX
 		//TODO: support OSX priority and bind to processors
-#else
+#elif !defined(__ANDROID__)
 		static void GetAffinityMask(cpu_set_t & cpu_mask, uint32 cpuCore)
 		{
 			CPU_ZERO(&cpu_mask);
@@ -245,7 +245,7 @@ namespace MT
 			MT_UNUSED(priority);
 
 			//TODO: support OSX priority and bind to processors
-#else
+#elif !defined(__ANDROID__)
 			err = pthread_attr_setinheritsched(&threadAttr, PTHREAD_EXPLICIT_SCHED);
 			MT_USED_IN_ASSERT(err);
 			MT_ASSERT(err == 0, "pthread_attr_setinheritsched - error");
@@ -305,7 +305,7 @@ namespace MT
 		{
 #if MT_PLATFORM_OSX
             return std::thread::hardware_concurrency();
-#else
+#elif !defined(__ANDROID__)
 			long numberOfProcessors = sysconf( _SC_NPROCESSORS_ONLN );
 			return (int)numberOfProcessors;
 #endif
@@ -326,7 +326,7 @@ namespace MT
 			MT_UNUSED(priority);
 
 			//TODO: support OSX priority and bind to processors
-#else
+#elif !defined(__ANDROID__)
 			pthread_t callThread = pthread_self();
 
 			int sched_priority = GetPriority(priority);

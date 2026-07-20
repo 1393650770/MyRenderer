@@ -1,39 +1,25 @@
 #include "CameraController.h"
+#include "Platform/PlatformWindow.h"
+#include "Input/InputSystem.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
 
-// Single-window engine: static owner routes the scroll callback.
-static OrbitCameraController* s_scroll_owner = nullptr;
-
-void OrbitCameraController::OnScroll(Float64 in_offset_x, Float64 in_offset_y)
-{
-	if (s_scroll_owner)
-		s_scroll_owner->scroll_accum += (Float32)in_offset_y;
-}
-
 void OrbitCameraController::Attach(PlatformWindow* in_window)
 {
 	window = in_window;
-	s_scroll_owner = this;
 	if (window)
 	{
-		window->SetScrollCallback(&OrbitCameraController::OnScroll);
-		window->GetCursorPos(last_cursor_x, last_cursor_y);
+		Float64 x, y;
+		window->GetCursorPos(x, y);
+		last_cursor_x = x;
+		last_cursor_y = y;
 	}
-}
-
-OrbitCameraController::~OrbitCameraController()
-{
-	if (s_scroll_owner == this)
-		s_scroll_owner = nullptr;
 }
 
 Float32 OrbitCameraController::ConsumeScrollDelta()
 {
-	Float32 delta = scroll_accum;
-	scroll_accum = 0.0f;
-	return delta;
+	return MXRender::Input::InputSystem::Get().GetScrollDelta();
 }
 
 void OrbitCameraController::Update(Float32 in_dt, Render::SceneView& out_view)
@@ -43,12 +29,13 @@ void OrbitCameraController::Update(Float32 in_dt, Render::SceneView& out_view)
 	Int width = 0, height = 0;
 	window->GetFramebufferSize(width, height);
 
-	Float64 cursor_x = 0.0, cursor_y = 0.0;
-	window->GetCursorPos(cursor_x, cursor_y);
-	Float32 delta_x = (Float32)(cursor_x - last_cursor_x);
-	Float32 delta_y = (Float32)(cursor_y - last_cursor_y);
+	auto& input = MXRender::Input::InputSystem::Get();
+	Float32 cx = 0, cy = 0;
+	input.GetMousePos(cx, cy);
+	Float32 delta_x = cx - (Float32)last_cursor_x;
+	Float32 delta_y = cy - (Float32)last_cursor_y;
 
-	Bool lmb_down = window->GetMouseButton(MouseButton::Left);
+	Bool lmb_down = input.IsMouseDown((Int)MouseButton::Left);
 	if (lmb_down && rotating)
 	{
 		yaw += delta_x * rotate_speed;
@@ -56,7 +43,7 @@ void OrbitCameraController::Update(Float32 in_dt, Render::SceneView& out_view)
 	}
 	rotating = lmb_down;
 
-	Bool mmb_down = window->GetMouseButton(MouseButton::Middle);
+	Bool mmb_down = input.IsMouseDown((Int)MouseButton::Middle);
 	if (enable_pan && mmb_down && panning && height > 0)
 	{
 		glm::vec3 forward = -glm::vec3(cosf(pitch) * sinf(yaw), sinf(pitch), cosf(pitch) * cosf(yaw));
@@ -67,8 +54,8 @@ void OrbitCameraController::Update(Float32 in_dt, Render::SceneView& out_view)
 	}
 	panning = mmb_down;
 
-	last_cursor_x = cursor_x;
-	last_cursor_y = cursor_y;
+	last_cursor_x = (Float64)cx;
+	last_cursor_y = (Float64)cy;
 
 	Float32 scroll = ConsumeScrollDelta();
 	if (scroll != 0.0f)

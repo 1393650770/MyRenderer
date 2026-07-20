@@ -12,8 +12,10 @@
 #include "Core/ConstGlobals.h"
 #include "VK_Shader.h"
 #define  GLFW_INCLUDE_VULKAN
+#if !PLATFORM_ANDROID
 #include "imgui_impl_vulkan.h"
 #include "imgui_impl_glfw.h"
+#endif
 #include "GLFW/glfw3.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)

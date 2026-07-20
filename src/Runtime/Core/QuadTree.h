@@ -2,7 +2,10 @@
 #ifndef _QUADTREE_
 #define _QUADTREE_
 #include <memory>
+#include <algorithm>
 #include "ConstDefine.h"
+using std::max;
+using std::min;
 
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)

@@ -1,5 +1,9 @@
 #include "VirtualTextureDataQualTree.h"
+#ifdef _MSC_VER
+#ifdef _MSC_VER
 #include <xutility>
+#endif
+#endif
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Render)

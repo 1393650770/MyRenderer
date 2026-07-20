@@ -1,3 +1,4 @@
+#include "Input/InputSystem.h"
 // Ocean: FFT spectral waves via compute chain → storage buffers → graphics pass.
 // Avoids sampler2D in graphics PSO by using storage buffers for displacement & normals.
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -33,7 +34,7 @@ static CONST Float32 PATCH_L = 51.2f, MESH_SIZE = 819.2f;
 static CONST Float32 CHOPPY = 1.1f, WIND_SPEED = 8.0f, AMPL = 1.5e-5f, FOG_DENSITY = 0.0045f;
 
 static Float32 g_scroll = 0.0f;
-static void ScrollCB(GLFWwindow*, Float64, Float64 y) { g_scroll += (Float32)y; }
+static void ScrollCB(Float64, Float64 y) { g_scroll += (Float32)y; }
 
 Vector<UInt32> RS(CONST String& fn) {
 	std::ifstream f(fn, std::ios::ate | std::ios::binary);
@@ -65,12 +66,12 @@ struct PD : public RenderGraphPassDataBase {
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RT, public MXRender::RenderInterface)
 public:
-	RT(Window* w) : window(w) {} RT() MYDEFAULT; VIRTUAL ~RT() MYDEFAULT;
-	VIRTUAL void OnInit_Logic(Application::Window*) OVERRIDE FINAL;
+	RT(PlatformWindow* w) : m_window(w) {} RT() MYDEFAULT; VIRTUAL ~RT() MYDEFAULT;
+	VIRTUAL void OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport) OVERRIDE FINAL;
 	VIRTUAL void OnShutdown_Logic() OVERRIDE FINAL;
 	VIRTUAL void OnUpdate(float) OVERRIDE FINAL;
 	VIRTUAL void OnRender() OVERRIDE FINAL;
-	Window* GetWindow() { return window; }
+	PlatformWindow* GetPlatformWindow() { return m_window; }
 protected:
 	void CreateRes();
 	void CreateCSO();
@@ -79,7 +80,8 @@ protected:
 	void RecFFT(RHI::CommandList*);
 	void RecUnpack(RHI::CommandList*);
 	void RecExport(RHI::CommandList*);
-	Window* window = nullptr;
+	PlatformWindow* m_window = nullptr;
+	RHI::Viewport* m_viewport = nullptr;
 	RHI::Buffer *op_buf=nullptr, *disp_buf=nullptr, *norm_buf=nullptr;
 	RHI::Texture *h0=nullptr,*spec=nullptr,*tmp=nullptr,*spat=nullptr,*dmap=nullptr,*nmap=nullptr;
 	RHI::RenderPipelineState *pInit=nullptr,*pSpec=nullptr,*pR=nullptr,*pC=nullptr,*pUnp=nullptr,*pExp=nullptr;
@@ -185,12 +187,13 @@ void RT::RecExport(RHI::CommandList* c) {
 	rc(pExp,sExp,FFT_N/16,FFT_N/16);
 }
 
-void RT::OnInit_Logic(Application::Window* in_window) {
-	window=in_window; std::cout<<"Hello Ocean (FFT)"<<std::endl;
-	glfwSetScrollCallback(window->GetWindow(),ScrollCB);
+void RT::OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport) {
+	m_window = in_window; m_viewport = in_viewport;
+	std::cout<<"Hello Ocean (FFT)"<<std::endl;
+	m_window->SetScrollCallback(ScrollCB);
 	RHI::CommandList* cl=RHIGetImmediateCommandList();
-	RHI::Texture* bb=window->GetViewport()->GetCurrentBackBufferRTV();
-	RHI::Texture* ds=window->GetViewport()->GetCurrentBackBufferDSV();
+	RHI::Texture* bb=m_viewport->GetCurrentBackBufferRTV();
+	RHI::Texture* ds=m_viewport->GetCurrentBackBufferDSV();
 	CreateRes(); CreateCSO(); CreateSRBs();
 
 	auto* rt=graph.AddRetainedResource<RHI::TextureDesc,RHI::Texture>("RT",bb->GetTextureDesc(),bb);
@@ -232,9 +235,9 @@ void RT::OnInit_Logic(Application::Window* in_window) {
 	},
 	[=](CONST PD& d,CommandList* c){
 		Vector<ClearValue> cc; cc.push_back({0.2f,0.2f,0.3f,1.0f});
-		Texture* d2=window->GetViewport()->GetCurrentBackBufferDSV();
+		Texture* d2=m_viewport->GetCurrentBackBufferDSV();
 		if(d2) cc.push_back({1.0f,0});
-		c->SetRenderTarget({window->GetViewport()->GetCurrentBackBufferRTV()},d2,cc,d2!=nullptr);
+		c->SetRenderTarget({m_viewport->GetCurrentBackBufferRTV()},d2,cc,d2!=nullptr);
 		c->SetGraphicsPipeline(d.pso); c->SetShaderResourceBinding(d.srb);
 		c->Draw(DrawAttribute{3,1,0,0});
 	}); p5->SetIsCullable(false);
@@ -264,8 +267,8 @@ void RT::OnInit_Logic(Application::Window* in_window) {
 	[=](CONST PD& d,CommandList* c){
 		// params already uploaded by RecSpec each frame
 		Vector<ClearValue> nc;
-		Texture* d2=window->GetViewport()->GetCurrentBackBufferDSV();
-		c->SetRenderTarget({window->GetViewport()->GetCurrentBackBufferRTV()},d2,nc,false);
+		Texture* d2=m_viewport->GetCurrentBackBufferDSV();
+		c->SetRenderTarget({m_viewport->GetCurrentBackBufferRTV()},d2,nc,false);
 		c->SetGraphicsPipeline(d.pso); c->SetShaderResourceBinding(d.srb);
 		c->Draw(DrawAttribute{OCEAN_VERTS,1,0,0});
 	}); p6->SetIsCullable(false);
@@ -279,13 +282,19 @@ void RT::OnShutdown_Logic() {
 	delete op_buf; delete disp_buf; delete norm_buf;
 }
 void RT::OnUpdate(float dt) {
-	g_scroll=0; GLFWwindow* w=window->GetWindow(); int ww,wh; glfwGetWindowSize(w,&ww,&wh);
-	Float64 cx,cy2; glfwGetCursorPos(w,&cx,&cy2);
-	Bool dn=glfwGetMouseButton(w,GLFW_MOUSE_BUTTON_LEFT)==GLFW_PRESS;
-	if(dn&&drag){cy+=(Float32)(cx-lcx)*0.005f; cp=glm::clamp(cp+(Float32)(cy2-lcy)*0.005f,0.06f,1.45f);}
+	auto& input = MXRender::Input::InputSystem::Get();
+	g_scroll = input.GetScrollDelta();
+	Float32 cx, cy2; input.GetMousePos(cx, cy2);
+	Int ww, wh; m_window->GetFramebufferSize(ww, wh);
+	Bool dn = input.IsMouseDown(0); // Left
+	if(dn&&drag){cy+=(cx-(Float32)lcx)*0.005f; cp=glm::clamp(cp+(cy2-(Float32)lcy)*0.005f,0.06f,1.45f);}
 	drag=dn; lcx=cx; lcy=cy2; cd=glm::clamp(cd*powf(0.9f,g_scroll),8.f,300.f);
-	CONST Int ks[7]={GLFW_KEY_1,GLFW_KEY_2,GLFW_KEY_3,GLFW_KEY_4,GLFW_KEY_5,GLFW_KEY_UP,GLFW_KEY_DOWN};
-	Bool kn[7]; for(Int i=0;i<7;++i) kn[i]=glfwGetKey(w,ks[i])==GLFW_PRESS;
+	// Keyboard debug toggles via InputSystem
+	Bool kn[7]; for(Int i=0;i<7;++i) kn[i]=false;
+	kn[0]=input.IsKeyDown(MXRender::Input::EKey::K1); kn[1]=input.IsKeyDown(MXRender::Input::EKey::K2);
+	kn[2]=input.IsKeyDown(MXRender::Input::EKey::K3); kn[3]=input.IsKeyDown(MXRender::Input::EKey::K4);
+	kn[4]=input.IsKeyDown(MXRender::Input::EKey::K5);
+	kn[5]=input.IsKeyDown(MXRender::Input::EKey::Up); kn[6]=input.IsKeyDown(MXRender::Input::EKey::Down);
 	if(kn[0]&&!kp[0]){dm=0;ds=false;} if(kn[1]&&!kp[1]){dm=1;ds=false;}
 	if(kn[2]&&!kp[2]){dm=2;ds=false;} if(kn[3]&&!kp[3]){dm=3;ds=false;}
 	if(kn[4]&&!kp[4]){dm=2;ds=true;}

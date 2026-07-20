@@ -11,7 +11,17 @@
 #include <stack>
 #include <array>
 #include <stdexcept>
+#ifdef _MSC_VER
+#define FORCEINLINE __forceinline
+#define __forceinline __forceinline
+#else
+#define FORCEINLINE __attribute__((always_inline)) inline
+#define __forceinline __attribute__((always_inline)) inline
+#endif
+
+#if !PLATFORM_ANDROID
 #include <boost/stacktrace.hpp>
+#endif
 #include <iostream>
 #include <memory>
 #include "Reflection.h"
@@ -81,6 +91,11 @@
 #define MYRENDERER_VALUE(x) = x
 
 #define CHECK(Flag) if(Flag) { std::abort(); }
+#if PLATFORM_ANDROID
+// Android: Boost not available, simplified assert macros
+#define CHECK_WITH_LOG(Flag,LOG) if(Flag) { std::cout<<String(LOG)<<std::endl; throw std::runtime_error(LOG); }
+#define CHECK_WITH_LOG_WARNING(Flag,LOG) if(Flag) { std::cout<<String(LOG)<<std::endl; }
+#else
 #define CHECK_WITH_LOG(Flag,LOG) if(Flag) \
                                 {\
                                     boost::stacktrace::stacktrace stack_trace;\
@@ -93,6 +108,7 @@
                                     boost::stacktrace::stacktrace stack_trace;\
                                    	std::cout<< String(LOG)+"\n"+boost::stacktrace::to_string(stack_trace) <<std::endl; \
                                 }
+#endif
 #define VIRTUAL      virtual
 #define CONST        const
 #define MYDEFAULT      =default
@@ -148,8 +164,13 @@ using Array = std::array<T, Size>;
 template <class T, class FuncDelete = std::default_delete<T> >
 using UniquePtr = std::unique_ptr<T, FuncDelete>;
 
+#ifdef _MSC_VER
 #define DLLEXPORT __declspec(dllexport)
 #define DLLIMPORT __declspec(dllimport)
+#else
+#define DLLEXPORT
+#define DLLIMPORT
+#endif
 
 #define CORE_API DLLEXPORT
 #define TRACELOG_API DLLIMPORT

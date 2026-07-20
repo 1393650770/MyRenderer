@@ -1,3 +1,4 @@
+#include "Input/InputSystem.h"
 // VolumetricCloud: Hillaire-style sky LUTs + simplified raymarching (Unity ref).
 // Pipeline: March -> Filter -> TAA(EMA blend) -> Copy(hist) -> Composite
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -32,7 +33,7 @@ static CONST Float32 CLOUD_BOTTOM = 1500.0f, CLOUD_TOP = 4000.0f;
 static CONST Float32 FOG_DENSITY = 0.00006f;
 
 static Float32 g_scroll = 0.0f;
-static void ScrollCB(GLFWwindow*, Float64, Float64 y) { g_scroll += (Float32)y; }
+static void ScrollCB(Float64, Float64 y) { g_scroll += (Float32)y; }
 
 Vector<UInt32> RS(CONST String& fn) {
 	std::ifstream f(fn, std::ios::ate | std::ios::binary);
@@ -64,12 +65,12 @@ struct PD : public RenderGraphPassDataBase {
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RT, public MXRender::RenderInterface)
 public:
-	RT(Window* w) : window(w) {} RT() MYDEFAULT; VIRTUAL ~RT() MYDEFAULT;
-	VIRTUAL void OnInit_Logic(Application::Window*) OVERRIDE FINAL;
+	RT(PlatformWindow* w) : m_window(w) {} RT() MYDEFAULT; VIRTUAL ~RT() MYDEFAULT;
+	VIRTUAL void OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport) OVERRIDE FINAL;
 	VIRTUAL void OnShutdown_Logic() OVERRIDE FINAL;
 	VIRTUAL void OnUpdate(float) OVERRIDE FINAL;
 	VIRTUAL void OnRender() OVERRIDE FINAL;
-	Window* GetWindow() { return window; }
+	PlatformWindow* GetPlatformWindow() { return m_window; }
 protected:
 	void CreateRes();
 	void CreateCSO();
@@ -80,7 +81,8 @@ protected:
 	void RecTAA(RHI::CommandList*);
 	void RecCopy(RHI::CommandList*);
 	void RecMarch(RHI::CommandList*);
-	Window* window = nullptr;
+	PlatformWindow* m_window = nullptr;
+	RHI::Viewport* m_viewport = nullptr;
 	RHI::Buffer* op_buf = nullptr;
 	RHI::Texture *tex_shape=nullptr,*tex_detail=nullptr,*tex_weather=nullptr,
 	             *tex_trans=nullptr,*tex_skyview=nullptr,*tex_cloud=nullptr,
@@ -252,12 +254,15 @@ void RT::RecMarch(RHI::CommandList* c) {
 	c->TransitionTextureState(tex_cloud, ENUM_RESOURCE_STATE::ShaderResource);
 }
 
-void RT::OnInit_Logic(Application::Window* in_window) {
+void RT::OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport) {
+	m_window = in_window; m_viewport = in_viewport;
+	std::cout << "Hello VolumetricCloud" << std::endl;
+	m_window->SetScrollCallback(ScrollCB);
 	window = in_window; std::cout << "Hello VolumetricCloud" << std::endl;
 	glfwSetScrollCallback(window->GetWindow(), ScrollCB);
 	RHI::CommandList* cl = RHIGetImmediateCommandList();
-	RHI::Texture* bb = window->GetViewport()->GetCurrentBackBufferRTV();
-	RHI::Texture* ds = window->GetViewport()->GetCurrentBackBufferDSV();
+	RHI::Texture* bb = m_viewport->GetCurrentBackBufferRTV();
+	RHI::Texture* ds = m_viewport->GetCurrentBackBufferDSV();
 	CreateRes(); CreateCSO(); CreateSRBs();
 
 	auto* rt = graph.AddRetainedResource<RHI::TextureDesc, RHI::Texture>("RT", bb->GetTextureDesc(), bb);
@@ -344,9 +349,9 @@ void RT::OnInit_Logic(Application::Window* in_window) {
 	},
 	[=](CONST PD& d, CommandList* c) {
 		Vector<ClearValue> cc; cc.push_back({ 0.02f,0.03f,0.05f,1.0f });
-		Texture* d2 = window->GetViewport()->GetCurrentBackBufferDSV();
+		Texture* d2 = m_viewport->GetCurrentBackBufferDSV();
 		if (d2) cc.push_back({ 1.0f,0 });
-		c->SetRenderTarget({ window->GetViewport()->GetCurrentBackBufferRTV() }, d2, cc, d2 != nullptr);
+		c->SetRenderTarget({ m_viewport->GetCurrentBackBufferRTV() }, d2, cc, d2 != nullptr);
 		c->SetGraphicsPipeline(d.pso); c->SetShaderResourceBinding(d.srb);
 		c->Draw(DrawAttribute{ 3,1,0,0 });
 	}); p4->SetIsCullable(false);
@@ -360,35 +365,35 @@ void RT::OnShutdown_Logic() {
 	delete op_buf;
 }
 void RT::OnUpdate(float dt) {
-	GLFWwindow* w = window->GetWindow(); int ww, wh; glfwGetWindowSize(w, &ww, &wh);
-	Float64 cx, cy2; glfwGetCursorPos(w, &cx, &cy2);
-	Bool dn = glfwGetMouseButton(w, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+	auto& input = MXRender::Input::InputSystem::Get();
+	Int ww, wh; m_window->GetFramebufferSize(ww, wh);
+	Float32 cx, cy2; input.GetMousePos(cx, cy2);
+	Bool dn = input.IsMouseDown(0); // Left
 	if (dn && drag) {
-		cam_yaw += (Float32)(cx - lcx) * 0.003f;
-		cam_pitch = glm::clamp(cam_pitch + (Float32)(lcy - cy2) * 0.003f, -0.45f, 1.5f);
+		cam_yaw += (cx - (Float32)lcx) * 0.003f;
+		cam_pitch = glm::clamp(cam_pitch + ((Float32)lcy - cy2) * 0.003f, -0.45f, 1.5f);
 	}
 	drag = dn; lcx = cx; lcy = cy2;
 	cam_h = glm::clamp(cam_h * powf(1.25f, g_scroll), 2.0f, 6000.0f); g_scroll = 0;
 
-	CONST Int ks[5] = { GLFW_KEY_0,GLFW_KEY_1,GLFW_KEY_2,GLFW_KEY_3,GLFW_KEY_4 };
-	for (Int i = 0; i < 5; ++i) {
-		Bool kn = glfwGetKey(w, ks[i]) == GLFW_PRESS;
-		if (kn && !kp[i]) dm = i;
-		kp[i] = kn;
-	}
-	if (glfwGetKey(w, GLFW_KEY_LEFT) == GLFW_PRESS)  sun_azim -= 0.6f * dt;
-	if (glfwGetKey(w, GLFW_KEY_RIGHT) == GLFW_PRESS) sun_azim += 0.6f * dt;
-	if (glfwGetKey(w, GLFW_KEY_UP) == GLFW_PRESS)    sun_elev += 0.4f * dt;
-	if (glfwGetKey(w, GLFW_KEY_DOWN) == GLFW_PRESS)  sun_elev -= 0.4f * dt;
+	// Keyboard debug toggles via InputSystem
+	Bool kn[5]; kn[0]=input.IsKeyDown(MXRender::Input::EKey::K0);
+	kn[1]=input.IsKeyDown(MXRender::Input::EKey::K1); kn[2]=input.IsKeyDown(MXRender::Input::EKey::K2);
+	kn[3]=input.IsKeyDown(MXRender::Input::EKey::K3); kn[4]=input.IsKeyDown(MXRender::Input::EKey::K4);
+	for (Int i = 0; i < 5; ++i) { if (kn[i] && !kp[i]) dm = i; kp[i] = kn[i]; }
+	if (input.IsKeyDown(MXRender::Input::EKey::Left) )  sun_azim -= 0.6f * dt;
+	if (input.IsKeyDown(MXRender::Input::EKey::Right) ) sun_azim += 0.6f * dt;
+	if (input.IsKeyDown(MXRender::Input::EKey::Up) )    sun_elev += 0.4f * dt;
+	if (input.IsKeyDown(MXRender::Input::EKey::Down) )  sun_elev -= 0.4f * dt;
 	sun_elev = glm::clamp(sun_elev, -0.10f, 1.50f);
-	if (glfwGetKey(w, GLFW_KEY_Q) == GLFW_PRESS) coverage += 0.25f * dt;
-	if (glfwGetKey(w, GLFW_KEY_A) == GLFW_PRESS) coverage -= 0.25f * dt;
+	if (input.IsKeyDown(MXRender::Input::EKey::Q) ) coverage += 0.25f * dt;
+	if (input.IsKeyDown(MXRender::Input::EKey::A) ) coverage -= 0.25f * dt;
 	coverage = glm::clamp(coverage, 0.0f, 1.0f);
-	if (glfwGetKey(w, GLFW_KEY_W) == GLFW_PRESS) density += 0.5f * dt;
-	if (glfwGetKey(w, GLFW_KEY_S) == GLFW_PRESS) density -= 0.5f * dt;
+	if (input.IsKeyDown(MXRender::Input::EKey::W) ) density += 0.5f * dt;
+	if (input.IsKeyDown(MXRender::Input::EKey::S) ) density -= 0.5f * dt;
 	density = glm::clamp(density, 0.1f, 4.0f);
-	if (glfwGetKey(w, GLFW_KEY_E) == GLFW_PRESS) wind_speed += 20.0f * dt;
-	if (glfwGetKey(w, GLFW_KEY_D) == GLFW_PRESS) wind_speed -= 20.0f * dt;
+	if (input.IsKeyDown(MXRender::Input::EKey::E) ) wind_speed += 20.0f * dt;
+	if (input.IsKeyDown(MXRender::Input::EKey::D) ) wind_speed -= 20.0f * dt;
 	wind_speed = glm::clamp(wind_speed, 0.0f, 100.0f);
 
 	if (ww <= 0 || wh <= 0) return;

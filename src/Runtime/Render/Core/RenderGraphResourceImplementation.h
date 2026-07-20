@@ -73,24 +73,24 @@ std::unique_ptr<actual_type> RealizeResource(CONST description_type& description
 }
 
 template<>
-extern std::unique_ptr<MXRender::RHI::Texture> RealizeResource<MXRender::RHI::TextureDesc, MXRender::RHI::Texture>(CONST MXRender::RHI::TextureDesc& description);
+std::unique_ptr<MXRender::RHI::Texture> RealizeResource<MXRender::RHI::TextureDesc, MXRender::RHI::Texture>(CONST MXRender::RHI::TextureDesc& description);
 
 template<>
-extern std::unique_ptr<MXRender::RHI::Buffer> RealizeResource<MXRender::RHI::BufferDesc, MXRender::RHI::Buffer>(CONST MXRender::RHI::BufferDesc& description);
+std::unique_ptr<MXRender::RHI::Buffer> RealizeResource<MXRender::RHI::BufferDesc, MXRender::RHI::Buffer>(CONST MXRender::RHI::BufferDesc& description);
 
 template<>
-extern std::unique_ptr<MXRender::RHI::RenderPass> RealizeResource<MXRender::RHI::RenderPassDesc, MXRender::RHI::RenderPass>(CONST MXRender::RHI::RenderPassDesc& description);
+std::unique_ptr<MXRender::RHI::RenderPass> RealizeResource<MXRender::RHI::RenderPassDesc, MXRender::RHI::RenderPass>(CONST MXRender::RHI::RenderPassDesc& description);
 
 template<>
-extern std::unique_ptr<MXRender::RHI::FrameBuffer> RealizeResource<MXRender::RHI::FrameBufferDesc, MXRender::RHI::FrameBuffer>(CONST MXRender::RHI::FrameBufferDesc& description);
+std::unique_ptr<MXRender::RHI::FrameBuffer> RealizeResource<MXRender::RHI::FrameBufferDesc, MXRender::RHI::FrameBuffer>(CONST MXRender::RHI::FrameBufferDesc& description);
 template<>
-extern std::unique_ptr<MXRender::RHI::RenderPipelineState> RealizeResource<MXRender::RHI::RenderGraphiPipelineStateDesc, MXRender::RHI::RenderPipelineState>(CONST MXRender::RHI::RenderGraphiPipelineStateDesc& description);
+std::unique_ptr<MXRender::RHI::RenderPipelineState> RealizeResource<MXRender::RHI::RenderGraphiPipelineStateDesc, MXRender::RHI::RenderPipelineState>(CONST MXRender::RHI::RenderGraphiPipelineStateDesc& description);
 
 template<>
-extern std::unique_ptr<MXRender::RHI::ComputePipelineState> RealizeResource<MXRender::RHI::ComputePipelineStateDesc, MXRender::RHI::ComputePipelineState>(CONST MXRender::RHI::ComputePipelineStateDesc& description);
+std::unique_ptr<MXRender::RHI::ComputePipelineState> RealizeResource<MXRender::RHI::ComputePipelineStateDesc, MXRender::RHI::ComputePipelineState>(CONST MXRender::RHI::ComputePipelineStateDesc& description);
 
 template<>
-extern std::unique_ptr<MXRender::RHI::Shader> RealizeResource<MXRender::RHI::ShaderDesc, MXRender::RHI::Shader>(CONST MXRender::RHI::ShaderDesc& description);
+std::unique_ptr<MXRender::RHI::Shader> RealizeResource<MXRender::RHI::ShaderDesc, MXRender::RHI::Shader>(CONST MXRender::RHI::ShaderDesc& description);
 
 
 MYRENDERER_END_NAMESPACE

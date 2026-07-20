@@ -6,7 +6,9 @@
 #include "Core/TypeHash.h"
 #include "VK_CommandBuffer.h"
 #include "VK_Queue.h"
+#ifdef _MSC_VER
 #include <xutility>
+#endif
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)

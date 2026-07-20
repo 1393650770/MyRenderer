@@ -1,6 +1,8 @@
 #include"RenderTexture.h"
 #include<iostream>
+#ifdef _MSC_VER
 #include <xutility>
+#endif
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 TextureDesc::TextureDesc(const TextureDesc& other)
