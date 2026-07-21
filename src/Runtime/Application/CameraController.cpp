@@ -5,6 +5,8 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Application)
 
+OrbitCameraController::~OrbitCameraController() MYDEFAULT;
+
 void OrbitCameraController::Attach(PlatformWindow* in_window)
 {
 	window = in_window;
