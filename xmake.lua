@@ -65,21 +65,6 @@ function PlatformSettings()
         add_defines("PLATFORM_ANDROID", "_XOPEN_SOURCE=700")
         add_cxflags("-Wno-c++11-narrowing")
         add_ldflags("-Wl,--unresolved-symbols=ignore-in-shared-libs", {force = true})
-        local ndk_root_file = os.projectdir() .. "/.xmake/android_ndk.txt"
-        local ndk_f = io.open(ndk_root_file, "r")
-        if ndk_f then
-            local ndk_path = ndk_f:read("*line")
-            ndk_f:close()
-            if ndk_path and #ndk_path > 0 then
-                local glue_dir = ndk_path .. "/sources/android/native_app_glue"
-                add_includedirs(glue_dir, {public = true})
-                add_files(glue_dir .. "/android_native_app_glue.c")
-            else
-                raise("NDK path is empty in .xmake/android_ndk.txt")
-            end
-        else
-            raise("Cannot read .xmake/android_ndk.txt — please set your NDK path there")
-        end
     end
 end
 
@@ -268,6 +253,18 @@ target("CompileResource")
     before_build(CompileFunc)
 
 target("Runtime")
+    if is_plat("android") then
+        on_load(function (target)
+            local ndk_path = io.readfile(os.projectdir() .. "/.xmake/android_ndk.txt")
+            if ndk_path then
+                local glue_dir = ndk_path:trim() .. "/sources/android/native_app_glue"
+                target:add("includedirs", glue_dir, {public = true})
+                target:add("files", glue_dir .. "/android_native_app_glue.c")
+            else
+                raise("Cannot read .xmake/android_ndk.txt -- set your NDK path there")
+            end
+        end)
+    end
     add_rules("module")
     add_packages("glslang")
     add_rules("utils.glsl2spv", {outputdir = "$(projectdir)/src/Runtime/GenCode/Shader",bin2c = true})

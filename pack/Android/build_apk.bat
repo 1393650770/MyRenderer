@@ -1,16 +1,21 @@
 @echo off
 setlocal
-set "BUILD_TOOLS=D:\Project\AndroidSDK\build-tools\34.0.0"
-set "PLATFORM_TOOLS=D:\Project\AndroidSDK\platform-tools\platform-tools"
-set "JDK_BIN=D:\Project\AndroidSDK\jdk\jdk21\bin"
-set "PATH=%BUILD_TOOLS%;%JDK_BIN%;%PATH%"
 
+REM Android SDK paths - edit these two for your machine
+set "ANDROID_SDK_ROOT=D:\Project\AndroidSDK"
+set "JDK_ROOT=D:\Project\AndroidSDK\jdk\jdk21"
+
+REM derived paths
+set "BUILD_TOOLS=%ANDROID_SDK_ROOT%\build-tools\34.0.0"
+set "ANDROID_JAR=%ANDROID_SDK_ROOT%\platforms\android-35\android.jar"
+set "PATH=%BUILD_TOOLS%;%JDK_ROOT%\bin;%PATH%"
+
+REM project paths (auto-detected)
 set "APK_DIR=%~dp0"
 set "PROJECT_DIR=%APK_DIR%..\.."
 set "BUILD_DIR=%PROJECT_DIR%\build\android\arm64-v8a\release"
 set "OUT_APK=%APK_DIR%mxrender_hello.apk"
 set "MANIFEST=%APK_DIR%AndroidManifest.xml"
-set "ANDROID_JAR=D:\Project\AndroidSDK\platforms\android-35\android.jar"
 
 echo === MXRender APK Builder ===
 
@@ -19,20 +24,15 @@ if exist "%TMPDIR%" rmdir /s /q "%TMPDIR%"
 mkdir "%TMPDIR%\lib\arm64-v8a"
 
 echo Copying .so files...
-REM Copy main .so and Runtime
 copy "%BUILD_DIR%\libRendererSample-HelloTriangle.so" "%TMPDIR%\lib\arm64-v8a\" >nul
 copy "%BUILD_DIR%\libRuntime.so" "%TMPDIR%\lib\arm64-v8a\" >nul
-REM Copy dependency .so (from xmake cache)
+
+echo Copying imgui...
 for /d %%d in ("%LOCALAPPDATA%\.xmake\cache\packages\*\i\imgui\*\source\imgui\build_*\android\arm64-v8a\*") do (
     if exist "%%d\libimgui.so" copy "%%d\libimgui.so" "%TMPDIR%\lib\arm64-v8a\" >nul
 )
-REM Also check the installed package dir
 for /d %%d in ("%LOCALAPPDATA%\.xmake\packages\i\imgui\*\*\lib") do (
     if exist "%%d\libimgui.so" copy "%%d\libimgui.so" "%TMPDIR%\lib\arm64-v8a\" >nul
-)
-REM Also copy from the known cache location
-if exist "%LOCALAPPDATA%\.xmake\cache\packages\2607\i\imgui\v1.89.9-docking\source\imgui\build_2a632381\android\arm64-v8a\debug\libimgui.so" (
-    copy "%LOCALAPPDATA%\.xmake\cache\packages\2607\i\imgui\v1.89.9-docking\source\imgui\build_2a632381\android\arm64-v8a\debug\libimgui.so" "%TMPDIR%\lib\arm64-v8a\" >nul
 )
 
 echo Copying shader assets...
@@ -47,16 +47,14 @@ if errorlevel 1 goto :error
 
 echo Adding .so to APK...
 cd /d "%TMPDIR%"
-REM Add all .so files
 for %%s in (lib\arm64-v8a\*.so) do (
-    "%JDK_BIN%\jar" uf base.apk "%%s"
+    "%JDK_ROOT%\bin\jar" uf base.apk "%%s"
 )
-REM Add assets (shader, textures)
 if exist assets\Shader\*.spv (
-    "%JDK_BIN%\jar" uf base.apk assets/
+    "%JDK_ROOT%\bin\jar" uf base.apk assets/
 )
 if exist assets\Texture (
-    "%JDK_BIN%\jar" uf base.apk assets/
+    "%JDK_ROOT%\bin\jar" uf base.apk assets/
 )
 
 echo Aligning...

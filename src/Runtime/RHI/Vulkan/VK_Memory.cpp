@@ -238,8 +238,8 @@ void VK_DeviceMemoryManager::Destroy()
 	TrimMemory(true);
 	for (Int index = 0; index < memory_heaps.size(); ++index)
 	{
-		CHECK_WITH_LOG(memory_heaps[index].allocations.size(),
-			"RHI Info: Found %d unfree allocation !", memory_heaps[index].allocations.size())
+	CHECK_WITH_LOG(memory_heaps[index].allocations.size(),
+			("RHI Info: Found " + std::to_string(memory_heaps[index].allocations.size()) + " unfree allocation !").c_str())
 	}
 	num_allocations = 0;
 }

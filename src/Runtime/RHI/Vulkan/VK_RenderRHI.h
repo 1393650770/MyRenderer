@@ -23,6 +23,13 @@ class VK_BindlessManager;
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(VulkanRenderFactory,public RenderFactory)
 public:
 	
+		//  UE  r.Vulkan.EnableValidation — validation levels
+		// 0=off, 1=errors only, 2=warnings+errors
+		Int validation_level = 0;
+		// If true, register debug utils messenger callback (on top of validation layers)
+		Bool enable_debug_callback = false;
+		// If true, do not crash when validation layers are unavailable (Android behaviour)
+		Bool validation_optional = false;
 MYRENDERER_END_CLASS
 
 
@@ -91,7 +98,7 @@ private:
 
 	VkPhysicalDevice METHOD(GetGpuFromHarddrive)();
 	void METHOD(CreateDevice)(Bool enable_validation_layers);
-	void METHOD(CreateInstance)(Bool enable_validation_layers);
+	void METHOD(CreateInstance)(Bool enable_validation_layers, Bool validation_optional);
 	void METHOD(InitializeDebugmessenger)(Bool enable_validation_layers);
 
 	Bool METHOD(CheckValidationlayerSupport)();

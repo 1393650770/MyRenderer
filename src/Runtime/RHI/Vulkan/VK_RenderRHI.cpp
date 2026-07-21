@@ -10,6 +10,7 @@
 #include "VK_Viewport.h"
 #include "VK_Shader.h"
 #include <iostream>
+#include "Platform/PlatformDebug.h"
 #include <thread>
 #include "VK_Texture.h"
 #include "VK_RenderPass.h"
@@ -33,23 +34,32 @@ Vector<CONST Char*> deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
+//  UE  VULKAN_REPORT_LOG — route validation messages through PlatformDebug
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-	std::cerr << "validation layer: " << messageSeverity << " " << messageType << " " << pCallbackData->pMessage << std::endl;
-	CHECK(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT == messageSeverity && messageType == VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
+	Platform::DebugPrintf("VulkanValidation", "%s", pCallbackData->pMessage);
+	// Only abort on ERROR-level validation messages on non-Android (UE behaviour: never abort)
+	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+		Platform::DebugErrorf("VulkanValidation", "%s", pCallbackData->pMessage);
+	}
 	return VK_FALSE;
 }
 
 void VulkanRHI::Init(RenderFactory* render_factory)
 {
 	VulkanRenderFactory* vulkan_render_factory = STATIC_CAST(render_factory,VulkanRenderFactory);
-	Bool enable_render_debug = vulkan_render_factory->enable_render_debug;
-	//  从 factory 读取线程模式
-	g_thread_mode = vulkan_render_factory->threading_mode;
-	g_enable_rhi_thread = (g_thread_mode >= EThreadingMode::RHIThread);
-	CreateInstance(enable_render_debug);
-	InitializeDebugmessenger(enable_render_debug);
-	CreateDevice(enable_render_debug);
-
+		// Backward compat: if old enable_render_debug is true but new validation_level is 0, enable level 2
+			Int validation_lvl = vulkan_render_factory->validation_level;
+			if (validation_lvl == 0 && vulkan_render_factory->enable_render_debug)
+				validation_lvl = 2;
+			Bool enable_validation = (validation_lvl > 0);
+			Bool enable_debug_cb = vulkan_render_factory->enable_debug_callback;
+			Bool validation_optional = vulkan_render_factory->validation_optional;
+		//  从 factory 读取线程模式
+		g_thread_mode = vulkan_render_factory->threading_mode;
+		g_enable_rhi_thread = (g_thread_mode >= EThreadingMode::RHIThread);
+		CreateInstance(enable_validation, validation_optional);
+		InitializeDebugmessenger(enable_debug_cb);
+		CreateDevice(enable_validation);
 	write_cb = device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::GRAPHICS);
 	rhi_cb  = device->GetCommandBufferManager()->GetOrCreateCommandBuffer(ENUM_QUEUE_TYPE::GRAPHICS);
 	immediate_command_buffer = write_cb;
@@ -288,11 +298,16 @@ void VulkanRHI::PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfo
 	create_info.pfnUserCallback = debugCallback;
 }
 
-void VulkanRHI::CreateInstance(Bool enable_validation_layers)
+void VulkanRHI::CreateInstance(Bool enable_validation_layers, Bool validation_optional)
 {
-	if (enable_validation_layers && !CheckValidationlayerSupport()) {
-		throw std::runtime_error("validation layers requested, but not available!");
-	}
+		if (enable_validation_layers && !CheckValidationlayerSupport()) {
+			if (validation_optional) {
+				Platform::DebugWarnf("MXRender", "Vulkan validation layers requested but not available, continuing without them");
+				enable_validation_layers = false;
+			} else {
+				throw std::runtime_error("validation layers requested, but not available!");
+			}
+		}
 
 	VkApplicationInfo app_info{};
 	app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;

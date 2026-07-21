@@ -73,10 +73,8 @@ xmake
 | 工具 | 用途 | 路径配置位置 |
 |------|------|-------------|
 | Android NDK r27+ | 交叉编译器 | `.xmake/android_ndk.txt` |
-| JDK 21+ | APK 签名 | `pack/Android/build_apk.bat` 顶部 `JDK_BIN` |
-| Android SDK Build-Tools 34+ | aapt2 / apksigner / zipalign | `pack/Android/build_apk.bat` 顶部 `BUILD_TOOLS` |
-| Android SDK Platform (android-35) | android.jar | `pack/Android/build_apk.bat` 顶部 `ANDROID_JAR` |
-| Android SDK Platform-Tools | adb | `pack/Android/build_apk.bat` 顶部 `PLATFORM_TOOLS`（可选，仅 adb） |
+| JDK 21+ | APK 签名 | `pack/Android/build_apk.bat` 顶部 `JDK_ROOT` |
+| Android SDK | build-tools / platforms / adb | `pack/Android/build_apk.bat` 顶部 `ANDROID_SDK_ROOT` |
 
 #### 路径配置
 
@@ -88,17 +86,18 @@ xmake
 D:/Project/AndroidNDK/android-ndk-r27d-windows/android-ndk-r27d
 ```
 
-`xmake.lua` 的 `PlatformSettings()` 会在 Android 平台自动读取该文件，拼接 `sources/android/native_app_glue` 路径。换机器只需改这一个文件。
+xmake 在编译阶段自动读取该文件。换机器只需改这一个文件。
 
 **② SDK / JDK 路径**（APK 打包用）
 
-编辑 `pack/Android/build_apk.bat`，修改顶部 `set` 变量：
+编辑 `pack/Android/build_apk.bat`，修改顶部两个变量：
 
 ```batch
-set "BUILD_TOOLS=D:\your\AndroidSDK\build-tools\34.0.0"
-set "JDK_BIN=D:\your\AndroidSDK\jdk\jdk21\bin"
-set "ANDROID_JAR=D:\your\AndroidSDK\platforms\android-35\android.jar"
+set "ANDROID_SDK_ROOT=D:\your\AndroidSDK"
+set "JDK_ROOT=D:\your\AndroidSDK\jdk\jdk21"
 ```
+
+build-tools、platforms、android.jar 等路径自动从 `ANDROID_SDK_ROOT` 派生。
 
 #### 编译 & 打包
 

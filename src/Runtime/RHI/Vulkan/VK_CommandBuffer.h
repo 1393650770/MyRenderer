@@ -144,9 +144,7 @@ public:
 		if(!bypass)return;
 		if (command_state == EState::IsInsideRenderPass)
 		{
-#if !PLATFORM_ANDROID
 			vkCmdEndRendering(command_buffer);
-#endif
 			state_cache = StateCache();
 			command_state = EState::HasEndedRenderPass;
 		}

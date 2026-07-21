@@ -76,7 +76,7 @@ VK_SwapChain::VK_SwapChain(VkInstance in_instance, VK_Device* in_device, void* i
 	VkFormat needed_format2 = needed_format;
 	if (needed_format == VK_FORMAT_B8G8R8A8_UNORM)
 	{
-		needed_format2 = (VkFormat)(VK_FORMAT_R8G8B8A8_UNORM+1);
+		needed_format2 = VK_FORMAT_R8G8B8A8_UNORM;
 	}
 	for (const auto& Format : Formats) {
 		if ((Format.format == needed_format || Format.format == needed_format2) && Format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {

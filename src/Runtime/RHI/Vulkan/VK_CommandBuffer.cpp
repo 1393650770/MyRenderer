@@ -287,9 +287,7 @@ void VK_CommandBuffer::BeginDynamicRendering(CONST Vector<Texture*>& render_targ
 		depth.clearValue.depthStencil = {1.0f, 0};
 		ri.pDepthAttachment = &depth;
 	}
-	#if !PLATFORM_ANDROID
 	vkCmdBeginRendering(command_buffer, &ri);
-#endif
 	command_state = EState::IsInsideRenderPass;
 	state_cache.render_pass = VK_NULL_HANDLE;
 	state_cache.framebuffer_width = width;

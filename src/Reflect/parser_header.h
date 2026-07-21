@@ -15,6 +15,7 @@
 #include  "D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/FileDialog.h"
 #include  "D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/FileSystem.h"
 #include  "D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Platform.h"
+#include  "D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/PlatformDebug.h"
 #include  "D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/PlatformWindow.h"
 #include  "D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/DeviceProfile.h"
 #include  "D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderBindlessManager.h"

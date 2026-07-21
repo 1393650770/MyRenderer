@@ -92,9 +92,11 @@
 
 #define CHECK(Flag) if(Flag) { std::abort(); }
 #if PLATFORM_ANDROID
-// Android: Boost not available, simplified assert macros (variadic for format args)
-#define CHECK_WITH_LOG(Flag, ...) if(Flag) { throw std::runtime_error("CHECK failed"); }
-#define CHECK_WITH_LOG_WARNING(Flag, ...) if(Flag) { }
+// Android: Boost not available, use logcat for diagnostics (UE pattern — never silent-fail)
+// Uses %s format — all callers must pass a single string (literal, c_str(), or pre-formatted)
+#include <android/log.h>
+#define CHECK_WITH_LOG(Flag, ...) if(Flag) { __android_log_print(ANDROID_LOG_ERROR, "MXRender", "CHECK: %s", __VA_ARGS__); throw std::runtime_error("CHECK failed"); }
+#define CHECK_WITH_LOG_WARNING(Flag, ...) if(Flag) { __android_log_print(ANDROID_LOG_WARN, "MXRender", "CHECK: %s", __VA_ARGS__); }
 #else
 #define CHECK_WITH_LOG(Flag,LOG) if(Flag) \
                                 {\

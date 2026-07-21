@@ -8,6 +8,7 @@
 #include "RHI/RenderViewport.h"
 #include "RHI/RenderCommandList.h"
 #include "Tool/ShaderLibrary.h"
+#include "Platform/PlatformDebug.h"
 #include <android/log.h>
 #include <android/input.h>
 
@@ -144,6 +145,7 @@ void AndroidWindow::StartEventLoop()
 	if (!m_render) return;
 
 	Bool rhi_ok = false;
+		Int frame_count = 0;
 	while (!m_destroy_requested)
 	{
 		int ident, events;
@@ -164,6 +166,9 @@ void AndroidWindow::StartEventLoop()
 			m_render->OnPostRender(ctx);
 			auto* cmd = RHIGetImmediateCommandList();
 			m_viewport->Present(cmd, true, true);
+				++frame_count;
+				if (frame_count % 60 == 0)
+					Platform::DebugPrintf("MXRender", "Rendered %d frames", frame_count);
 		}
 	}
 	if (rhi_ok) { if (m_render) m_render->OnShutdown_Logic(); ShutdownRHI(); }

@@ -37,7 +37,7 @@ Vector<UInt32> ShaderLibrary::ReadSpirv(CONST String& in_filename)
 	}
 #endif
 	std::ifstream file(in_filename, std::ios::ate | std::ios::binary);
-	CHECK_WITH_LOG(!file.is_open(), "Tool Error: fail to open the shader file: " + in_filename)
+	CHECK_WITH_LOG(!file.is_open(), ("Tool Error: fail to open the shader file: " + in_filename).c_str())
 	size_t file_size = (size_t)file.tellg();
 	Vector<UInt32> buffer(file_size / sizeof(UInt32));
 	file.seekg(0);
