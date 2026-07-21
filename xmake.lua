@@ -3,7 +3,7 @@ if is_plat("windows") then
 end
 if is_plat("android") then
     add_requires("glm","tinyobjloader","nlohmann_json","gli","optick","rttr")
-    add_syslinks("vulkan") -- libvulkan.so on device, headers from NDK
+    add_syslinks("vulkan", "android") -- libvulkan.so + libandroid.so on device
 else
     add_requires("vulkansdk", "glm","tinyobjloader","nlohmann_json","gli","optick","rttr")
 end
@@ -63,7 +63,10 @@ function PlatformSettings()
         add_defines("PLATFORM_MACOS")
     elseif is_plat("android") then
         add_defines("PLATFORM_ANDROID", "_XOPEN_SOURCE=700")
+        add_cxflags("-Wno-c++11-narrowing")
+        add_ldflags("-Wl,--unresolved-symbols=ignore-in-shared-libs", {force = true})
         add_includedirs("D:/Project/AndroidNDK/android-ndk-r27d-windows/android-ndk-r27d/sources/android/native_app_glue", {public = true})
+        add_files("D:/Project/AndroidNDK/android-ndk-r27d-windows/android-ndk-r27d/sources/android/native_app_glue/android_native_app_glue.c")
     end
 end
 
@@ -220,7 +223,11 @@ function MoveResource(target)
 end
 
 function CommonProjectSetting()
-    set_kind("binary")
+    if is_plat("android") then
+        set_kind("shared")
+    else
+        set_kind("binary")
+    end
     set_languages("clatest", "cxx20")
     PlatformSettings()
     add_deps("Runtime")

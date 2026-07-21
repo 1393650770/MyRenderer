@@ -2,6 +2,7 @@
 // the regression reference for the base class (the image must be identical
 // to the pre-migration version).
 #include "Application/SampleApp.h"
+#include "Platform/Android/AndroidEntry.h"
 #include "Tool/ShaderLibrary.h"
 #include "Render/Core/RenderGraph.h"
 #include "Render/Core/RenderGraphPass.h"

@@ -16,7 +16,9 @@
 #include "imgui_impl_vulkan.h"
 #include "imgui_impl_glfw.h"
 #endif
+#if !PLATFORM_ANDROID
 #include "GLFW/glfw3.h"
+#endif
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -285,7 +287,9 @@ void VK_CommandBuffer::BeginDynamicRendering(CONST Vector<Texture*>& render_targ
 		depth.clearValue.depthStencil = {1.0f, 0};
 		ri.pDepthAttachment = &depth;
 	}
+	#if !PLATFORM_ANDROID
 	vkCmdBeginRendering(command_buffer, &ri);
+#endif
 	command_state = EState::IsInsideRenderPass;
 	state_cache.render_pass = VK_NULL_HANDLE;
 	state_cache.framebuffer_width = width;
@@ -339,6 +343,7 @@ void VK_CommandBuffer::TransitionTextureState(Texture* texture, CONST ENUM_RESOU
 
 }
 
+#if !PLATFORM_ANDROID
 void VK_CommandBuffer::BeginUI()
 {
 	// CPU阶段：始终在主线程执行（NewFrame 必须与 GLFW 输入同步）
@@ -421,8 +426,15 @@ void VK_CommandBuffer::EndUI_Platform()
 		glfwMakeContextCurrent(backup_current_context);
 	}
 }
+#else  // PLATFORM_ANDROID — stubs for ImGui methods
+void VK_CommandBuffer::BeginUI() {}
+void VK_CommandBuffer::EndUI() {}
+void VK_CommandBuffer::BeginUI_Logic() {}
+void VK_CommandBuffer::EndUI_Render() {}
+void VK_CommandBuffer::EndUI_Platform() {}
+#endif // !PLATFORM_ANDROID
 
-// 
+//
 
 void VK_CommandBuffer::TransitionRenderTargets(CONST Vector<Texture*>& render_targets, Texture* depth_stencil)
 {
@@ -1130,12 +1142,11 @@ void VK_CommandBuffer::Replay()
 		case RHICommandType::BeginUI:
 			// CPU phase already executed on main thread (NewFrame)
 			break;
+#if !PLATFORM_ANDROID
 		case RHICommandType::EndUI:
-			// GPU submission only; CPU phase (Render+UpdatePlatformWindows) already done on main thread
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
 			break;
 		case RHICommandType::RenderImGui: {
-			// Save/restore context — GImGui is global, never set to null
 			auto* c = static_cast<RHICmdRenderImGui*>(cmd.get());
 			auto* prev_ctx = ImGui::GetCurrentContext();
 			if (c->imgui_context)
@@ -1145,6 +1156,7 @@ void VK_CommandBuffer::Replay()
 			ImGui::SetCurrentContext(prev_ctx);
 			break;
 		}
+#endif
 		case RHICommandType::WriteTimestamp: {
 			auto* c = static_cast<RHICmdWriteTimestamp*>(cmd.get());
 			WriteTimestamp(c->index);

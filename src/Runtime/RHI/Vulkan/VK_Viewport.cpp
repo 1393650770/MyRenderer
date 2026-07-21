@@ -10,9 +10,11 @@
 #include "VK_FrameBuffer.h"
 
 
+#if !PLATFORM_ANDROID
 #include <imgui_impl_vulkan.h>
 
 #include <imgui_internal.h>
+#endif
 #include "VK_DescriptorSets.h"
 #include "VK_RenderPass.h"
 #include "VK_PipelineState.h"
@@ -77,6 +79,9 @@ void VK_Viewport::Present(MXRender::RHI::CommandList* in_cmd_list, bool is_prese
 
 void VK_Viewport::AttachUiLayer(UI::UIBase* ui_layer)
 {
+#if PLATFORM_ANDROID
+	(void)ui_layer;
+#else
 	ImGui_ImplVulkan_InitInfo init_info = {};
 	init_info.Instance = swap_chain->GetInstance();
 	init_info.PhysicalDevice = device->GetGpu();
@@ -138,6 +143,7 @@ void VK_Viewport::AttachUiLayer(UI::UIBase* ui_layer)
 
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
+#endif
 }
 
 void VK_Viewport::PresentInternal(VK_CommandBuffer* in_cmd_list, VK_Queue* submit_queue, VK_Queue* present_queue, bool is_lock_to_vsync)

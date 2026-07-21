@@ -153,6 +153,7 @@ parser_header.o: \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\functional \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ResourceRegistry.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/TypeHash.h \
+  D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Android/AndroidEntry.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Android/AndroidWindow.h \
   D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Desktop/DesktopWindow.h \
   Platform/PlatformWindow.h \

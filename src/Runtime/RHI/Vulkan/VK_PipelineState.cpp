@@ -141,7 +141,7 @@ VK_PipelineState::VK_PipelineState(VK_Device* in_device, CONST RenderGraphiPipel
 
 		Vector< VkPipelineColorBlendAttachmentState> color_blend_attachment_state ;
 		color_blend_attachment_state.resize(desc.blend_state.render_targets.size());
-		for(UINT i = 0; i < color_blend_attachment_state.size(); i++)
+		for(UInt32 i = 0; i < (UInt32)color_blend_attachment_state.size(); i++)
 		{
 			// ENUM_COLOR_MASK bits match VkColorComponentFlagBits (R=1,G=2,B=4,A=8) one-to-one.
 			color_blend_attachment_state[i].colorWriteMask = (VkColorComponentFlags)desc.blend_state.render_targets[i].write_mask;

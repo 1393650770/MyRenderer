@@ -1,5 +1,8 @@
 #include"RenderTexture.h"
 #include<iostream>
+#include <algorithm>
+using std::max;
+using std::min;
 #ifdef _MSC_VER
 #include <xutility>
 #endif

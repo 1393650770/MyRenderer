@@ -64,6 +64,39 @@ xmake
   3. **FlatBuffers codegen** — `flatc` generates C++ from the `*.fbs` schemas
 - After each build, shaders/textures/dlls are copied next to the executables in `build/windows/x64/<mode>/`.
 
+### Android Build (Cross-Compile)
+
+> **Status**: ARM64 cross-compilation + APK packaging verified. Shader multi-target & on-device testing WIP.
+
+#### Prerequisites
+
+| Tool | Path Config | Purpose |
+|------|-------------|--------|
+| Android NDK r27+ | `.xmake/android_ndk.txt` | Cross-compiler |
+| JDK 21+ | `D:/Project/AndroidSDK/jdk/jdk21` | APK signing |
+| Android SDK Build-Tools | `D:/Project/AndroidSDK/build-tools/34.0.0` | aapt2 / apksigner / zipalign |
+| Android SDK Platform | `D:/Project/AndroidSDK/platforms/android-35` | android.jar |
+| Android SDK Platform-Tools | `D:/Project/AndroidJDK/platform-tools-latest-windows/platform-tools` | adb |
+
+#### Path Configuration
+
+1. **NDK path**: Edit `.xmake/android_ndk.txt` — one line with your NDK root path.
+2. **SDK/build-tools/platform paths**: Edit `.xmake/apk/build_apk.bat` — update the `set` variables at the top.
+
+#### Build + Package
+
+```batch
+# 1. Configure & cross-compile (produces .so)
+xmake f -p android -a arm64-v8a --ndk=D:/path/to/ndk --ndk_sdkver=26 -y
+xmake build RendererSample-HelloTriangle
+
+# 2. Package into APK
+.xmake\apk\build_apk.bat
+
+# 3. Install to device
+adb install -r .xmake\apk\mxrender_hello.apk
+```
+
 ## Branch
 ① The release version is in the branch [**main**] 
 

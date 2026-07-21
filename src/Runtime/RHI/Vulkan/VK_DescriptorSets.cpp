@@ -29,6 +29,11 @@ VK_DescriptorPoolManager::~VK_DescriptorPoolManager()
 
 VK_DescriptorPoolManager::VK_DescriptorPoolManager(VK_Device* in_device, UInt32 in_max_descriptorsets) : device(in_device), max_descriptorsets(in_max_descriptorsets)
 {
+	// Clamp max descriptor sets to the device's physical limit (e.g. mobile GPUs
+	// may report large maxSamplerAllocationCount but have low per-pool limits).
+	CONST auto& limits = device->GetLimits();
+	if (limits.maxDescriptorSetSamplers > 0 && max_descriptorsets > limits.maxDescriptorSetSamplers)
+		max_descriptorsets = limits.maxDescriptorSetSamplers;
 	descriptor_pool = GrabPool();
 }
 
@@ -45,42 +50,41 @@ VkDescriptorPool VK_DescriptorPoolManager::CreatePool()
 	CONST UInt32 limit_max_input_attachments = max_descriptorsets / 16;
 
 	std::vector<VkDescriptorPoolSize> types(10);
+	// Clamp to device physical limits (mobile GPUs have much lower limits)
+	CONST auto& limits = device->GetLimits();
+	auto clamp_count = [&](UInt32 count, UInt32 limit) -> UInt32 {
+		return limit > 0 ? std::min(count, limit) : count;
+	};
+
 	types[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	types[0].descriptorCount = limit_max_uniform_buffers;
+	types[0].descriptorCount = clamp_count(limit_max_uniform_buffers, limits.maxDescriptorSetUniformBuffers);
 
 	types[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-	types[1].descriptorCount = limit_max_uniform_buffers;
-
+	types[1].descriptorCount = clamp_count(limit_max_uniform_buffers, limits.maxDescriptorSetUniformBuffersDynamic);
 
 	types[2].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-	types[2].descriptorCount = limit_max_samplers;
-
+	types[2].descriptorCount = clamp_count(limit_max_samplers, limits.maxDescriptorSetSamplers);
 
 	types[3].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	types[3].descriptorCount = limit_max_combined_image_samplers;
-
+	types[3].descriptorCount = clamp_count(limit_max_combined_image_samplers, limits.maxDescriptorSetSampledImages);
 
 	types[4].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	types[4].descriptorCount = limit_max_sampled_images;
-
+	types[4].descriptorCount = clamp_count(limit_max_sampled_images, limits.maxDescriptorSetSampledImages);
 
 	types[5].type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-	types[5].descriptorCount = limit_max_uniform_texel_buffers;
-
+	types[5].descriptorCount = clamp_count(limit_max_uniform_texel_buffers, limits.maxDescriptorSetSampledImages);
 
 	types[6].type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-	types[6].descriptorCount = limit_max_storage_texel_buffers;
-
+	types[6].descriptorCount = clamp_count(limit_max_storage_texel_buffers, limits.maxDescriptorSetStorageImages);
 
 	types[7].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	types[7].descriptorCount = limit_max_storage_buffers;
-
+	types[7].descriptorCount = clamp_count(limit_max_storage_buffers, limits.maxDescriptorSetStorageBuffers);
 
 	types[8].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	types[8].descriptorCount = limit_max_storage_image;
+	types[8].descriptorCount = clamp_count(limit_max_storage_image, limits.maxDescriptorSetStorageImages);
 
 	types[9].type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-	types[9].descriptorCount = limit_max_input_attachments;
+	types[9].descriptorCount = clamp_count(limit_max_input_attachments, limits.maxDescriptorSetInputAttachments);
 
 
 	VkDescriptorPoolCreateInfo pool_info;

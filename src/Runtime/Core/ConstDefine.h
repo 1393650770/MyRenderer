@@ -92,9 +92,9 @@
 
 #define CHECK(Flag) if(Flag) { std::abort(); }
 #if PLATFORM_ANDROID
-// Android: Boost not available, simplified assert macros
-#define CHECK_WITH_LOG(Flag,LOG) if(Flag) { std::cout<<String(LOG)<<std::endl; throw std::runtime_error(LOG); }
-#define CHECK_WITH_LOG_WARNING(Flag,LOG) if(Flag) { std::cout<<String(LOG)<<std::endl; }
+// Android: Boost not available, simplified assert macros (variadic for format args)
+#define CHECK_WITH_LOG(Flag, ...) if(Flag) { throw std::runtime_error("CHECK failed"); }
+#define CHECK_WITH_LOG_WARNING(Flag, ...) if(Flag) { }
 #else
 #define CHECK_WITH_LOG(Flag,LOG) if(Flag) \
                                 {\

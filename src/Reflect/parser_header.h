@@ -9,6 +9,7 @@
 #include  "D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ResourceHandle.h"
 #include  "D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ResourceRegistry.h"
 #include  "D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/TypeHash.h"
+#include  "D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Android/AndroidEntry.h"
 #include  "D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Android/AndroidWindow.h"
 #include  "D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Desktop/DesktopWindow.h"
 #include  "D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/FileDialog.h"

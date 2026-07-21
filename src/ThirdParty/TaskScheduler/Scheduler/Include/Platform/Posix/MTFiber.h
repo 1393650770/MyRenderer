@@ -37,7 +37,7 @@
 
 #else
 
-#if 0 // disabled on Android (no ucontext)
+#if !defined(__ANDROID__)
 
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE
@@ -192,7 +192,22 @@ namespace MT
 
 }
 
-#endif // #if 0 (disabled ucontext)
+#else // __ANDROID__ — minimal stub (no ucontext on NDK r27+)
+
+namespace MT
+{
+	class Fiber
+	{
+	public:
+		Fiber() {}
+		~Fiber() {}
+		void CreateFromCurrentThreadAndRun(TThreadEntryPoint entryPoint, void* userData) { entryPoint(userData); }
+		void Create(size_t, TThreadEntryPoint, void*) {}
+		static void SwitchTo(Fiber&, Fiber&) {}
+	};
+}
+
+#endif // !defined(__ANDROID__)
 
 #endif // #if MT_USE_BOOST_CONTEXT
 

@@ -153,3 +153,45 @@ grep -r '#include.*Editor' src/Runtime/ | wc -l         # must be 0
 # No VK_ includes in Render layer
 grep -r '#include.*VK_' src/Runtime/Render/ | wc -l     # must be 0
 ```
+
+## Android Cross-Compile & APK Build
+
+### Platform Architecture
+
+```
+Platform/                        # Cross-platform abstraction layer
+  PlatformWindow.h               # Abstract window + input interface
+  Desktop/
+    DesktopWindow.h/.cpp         # GLFW implementation (Windows/Linux)
+  Android/
+    AndroidWindow.h/.cpp         # ANativeWindow implementation
+    AndroidLaunch.cpp            # android_main() entry → calls Sample's main()
+    Platform.cpp                 # Android RHI factory
+
+Input/                           # Cross-platform input system
+  InputKeys.h/.cpp               # Key definitions + EKey namespace
+  InputSystem.h/.cpp             # Input accumulator (poling + event)
+```
+
+### Key principles
+- `PlatformWindow` is the abstract window base — all Sample code uses only this interface
+- `CreatePlatformWindow(title,w,h,platform_data)` — factory, desktop gets GLFW, Android gets ANativeWindow
+- `SampleApp::SetPlatformData(void*)` — called once by Android entry, passed through to Window
+- `InputSystem::Get()` — singleton input state, replaces direct GLFW polling
+- All Android-specific code is guarded by `#if PLATFORM_ANDROID`
+- Desktop files excluded from Android build via `remove_files()` in `CommonLibrarySetting`
+
+### NDK / SDK Path Config
+- NDK path: `.xmake/android_ndk.txt` (one line)
+- SDK build-tools / platform / JDK paths: `.xmake/apk/build_apk.bat` (set variables at top)
+
+### Common Android Porting Patterns
+- `#include <GLFW/glfw3.h>` → wrap with `#if !PLATFORM_ANDROID`
+- `<xutility>`, `__declspec`, `_byteswap_uint64`, `UINT` → MSVC-only, need `#ifdef _MSC_VER`
+- `std::max`/`std::min` → need `#include <algorithm>` + `using std::max/min` on Clang
+- `<boost/stacktrace.hpp>` → wrapped, CHECK macros simplified for Android
+- `<ucontext.h>` (MTFiber) → disabled on Android, stub Fiber class provided
+- `assimp`, `MeshLoader`, `MeshAsset` → excluded from Android build
+- `vkCmdBeginRendering`/`vkCmdEndRendering` → wrapped with `#if !PLATFORM_ANDROID` in VK_CommandBuffer
+- ImGui UI functions (BeginUI/EndUI) → stubbed on Android
+- `add_syslinks("vulkan")` on Android → need `--unresolved-symbols=ignore-in-shared-libs` linker flag
