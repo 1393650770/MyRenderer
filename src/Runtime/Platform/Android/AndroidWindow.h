@@ -37,9 +37,10 @@ public:
 	struct android_app* GetApp() CONST { return m_app; }
 	struct AAssetManager* GetAssetManager() CONST;
 
-	// Event loop — blocking until APP_CMD_DESTROY
-	void Run(std::function<void()> on_init, std::function<void()> on_frame,
-	         std::function<void()> on_shutdown = {});
+	// Set the render callback (called from Window::Run)
+	void SetRenderInterface(class RenderInterface* render) { m_render = render; }
+	// Blocking: ALooper event loop with RHI init + render lifecycle
+	void StartEventLoop();
 
 protected:
 	static void OnAppCmd(struct android_app* in_app, int32_t cmd);
@@ -61,10 +62,7 @@ protected:
 
 	TouchState m_touch_state;
 	MXRender::RHI::Viewport* m_viewport = nullptr;
-
-	std::function<void()> m_on_init;
-	std::function<void()> m_on_frame;
-	std::function<void()> m_on_shutdown;
+	class RenderInterface* m_render = nullptr;
 
 	static AndroidWindow* s_instance;
 private:

@@ -1,5 +1,8 @@
 #include "Window.h"
 #include "Application/SampleApp.h"
+#if PLATFORM_ANDROID
+#include "Platform/Android/AndroidWindow.h"
+#endif
 
 #include <iostream>
 #include <memory>
@@ -24,12 +27,23 @@ Window::Window(CONST String& in_title, UInt32 in_w, UInt32 in_h, void* platform_
 
 void Window::InitWindow()
 {
+	if (platform_window->IsMobile())
+		return; // Android: RHI init deferred to when window becomes ready
 	RHIInit();
 	viewport = RHICreateViewport(platform_window->GetNativeHandle(), width, height, is_full_screen);
 }
 
 void Window::Run(RenderInterface* render)
 {
+#if PLATFORM_ANDROID
+	if (auto* aw = dynamic_cast<AndroidWindow*>(platform_window.get()))
+	{
+		aw->SetRenderInterface(render);
+		aw->StartEventLoop();
+		return;
+	}
+#endif
+
 	EThreadingMode mode = g_thread_mode;
 	Bool use_rhi_thread = (mode >= EThreadingMode::RHIThread);
 	Bool use_render_thread = (mode >= EThreadingMode::ThreeThread);

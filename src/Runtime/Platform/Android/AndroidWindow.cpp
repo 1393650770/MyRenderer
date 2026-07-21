@@ -3,6 +3,8 @@
 #if PLATFORM_ANDROID
 
 #include "RHI/RenderRHI.h"
+#include "Render/RenderInterface.h"
+#include "Render/Core/RenderFrameData.h"
 #include "RHI/RenderViewport.h"
 #include "RHI/RenderCommandList.h"
 #include "Tool/ShaderLibrary.h"
@@ -48,7 +50,7 @@ void AndroidWindow::HandleCmd(int32_t cmd)
 		break;
 	case APP_CMD_TERM_WINDOW:
 		LOGI("APP_CMD_TERM_WINDOW");
-		if (m_on_shutdown) m_on_shutdown();
+		if (m_render) m_render->OnShutdown_Logic();
 		ShutdownRHI();
 		m_native_window = nullptr;
 		break;
@@ -127,7 +129,7 @@ void AndroidWindow::InitRHI()
 
 	m_viewport = RHICreateViewport(m_native_window, m_width, m_height, false);
 
-	if (m_on_init) m_on_init();
+	if (m_render) m_render->OnInit_Logic(this, m_viewport);
 }
 
 void AndroidWindow::ShutdownRHI()
@@ -137,12 +139,9 @@ void AndroidWindow::ShutdownRHI()
 	RHIShutdown();
 }
 
-void AndroidWindow::Run(std::function<void()> on_init, std::function<void()> on_frame,
-                        std::function<void()> on_shutdown)
+void AndroidWindow::StartEventLoop()
 {
-	m_on_init = std::move(on_init);
-	m_on_frame = std::move(on_frame);
-	m_on_shutdown = std::move(on_shutdown);
+	if (!m_render) return;
 
 	Bool rhi_ok = false;
 	while (!m_destroy_requested)
@@ -155,10 +154,19 @@ void AndroidWindow::Run(std::function<void()> on_init, std::function<void()> on_
 			if (!rhi_ok && m_native_window) { InitRHI(); rhi_ok = true; }
 			if (m_destroy_requested) break;
 		}
-		if (rhi_ok && m_native_window && m_has_focus && m_on_frame)
-			m_on_frame();
+		if (rhi_ok && m_native_window && m_render)
+		{
+			m_render->OnUpdate(0.016f);
+			Render::FrameContext ctx;
+			ctx.viewport_width = m_width; ctx.viewport_height = m_height;
+			m_render->OnPreRender(ctx);
+			m_render->OnRender();
+			m_render->OnPostRender(ctx);
+			auto* cmd = RHIGetImmediateCommandList();
+			m_viewport->Present(cmd, true, true);
+		}
 	}
-	if (rhi_ok) { if (m_on_shutdown) m_on_shutdown(); ShutdownRHI(); }
+	if (rhi_ok) { if (m_render) m_render->OnShutdown_Logic(); ShutdownRHI(); }
 }
 
 struct AAssetManager* AndroidWindow::GetAssetManager() CONST

@@ -66,35 +66,66 @@ xmake
 
 ### Android Build (Cross-Compile)
 
-> **Status**: ARM64 cross-compilation + APK packaging verified. Shader multi-target & on-device testing WIP.
+> **Status**: ARM64 cross-compilation + APK packaging verified. Black-screen rendering issue under investigation.
 
-#### Prerequisites
+#### 前置条件
 
-| Tool | Path Config | Purpose |
-|------|-------------|--------|
-| Android NDK r27+ | `.xmake/android_ndk.txt` | Cross-compiler |
-| JDK 21+ | `D:/Project/AndroidSDK/jdk/jdk21` | APK signing |
-| Android SDK Build-Tools | `D:/Project/AndroidSDK/build-tools/34.0.0` | aapt2 / apksigner / zipalign |
-| Android SDK Platform | `D:/Project/AndroidSDK/platforms/android-35` | android.jar |
-| Android SDK Platform-Tools | `D:/Project/AndroidJDK/platform-tools-latest-windows/platform-tools` | adb |
+| 工具 | 用途 | 路径配置位置 |
+|------|------|-------------|
+| Android NDK r27+ | 交叉编译器 | `.xmake/android_ndk.txt` |
+| JDK 21+ | APK 签名 | `pack/Android/build_apk.bat` 顶部 `JDK_BIN` |
+| Android SDK Build-Tools 34+ | aapt2 / apksigner / zipalign | `pack/Android/build_apk.bat` 顶部 `BUILD_TOOLS` |
+| Android SDK Platform (android-35) | android.jar | `pack/Android/build_apk.bat` 顶部 `ANDROID_JAR` |
+| Android SDK Platform-Tools | adb | `pack/Android/build_apk.bat` 顶部 `PLATFORM_TOOLS`（可选，仅 adb） |
 
-#### Path Configuration
+#### 路径配置
 
-1. **NDK path**: Edit `.xmake/android_ndk.txt` — one line with your NDK root path.
-2. **SDK/build-tools/platform paths**: Edit `.xmake/apk/build_apk.bat` — update the `set` variables at the top.
+**① NDK 路径**（xmake 编译用）
 
-#### Build + Package
+编辑 `.xmake/android_ndk.txt`，写入 NDK 根路径，一行：
+
+```
+D:/Project/AndroidNDK/android-ndk-r27d-windows/android-ndk-r27d
+```
+
+`xmake.lua` 的 `PlatformSettings()` 会在 Android 平台自动读取该文件，拼接 `sources/android/native_app_glue` 路径。换机器只需改这一个文件。
+
+**② SDK / JDK 路径**（APK 打包用）
+
+编辑 `pack/Android/build_apk.bat`，修改顶部 `set` 变量：
 
 ```batch
-# 1. Configure & cross-compile (produces .so)
-xmake f -p android -a arm64-v8a --ndk=D:/path/to/ndk --ndk_sdkver=26 -y
+set "BUILD_TOOLS=D:\your\AndroidSDK\build-tools\34.0.0"
+set "JDK_BIN=D:\your\AndroidSDK\jdk\jdk21\bin"
+set "ANDROID_JAR=D:\your\AndroidSDK\platforms\android-35\android.jar"
+```
+
+#### 编译 & 打包
+
+```batch
+# 1. 配置并交叉编译（生成 .so）
+xmake f -p android -a arm64-v8a --ndk=你的NDK路径 --ndk_sdkver=26 -y
 xmake build RendererSample-HelloTriangle
 
-# 2. Package into APK
-.xmake\apk\build_apk.bat
+# 2. 打包 APK
+.\pack\Android\build_apk.bat
 
-# 3. Install to device
-adb install -r .xmake\apk\mxrender_hello.apk
+# 3. 安装到设备
+adb install -r .\pack\Android\mxrender_hello.apk
+```
+
+#### 目录结构
+
+```
+pack/Android/
+  build_apk.bat         # APK 打包脚本
+  AndroidManifest.xml   # NativeActivity manifest
+  debug.keystore        # 调试签名密钥（密码: android）
+  mxrender_hello.apk    # 构建产物（打包后生成）
+  tmp_apk/              # 临时构建目录（打包时自动创建/清理）
+
+.xmake/
+  android_ndk.txt       # NDK 根路径（一行，编译前必须配置）
 ```
 
 ## Branch
