@@ -7,6 +7,7 @@
 #include "RHI/RenderRHI.h"
 #include "RHI/RenderShader.h"
 #include "RHI/RenderRource.h"
+#include "RHI/ResourceManager.h"
 
 namespace MXNN {
 
@@ -39,7 +40,8 @@ inline MXRender::RHI::RenderPipelineState* CreateComputePipeline(MXRender::RHI::
 	desc.shaders[MXRender::ENUM_SHADER_STAGE::Shader_Compute] = in_cs;
 	desc.primitive_topology = MXRender::ENUM_PRIMITIVE_TYPE::TriangleList;
 	desc.raster_state.sample_count = 1;
-	return RHICreateRenderPipelineState(desc);
+	auto _handle = RHICreateRenderPipelineState(desc);
+	return Resolve(_handle);
 }
 
 } // namespace MXNN

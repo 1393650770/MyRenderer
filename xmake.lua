@@ -106,12 +106,12 @@ function CommonLibrarySetting()
         add_packages("vulkansdk")
     end
     add_packages("glm","tinyobjloader","imgui","nlohmann_json","gli","optick","flatbuffers","rttr")
-    if not is_plat("android") then
-        add_packages("assimp","lz4")
-    end
-    if not is_plat("android") then
-        add_packages("glfw")
-    end
+if not is_plat("android") then
+	        add_packages("assimp","lz4","boost")
+	    end
+	    if is_plat("windows") then
+	        add_packages("glfw")
+	    end
 end
 
 
@@ -238,7 +238,7 @@ function CommonProjectSetting()
     end
     add_packages("glm","tinyobjloader","imgui","flatbuffers","rttr","nlohmann_json")
     if not is_plat("android") then
-        add_packages("assimp","lz4","glfw")
+        add_packages("assimp","lz4","boost","glfw")
     end
 end
 

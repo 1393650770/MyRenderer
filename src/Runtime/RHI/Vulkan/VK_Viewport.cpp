@@ -231,7 +231,7 @@ void VK_Viewport::DestroySwapChain(VK_SwapChainRecreateInfo* recreate_info)
 void VK_Viewport::CreateSwapChain(VK_SwapChainRecreateInfo* recreate_info)
 {
 	Vector<VkImage> images;
-	UInt32 image_count = 0,new_size_x=0,new_size_y=0;
+	UInt32 image_count = 0,new_size_x=size_x,new_size_y=size_y;
 	VkFormat new_vk_pixel_format;
 	VK_SwapChain* new_swap_chain=new VK_SwapChain(rhi->instance,device,window_handle,common_pixel_format, new_size_x, new_size_y,
 								is_full_screen,&image_count, new_vk_pixel_format,images, lock_to_sync, recreate_info);

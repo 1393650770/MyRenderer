@@ -308,4 +308,4 @@ void RT::OnUpdate(float dt) {
 	proj[1][1]*=-1; vp=proj*view; ivp=glm::inverse(vp); ts+=dt;
 }
 void RT::OnRender() { graph.Execute(); }
-int main() { Window w; RT r(&w); w.InitWindow(); w.Run(&r); system("pause"); return 0; }
+int main() { Window w; RT r(w.GetPlatformWindow()); w.InitWindow(); w.Run(&r); system("pause"); return 0; }

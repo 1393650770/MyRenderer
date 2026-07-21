@@ -1,7 +1,7 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
-REM Android SDK paths - edit these two for your machine
+REM Android SDK paths — edit these two for your machine
 set "ANDROID_SDK_ROOT=D:\Project\AndroidSDK"
 set "JDK_ROOT=D:\Project\AndroidSDK\jdk\jdk21"
 
@@ -28,11 +28,23 @@ copy "%BUILD_DIR%\libRendererSample-HelloTriangle.so" "%TMPDIR%\lib\arm64-v8a\" 
 copy "%BUILD_DIR%\libRuntime.so" "%TMPDIR%\lib\arm64-v8a\" >nul
 
 echo Copying imgui...
-for /d %%d in ("%LOCALAPPDATA%\.xmake\cache\packages\*\i\imgui\*\source\imgui\build_*\android\arm64-v8a\*") do (
-    if exist "%%d\libimgui.so" copy "%%d\libimgui.so" "%TMPDIR%\lib\arm64-v8a\" >nul
+set "FOUND_IMGUI=0"
+set "IMGUI_BASE=%LOCALAPPDATA%\.xmake\cache\packages"
+if exist "%IMGUI_BASE%" (
+    for /d %%a in ("%IMGUI_BASE%\*") do (
+        for /d %%b in ("%%a\i\imgui\v1.89.9-docking\source\imgui\build_*") do (
+            for /d %%c in ("%%b\android\arm64-v8a\*") do (
+                if exist "%%c\libimgui.so" (
+                    copy "%%c\libimgui.so" "%TMPDIR%\lib\arm64-v8a\" >nul
+                    set "FOUND_IMGUI=1"
+                )
+            )
+        )
+    )
 )
-for /d %%d in ("%LOCALAPPDATA%\.xmake\packages\i\imgui\*\*\lib") do (
-    if exist "%%d\libimgui.so" copy "%%d\libimgui.so" "%TMPDIR%\lib\arm64-v8a\" >nul
+if "!FOUND_IMGUI!"=="0" (
+    echo ERROR: libimgui.so not found! Run xmake build first.
+    goto :error
 )
 
 echo Copying shader assets...

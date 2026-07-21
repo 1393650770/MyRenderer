@@ -53,7 +53,7 @@ VkDescriptorPool VK_DescriptorPoolManager::CreatePool()
 	// Clamp to device physical limits (mobile GPUs have much lower limits)
 	CONST auto& limits = device->GetLimits();
 	auto clamp_count = [&](UInt32 count, UInt32 limit) -> UInt32 {
-		return limit > 0 ? std::min(count, limit) : count;
+		return limit > 0 ? (count < limit ? count : limit) : count;
 	};
 
 	types[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;

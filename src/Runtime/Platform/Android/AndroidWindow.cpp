@@ -67,6 +67,11 @@ void AndroidWindow::HandleCmd(int32_t cmd)
 		break;
 	case APP_CMD_WINDOW_RESIZED:
 		LOGI("APP_CMD_WINDOW_RESIZED");
+			if (m_viewport && m_native_window) {
+				Int w = ANativeWindow_getWidth(STATIC_CAST(m_native_window, ANativeWindow));
+				Int h = ANativeWindow_getHeight(STATIC_CAST(m_native_window, ANativeWindow));
+				m_viewport->Resize((UInt32)w, (UInt32)h);
+			}
 		break;
 	default: break;
 	}

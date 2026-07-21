@@ -258,8 +258,6 @@ void RT::OnInit_Logic(PlatformWindow* in_window, RHI::Viewport* in_viewport) {
 	m_window = in_window; m_viewport = in_viewport;
 	std::cout << "Hello VolumetricCloud" << std::endl;
 	m_window->SetScrollCallback(ScrollCB);
-	window = in_window; std::cout << "Hello VolumetricCloud" << std::endl;
-	glfwSetScrollCallback(window->GetWindow(), ScrollCB);
 	RHI::CommandList* cl = RHIGetImmediateCommandList();
 	RHI::Texture* bb = m_viewport->GetCurrentBackBufferRTV();
 	RHI::Texture* ds = m_viewport->GetCurrentBackBufferDSV();
@@ -406,4 +404,4 @@ void RT::OnUpdate(float dt) {
 	proj[1][1] *= -1; vp = proj * view; ivp = glm::inverse(vp); ts += dt;
 }
 void RT::OnRender() { graph.Execute(); }
-int main() { Window w; RT r(&w); w.InitWindow(); w.Run(&r); system("pause"); return 0; }
+int main() { Window w; RT r(w.GetPlatformWindow()); w.InitWindow(); w.Run(&r); system("pause"); return 0; }

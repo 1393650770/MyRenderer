@@ -61,6 +61,11 @@ void SampleApp::OnShutdown_Logic()
 
 void SampleApp::OnRender()
 {
+	// Update retained texture pointers after potential swapchain recreation (UE: like EditorRender)
+	if (backbuffer_resource)
+		backbuffer_resource->UpdateRetainedPtr(GetBackBuffer());
+	if (depth_stencil_resource)
+		depth_stencil_resource->UpdateRetainedPtr(GetDepthStencil());
 	graph.Execute();
 }
 
