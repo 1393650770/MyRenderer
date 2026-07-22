@@ -437,28 +437,35 @@ void VK_CommandBuffer::EndUI_Platform() {}
 // =========================================================================
 void VK_CommandBuffer::SetScissorEnable(bool enable)
 {
-	command_state.scissor_enabled = enable;
-	if (enable)
+	state_cache.scissor_enabled = enable;
+	if (bypass)
 	{
-		vkCmdSetScissor(command_buffer, 0, 1, &command_state.scissor);
+		if (enable)
+			vkCmdSetScissor(command_buffer, 0, 1, &state_cache.scissor);
+		else
+		{
+			VkRect2D full = { {0, 0}, {state_cache.framebuffer_width, state_cache.framebuffer_height} };
+			vkCmdSetScissor(command_buffer, 0, 1, &full);
+		}
 	}
 	else
 	{
-		// Disable by setting scissor to the framebuffer size
-		VkRect2D full = { {0, 0}, {command_state.framebuffer_width, command_state.framebuffer_height} };
-		vkCmdSetScissor(command_buffer, 0, 1, &full);
+		recorded_commands.push_back(std::make_unique<RHICmdSetScissorEnable>(enable));
 	}
 }
 
-void VK_CommandBuffer::SetScissor(Int32 x, Int32 y, UInt32 w, UInt32 h)
+void VK_CommandBuffer::SetScissor(Int x, Int y, UInt32 w, UInt32 h)
 {
-	command_state.scissor.offset.x = x;
-	command_state.scissor.offset.y = y;
-	command_state.scissor.extent.width = w;
-	command_state.scissor.extent.height = h;
-	if (command_state.scissor_enabled)
+	state_cache.scissor.offset.x = x;
+	state_cache.scissor.offset.y = y;
+	state_cache.scissor.extent.width = w;
+	state_cache.scissor.extent.height = h;
+	if (state_cache.scissor_enabled)
 	{
-		vkCmdSetScissor(command_buffer, 0, 1, &command_state.scissor);
+		if (bypass)
+			vkCmdSetScissor(command_buffer, 0, 1, &state_cache.scissor);
+		else
+			recorded_commands.push_back(std::make_unique<RHICmdSetScissor>(x, y, w, h));
 	}
 }
 
@@ -763,11 +770,12 @@ void VK_CommandBuffer::SetPushConstants(UInt32 offset, UInt32 size, const void* 
 // --   Stage-aware push constants overload
 void VK_CommandBuffer::SetPushConstants(UInt32 offset, UInt32 size, const void* data, ENUM_SHADER_STAGE stage)
 {
-        if (state_cache.pipeline_layout == VK_NULL_HANDLE)
-                return;
-        VkShaderStageFlagBits vk_stage = VK_Utils::Translate_ShaderTypeEnum_To_Vulkan(stage);
-        vkCmdPushConstants(command_buffer, state_cache.pipeline_layout,
-                vk_stage, offset, size, data);
+	if (!bypass) { recorded_commands.push_back(std::make_unique<RHICmdSetPushConstants>(offset, size, data, stage)); return; }
+	if (state_cache.pipeline_layout == VK_NULL_HANDLE)
+		return;
+	VkShaderStageFlagBits vk_stage = VK_Utils::Translate_ShaderTypeEnum_To_Vulkan(stage);
+	vkCmdPushConstants(command_buffer, state_cache.pipeline_layout,
+		vk_stage, offset, size, data);
 }
 
 // --   Combined compute dispatch: pipeline + SRB + dispatch in one call
@@ -1146,7 +1154,10 @@ void VK_CommandBuffer::Replay()
 			break;
 		case RHICommandType::SetPushConstants: {
 			auto* c = static_cast<RHICmdSetPushConstants*>(cmd.get());
-			SetPushConstants(c->offset, c->size, c->data.data());
+			if (c->stage != ENUM_SHADER_STAGE::Invalid)
+				SetPushConstants(c->offset, c->size, c->data.data(), c->stage);
+			else
+				SetPushConstants(c->offset, c->size, c->data.data());
 			break;
 		}
 		case RHICommandType::Begin:
@@ -1170,6 +1181,26 @@ void VK_CommandBuffer::Replay()
 		case RHICommandType::BeginUI:
 			// CPU phase already executed on main thread (NewFrame)
 			break;
+		case RHICommandType::SetScissorEnable: {
+			auto* c = static_cast<RHICmdSetScissorEnable*>(cmd.get());
+			if (c->enable)
+				vkCmdSetScissor(command_buffer, 0, 1, &state_cache.scissor);
+			else {
+				VkRect2D full = { {0, 0}, {state_cache.framebuffer_width, state_cache.framebuffer_height} };
+				vkCmdSetScissor(command_buffer, 0, 1, &full);
+			}
+			state_cache.scissor_enabled = c->enable;
+			break;
+		}
+		case RHICommandType::SetScissor: {
+			auto* c = static_cast<RHICmdSetScissor*>(cmd.get());
+			state_cache.scissor.offset.x = c->x;
+			state_cache.scissor.offset.y = c->y;
+			state_cache.scissor.extent.width = c->w;
+			state_cache.scissor.extent.height = c->h;
+			vkCmdSetScissor(command_buffer, 0, 1, &state_cache.scissor);
+			break;
+		}
 #if !PLATFORM_ANDROID
 		case RHICommandType::EndUI:
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
@@ -1207,6 +1238,17 @@ void VK_CommandBuffer::Replay()
 			auto* c = static_cast<RHICmdUnmapBuffer*>(cmd.get());
 			VK_Buffer* vk_buf = STATIC_CAST(c->buffer, VK_Buffer);
 			if (vk_buf) vk_buf->Unmap();
+			break;
+		}
+		case RHICommandType::UpdateBuffer: {
+			auto* c = static_cast<RHICmdUpdateBuffer*>(cmd.get());
+			VK_Buffer* vk_buf = STATIC_CAST(c->buffer, VK_Buffer);
+			if (vk_buf) {
+				// None (not Discard): reuse same sub-allocation so descriptor offset stays valid.
+				// Safe because GPU executes draws+uploads sequentially within one submit.
+				void* ptr = vk_buf->Map(ENUM_MAP_TYPE::Write, ENUM_MAP_FLAG::None);
+				if (ptr) { std::memcpy((UInt8*)ptr + c->offset, c->data.data(), c->size); vk_buf->Unmap(); }
+			}
 			break;
 		}
 		default:

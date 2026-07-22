@@ -8,6 +8,7 @@
 #include "RHI/RenderRource.h"
 #include "RHI/RenderPipelineState.h"
 #include "RHI/Vulkan/VK_CommandBuffer.h"
+#include "Tool/BufferUtils.h"
 
 #include <fstream>
 #include <iostream>
@@ -44,16 +45,25 @@ RmlUIRenderer::~RmlUIRenderer()
 	Shutdown();
 }
 
-void RmlUIRenderer::Initialize(RHI::CommandList* cmd_list, ENUM_TEXTURE_FORMAT rt_format)
+void RmlUIRenderer::Initialize(RHI::CommandList* cmd_list, RHI::Texture* backbuffer_rtv, RHI::Texture* backbuffer_dsv, UInt32 viewport_h)
 {
-	// Initialize transform to identity
+	m_backbuffer_rtv = backbuffer_rtv;
+	m_backbuffer_dsv = backbuffer_dsv;
+	m_viewport_h = viewport_h;
+
 	for (int i = 0; i < 16; i++)
 		m_transform[i] = (i % 5 == 0) ? 1.0f : 0.0f;
 	m_translation[0] = 0.0f;
 	m_translation[1] = 0.0f;
 
+	// Per-draw uniform buffer (Storage|Dynamic). Pre-allocate a sub-allocation
+	// so that the buffer descriptor (SetResource below) gets the correct offset.
+	m_per_draw_buf = Tool::BufferUtils::CreateDynamicParamBuffer(sizeof(PerDrawData));
+	void* prealloc = m_per_draw_buf->Map(ENUM_MAP_TYPE::Write, ENUM_MAP_FLAG::Discard);
+	m_per_draw_buf->Unmap();
+
 	CreateShaders(cmd_list);
-	CreatePSOs(rt_format);
+	CreatePSOs();
 
 	std::cout << "[RmlUIRenderer] Initialized with " << m_geometries.size()
 		<< " geometries, " << m_textures.size() << " textures." << std::endl;
@@ -62,10 +72,11 @@ void RmlUIRenderer::Initialize(RHI::CommandList* cmd_list, ENUM_TEXTURE_FORMAT r
 void RmlUIRenderer::Shutdown()
 {
 	m_geometries.clear();
+	for (auto& kv : m_textures) { delete kv.second.srb; delete kv.second.texture; }
 	m_textures.clear();
 
-	delete m_srb_untextured;
-	m_srb_untextured = nullptr;
+	delete m_srb_untextured; m_srb_untextured = nullptr;
+	delete m_per_draw_buf; m_per_draw_buf = nullptr;
 
 	DestroyPSOs();
 	DestroyShaders();
@@ -78,10 +89,15 @@ void RmlUIRenderer::BeginFrame(RHI::CommandList* cmd)
 {
 	m_current_cmd = cmd;
 	m_stats = {};
-
-	// Reset per-frame state
-	EnableScissor(false);
+	m_scissor_enabled = false;
 	m_clip_mask_enabled = false;
+	// Transition any textures created outside render loop (font loading)
+	for (auto* t : m_pending_transitions)
+		m_current_cmd->TransitionTextureState(t, ENUM_RESOURCE_STATE::ShaderResource);
+	m_pending_transitions.clear();
+	// Dynamic buffers use a sub-allocator whose state tracking doesn't align
+	// with fence signaling. v1: accumulate (RmlUI reuses geometry handles,
+	// so the map naturally caps leaked count at ~text elements per frame).
 }
 
 void RmlUIRenderer::EndFrame(RHI::CommandList* cmd)
@@ -92,16 +108,15 @@ void RmlUIRenderer::EndFrame(RHI::CommandList* cmd)
 // =========================================================================
 // Geometry
 // =========================================================================
-UInt32 RmlUIRenderer::CompileGeometry(
+UIGeometryHandle RmlUIRenderer::CompileGeometry(
 	CONST void* vertices, UInt32 vtx_count, UInt32 vtx_stride,
 	CONST void* indices, UInt32 idx_count, bool idx32)
 {
-	if (!g_render_rhi) return 0;
+	if (!g_render_rhi) return {};
 
-	UInt32 handle = m_next_geo_handle++;
+	UIGeometryHandle h; h.value = m_next_geo_handle++; 
 	GeoSlot slot;
 
-	// Create vertex buffer (Dynamic = host-visible persistent mapping)
 	{
 		RHI::BufferDesc desc;
 		desc.size = vtx_count * vtx_stride;
@@ -118,9 +133,9 @@ UInt32 RmlUIRenderer::CompileGeometry(
 			}
 		}
 		slot.vtx_count = vtx_count;
+		slot.vtx_stride = vtx_stride;
 	}
 
-	// Create index buffer
 	if (indices && idx_count > 0)
 	{
 		UInt32 idx_size = idx32 ? 4 : 2;
@@ -141,41 +156,38 @@ UInt32 RmlUIRenderer::CompileGeometry(
 		slot.idx_count = idx_count;
 	}
 
-	m_geometries[handle] = slot;
+	m_geometries[h.value] = slot;
 	m_stats.geometry_compiled++;
-	return handle;
+	return h;
 }
 
-void RmlUIRenderer::DrawGeometry(UInt32 geo_handle, CONST void* transform, UInt32 tex_handle)
+void RmlUIRenderer::DrawGeometry(UIGeometryHandle geo, CONST void* transform, UITextureHandle tex)
 {
 	if (!m_current_cmd) return;
 
-	auto it = m_geometries.find(geo_handle);
+	auto it = m_geometries.find(geo.value);
 	if (it == m_geometries.end()) return;
 
-	CONST GeoSlot& geo = it->second;
-	if (!geo.vb) return;
+	CONST GeoSlot& g = it->second;
+	if (!g.vb) return;
 
-	// Update transform if provided
 	if (transform)
 	{
 		memcpy(m_transform, transform, sizeof(float) * 16);
 	}
+	// m_translation is set by caller (RmlUIRenderInterface passes per-geometry translation)
 
-	// Select PSO based on current state
-	bool has_texture = (tex_handle != 0);
+	bool has_texture = (tex.value != 0);
 	RHI::RenderPipelineState* pso = SelectPSO(has_texture);
 	if (!pso) return;
 
 	m_current_cmd->SetGraphicsPipeline(pso);
 
-	// Bind SRB (textured or untextured)
 	if (has_texture)
 	{
-		auto tex_it = m_textures.find(tex_handle);
+		auto tex_it = m_textures.find(tex.value);
 		if (tex_it != m_textures.end() && tex_it->second.srb)
 		{
-			// Static SRB — texture was bound at CreateTexture time
 			m_current_cmd->SetShaderResourceBinding(tex_it->second.srb);
 		}
 	}
@@ -187,22 +199,18 @@ void RmlUIRenderer::DrawGeometry(UInt32 geo_handle, CONST void* transform, UInt3
 		}
 	}
 
-	// Push constants
-	FlushPushConstants();
+	UploadPerDrawData();
+	m_current_cmd->SetVertexBuffer(g.vb, 0, g.vtx_stride, 0);
 
-	// Vertex buffer
-	m_current_cmd->SetVertexBuffer(geo.vb, 0, 0, 0); // stride=0: the pipeline knows the stride from vertex layout
-
-	// Index buffer
-	if (geo.ib && geo.idx_count > 0)
+	if (g.ib && g.idx_count > 0)
 	{
-		m_current_cmd->SetIndexBuffer(geo.ib, 0, true); // 32-bit indices
-		m_current_cmd->DrawIndexed(geo.idx_count, 1, 0, 0, 0);
+		m_current_cmd->SetIndexBuffer(g.ib, 0, true);
+		m_current_cmd->DrawIndexed(g.idx_count, 1, 0, 0, 0);
 	}
 	else
 	{
-		RHI::DrawAttribute da;
-		da.vertexCount = geo.vtx_count;
+		DrawAttribute da;
+		da.vertexCount = g.vtx_count;
 		da.instanceCount = 1;
 		m_current_cmd->Draw(da);
 	}
@@ -210,24 +218,22 @@ void RmlUIRenderer::DrawGeometry(UInt32 geo_handle, CONST void* transform, UInt3
 	m_stats.draw_calls++;
 }
 
-void RmlUIRenderer::ReleaseGeometry(UInt32 geo_handle)
+void RmlUIRenderer::ReleaseGeometry(UIGeometryHandle geo)
 {
-	auto it = m_geometries.find(geo_handle);
+	auto it = m_geometries.find(geo.value);
 	if (it == m_geometries.end()) return;
-
-	delete it->second.vb;
-	delete it->second.ib;
+	// Buffer deletion deferred (memory allocator state not aligned with CB fence)
 	m_geometries.erase(it);
 }
 
 // =========================================================================
 // Texture
 // =========================================================================
-UInt32 RmlUIRenderer::CreateTexture(CONST void* pixel_data, UInt32 w, UInt32 h)
+UITextureHandle RmlUIRenderer::CreateTexture(CONST void* pixel_data, UInt32 w, UInt32 h)
 {
-	if (!g_render_rhi || !pixel_data) return 0;
+	if (!g_render_rhi || !pixel_data) return {};
 
-	UInt32 handle = m_next_tex_handle++;
+	UITextureHandle h_t; h_t.value = m_next_tex_handle++; 
 	TexSlot slot;
 
 	RHI::TextureDesc desc;
@@ -243,7 +249,6 @@ UInt32 RmlUIRenderer::CreateTexture(CONST void* pixel_data, UInt32 w, UInt32 h)
 	slot.texture = g_render_rhi->CreateTexture(desc);
 	if (slot.texture)
 	{
-		// Upload pixel data
 		RHI::TextureDataPayload payload;
 		payload.data.resize(w * h * 4);
 		memcpy(payload.data.data(), pixel_data, w * h * 4);
@@ -251,31 +256,33 @@ UInt32 RmlUIRenderer::CreateTexture(CONST void* pixel_data, UInt32 w, UInt32 h)
 		payload.width = w;
 		payload.height = h;
 		slot.texture->UpdateTextureData(payload);
+		// Defer layout transition: font textures are created outside render loop
+		m_pending_transitions.push_back(slot.texture);
 
-		// Create static SRB for this texture
-		// Use the textured PSO as template
 		if (m_pso_textured)
 		{
-			m_pso_textured->CreateShaderResourceBinding(slot.srb, true);
+			m_pso_textured->CreateShaderResourceBinding(slot.srb, false);
 			if (slot.srb)
 			{
 				slot.srb->SetResource("tex", slot.texture);
+				slot.srb->SetResource("pc", m_per_draw_buf);
+				slot.srb->FlushDescriptorWrites();
 			}
 		}
 	}
 
-	m_textures[handle] = slot;
+	m_textures[h_t.value] = slot;
 	m_stats.textures_created++;
-	return handle;
+	return h_t;
 }
 
-void RmlUIRenderer::ReleaseTexture(UInt32 tex_handle)
+void RmlUIRenderer::ReleaseTexture(UITextureHandle tex)
 {
-	auto it = m_textures.find(tex_handle);
+	auto it = m_textures.find(tex.value);
 	if (it == m_textures.end()) return;
 
 	delete it->second.srb;
-	delete it->second.texture; // TODO: verify ownership — texture deletion may crash if pool-managed
+	delete it->second.texture;
 	m_textures.erase(it);
 }
 
@@ -286,16 +293,10 @@ void RmlUIRenderer::EnableScissor(bool enable)
 {
 	m_scissor_enabled = enable;
 	if (m_current_cmd)
-	{
-		auto* vk_cmd = STATIC_CAST(m_current_cmd, RHI::Vulkan::VK_CommandBuffer);
-		if (vk_cmd)
-		{
-			vk_cmd->SetScissorEnable(enable);
-		}
-	}
+		static_cast<RHI::Vulkan::VK_CommandBuffer*>(m_current_cmd)->SetScissorEnable(enable);
 }
 
-void RmlUIRenderer::SetScissor(Int32 x, Int32 y, UInt32 w, UInt32 h)
+void RmlUIRenderer::SetScissor(Int x, Int y, UInt32 w, UInt32 h)
 {
 	m_scissor_x = x;
 	m_scissor_y = y;
@@ -304,14 +305,9 @@ void RmlUIRenderer::SetScissor(Int32 x, Int32 y, UInt32 w, UInt32 h)
 
 	if (m_current_cmd)
 	{
-		auto* vk_cmd = STATIC_CAST(m_current_cmd, RHI::Vulkan::VK_CommandBuffer);
-		if (vk_cmd)
-		{
-			// Windows (Y-down) → Vulkan (Y-up) flip
-			Int32 vk_y = static_cast<Int32>(m_viewport_h) - y - static_cast<Int32>(h);
-			if (vk_y < 0) vk_y = 0;
-			vk_cmd->SetScissor(x, vk_y, w, h);
-		}
+		Int vk_y = static_cast<Int>(m_viewport_h) - y - static_cast<Int>(h);
+		if (vk_y < 0) vk_y = 0;
+		static_cast<RHI::Vulkan::VK_CommandBuffer*>(m_current_cmd)->SetScissor(x, vk_y, w, h);
 	}
 }
 
@@ -324,24 +320,36 @@ void RmlUIRenderer::EnableClipMask(bool enable)
 	m_stats.used_clip_mask = m_stats.used_clip_mask || enable;
 }
 
-void RmlUIRenderer::RenderToClipMask(Int32 operation, UInt32 geo_handle, CONST void* transform)
+void RmlUIRenderer::RenderToClipMask(Int operation, UIGeometryHandle geo, CONST void* transform)
 {
-	// operation: 0=Set, 1=SetInverse, 2=Intersect
 	if (!m_current_cmd) return;
 
-	RHI::RenderPipelineState* pso = nullptr;
-	if (operation == 0)
-		pso = m_pso_stencil_set;      // ALWAYS REPLACE
-	else if (operation == 2)
-		pso = m_pso_stencil_intersect; // EQUAL REPLACE
-	else
-		pso = m_pso_stencil_set;      // fallback
+	auto it = m_geometries.find(geo.value);
+	if (it == m_geometries.end()) return;
+	CONST GeoSlot& g = it->second;
+	if (!g.vb) return;
 
+	RHI::RenderPipelineState* pso = (operation == 2)
+		? m_pso_stencil_intersect
+		: m_pso_stencil_set;
 	if (!pso) return;
 	m_current_cmd->SetGraphicsPipeline(pso);
 
-	// Draw geometry with color write mask = 0 (stencil only)
-	DrawGeometry(geo_handle, transform, 0);
+	UploadPerDrawData();
+	m_current_cmd->SetVertexBuffer(g.vb, 0, g.vtx_stride, 0);
+
+	if (g.ib && g.idx_count > 0)
+	{
+		m_current_cmd->SetIndexBuffer(g.ib, 0, true);
+		m_current_cmd->DrawIndexed(g.idx_count, 1, 0, 0, 0);
+	}
+	else
+	{
+		DrawAttribute da;
+		da.vertexCount = g.vtx_count;
+		da.instanceCount = 1;
+		m_current_cmd->Draw(da);
+	}
 }
 
 // =========================================================================
@@ -356,10 +364,15 @@ void RmlUIRenderer::SetTransform(CONST void* transform)
 	}
 	else
 	{
-		// Identity
 		for (int i = 0; i < 16; i++)
 			m_transform[i] = (i % 5 == 0) ? 1.0f : 0.0f;
 	}
+}
+
+void RmlUIRenderer::SetTranslation(Float32 x, Float32 y)
+{
+	m_translation[0] = x;
+	m_translation[1] = y;
 }
 
 bool RmlUIRenderer::NeedsOffscreen() CONST
@@ -385,26 +398,20 @@ RHI::RenderPipelineState* RmlUIRenderer::SelectPSO(bool has_texture) CONST
 }
 
 // =========================================================================
-// Push constants
+// Per-draw uniform buffer upload (SSBO, MeshSample pattern)
 // =========================================================================
-void RmlUIRenderer::FlushPushConstants()
+void RmlUIRenderer::UploadPerDrawData()
 {
-	if (!m_current_cmd) return;
+	if (!m_per_draw_buf) return;
 
-	// Layout: mat4(64 bytes) + vec2(8 bytes) + padding(8 to align to 16)
-	struct {
-		float tf[16];    // 64 bytes
-		float tl[2];     // 8 bytes
-		float _pad[2];   // 8 bytes padding
-	} pc;
+	PerDrawData data;
+	memcpy(data.transform, m_transform, sizeof(data.transform));
+	data.translation[0] = m_translation[0];
+	data.translation[1] = m_translation[1];
 
-	memcpy(pc.tf, m_transform, sizeof(pc.tf));
-	pc.tl[0] = m_translation[0];
-	pc.tl[1] = m_translation[1];
-	pc._pad[0] = 0.0f;
-	pc._pad[1] = 0.0f;
-
-	m_current_cmd->SetPushConstants(0, sizeof(pc), &pc);
+	// BufferUtils::Upload handles both bypass and record modes
+	// (UE EnqueueLambda pattern: data copied by value in record mode)
+	Tool::BufferUtils::Upload(m_per_draw_buf, &data, sizeof(data));
 }
 
 // =========================================================================
@@ -415,7 +422,6 @@ void RmlUIRenderer::CreateShaders(RHI::CommandList* cmd_list)
 	RHI::ShaderDesc sd;
 	RHI::ShaderDataPayload sp;
 
-	// Vertex shader
 	sd.shader_type = ENUM_SHADER_STAGE::Shader_Vertex;
 	sd.shader_name = "RmlUIVS";
 	sd.entry_name = "main";
@@ -423,14 +429,12 @@ void RmlUIRenderer::CreateShaders(RHI::CommandList* cmd_list)
 	if (!sp.data.empty())
 		m_vs = g_render_rhi->CreateShader(sd, sp);
 
-	// Fragment shader (textured)
 	sd.shader_type = ENUM_SHADER_STAGE::Shader_Pixel;
 	sd.shader_name = "RmlUIFS";
 	sp.data = ReadShaderFile("Shader/rml_ui.frag.spv");
 	if (!sp.data.empty())
 		m_fs_textured = g_render_rhi->CreateShader(sd, sp);
 
-	// Fragment shader (composite)
 	sd.shader_name = "RmlUICompositeFS";
 	sp.data = ReadShaderFile("Shader/rml_ui_composite.frag.spv");
 	if (!sp.data.empty())
@@ -451,7 +455,7 @@ void RmlUIRenderer::DestroyShaders()
 // =========================================================================
 // PSO creation
 // =========================================================================
-void RmlUIRenderer::CreatePSOs(ENUM_TEXTURE_FORMAT rt_format)
+void RmlUIRenderer::CreatePSOs()
 {
 	if (!g_render_rhi || !m_vs || !m_fs_textured) return;
 
@@ -459,14 +463,15 @@ void RmlUIRenderer::CreatePSOs(ENUM_TEXTURE_FORMAT rt_format)
 		RHI::RenderGraphiPipelineStateDesc desc;
 		desc.shaders[ENUM_SHADER_STAGE::Shader_Vertex] = m_vs;
 		desc.shaders[ENUM_SHADER_STAGE::Shader_Pixel] = m_fs_textured;
+		desc.render_targets = { m_backbuffer_rtv };
+		desc.depth_stencil_view = m_backbuffer_dsv;
 		desc.primitive_topology = ENUM_PRIMITIVE_TYPE::TriangleList;
-		desc.raster_state.cull_mode = ENUM_RASTER_CULLMODE::ENUM_NONE;
-		desc.raster_state.fill_mode = ENUM_RASTER_FILLMODE::ENUM_SOLID;
-		desc.raster_state.front_counter_clockwise = true; // RmlUI uses GL winding (clockwise = front)
+		desc.raster_state.cull_mode = ENUM_RASTER_CULLMODE::None;
+		desc.raster_state.fill_mode = ENUM_RASTER_FILLMODE::Solid;
+		desc.raster_state.front_counter_clockwise = true;
 		desc.raster_state.scissor_enable = true;
 		desc.raster_state.sample_count = 1;
 
-		// Premultiplied alpha blend
 		desc.blend_state.render_targets.resize(1);
 		desc.blend_state.render_targets[0].blend_enable = true;
 		desc.blend_state.render_targets[0].src_color = ENUM_BLEND_FACTOR::ENUM_SRC_ALPHA;
@@ -475,57 +480,75 @@ void RmlUIRenderer::CreatePSOs(ENUM_TEXTURE_FORMAT rt_format)
 		desc.blend_state.render_targets[0].dst_alpha = ENUM_BLEND_FACTOR::ENUM_ONE_MINUS_SRC_ALPHA;
 		desc.blend_state.render_targets[0].op_color = ENUM_BLEND_EQUATION::ENUM_ADD;
 		desc.blend_state.render_targets[0].op_alpha = ENUM_BLEND_EQUATION::ENUM_ADD;
-		desc.blend_state.render_targets[0].write_mask = ENUM_COLOR_MASK::ENUM_All;
+		desc.blend_state.render_targets[0].write_mask = ENUM_COLOR_MASK::All;
 
-		// Depth/stencil: disabled by default
 		desc.depth_stencil_state.depth_test_enable = false;
 		desc.depth_stencil_state.depth_write_enable = false;
 		desc.depth_stencil_state.stencil_test_enable = false;
 
-		// Vertex input: Rml::Vertex = pos(vec2) + color(ubyte4) + uv(vec2) = 20 bytes
 		RHI::VertexInputLayout pos_layout;
 		pos_layout.binding = 0;
 		pos_layout.location = 0;
-		pos_layout.attribute_format = ENUM_TEXTURE_FORMAT::RG32F; // float2
+		pos_layout.attribute_format = ENUM_TEXTURE_FORMAT::RG32F;
 		pos_layout.offset = 0;
 		desc.vertex_input_layout.push_back(pos_layout);
 
 		RHI::VertexInputLayout color_layout;
 		color_layout.binding = 0;
 		color_layout.location = 1;
-		color_layout.attribute_format = ENUM_TEXTURE_FORMAT::RGBA8; // ubyte4 normalized
+		color_layout.attribute_format = ENUM_TEXTURE_FORMAT::RGBA8;
 		color_layout.offset = 8;
 		desc.vertex_input_layout.push_back(color_layout);
 
 		RHI::VertexInputLayout uv_layout;
 		uv_layout.binding = 0;
 		uv_layout.location = 2;
-		uv_layout.attribute_format = ENUM_TEXTURE_FORMAT::RG32F; // float2
+		uv_layout.attribute_format = ENUM_TEXTURE_FORMAT::RG32F;
 		uv_layout.offset = 12;
 		desc.vertex_input_layout.push_back(uv_layout);
 
 		return desc;
 	};
 
-	// === PSO 1: Textured ===
+	// PSO 1: Textured
 	{
 		auto desc = MakeBaseDesc();
 		m_pso_textured = g_render_rhi->CreateRenderPipelineState(desc);
 		if (m_pso_textured)
 		{
-			m_pso_textured->CreateShaderResourceBinding(m_srb_untextured, true);
+			m_pso_textured->CreateShaderResourceBinding(m_srb_untextured, false);
+			if (m_srb_untextured)
+			{
+				m_srb_untextured->SetResource("pc", m_per_draw_buf);
+				m_srb_untextured->FlushDescriptorWrites();
+			}
+			// Bind a 1x1 white dummy texture so the descriptor is never uninitialized
+			RHI::TextureDesc dummy_desc;
+			dummy_desc.width = 1; dummy_desc.height = 1; dummy_desc.mip_level = 1; dummy_desc.layer_count = 1;
+			dummy_desc.format = ENUM_TEXTURE_FORMAT::RGBA8;
+			dummy_desc.type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
+			dummy_desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
+			dummy_desc.resource_state = ENUM_RESOURCE_STATE::ShaderResource;
+			auto* dummy_tex = g_render_rhi->CreateTexture(dummy_desc);
+			if (dummy_tex)
+			{
+				UInt8 white[4] = {255, 255, 255, 255};
+				RHI::TextureDataPayload payload;
+				payload.data.assign(white, white + 4);
+				payload.format = ENUM_TEXTURE_FORMAT::RGBA8;
+				payload.width = 1; payload.height = 1;
+				dummy_tex->UpdateTextureData(payload);
+				m_srb_untextured->SetResource("tex", dummy_tex);
+				m_srb_untextured->FlushDescriptorWrites();
+			}
 		}
 	}
+	m_pso_untextured = m_pso_textured;
 
-	// === PSO 2: Untextured (same PSO, fragment shader handles missing texture) ===
-	// Actually: RmlUI always uses texture; untextured elements have a white 1x1 texture.
-	// We share the same PSO as textured for now.
-	m_pso_untextured = m_pso_textured; // alias
-
-	// === PSO 3: Stencil Set (color write mask = 0, stencil REPLACE) ===
+	// PSO 2: Stencil Set
 	{
 		auto desc = MakeBaseDesc();
-		desc.blend_state.render_targets[0].write_mask = ENUM_COLOR_MASK(0); // no color output
+		desc.blend_state.render_targets[0].write_mask = static_cast<ENUM_COLOR_MASK>(0);
 		desc.depth_stencil_state.stencil_test_enable = true;
 		desc.depth_stencil_state.stencil_write_mask = 0xFF;
 		desc.depth_stencil_state.stencil_ref = 1;
@@ -537,10 +560,10 @@ void RmlUIRenderer::CreatePSOs(ENUM_TEXTURE_FORMAT rt_format)
 		m_pso_stencil_set = g_render_rhi->CreateRenderPipelineState(desc);
 	}
 
-	// === PSO 4: Stencil Intersect (stencil test EQUAL, write REPLACE with incremented ref) ===
+	// PSO 3: Stencil Intersect
 	{
 		auto desc = MakeBaseDesc();
-		desc.blend_state.render_targets[0].write_mask = ENUM_COLOR_MASK(0);
+		desc.blend_state.render_targets[0].write_mask = static_cast<ENUM_COLOR_MASK>(0);
 		desc.depth_stencil_state.stencil_test_enable = true;
 		desc.depth_stencil_state.stencil_read_mask = 0xFF;
 		desc.depth_stencil_state.stencil_write_mask = 0xFF;
@@ -552,12 +575,12 @@ void RmlUIRenderer::CreatePSOs(ENUM_TEXTURE_FORMAT rt_format)
 		m_pso_stencil_intersect = g_render_rhi->CreateRenderPipelineState(desc);
 	}
 
-	// === PSO 5: Textured + Stencil Test (read stencil, test EQUAL) ===
+	// PSO 4: Textured + Stencil Test
 	{
 		auto desc = MakeBaseDesc();
 		desc.depth_stencil_state.stencil_test_enable = true;
 		desc.depth_stencil_state.stencil_read_mask = 0xFF;
-		desc.depth_stencil_state.stencil_write_mask = 0; // read-only
+		desc.depth_stencil_state.stencil_write_mask = 0;
 		desc.depth_stencil_state.front_face_stencil.func = ENUM_STENCIL_FUNCTION::ENUM_EQUAL;
 		desc.depth_stencil_state.front_face_stencil.pass_op = ENUM_STENCIL_OPERATIOON::ENUM_KEEP;
 		desc.depth_stencil_state.front_face_stencil.fail_op = ENUM_STENCIL_OPERATIOON::ENUM_KEEP;
@@ -565,26 +588,43 @@ void RmlUIRenderer::CreatePSOs(ENUM_TEXTURE_FORMAT rt_format)
 		desc.depth_stencil_state.back_face_stencil = desc.depth_stencil_state.front_face_stencil;
 		m_pso_textured_stencil = g_render_rhi->CreateRenderPipelineState(desc);
 	}
+	m_pso_untextured_stencil = m_pso_textured_stencil;
 
-	// === PSO 6: Untextured + Stencil Test ===
-	m_pso_untextured_stencil = m_pso_textured_stencil; // alias (same PSO for v1)
+	// PSO 5: Composite
+	{
+		auto desc = MakeBaseDesc();
+		desc.shaders[ENUM_SHADER_STAGE::Shader_Pixel] = m_fs_composite;
+		m_pso_composite = g_render_rhi->CreateRenderPipelineState(desc);
+	}
 
-	std::cout << "[RmlUIRenderer] PSOs created: tex=" << (m_pso_textured != nullptr)
-		<< " stencil_set=" << (m_pso_stencil_set != nullptr)
-		<< " stencil_isect=" << (m_pso_stencil_intersect != nullptr)
-		<< " stencil_test=" << (m_pso_textured_stencil != nullptr) << std::endl;
+	std::cout << "[RmlUIRenderer] PSOs created" << std::endl;
 }
 
 void RmlUIRenderer::DestroyPSOs()
 {
-	// PSOs are owned by VK_PipelineStateManager — do NOT delete them directly.
-	// The pointers here are non-owning references.
 	m_pso_textured = nullptr;
 	m_pso_untextured = nullptr;
 	m_pso_stencil_set = nullptr;
 	m_pso_stencil_intersect = nullptr;
 	m_pso_textured_stencil = nullptr;
 	m_pso_untextured_stencil = nullptr;
+	m_pso_composite = nullptr;
+}
+
+// =========================================================================
+// Composite layer (Mode B)
+// =========================================================================
+void RmlUIRenderer::CompositeLayer(RHI::Texture* ui_layer_texture, UInt32 tex_width, UInt32 tex_height)
+{
+	if (!m_current_cmd || !m_pso_composite || !ui_layer_texture) return;
+
+	m_current_cmd->SetGraphicsPipeline(m_pso_composite);
+	(void)tex_width; (void)tex_height;
+
+	DrawAttribute da;
+	da.vertexCount = 3;
+	da.instanceCount = 1;
+	m_current_cmd->Draw(da);
 }
 
 MYRENDERER_END_NAMESPACE

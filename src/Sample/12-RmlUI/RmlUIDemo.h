@@ -4,11 +4,9 @@
 
 #include "Core/ConstDefine.h"
 #include "Application/SampleApp.h"
+#include "UI/UIHandleTypes.h"
 
-// Forward declarations
-namespace Rml {
-class DataModelHandle;
-}
+// No RmlUI headers here — everything is behind RmlUIManager
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
@@ -18,21 +16,12 @@ MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 
-/**
- * Sample 12: RmlUI Demo — game UI with retained-mode framework.
- *
- * Demonstrates:
- * - RmlUI initialization and RDG pass integration
- * - Data model binding with DirtyVariable
- * - Event handling (button clicks)
- * - .rml/.rcss document loading
- */
 class RmlUIDemoApp : public MXRender::Application::SampleApp
 {
 #pragma region METHOD
 public:
-	RmlUIDemoApp() MYDEFAULT;
-	VIRTUAL ~RmlUIDemoApp() MYDEFAULT;
+	RmlUIDemoApp();
+	VIRTUAL ~RmlUIDemoApp();
 
 	VIRTUAL void METHOD(OnInitScene)() OVERRIDE;
 	VIRTUAL void METHOD(OnShutdownScene)() OVERRIDE;
@@ -47,9 +36,12 @@ public:
 protected:
 private:
 	MXRender::UI::RmlUI::RmlUIManager* m_manager = nullptr;
-	Rml::DataModelHandle* m_hud_handle = nullptr;
 
-	// Demo data model
+	// Typed handles (ResourceHandle<Tag>) — no RmlUI types exposed
+	MXRender::UI::RmlUI::RmlModelHandle m_hud_model;
+	MXRender::UI::RmlUI::RmlDocHandle   m_hud_doc;
+
+	// Demo data
 	int m_hp = 100;
 	int m_score = 0;
 	float m_timer = 0.0f;

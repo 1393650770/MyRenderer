@@ -46,7 +46,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityF
 
 void VulkanRHI::Init(RenderFactory* render_factory)
 {
-	VulkanRenderFactory* vulkan_render_factory = STATIC_CAST(render_factory,VulkanRenderFactory);
+	RenderFactory* vulkan_render_factory = STATIC_CAST(render_factory, RenderFactory);
 		// Backward compat: if old enable_render_debug is true but new validation_level is 0, enable level 2
 			Int validation_lvl = vulkan_render_factory->validation_level;
 			if (validation_lvl == 0 && vulkan_render_factory->enable_render_debug)
@@ -168,19 +168,38 @@ FrameBuffer* VulkanRHI::CreateFrameBuffer(CONST FrameBufferDesc& desc)
 	return new VK_FrameBuffer(device,desc, device->GetRenderPassManager()->GetRenderPass(key)->GetRenderPass());
 }
 
+// UE-style shadow-memory lock tracker for MapBuffer/UnmapBuffer in record mode
+static Map<Buffer*, Vector<UInt8>> s_lock_tracker;
+
 void* VulkanRHI::MapBuffer(Buffer* buffer, ENUM_MAP_TYPE map_type, ENUM_MAP_FLAG map_flag)
 {
-	return STATIC_CAST(buffer,VK_Buffer)->Map(map_type, map_flag);
+	auto* cmd_list = STATIC_CAST(GetImmediateCommandList(), VK_CommandBuffer);
+	if (cmd_list && !cmd_list->IsBypass())
+	{
+		// Record mode: allocate CPU shadow memory. The actual GPU Map happens
+		// during UnmapBuffer replay on the RHI thread (UE EnqueueLambda pattern).
+		Vector<UInt8>& shadow = s_lock_tracker[buffer];
+		shadow.resize(STATIC_CAST(buffer, VK_Buffer)->GetBufferDesc().size);
+		return shadow.data();
+	}
+	// Bypass mode: direct GPU Map with Discard (orphans old allocation, safe per-draw)
+	return STATIC_CAST(buffer, VK_Buffer)->Map(map_type, ENUM_MAP_FLAG::Discard);
 }
 
 void VulkanRHI::UnmapBuffer(Buffer* buffer)
 {
-	// Unmap triggers GPU copy (staging->device). In RHI thread mode,
-	// this is recorded for later replay. In bypass mode, executes immediately.
 	auto* cmd_list = STATIC_CAST(GetImmediateCommandList(), VK_CommandBuffer);
 	if (cmd_list && !cmd_list->IsBypass())
 	{
-		cmd_list->GetRecordedCommands().push_back(std::make_unique<RHICmdUnmapBuffer>(buffer));
+		// Record mode: enqueue the GPU upload command
+		// RHI thread replays: Map(Discard) → memcpy(shadow→GPU) → Unmap
+		auto it = s_lock_tracker.find(buffer);
+		if (it != s_lock_tracker.end())
+		{
+			cmd_list->GetRecordedCommands().push_back(
+				std::make_unique<RHICmdUpdateBuffer>(buffer, 0, (UInt32)it->second.size(), it->second.data()));
+			s_lock_tracker.erase(it);
+		}
 		return;
 	}
 	STATIC_CAST(buffer, VK_Buffer)->Unmap();

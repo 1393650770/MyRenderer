@@ -268,7 +268,7 @@ public:
 	//  UI 渲染裁剪支持（VK_CommandBuffer 专属，不在 RHI 抽象接口上）
 	// Used by VK_RmlRenderer to set per-draw scissor rectangles.
 	void METHOD(SetScissorEnable)(bool enable);
-	void METHOD(SetScissor)(Int32 x, Int32 y, UInt32 w, UInt32 h);
+	void METHOD(SetScissor)(Int x, Int y, UInt32 w, UInt32 h);
 protected:
 	void METHOD(Allocate)();
 	void METHOD(Free)();

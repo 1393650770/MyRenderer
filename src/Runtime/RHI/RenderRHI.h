@@ -28,7 +28,13 @@ public:
 	Bool enable_render_debug=false;
 	//  threading_mode replaces enable_rhi_thread
 	EThreadingMode threading_mode = EThreadingMode::ThreeThread;
-
+	//  UE  r.Vulkan.EnableValidation — validation levels
+	// 0=off, 1=errors only, 2=warnings+errors
+	Int validation_level = 0;
+	// If true, register debug utils messenger callback (on top of validation layers)
+	Bool enable_debug_callback = false;
+	// If true, do not crash when validation layers are unavailable (Android behaviour)
+	Bool validation_optional = false;
 MYRENDERER_END_CLASS
 
 MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RenderRHI,public RenderResource)

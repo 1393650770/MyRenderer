@@ -84,6 +84,9 @@ enum class RHICommandType : UInt8
 	DrawIndirect,
 	DrawIndexedIndirect,
 	DispatchIndirect,
+	SetScissorEnable,
+	SetScissor,
+	UpdateBuffer,
 };
 
 struct RHICommand
@@ -160,8 +163,9 @@ struct RHICmdFlushBarriers : RHICommand {
 };
 struct RHICmdSetPushConstants : RHICommand {
 	UInt32 offset, size;
+	ENUM_SHADER_STAGE stage = ENUM_SHADER_STAGE::Invalid;
 	Vector<UInt8> data;
-	RHICmdSetPushConstants(UInt32 o, UInt32 s, const void* d) : RHICommand(RHICommandType::SetPushConstants), offset(o), size(s), data((UInt8*)d, (UInt8*)d + s) {}
+	RHICmdSetPushConstants(UInt32 o, UInt32 s, const void* d, ENUM_SHADER_STAGE st = ENUM_SHADER_STAGE::Invalid) : RHICommand(RHICommandType::SetPushConstants), offset(o), size(s), stage(st), data((UInt8*)d, (UInt8*)d + s) {}
 };
 struct RHICmdCopyBuffer : RHICommand {
 	UInt64 src_id, dst_id;
@@ -204,6 +208,22 @@ struct RHICmdBeginRenderPass : RHICommand {
 };
 struct RHICmdBeginUI : RHICommand { RHICmdBeginUI() : RHICommand(RHICommandType::BeginUI) {} };
 struct RHICmdEndUI : RHICommand { RHICmdEndUI() : RHICommand(RHICommandType::EndUI) {} };
+struct RHICmdSetScissorEnable : RHICommand {
+	Bool enable;
+	RHICmdSetScissorEnable(Bool e) : RHICommand(RHICommandType::SetScissorEnable), enable(e) {}
+};
+struct RHICmdSetScissor : RHICommand {
+	Int x, y; UInt32 w, h;
+	RHICmdSetScissor(Int x_, Int y_, UInt32 w_, UInt32 h_) : RHICommand(RHICommandType::SetScissor), x(x_), y(y_), w(w_), h(h_) {}
+};
+struct RHICmdUpdateBuffer : RHICommand {
+	class Buffer* buffer;
+	UInt32 offset, size;
+	Vector<UInt8> data;
+	RHICmdUpdateBuffer(Buffer* b, UInt32 off, UInt32 sz, const void* d)
+		: RHICommand(RHICommandType::UpdateBuffer), buffer(b), offset(off), size(sz)
+		, data((UInt8*)d, (UInt8*)d + sz) {}
+};
 struct RHICmdWriteTimestamp : RHICommand {
 	UInt32 index;
 	RHICmdWriteTimestamp(UInt32 i) : RHICommand(RHICommandType::WriteTimestamp), index(i) {}

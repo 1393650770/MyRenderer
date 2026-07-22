@@ -1,17 +1,10 @@
-
 #pragma once
 #ifndef _UIRENDERPASS_
 #define _UIRENDERPASS_
 
 #include "Core/ConstDefine.h"
 #include "Render/Core/RenderGraph.h"
-
-// Forward declarations
-MYRENDERER_BEGIN_NAMESPACE(MXRender)
-MYRENDERER_BEGIN_NAMESPACE(UI)
-class UIRenderer;
-MYRENDERER_END_NAMESPACE
-MYRENDERER_END_NAMESPACE
+#include <functional>
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -23,38 +16,22 @@ MYRENDERER_END_NAMESPACE
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
-/**
- * RDG pass data for UI rendering.
- *
- * Owns the PSO for the optional composite pass (Mode B: offscreen→backbuffer).
- */
+class UIRenderer;
+
 struct UIPassData : public Render::RenderGraphPassDataBase {
-	RHI::RenderPipelineState* composite_pso = nullptr;
 	VIRTUAL ~UIPassData() { Release(); }
-	VIRTUAL void Release() OVERRIDE {
-		// composite_pso is owned by the pipeline state manager — do NOT delete
-		composite_pso = nullptr;
-	}
+	VIRTUAL void Release() OVERRIDE {}
 };
 
-/**
- * Register RmlUI rendering as an RDG pass.
- *
- * Automatically selects Mode A (direct backbuffer write) or Mode B
- * (offscreen + composite) based on NeedsOffscreen().
- *
- * @param graph           The RenderGraph to add passes to
- * @param bb_resource     Retained backbuffer resource ("BackBuffer")
- * @param renderer        The UI renderer backend
- * @param ui_draw_fn      Callback that records UI draw commands (e.g. Rml::Context::Render())
- * @param viewport_w, viewport_h  Current viewport dimensions
- */
+/// Register UI rendering as an RDG pass.
+/// @param draw_fn  Called between BeginFrame/EndFrame to record UI draw commands
 void RegisterUIPass(
 	Render::RenderGraph* graph,
 	Render::RenderGraphResource<RHI::TextureDesc, RHI::Texture>* bb_resource,
 	UIRenderer* renderer,
 	RHI::CommandList* cmd_list,
-	UInt32 viewport_w, UInt32 viewport_h);
+	UInt32 viewport_w, UInt32 viewport_h,
+	std::function<void(RHI::CommandList*)> draw_fn);
 
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE

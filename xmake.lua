@@ -229,6 +229,9 @@ function MoveResource(target)
 if os.isdir("$(projectdir)/resource/RmlUI") then
 	os.cp("$(projectdir)/resource/RmlUI", root_taget_path .. "/RmlUI")
 end
+if os.isdir("$(projectdir)/resource/Font") then
+	os.cp("$(projectdir)/resource/Font", root_taget_path .. "/Font")
+end
     if os.isdir("$(projectdir)/resource/Dataset") then
         os.cp("$(projectdir)/resource/Dataset", root_taget_dataset_path)
     end
@@ -243,6 +246,7 @@ function CommonProjectSetting()
         set_kind("binary")
     end
     set_languages("clatest", "cxx20")
+    add_defines("RMLUI_STATIC_LIB")
     PlatformSettings()
     add_deps("Runtime")
     add_files("src/_Generated/**.cpp", {public = true})

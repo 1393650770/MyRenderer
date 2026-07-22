@@ -1,6 +1,7 @@
 #include "RmlUIFileInterface.h"
 
 #include <RmlUi/Core/FileInterface.h>
+#include <RmlUi/Core/Core.h>
 #include <fstream>
 #include <iostream>
 

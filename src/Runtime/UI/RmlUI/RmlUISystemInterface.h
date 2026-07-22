@@ -22,8 +22,8 @@ MYRENDERER_BEGIN_CLASS(RmlUISystemInterface)
 
 #pragma region METHOD
 public:
-	RmlUISystemInterface() MYDEFAULT;
-	VIRTUAL ~RmlUISystemInterface() MYDEFAULT;
+	RmlUISystemInterface();
+	VIRTUAL ~RmlUISystemInterface();
 
 	/// Install this as the active SystemInterface for RmlUI.
 	/// Must be called before Rml::Initialise().

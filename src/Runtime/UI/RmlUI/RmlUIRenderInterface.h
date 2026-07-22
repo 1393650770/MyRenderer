@@ -31,7 +31,7 @@ MYRENDERER_BEGIN_CLASS(RmlUIRenderInterface)
 #pragma region METHOD
 public:
 	RmlUIRenderInterface(UI::UIRenderer* renderer);
-	VIRTUAL ~RmlUIRenderInterface() MYDEFAULT;
+	VIRTUAL ~RmlUIRenderInterface();
 
 	/// Get the underlying Rml::RenderInterface pointer.
 	/// The caller (RmlUIManager) installs this via Rml::SetRenderInterface().

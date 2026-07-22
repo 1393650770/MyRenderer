@@ -3,11 +3,10 @@
 #define _RMLUIINPUTBRIDGE_
 
 #include "Core/ConstDefine.h"
+#include "Input/InputKeys.h"
 
-// Forward declare Rml types (no header dependency in this header)
 namespace Rml {
 class Context;
-namespace Input { enum class KeyIdentifier; }
 }
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
@@ -15,13 +14,13 @@ MYRENDERER_BEGIN_NAMESPACE(UI)
 MYRENDERER_BEGIN_NAMESPACE(RmlUI)
 
 /**
- * GLFW input → RmlUI Context event bridge.
+ * Platform-neutral input bridge: InputSystem/PlatformWindow → RmlUI Context.
  *
- * Owns the key code mapping table (GLFW → Rml::KeyIdentifier).
- * Call the Process* methods in the main loop after glfwPollEvents().
+ * Uses the engine's InputSystem for modifier state and EKey for key identifiers.
+ * No GLFW or platform-specific types in the API — follows convention 14.2.
  *
- * v1: Direct GLFW polling (works in Single thread mode).
- * v2: Multi-thread support via buffered input queue.
+ * v1: Polling-based mouse/scroll/keyboard.
+ * v2: Add ProcessTouch for mobile (uses PlatformWindow::GetTouchState).
  */
 MYRENDERER_BEGIN_CLASS(RmlUIInputBridge)
 
@@ -30,44 +29,31 @@ public:
 	RmlUIInputBridge() MYDEFAULT;
 	VIRTUAL ~RmlUIInputBridge() MYDEFAULT;
 
-	/// Set the RmlUI context to forward events to.
 	void METHOD(SetContext)(Rml::Context* context);
 
-	/// Process mouse movement.
-	void METHOD(ProcessMouseMove)(Int32 x, Int32 y);
-
-	/// Process mouse button (0=left, 1=right, 2=middle).
-	void METHOD(ProcessMouseButton)(Int32 button, bool pressed);
-
-	/// Process mouse scroll.
+	// Mouse (window coordinates, origin top-left)
+	void METHOD(ProcessMouseMove)(Int x, Int y);
+	void METHOD(ProcessMouseButton)(Int button, bool pressed);
 	void METHOD(ProcessMouseScroll)(Float32 dx, Float32 dy);
-
-	/// Process key press/release (GLFW key code).
-	void METHOD(ProcessKey)(Int32 glfw_key, bool pressed);
-
-	/// Process a Unicode character input.
-	void METHOD(ProcessChar)(UInt32 codepoint);
-
-	/// Notify that mouse left the window.
 	void METHOD(ProcessMouseLeave)();
 
-	/// Returns true if the UI is currently capturing mouse input.
-	bool METHOD(IsMouseInteracting)() CONST;
+	// Keyboard — uses platform-neutral EKey
+	void METHOD(ProcessKey)(CONST MXRender::Input::Key& key, bool pressed);
 
-	/// Set input priority: true = game UI first, false = ImGui editor first.
-	void METHOD(SetInputPriority)(bool game_first);
+	// Text input (Unicode codepoint from GLFW char callback)
+	// Note: text input still requires the platform layer to forward
+	// GLFW's char callback to this method. That forwarding lives in
+	// DesktopWindow, not in Sample code.
+	void METHOD(ProcessChar)(UInt32 codepoint);
+
+	bool METHOD(IsMouseInteracting)() CONST;
 
 protected:
 private:
 	Rml::Context* m_context = nullptr;
-	bool m_game_first = true;
-	Int32 m_modifier_state = 0;
 
-	/// Build KeyModifier state from current key states.
-	Int32 METHOD(BuildModifiers)() CONST;
-
-	/// Map GLFW key code to Rml::KeyIdentifier.
-	static Int32 METHOD(MapKey)(Int32 glfw_key);
+	Int  METHOD(BuildModifiers)() CONST;
+	static Int METHOD(MapKey)(CONST MXRender::Input::Key& key);
 #pragma endregion
 
 #pragma region MEMBER
@@ -82,4 +68,4 @@ MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 
-#endif // !_RMLUIINPUTBRIDGE_
+#endif

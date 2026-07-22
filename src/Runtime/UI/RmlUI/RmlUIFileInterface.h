@@ -20,8 +20,8 @@ MYRENDERER_BEGIN_CLASS(RmlUIFileInterface)
 
 #pragma region METHOD
 public:
-	RmlUIFileInterface() MYDEFAULT;
-	VIRTUAL ~RmlUIFileInterface() MYDEFAULT;
+	RmlUIFileInterface();
+	VIRTUAL ~RmlUIFileInterface();
 
 	/// Install as the active FileInterface.
 	void METHOD(Install)();

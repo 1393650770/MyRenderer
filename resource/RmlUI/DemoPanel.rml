@@ -9,15 +9,15 @@
 		<div id="hp-panel">
 			<div id="hp-label">HP</div>
 			<div id="hp-bar-bg">
-				<div id="hp-bar-fill" data-value="hp" style="width: [[hp]]px;"></div>
+				<div id="hp-bar-fill" data-value="hp">HP fill</div>
 			</div>
-			<div id="hp-text">[[hp]] / 100</div>
+			<div id="hp-text">{{ hp }} / 100</div>
 		</div>
 
 		<!-- Score & Timer -->
 		<div id="info-panel">
-			<div id="score-text">Score: [[score]]</div>
-			<div id="timer-text">Time: {{ float(timer) | round }}s</div>
+			<div id="score-text">Score: {{ score }}</div>
+			<div id="timer-text">Time: {{ timer }}</div>
 		</div>
 
 		<!-- Action Buttons -->

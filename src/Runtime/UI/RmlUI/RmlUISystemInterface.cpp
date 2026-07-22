@@ -1,6 +1,7 @@
 #include "RmlUISystemInterface.h"
 
 #include <RmlUi/Core/SystemInterface.h>
+#include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/Log.h>
 #include <GLFW/glfw3.h>
 #include <iostream>

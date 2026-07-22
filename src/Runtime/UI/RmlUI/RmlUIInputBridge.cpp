@@ -2,7 +2,7 @@
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Input.h>
-#include <GLFW/glfw3.h>
+#include "Input/InputSystem.h"
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
@@ -13,13 +13,13 @@ void RmlUIInputBridge::SetContext(Rml::Context* context)
 	m_context = context;
 }
 
-void RmlUIInputBridge::ProcessMouseMove(Int32 x, Int32 y)
+void RmlUIInputBridge::ProcessMouseMove(Int x, Int y)
 {
 	if (!m_context) return;
 	m_context->ProcessMouseMove(x, y, BuildModifiers());
 }
 
-void RmlUIInputBridge::ProcessMouseButton(Int32 button, bool pressed)
+void RmlUIInputBridge::ProcessMouseButton(Int button, bool pressed)
 {
 	if (!m_context) return;
 	int mods = BuildModifiers();
@@ -35,10 +35,10 @@ void RmlUIInputBridge::ProcessMouseScroll(Float32 dx, Float32 dy)
 	m_context->ProcessMouseWheel({ dx, dy }, BuildModifiers());
 }
 
-void RmlUIInputBridge::ProcessKey(Int32 glfw_key, bool pressed)
+void RmlUIInputBridge::ProcessKey(CONST MXRender::Input::Key& key, bool pressed)
 {
 	if (!m_context) return;
-	auto rml_key = static_cast<Rml::Input::KeyIdentifier>(MapKey(glfw_key));
+	auto rml_key = static_cast<Rml::Input::KeyIdentifier>(MapKey(key));
 	int mods = BuildModifiers();
 	if (pressed)
 		m_context->ProcessKeyDown(rml_key, mods);
@@ -64,129 +64,93 @@ bool RmlUIInputBridge::IsMouseInteracting() CONST
 	return m_context->IsMouseInteracting();
 }
 
-void RmlUIInputBridge::SetInputPriority(bool game_first)
+// =========================================================================
+// BuildModifiers — uses InputSystem (no GLFW dependency)
+// =========================================================================
+Int RmlUIInputBridge::BuildModifiers() CONST
 {
-	m_game_first = game_first;
-}
-
-Int32 RmlUIInputBridge::BuildModifiers() CONST
-{
+	using namespace MXRender::Input;
+	auto& input = InputSystem::Get();
 	int mods = 0;
-	// Check immediate mode: glfwGetKey returns current key state
-	auto* glfw_ctx = glfwGetCurrentContext();
-	if (!glfw_ctx) return 0;
 
-	if (glfwGetKey(glfw_ctx, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
-		glfwGetKey(glfw_ctx, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS)
+	if (input.IsKeyDown(EKey::LeftCtrl) || input.IsKeyDown(EKey::RightCtrl))
 		mods |= Rml::Input::KM_CTRL;
-	if (glfwGetKey(glfw_ctx, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ||
-		glfwGetKey(glfw_ctx, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)
+	if (input.IsKeyDown(EKey::LeftShift) || input.IsKeyDown(EKey::RightShift))
 		mods |= Rml::Input::KM_SHIFT;
-	if (glfwGetKey(glfw_ctx, GLFW_KEY_LEFT_ALT) == GLFW_PRESS ||
-		glfwGetKey(glfw_ctx, GLFW_KEY_RIGHT_ALT) == GLFW_PRESS)
+	if (input.IsKeyDown(EKey::LeftAlt) || input.IsKeyDown(EKey::RightAlt))
 		mods |= Rml::Input::KM_ALT;
-	if (glfwGetKey(glfw_ctx, GLFW_KEY_CAPS_LOCK) == GLFW_PRESS)
-		mods |= Rml::Input::KM_CAPSLOCK;
-	if (glfwGetKey(glfw_ctx, GLFW_KEY_NUM_LOCK) == GLFW_PRESS)
-		mods |= Rml::Input::KM_NUMLOCK;
 
 	return mods;
 }
 
-Int32 RmlUIInputBridge::MapKey(Int32 glfw_key)
+// =========================================================================
+// MapKey — EKey → Rml::Input::KeyIdentifier (platform-neutral mapping)
+// =========================================================================
+Int RmlUIInputBridge::MapKey(CONST MXRender::Input::Key& key)
 {
-	// GLFW → RmlUI key identifier mapping
-	// Covers the most common keys used in game UI.
-	switch (glfw_key)
-	{
-	case GLFW_KEY_SPACE:         return static_cast<Int32>(Rml::Input::KI_SPACE);
-	case GLFW_KEY_0:             return static_cast<Int32>(Rml::Input::KI_0);
-	case GLFW_KEY_1:             return static_cast<Int32>(Rml::Input::KI_1);
-	case GLFW_KEY_2:             return static_cast<Int32>(Rml::Input::KI_2);
-	case GLFW_KEY_3:             return static_cast<Int32>(Rml::Input::KI_3);
-	case GLFW_KEY_4:             return static_cast<Int32>(Rml::Input::KI_4);
-	case GLFW_KEY_5:             return static_cast<Int32>(Rml::Input::KI_5);
-	case GLFW_KEY_6:             return static_cast<Int32>(Rml::Input::KI_6);
-	case GLFW_KEY_7:             return static_cast<Int32>(Rml::Input::KI_7);
-	case GLFW_KEY_8:             return static_cast<Int32>(Rml::Input::KI_8);
-	case GLFW_KEY_9:             return static_cast<Int32>(Rml::Input::KI_9);
-	case GLFW_KEY_A:             return static_cast<Int32>(Rml::Input::KI_A);
-	case GLFW_KEY_B:             return static_cast<Int32>(Rml::Input::KI_B);
-	case GLFW_KEY_C:             return static_cast<Int32>(Rml::Input::KI_C);
-	case GLFW_KEY_D:             return static_cast<Int32>(Rml::Input::KI_D);
-	case GLFW_KEY_E:             return static_cast<Int32>(Rml::Input::KI_E);
-	case GLFW_KEY_F:             return static_cast<Int32>(Rml::Input::KI_F);
-	case GLFW_KEY_G:             return static_cast<Int32>(Rml::Input::KI_G);
-	case GLFW_KEY_H:             return static_cast<Int32>(Rml::Input::KI_H);
-	case GLFW_KEY_I:             return static_cast<Int32>(Rml::Input::KI_I);
-	case GLFW_KEY_J:             return static_cast<Int32>(Rml::Input::KI_J);
-	case GLFW_KEY_K:             return static_cast<Int32>(Rml::Input::KI_K);
-	case GLFW_KEY_L:             return static_cast<Int32>(Rml::Input::KI_L);
-	case GLFW_KEY_M:             return static_cast<Int32>(Rml::Input::KI_M);
-	case GLFW_KEY_N:             return static_cast<Int32>(Rml::Input::KI_N);
-	case GLFW_KEY_O:             return static_cast<Int32>(Rml::Input::KI_O);
-	case GLFW_KEY_P:             return static_cast<Int32>(Rml::Input::KI_P);
-	case GLFW_KEY_Q:             return static_cast<Int32>(Rml::Input::KI_Q);
-	case GLFW_KEY_R:             return static_cast<Int32>(Rml::Input::KI_R);
-	case GLFW_KEY_S:             return static_cast<Int32>(Rml::Input::KI_S);
-	case GLFW_KEY_T:             return static_cast<Int32>(Rml::Input::KI_T);
-	case GLFW_KEY_U:             return static_cast<Int32>(Rml::Input::KI_U);
-	case GLFW_KEY_V:             return static_cast<Int32>(Rml::Input::KI_V);
-	case GLFW_KEY_W:             return static_cast<Int32>(Rml::Input::KI_W);
-	case GLFW_KEY_X:             return static_cast<Int32>(Rml::Input::KI_X);
-	case GLFW_KEY_Y:             return static_cast<Int32>(Rml::Input::KI_Y);
-	case GLFW_KEY_Z:             return static_cast<Int32>(Rml::Input::KI_Z);
-	case GLFW_KEY_ESCAPE:        return static_cast<Int32>(Rml::Input::KI_ESCAPE);
-	case GLFW_KEY_TAB:           return static_cast<Int32>(Rml::Input::KI_TAB);
-	case GLFW_KEY_BACKSPACE:     return static_cast<Int32>(Rml::Input::KI_BACK);
-	case GLFW_KEY_ENTER:         return static_cast<Int32>(Rml::Input::KI_RETURN);
-	case GLFW_KEY_LEFT:          return static_cast<Int32>(Rml::Input::KI_LEFT);
-	case GLFW_KEY_RIGHT:         return static_cast<Int32>(Rml::Input::KI_RIGHT);
-	case GLFW_KEY_UP:            return static_cast<Int32>(Rml::Input::KI_UP);
-	case GLFW_KEY_DOWN:          return static_cast<Int32>(Rml::Input::KI_DOWN);
-	case GLFW_KEY_INSERT:        return static_cast<Int32>(Rml::Input::KI_INSERT);
-	case GLFW_KEY_DELETE:        return static_cast<Int32>(Rml::Input::KI_DELETE);
-	case GLFW_KEY_HOME:          return static_cast<Int32>(Rml::Input::KI_HOME);
-	case GLFW_KEY_END:           return static_cast<Int32>(Rml::Input::KI_END);
-	case GLFW_KEY_PAGE_UP:       return static_cast<Int32>(Rml::Input::KI_PRIOR);
-	case GLFW_KEY_PAGE_DOWN:     return static_cast<Int32>(Rml::Input::KI_NEXT);
-	case GLFW_KEY_LEFT_SHIFT:
-	case GLFW_KEY_RIGHT_SHIFT:   return static_cast<Int32>(Rml::Input::KI_LSHIFT);
-	case GLFW_KEY_LEFT_CONTROL:
-	case GLFW_KEY_RIGHT_CONTROL: return static_cast<Int32>(Rml::Input::KI_LCONTROL);
-	case GLFW_KEY_LEFT_ALT:
-	case GLFW_KEY_RIGHT_ALT:     return static_cast<Int32>(Rml::Input::KI_LMENU);
-	case GLFW_KEY_F1:            return static_cast<Int32>(Rml::Input::KI_F1);
-	case GLFW_KEY_F2:            return static_cast<Int32>(Rml::Input::KI_F2);
-	case GLFW_KEY_F3:            return static_cast<Int32>(Rml::Input::KI_F3);
-	case GLFW_KEY_F4:            return static_cast<Int32>(Rml::Input::KI_F4);
-	case GLFW_KEY_F5:            return static_cast<Int32>(Rml::Input::KI_F5);
-	case GLFW_KEY_F6:            return static_cast<Int32>(Rml::Input::KI_F6);
-	case GLFW_KEY_F7:            return static_cast<Int32>(Rml::Input::KI_F7);
-	case GLFW_KEY_F8:            return static_cast<Int32>(Rml::Input::KI_F8);
-	case GLFW_KEY_F9:            return static_cast<Int32>(Rml::Input::KI_F9);
-	case GLFW_KEY_F10:           return static_cast<Int32>(Rml::Input::KI_F10);
-	case GLFW_KEY_F11:           return static_cast<Int32>(Rml::Input::KI_F11);
-	case GLFW_KEY_F12:           return static_cast<Int32>(Rml::Input::KI_F12);
-	case GLFW_KEY_PAUSE:         return static_cast<Int32>(Rml::Input::KI_PAUSE);
-	case GLFW_KEY_KP_0:          return static_cast<Int32>(Rml::Input::KI_NUMPAD0);
-	case GLFW_KEY_KP_1:          return static_cast<Int32>(Rml::Input::KI_NUMPAD1);
-	case GLFW_KEY_KP_2:          return static_cast<Int32>(Rml::Input::KI_NUMPAD2);
-	case GLFW_KEY_KP_3:          return static_cast<Int32>(Rml::Input::KI_NUMPAD3);
-	case GLFW_KEY_KP_4:          return static_cast<Int32>(Rml::Input::KI_NUMPAD4);
-	case GLFW_KEY_KP_5:          return static_cast<Int32>(Rml::Input::KI_NUMPAD5);
-	case GLFW_KEY_KP_6:          return static_cast<Int32>(Rml::Input::KI_NUMPAD6);
-	case GLFW_KEY_KP_7:          return static_cast<Int32>(Rml::Input::KI_NUMPAD7);
-	case GLFW_KEY_KP_8:          return static_cast<Int32>(Rml::Input::KI_NUMPAD8);
-	case GLFW_KEY_KP_9:          return static_cast<Int32>(Rml::Input::KI_NUMPAD9);
-	case GLFW_KEY_KP_ENTER:      return static_cast<Int32>(Rml::Input::KI_NUMPADENTER);
-	case GLFW_KEY_KP_MULTIPLY:   return static_cast<Int32>(Rml::Input::KI_MULTIPLY);
-	case GLFW_KEY_KP_ADD:        return static_cast<Int32>(Rml::Input::KI_ADD);
-	case GLFW_KEY_KP_SUBTRACT:   return static_cast<Int32>(Rml::Input::KI_SUBTRACT);
-	case GLFW_KEY_KP_DECIMAL:    return static_cast<Int32>(Rml::Input::KI_DECIMAL);
-	case GLFW_KEY_KP_DIVIDE:     return static_cast<Int32>(Rml::Input::KI_DIVIDE);
-	default:                     return static_cast<Int32>(Rml::Input::KI_UNKNOWN);
-	}
+	using namespace MXRender::Input;
+	using KI = Rml::Input::KeyIdentifier;
+
+	if      (key == EKey::Space)      return static_cast<Int>(KI::KI_SPACE);
+	if      (key == EKey::K0)         return static_cast<Int>(KI::KI_0);
+	if      (key == EKey::K1)         return static_cast<Int>(KI::KI_1);
+	if      (key == EKey::K2)         return static_cast<Int>(KI::KI_2);
+	if      (key == EKey::K3)         return static_cast<Int>(KI::KI_3);
+	if      (key == EKey::K4)         return static_cast<Int>(KI::KI_4);
+	if      (key == EKey::K5)         return static_cast<Int>(KI::KI_5);
+	if      (key == EKey::K6)         return static_cast<Int>(KI::KI_6);
+	if      (key == EKey::K7)         return static_cast<Int>(KI::KI_7);
+	if      (key == EKey::K8)         return static_cast<Int>(KI::KI_8);
+	if      (key == EKey::K9)         return static_cast<Int>(KI::KI_9);
+	if      (key == EKey::A)          return static_cast<Int>(KI::KI_A);
+	if      (key == EKey::B)          return static_cast<Int>(KI::KI_B);
+	if      (key == EKey::C)          return static_cast<Int>(KI::KI_C);
+	if      (key == EKey::D)          return static_cast<Int>(KI::KI_D);
+	if      (key == EKey::E)          return static_cast<Int>(KI::KI_E);
+	if      (key == EKey::F)          return static_cast<Int>(KI::KI_F);
+	if      (key == EKey::G)          return static_cast<Int>(KI::KI_G);
+	if      (key == EKey::H)          return static_cast<Int>(KI::KI_H);
+	if      (key == EKey::I)          return static_cast<Int>(KI::KI_I);
+	if      (key == EKey::J)          return static_cast<Int>(KI::KI_J);
+	if      (key == EKey::K)          return static_cast<Int>(KI::KI_K);
+	if      (key == EKey::L)          return static_cast<Int>(KI::KI_L);
+	if      (key == EKey::M)          return static_cast<Int>(KI::KI_M);
+	if      (key == EKey::N)          return static_cast<Int>(KI::KI_N);
+	if      (key == EKey::O)          return static_cast<Int>(KI::KI_O);
+	if      (key == EKey::P)          return static_cast<Int>(KI::KI_P);
+	if      (key == EKey::Q)          return static_cast<Int>(KI::KI_Q);
+	if      (key == EKey::R)          return static_cast<Int>(KI::KI_R);
+	if      (key == EKey::S)          return static_cast<Int>(KI::KI_S);
+	if      (key == EKey::T)          return static_cast<Int>(KI::KI_T);
+	if      (key == EKey::U)          return static_cast<Int>(KI::KI_U);
+	if      (key == EKey::V)          return static_cast<Int>(KI::KI_V);
+	if      (key == EKey::W)          return static_cast<Int>(KI::KI_W);
+	if      (key == EKey::X)          return static_cast<Int>(KI::KI_X);
+	if      (key == EKey::Y)          return static_cast<Int>(KI::KI_Y);
+	if      (key == EKey::Z)          return static_cast<Int>(KI::KI_Z);
+	if      (key == EKey::Escape)     return static_cast<Int>(KI::KI_ESCAPE);
+	if      (key == EKey::Tab)        return static_cast<Int>(KI::KI_TAB);
+	if      (key == EKey::Backspace)  return static_cast<Int>(KI::KI_BACK);
+	if      (key == EKey::Enter)      return static_cast<Int>(KI::KI_RETURN);
+	if      (key == EKey::Left)       return static_cast<Int>(KI::KI_LEFT);
+	if      (key == EKey::Right)      return static_cast<Int>(KI::KI_RIGHT);
+	if      (key == EKey::Up)         return static_cast<Int>(KI::KI_UP);
+	if      (key == EKey::Down)       return static_cast<Int>(KI::KI_DOWN);
+	if      (key == EKey::Delete)     return static_cast<Int>(KI::KI_DELETE);
+	if      (key == EKey::F1)         return static_cast<Int>(KI::KI_F1);
+	if      (key == EKey::F2)         return static_cast<Int>(KI::KI_F2);
+	if      (key == EKey::F3)         return static_cast<Int>(KI::KI_F3);
+	if      (key == EKey::F4)         return static_cast<Int>(KI::KI_F4);
+	if      (key == EKey::F5)         return static_cast<Int>(KI::KI_F5);
+	if      (key == EKey::F6)         return static_cast<Int>(KI::KI_F6);
+	if      (key == EKey::F7)         return static_cast<Int>(KI::KI_F7);
+	if      (key == EKey::F8)         return static_cast<Int>(KI::KI_F8);
+	if      (key == EKey::F9)         return static_cast<Int>(KI::KI_F9);
+	if      (key == EKey::F10)        return static_cast<Int>(KI::KI_F10);
+	if      (key == EKey::F11)        return static_cast<Int>(KI::KI_F11);
+	if      (key == EKey::F12)        return static_cast<Int>(KI::KI_F12);
+
+	return static_cast<Int>(KI::KI_UNKNOWN);
 }
 
 MYRENDERER_END_NAMESPACE

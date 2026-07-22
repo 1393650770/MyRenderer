@@ -27,9 +27,10 @@ RHI::Buffer* BufferUtils::CreateDynamicParamBuffer(UInt32 in_size_bytes)
 
 void BufferUtils::Upload(RHI::Buffer* in_buffer, CONST void* in_data, UInt32 in_size_bytes, UInt32 in_dst_offset)
 {
-	void* mapped = RHIMapBuffer(in_buffer, ENUM_MAP_TYPE::Write, ENUM_MAP_FLAG::None);
+	// MapBuffer/UnmapBuffer now handle both bypass (direct Map) and record (shadow memory) modes
+	void* mapped = g_render_rhi->MapBuffer(in_buffer, ENUM_MAP_TYPE::Write, ENUM_MAP_FLAG::Discard);
 	std::memcpy((UInt8*)mapped + in_dst_offset, in_data, in_size_bytes);
-	RHIUnmapBuffer(in_buffer);
+	g_render_rhi->UnmapBuffer(in_buffer);
 }
 
 MYRENDERER_END_NAMESPACE

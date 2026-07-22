@@ -4,10 +4,8 @@
 #include "RHI/RenderRHI.h"
 #include "RHI/RenderRource.h"
 #include "RHI/RenderTexture.h"
-#include "RHI/RenderViewport.h"
 #include "Render/Core/RenderGraphPass.h"
 #include "Render/Core/RenderGraphResource.h"
-#include <functional>
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
@@ -17,7 +15,8 @@ void RegisterUIPass(
 	Render::RenderGraphResource<RHI::TextureDesc, RHI::Texture>* bb_resource,
 	UIRenderer* renderer,
 	RHI::CommandList* cmd_list,
-	UInt32 viewport_w, UInt32 viewport_h)
+	UInt32 viewport_w, UInt32 viewport_h,
+	std::function<void(RHI::CommandList*)> draw_fn)
 {
 	if (!graph || !bb_resource || !renderer) return;
 
@@ -31,16 +30,14 @@ void RegisterUIPass(
 		{
 			builder.Write(bb_resource, ENUM_RESOURCE_STATE::RenderTarget);
 		},
-			[renderer, viewport_h](CONST UIPassData& data, RHI::CommandList* in_cmd_list)
+			[draw_fn](CONST UIPassData& data, RHI::CommandList* in_cmd_list)
 		{
-			// render target is set by the pass system (backbuffer)
-			renderer->BeginFrame(in_cmd_list);
+			if (draw_fn) draw_fn(in_cmd_list);
 		});
 	}
 	else
 	{
 		// === Mode B: offscreen + composite ===
-		// Offscreen color target: RGBA8 at viewport res
 		RHI::TextureDesc color_desc;
 		color_desc.width = viewport_w;
 		color_desc.height = viewport_h;
@@ -51,9 +48,11 @@ void RegisterUIPass(
 		color_desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_COLOR_ATTACHMENT
 			| ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_SHADERRESOURCE;
 		color_desc.resource_state = ENUM_RESOURCE_STATE::Undefined;
-		color_desc.clear_value = { {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f} };
+		color_desc.clear_value.color[0] = 0.0f;
+		color_desc.clear_value.color[1] = 0.0f;
+		color_desc.clear_value.color[2] = 0.0f;
+		color_desc.clear_value.color[3] = 0.0f;
 
-		// Offscreen depth-stencil target: D24S8 at viewport res
 		RHI::TextureDesc ds_desc;
 		ds_desc.width = viewport_w;
 		ds_desc.height = viewport_h;
@@ -63,9 +62,9 @@ void RegisterUIPass(
 		ds_desc.type = ENUM_TEXTURE_TYPE::ENUM_TYPE_2D;
 		ds_desc.usage = ENUM_TEXTURE_USAGE_TYPE::ENUM_TYPE_DEPTH_ATTACHMENT;
 		ds_desc.resource_state = ENUM_RESOURCE_STATE::Undefined;
-		ds_desc.clear_value = { {0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 0.0f} };
+		ds_desc.clear_value.ds_value[0] = 1.0f;
+		ds_desc.clear_value.ds_value[1] = 0.0f;
 
-		// Offscreen pass: render UI to offscreen color + DS
 		Render::RenderGraphResource<RHI::TextureDesc, RHI::Texture>* ui_color = nullptr;
 		Render::RenderGraphResource<RHI::TextureDesc, RHI::Texture>* ui_ds = nullptr;
 
@@ -77,30 +76,29 @@ void RegisterUIPass(
 			builder.Write(ui_color, ENUM_RESOURCE_STATE::RenderTarget);
 			builder.Write(ui_ds, ENUM_RESOURCE_STATE::DepthWrite);
 		},
-			[renderer, &ui_color, &ui_ds](CONST UIPassData& data, RHI::CommandList* in_cmd_list)
+			[renderer, draw_fn, &ui_color, &ui_ds](CONST UIPassData& data, RHI::CommandList* in_cmd_list)
 		{
-			// Set offscreen render target
 			Vector<RHI::Texture*> rtvs = { ui_color->GetActual() };
-			Vector<RHI::ClearValue> cvs = {
-				{ {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f} }, // color: transparent black
-				{ {0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 0.0f} }, // DS: depth=1, stencil=0
-			};
+			Vector<RHI::ClearValue> cvs;
+			RHI::ClearValue c0, c1;
+			c0.color[0] = 0.0f; c0.color[1] = 0.0f; c0.color[2] = 0.0f; c0.color[3] = 0.0f;
+			c1.ds_value[0] = 1.0f; c1.ds_value[1] = 0.0f;
+			cvs.push_back(c0); cvs.push_back(c1);
 			in_cmd_list->SetRenderTarget(rtvs, ui_ds->GetActual(), cvs, true);
 			renderer->BeginFrame(in_cmd_list);
+			if (draw_fn) draw_fn(in_cmd_list);
+			renderer->EndFrame(in_cmd_list);
 		});
 
-		// Composite pass: read offscreen color, write backbuffer
 		graph->AddRenderPass<UIPassData>("RmlUICompositePass", graph, cmd_list,
 			[bb_resource, &ui_color](UIPassData& data, Render::RenderGraphPassBuilder& builder, RHI::CommandList* in_cmd_list)
 		{
 			builder.Read(ui_color, ENUM_RESOURCE_STATE::ShaderResource);
 			builder.Write(bb_resource, ENUM_RESOURCE_STATE::RenderTarget);
 		},
-			[bb_resource](CONST UIPassData& data, RHI::CommandList* in_cmd_list)
+			[](CONST UIPassData& data, RHI::CommandList* in_cmd_list)
 		{
-			// Composite: render fullscreen quad sampling ui_color onto backbuffer
-			// v1: use the existing backbuffer render target setup + composite draw
-			// The backbuffer is already set as render target by RDG system
+			// Composite pass placeholder for Phase 3
 		});
 	}
 }
