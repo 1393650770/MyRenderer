@@ -432,6 +432,36 @@ void VK_CommandBuffer::EndUI_Render() {}
 void VK_CommandBuffer::EndUI_Platform() {}
 #endif // !PLATFORM_ANDROID
 
+// =========================================================================
+// UI Scissor support (used by VK_RmlRenderer)
+// =========================================================================
+void VK_CommandBuffer::SetScissorEnable(bool enable)
+{
+	command_state.scissor_enabled = enable;
+	if (enable)
+	{
+		vkCmdSetScissor(command_buffer, 0, 1, &command_state.scissor);
+	}
+	else
+	{
+		// Disable by setting scissor to the framebuffer size
+		VkRect2D full = { {0, 0}, {command_state.framebuffer_width, command_state.framebuffer_height} };
+		vkCmdSetScissor(command_buffer, 0, 1, &full);
+	}
+}
+
+void VK_CommandBuffer::SetScissor(Int32 x, Int32 y, UInt32 w, UInt32 h)
+{
+	command_state.scissor.offset.x = x;
+	command_state.scissor.offset.y = y;
+	command_state.scissor.extent.width = w;
+	command_state.scissor.extent.height = h;
+	if (command_state.scissor_enabled)
+	{
+		vkCmdSetScissor(command_buffer, 0, 1, &command_state.scissor);
+	}
+}
+
 //
 
 void VK_CommandBuffer::TransitionRenderTargets(CONST Vector<Texture*>& render_targets, Texture* depth_stencil)

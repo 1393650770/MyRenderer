@@ -9,6 +9,9 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 
+// Forward declarations
+class UIRenderer;
+
 MYRENDERER_BEGIN_CLASS(UIBase)
 
 #pragma region METHOD
@@ -20,6 +23,10 @@ public:
 	VIRTUAL void METHOD(Update)() {};
 	VIRTUAL void METHOD(Draw)() {};
 	VIRTUAL void METHOD(Release)() {};
+
+	/// Returns the renderer backend for this UI system.
+	/// Returns nullptr if the UI system has no GPU rendering (e.g. headless).
+	VIRTUAL UIRenderer* METHOD(GetRenderer)() { return nullptr; }
 protected:
 
 private:

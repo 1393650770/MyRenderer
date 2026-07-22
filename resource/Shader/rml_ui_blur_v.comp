@@ -1,0 +1,33 @@
+#version 460
+
+// Vertical separable blur pass.
+// Reads vertical neighbors from the horizontal blur output.
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0) uniform sampler2D inputTex;
+layout(set = 0, binding = 1, rgba16f) uniform writeonly image2D outputImg;
+
+const float weights[9] = float[](
+    0.0162, 0.0540, 0.1216, 0.1948, 0.2268,
+    0.1948, 0.1216, 0.0540, 0.0162
+);
+const int radius = 4;
+
+void main()
+{
+    ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(outputImg);
+
+    if (gid.x >= size.x || gid.y >= size.y)
+        return;
+
+    vec4 result = vec4(0.0);
+    for (int i = -radius; i <= radius; i++)
+    {
+        int sampleY = clamp(gid.y + i, 0, size.y - 1);
+        vec4 sampleColor = texelFetch(inputTex, ivec2(gid.x, sampleY), 0);
+        result += sampleColor * weights[i + radius];
+    }
+    imageStore(outputImg, gid, result);
+}

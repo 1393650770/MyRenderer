@@ -265,6 +265,10 @@ public:
 	VIRTUAL void METHOD(BeginUI_Logic)() ;
 	VIRTUAL void METHOD(EndUI_Render)() ;
 	VIRTUAL void METHOD(EndUI_Platform)() ;
+	//  UI 渲染裁剪支持（VK_CommandBuffer 专属，不在 RHI 抽象接口上）
+	// Used by VK_RmlRenderer to set per-draw scissor rectangles.
+	void METHOD(SetScissorEnable)(bool enable);
+	void METHOD(SetScissor)(Int32 x, Int32 y, UInt32 w, UInt32 h);
 protected:
 	void METHOD(Allocate)();
 	void METHOD(Free)();
@@ -297,6 +301,9 @@ public:
 		UInt32      outside_pass_queries = 0;
 		VkClearValue* clear_values = nullptr;
 		UInt32      clear_value_count = 0;
+		//  Scissor state (for UI rendering)
+		bool        scissor_enabled = false;
+		VkRect2D    scissor = { {0, 0}, {0xFFFFFFFF, 0xFFFFFFFF} };
 
 		Vector<Texture*> render_targets;
 		Texture* depth_stencil = nullptr;

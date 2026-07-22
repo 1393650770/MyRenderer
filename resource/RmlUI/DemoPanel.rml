@@ -1,0 +1,35 @@
+<rml>
+<head>
+	<title>RmlUI Demo Panel</title>
+	<link type="text/css" href="DemoPanel.rcss" />
+</head>
+<body data-model="hud" id="main-body">
+	<div id="hud-container">
+		<!-- HP Bar -->
+		<div id="hp-panel">
+			<div id="hp-label">HP</div>
+			<div id="hp-bar-bg">
+				<div id="hp-bar-fill" data-value="hp" style="width: [[hp]]px;"></div>
+			</div>
+			<div id="hp-text">[[hp]] / 100</div>
+		</div>
+
+		<!-- Score & Timer -->
+		<div id="info-panel">
+			<div id="score-text">Score: [[score]]</div>
+			<div id="timer-text">Time: {{ float(timer) | round }}s</div>
+		</div>
+
+		<!-- Action Buttons -->
+		<div id="action-panel">
+			<button id="heal-btn" data-event-click="on_heal()">Heal +10</button>
+		</div>
+
+		<!-- Title -->
+		<div id="title-panel">
+			<h2>MyRenderer RmlUI Demo</h2>
+			<p>Game UI with retained-mode framework</p>
+		</div>
+	</div>
+</body>
+</rml>

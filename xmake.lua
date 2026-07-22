@@ -23,6 +23,9 @@ if is_plat("windows") then
     add_requires("glfw 3.4", {configs = {shared = true,debug=true}})
 end
 add_requires("glslang", {configs = {binaryonly = true}})
+if not is_plat("android") then
+	add_requires("freetype")
+end
 add_rules("mode.debug", "mode.release", "mode.releasedbg")
 add_rules("plugin.vsxmake.autoupdate")
 
@@ -92,6 +95,16 @@ function CommonLibrarySetting()
     add_files("src/ThirdParty/stb_image/**.cpp")
     add_files("src/ThirdParty/spv_reflect/**.cpp")
     add_files("src/ThirdParty/**.c")
+    -- RmlUI library (retained-mode game UI)
+    add_includedirs("src/ThirdParty/RmlUi/Include", {public = true})
+    add_files("src/ThirdParty/RmlUi/Source/Core/**.cpp")
+    add_files("src/ThirdParty/RmlUi/Source/Core/Elements/**.cpp")
+    add_files("src/ThirdParty/RmlUi/Source/Core/Layout/**.cpp")
+    if not is_plat("android") then
+        add_files("src/ThirdParty/RmlUi/Source/Core/FontEngineDefault/**.cpp")
+        add_defines("RMLUI_FONT_ENGINE_FREETYPE")
+    end
+    add_defines("RMLUI_STATIC_LIB")
     add_includedirs("src/_Generated", {public = true})
     add_includedirs("src/Runtime", {public = true})
     add_includedirs("src/ThirdParty", {public = true})
@@ -107,7 +120,7 @@ function CommonLibrarySetting()
     end
     add_packages("glm","tinyobjloader","imgui","nlohmann_json","gli","optick","flatbuffers","rttr")
 if not is_plat("android") then
-	        add_packages("assimp","lz4","boost")
+	        add_packages("assimp","lz4","boost","freetype")
 	    end
 	    if is_plat("windows") then
 	        add_packages("glfw")
@@ -213,6 +226,9 @@ function MoveResource(target)
         os.cp("$(projectdir)/resource/Mesh", root_taget_path .. "/Mesh")
     end
     os.cp("$(projectdir)/resource/Editor", root_taget_editor_path)
+if os.isdir("$(projectdir)/resource/RmlUI") then
+	os.cp("$(projectdir)/resource/RmlUI", root_taget_path .. "/RmlUI")
+end
     if os.isdir("$(projectdir)/resource/Dataset") then
         os.cp("$(projectdir)/resource/Dataset", root_taget_dataset_path)
     end
@@ -412,6 +428,13 @@ target("RendererSample-Mesh")
 target("RendererSample-VolumetricCloud")
     CommonProjectSetting()
     add_files("src/Sample/10-VolumetricCloud/VolumetricCloud.cpp")
+    set_group("Sample")
+    after_build(MoveResource)
+
+--   RmlUI Game UI Demo (retained-mode UI with data binding)
+target("RendererSample-RmlUI")
+    CommonProjectSetting()
+    add_files("src/Sample/12-RmlUI/RmlUIDemo.cpp")
     set_group("Sample")
     after_build(MoveResource)
 
