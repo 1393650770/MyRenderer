@@ -82,9 +82,15 @@ void RmlUIDemoApp::OnUpdate(float dt)
 
 	if (m_hud_model.IsValid())
 	{
-		m_manager->DirtyVariable(m_hud_model, "hp");
-		m_manager->DirtyVariable(m_hud_model, "score");
-		m_manager->DirtyVariable(m_hud_model, "timer");
+		// [AI] Change-detection: only dirty variables that actually changed
+		// from last frame. m_score is stable ~5-6 frames at 60fps;
+		// m_timer and m_hp change every frame by the demo's own logic.
+		if (m_hp != m_prev_hp) { m_manager->DirtyVariable(m_hud_model, "hp"); m_prev_hp = m_hp; }
+		if (m_score != m_prev_score) { m_manager->DirtyVariable(m_hud_model, "score"); m_prev_score = m_score; }
+		if (static_cast<int>(m_timer * 100) != static_cast<int>(m_prev_timer * 100)) {
+			m_manager->DirtyVariable(m_hud_model, "timer");
+			m_prev_timer = m_timer;
+		}
 	}
 
 	// --- Input polling via PlatformWindow + InputSystem (no GLFW) ---

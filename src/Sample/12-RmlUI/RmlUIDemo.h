@@ -45,6 +45,10 @@ private:
 	int m_hp = 100;
 	int m_score = 0;
 	float m_timer = 0.0f;
+	// [AI] Cached previous values for change-detection (avoid needless recompilation)
+	int m_prev_hp = 100;
+	int m_prev_score = 0;
+	float m_prev_timer = 0.0f;
 #pragma endregion
 };
 

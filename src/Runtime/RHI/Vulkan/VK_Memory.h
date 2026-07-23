@@ -638,7 +638,10 @@ protected:
 	Vector<VK_MemoryResourceFragmentAllocator*> used_buffer_allocations[(Int)EPoolSizes::SizesCount + 1];
     Vector<VK_MemoryResourceFragmentAllocator*> free_buffer_allocations[(Int)EPoolSizes::SizesCount + 1];
     Vector<VK_MemoryResourceFragmentAllocator*> all_buffer_allocations;
-    Int all_buffer_allocations_index=-1;
+    // [AI] Free-list of recycled allocator indices (replaces single-slot all_buffer_allocations_index).
+    // Each index is reused at most once; eliminates page-index aliasing when multiple pages
+    // are unregistered between registrations.
+    Vector<Int> free_allocator_indices;
 	UInt64 pending_evict_bytes = 0;
 	Bool is_evicting = false;
     Bool is_want_eviction = false;

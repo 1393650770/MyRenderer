@@ -72,6 +72,14 @@ void RmlUIRenderer::Initialize(RHI::CommandList* cmd_list, RHI::Texture* backbuf
 
 void RmlUIRenderer::Shutdown()
 {
+	// [AI] Properly destroy geometry buffers before clearing the map.
+	// ~VK_Buffer() calls Destroy()->FreeAllocation() which returns the sub-allocation
+	// to the pooled page. Without this, leaked sub-allocations cause
+	// DestroyResourceAllocations CHECK_WITH_LOG at shutdown.
+	for (auto& kv : m_geometries) {
+		delete kv.second.vb;
+		delete kv.second.ib;
+	}
 	m_geometries.clear();
 	for (auto& kv : m_textures) { delete kv.second.srb; delete kv.second.texture; }
 	m_textures.clear();
@@ -230,7 +238,12 @@ void RmlUIRenderer::ReleaseGeometry(UIGeometryHandle geo)
 {
 	auto it = m_geometries.find(geo.value);
 	if (it == m_geometries.end()) return;
-	// Buffer deletion deferred (memory allocator state not aligned with CB fence)
+	// [AI] Properly free the GPU buffers before erasing the map entry.
+	// ~VK_Buffer() calls Destroy()->FreeAllocation() which returns the sub-allocation
+	// to the pooled page. With frame_freed now properly set (Issue 3b),
+	// the page gets a 3-frame grace period before OS release.
+	delete it->second.vb;
+	delete it->second.ib;
 	m_geometries.erase(it);
 }
 
@@ -313,9 +326,9 @@ void RmlUIRenderer::SetScissor(Int x, Int y, UInt32 w, UInt32 h)
 
 	if (m_current_cmd)
 	{
-		Int vk_y = static_cast<Int>(m_viewport_h) - y - static_cast<Int>(h);
-		if (vk_y < 0) vk_y = 0;
-		static_cast<RHI::Vulkan::VK_CommandBuffer*>(m_current_cmd)->SetScissor(x, vk_y, w, h);
+		// [AI] Y passed straight through: RmlUi scissor uses top-left origin (y=0=top),
+		// Vulkan VkRect2D offset.y is also top-left with positive-height viewport.
+		static_cast<RHI::Vulkan::VK_CommandBuffer*>(m_current_cmd)->SetScissor(x, y, w, h);
 	}
 }
 

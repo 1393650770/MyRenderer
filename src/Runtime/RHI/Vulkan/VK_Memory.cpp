@@ -1180,6 +1180,15 @@ void VK_MemoryResourceFragmentAllocator::Free(VK_Allocation& allocation)
 		UInt32 allocation_offset;
         UInt32 allocation_size;
 		{
+			// [AI] Defense-in-depth: verify allocation_index is in bounds for this page
+			// before indexing internal_data. A stale index (from page-index aliasing) would
+			// otherwise dereference a wrong page's array and crash at the state check below.
+			if (allocation.allocation_index < 0 || allocation.allocation_index >= (Int)internal_data.size())
+			{
+				CHECK_WITH_LOG_WARNING(true, "RHI Warning: allocation_index out of bounds in Free - possible page-index aliasing, skipping free");
+				allocation.allocation_index = -1;
+				return;
+			}
 			VK_AllocationInternalInfo& data = internal_data[allocation.allocation_index];
 			Bool is_was_discarded = data.state == VK_AllocationInternalInfo::ENUM_VK_AllocationState::EFREEDISCARDED;
 			CHECK_WITH_LOG(!(data.state == VK_AllocationInternalInfo::ENUM_VK_AllocationState::EALLOCATED || data.state == VK_AllocationInternalInfo::ENUM_VK_AllocationState::EFREEPENDING || data.state == VK_AllocationInternalInfo::ENUM_VK_AllocationState::EFREEDISCARDED),
@@ -1231,7 +1240,9 @@ void VK_MemoryManager::ReleaseSubresourceAllocator(VK_MemoryResourceFragmentAllo
 		{
 			used_buffer_allocations[subresource_allocator->pool_size_index].erase(it);
 		}
-		//SubresourceAllocator->FrameFreed = GFrameNumberRenderThread;
+		// [AI] Restored: mark when the page was freed so ReleaseFreedResources
+		// can enforce the 3-frame grace period before releasing to OS.
+		subresource_allocator->frame_freed = g_frame_number_render_thread;
 		free_buffer_allocations[subresource_allocator->pool_size_index].push_back(subresource_allocator);
 	}
 	else
@@ -1254,9 +1265,15 @@ VK_MemoryResourceFragmentAllocator* VK_MemoryManager::GetSubresourceAllocator(CO
 
 void VK_MemoryManager::RegisterSubresourceAllocator(VK_MemoryResourceFragmentAllocator* subresource_allocator)
 {
-	if (all_buffer_allocations_index != -1)
+	// [AI] Free-list recycle: each freed index is reused at most once, preventing
+	// page-index aliasing when multiple pages are unregistered between registrations.
+	if (!free_allocator_indices.empty())
 	{
-		CONST UInt32 index = all_buffer_allocations_index;
+		CONST UInt32 index = free_allocator_indices.back();
+		free_allocator_indices.pop_back();
+		// [AI] Assert the slot is actually free before reusing it.
+		CHECK_WITH_LOG(all_buffer_allocations[index] != nullptr,
+			"RHI Error: page-index aliasing in RegisterSubresourceAllocator - slot was not freed");
 		subresource_allocator->allocator_index = index;
 		all_buffer_allocations[index] = subresource_allocator;
 	}
@@ -1271,7 +1288,9 @@ void VK_MemoryManager::UnregisterSubresourceAllocator(VK_MemoryResourceFragmentA
 {
 	CONST UInt32 index = subresource_allocator->allocator_index;
 	all_buffer_allocations[index] = nullptr;
-	all_buffer_allocations_index = index;
+	// [AI] Push to free-list instead of arming a single-slot field.
+	// Each index is reused at most once, preventing page-index aliasing.
+	free_allocator_indices.push_back(index);
 }
 
 void VK_MemoryManager::Destroy()
@@ -1555,6 +1574,10 @@ void VK_MemoryManager::ReleaseFreedResources(Bool is_immediately)
 					buffer_allocations_to_release.push_back(buffer_allocation);
 					auto it = free_allocations.begin() + index;
 					free_allocations.erase(it);
+					// [AI] Decrement index so the element shifted into this slot
+					// is not skipped by the loop's ++index. Matches the established
+					// pattern in VK_StagingBufferManager::ProcessPendingFree.
+					index--;
 				}
 			}
 		}
