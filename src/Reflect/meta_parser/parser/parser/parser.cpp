@@ -154,6 +154,12 @@ int MetaParser::parse(void)
     m_index                 = clang_createIndex(true, is_show_errors);
     std::string pre_include = "-I";
     std::string sys_include_temp;
+
+    // Enable annotation macros (META, RMLUI_BIND_FIELD, etc.)
+    arguments.emplace_back("-D__REFLECTION_PARSER__");
+	arguments.emplace_back("-ferror-limit=0");
+	arguments.emplace_back("-Wno-everything");
+
     if (!(m_sys_include == "*"))
     {
         sys_include_temp = pre_include + m_sys_include;
@@ -175,8 +181,10 @@ int MetaParser::parse(void)
         return -2;
     }
     std::cout << "m_source_include_file_name :" << m_source_include_file_name << std::endl;
-    m_translation_unit = clang_createTranslationUnitFromSourceFile(
-        m_index, m_source_include_file_name.c_str(), static_cast<int>(arguments.size()), arguments.data(), 0, nullptr);
+    m_translation_unit = clang_parseTranslationUnit(
+        m_index, m_source_include_file_name.c_str(),
+        arguments.data(), static_cast<int>(arguments.size()),
+        nullptr, 0, CXTranslationUnit_KeepGoing);
     auto cursor = clang_getTranslationUnitCursor(m_translation_unit);
 
     Namespace temp_namespace;

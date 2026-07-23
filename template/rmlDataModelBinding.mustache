@@ -13,10 +13,10 @@ namespace Generated {
 inline void Bind{{model_name}}(Rml::DataModelConstructor& ctor, {{class_name}}* data)
 {
 {{#fields}}
-	ctor.Bind("{{display_name}}", &data->{{field_name}});
+	ctor.Bind("{{{display_name}}}", &data->{{field_name}});
 {{/fields}}
 {{#actions}}
-	ctor.BindEventCallback("{{display_name}}",
+	ctor.BindEventCallback("{{{display_name}}}",
 		[data](Rml::DataModelHandle handle, Rml::Event& event, const Rml::VariantList& arguments) {
 			data->{{method_name}}(handle, event, arguments);
 		});

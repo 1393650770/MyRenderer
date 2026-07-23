@@ -18,13 +18,13 @@ namespace Generator
 		RmluiGenerator() = delete;
 		RmluiGenerator(std::string source_directory,
 		               std::function<std::string(std::string)> get_include_function);
-		VIRTUAL int  generate(std::string path, SchemaMoudle schema) override;
-		VIRTUAL void finish() override;
-		VIRTUAL ~RmluiGenerator() override;
+		virtual int  generate(std::string path, SchemaMoudle schema) override;
+		virtual void finish() override;
+		virtual ~RmluiGenerator() override;
 
 	protected:
-		VIRTUAL void        prepareStatus(std::string path) override;
-		VIRTUAL std::string processFileName(std::string path) override;
+		virtual void        prepareStatus(std::string path) override;
+		virtual std::string processFileName(std::string path) override;
 
 	private:
 		// Accumulated data models grouped by class name

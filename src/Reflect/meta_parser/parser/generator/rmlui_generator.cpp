@@ -59,7 +59,7 @@ namespace Generator
 					continue;
 
 				// Check if this field has an annotation resembling our format
-				const auto& props = field->m_meta_data.getProperties();
+				const auto& props = field->getMetaData().getProperties();
 				for (const auto& kv : props)
 				{
 					std::string key = kv.first;
@@ -93,7 +93,7 @@ namespace Generator
 					std::string field_name = suffix.substr(pos + 1);
 
 					// Get the annotation from the class's meta data
-					const auto& props = class_temp->m_meta_data.getProperties();
+					const auto& props = class_temp->getMetaData().getProperties();
 					std::string display_name = field_name; // default
 					for (const auto& kv : props)
 					{
@@ -116,11 +116,14 @@ namespace Generator
 									}
 								}
 								parts.push_back(val.substr(start));
-								if (parts.size() >= 4)
+								if (parts.size() >= 3)
 								{
-									type_name = parts[1];
-									field_name = parts[2];
-									display_name = parts[3];
+									type_name = parts[0];
+									field_name = parts[1];
+									display_name = parts[2];
+								// Strip quotes from libclang annotation display name
+								if (display_name.size() >= 2 && display_name.front() == '"' && display_name.back() == '"')
+									display_name = display_name.substr(1, display_name.size() - 2);
 								}
 							}
 						}
@@ -145,7 +148,7 @@ namespace Generator
 					std::string type_name = suffix.substr(0, pos);
 					std::string method_name = suffix.substr(pos + 1);
 
-					const auto& props = class_temp->m_meta_data.getProperties();
+					const auto& props = class_temp->getMetaData().getProperties();
 					std::string display_name = method_name;
 					for (const auto& kv : props)
 					{
@@ -165,11 +168,14 @@ namespace Generator
 									}
 								}
 								parts.push_back(val.substr(start));
-								if (parts.size() >= 4)
+								if (parts.size() >= 3)
 								{
-									type_name = parts[1];
-									method_name = parts[2];
-									display_name = parts[3];
+									type_name = parts[0];
+									method_name = parts[1];
+									display_name = parts[2];
+								// Strip quotes from libclang annotation display name
+								if (display_name.size() >= 2 && display_name.front() == '"' && display_name.back() == '"')
+									display_name = display_name.substr(1, display_name.size() - 2);
 								}
 							}
 						}

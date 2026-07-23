@@ -51,6 +51,11 @@ namespace Generator
             if (!class_temp->shouldCompile())
                 continue;
 
+            // Skip RmlUI binding stubs (handled by RmluiGenerator)
+            std::string cn = class_temp->getClassName();
+            if (cn.find("RmlBindField_") == 0 || cn.find("RmlBindAction_") == 0)
+                continue;
+
             class_names.insert_or_assign(class_temp->getClassName(), false);
             class_names[class_temp->getClassName()] = true;
 

@@ -1,7 +1,7 @@
 parser_header.o: \
-  D:\Project\GameDevelop\MyRenderer/src/Reflect/parser_header.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/BaseObject.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ConstDefine.h \
+  D:\Project\GameDevelop\MyRenderer\src\Reflect\parser_header.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Core\BaseObject.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Core\ConstDefine.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\vector \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\yvals_core.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\vcruntime.h \
@@ -61,8 +61,8 @@ parser_header.o: \
   C:\Program\ Files\ (x86)\Windows\ Kits\10\Include\10.0.26100.0\ucrt\corecrt_wprocess.h \
   C:\Program\ Files\ (x86)\Windows\ Kits\10\Include\10.0.26100.0\ucrt\corecrt_wstring.h \
   C:\Program\ Files\ (x86)\Windows\ Kits\10\Include\10.0.26100.0\ucrt\corecrt_wtime.h \
-  C:\Program\ Files\ (x86)\Windows\ Kits\10\Include\10.0.26100.0\ucrt\sys/stat.h \
-  C:\Program\ Files\ (x86)\Windows\ Kits\10\Include\10.0.26100.0\ucrt\sys/types.h \
+  C:\Program\ Files\ (x86)\Windows\ Kits\10\Include\10.0.26100.0\ucrt\sys\stat.h \
+  C:\Program\ Files\ (x86)\Windows\ Kits\10\Include\10.0.26100.0\ucrt\sys\types.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\new \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\exception \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\yvals.h \
@@ -110,7 +110,7 @@ parser_header.o: \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\stack \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\array \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\stdexcept \
-  boost/stacktrace.hpp \
+  boost\stacktrace.hpp \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\iostream \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\istream \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\__msvc_ostream.hpp \
@@ -142,60 +142,50 @@ parser_header.o: \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\clocale \
   C:\Program\ Files\ (x86)\Windows\ Kits\10\Include\10.0.26100.0\ucrt\locale.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\ostream \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/Reflection.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ConstGlobals.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/QuadTree.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Core\Reflection.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Core\ConstGlobals.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Core\QuadTree.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\algorithm \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\__msvc_int128.hpp \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\__msvc_minmax.hpp \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ReflectionRegister.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ResourceHandle.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Core\ReflectionRegister.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Core\ResourceHandle.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\functional \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/ResourceRegistry.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Core/TypeHash.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Android/AndroidEntry.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Android/AndroidWindow.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Desktop/DesktopWindow.h \
-  Platform/PlatformWindow.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/FileDialog.h \
-  Core/ConstDefine.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/FileSystem.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/Platform.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/PlatformDebug.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Core\ResourceRegistry.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Core\TypeHash.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Platform\Android\AndroidEntry.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Platform\Android\AndroidWindow.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Platform\Desktop\DesktopWindow.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Platform\PlatformWindow.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Platform\FileDialog.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Platform\FileSystem.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Platform\Platform.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Platform\PlatformDebug.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\cstdarg \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\stdarg.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Platform/PlatformWindow.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/DeviceProfile.h \
-  vulkan/vulkan_core.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderBindlessManager.h \
-  Core/ResourceHandle.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderRource.h \
-  RHI/RenderEnum.h Core/BaseObject.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderBuffer.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderEnum.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderCommandList.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderFrameBuffer.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderPass.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderPipelineState.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderRHI.h \
-  Core/ConstGlobals.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RHIHandleTypes.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderShader.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderTexture.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderUtils.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/RenderViewport.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/ResourceManager.h \
-  Core/ResourceRegistry.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_BindlessManager.h \
-  RHI/RenderBindlessManager.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Buffer.h \
-  RHI/RenderBuffer.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Device.h \
-  vulkan/vulkan.h RHI/RenderRource.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_RenderRHI.h \
-  RHI/RenderRHI.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Viewport.h \
-  RHI/RenderViewport.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\DeviceProfile.h \
+  vulkan\vulkan_core.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\RenderBindlessManager.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\RenderRource.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\RenderEnum.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\RenderBuffer.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\RenderCommandList.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\RenderFrameBuffer.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\RenderPass.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\RenderPipelineState.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\RenderRHI.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\RHIHandleTypes.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\RenderShader.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\RenderTexture.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\RenderUtils.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\RenderViewport.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\ResourceManager.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_BindlessManager.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_Buffer.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_Device.h \
+  vulkan\vulkan.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_RenderRHI.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_Viewport.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\thread \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\__msvc_chrono.hpp \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\ratio \
@@ -203,42 +193,34 @@ parser_header.o: \
   C:\Program\ Files\ (x86)\Windows\ Kits\10\Include\10.0.26100.0\ucrt\corecrt_startup.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\vcruntime_startup.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\stop_token \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Memory.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Extension.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/Vk_Device.h \
-  RHI/ResourceManager.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_CommandBuffer.h \
-  RHI/RenderCommandList.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Fence.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Define.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_DescriptorSets.h \
-  glm/glm.hpp RHI/RenderShader.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_FrameBuffer.h \
-  RHI/RenderFrameBuffer.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_PipelineState.h \
-  RHI/RenderPipelineState.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Platform.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Queue.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_RenderPass.h \
-  RHI/RenderPass.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Resource.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_ResourcePool.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Texture.h \
-  RHI/RenderTexture.h gli/format.hpp \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Shader.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_SwapChain.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_TempBlockAllocator.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_Utils.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_Memory.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_Extension.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_CommandBuffer.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_Fence.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_Define.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_DescriptorSets.h \
+  glm\glm.hpp \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_FrameBuffer.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_PipelineState.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_Platform.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_Queue.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_RenderPass.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_Resource.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_ResourcePool.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_Texture.h \
+  gli\format.hpp \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_Shader.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_SwapChain.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_TempBlockAllocator.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_Utils.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\fstream \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\__msvc_filebuf.hpp \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\sstream \
-  vma/vk_mem_alloc.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/RHI/Vulkan/VK_VmaMemory.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Asset/FileSystem/BasicFileSystem.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Asset/FileSystem/Win/WinFileSystem.h \
-  Asset/FileSystem/BasicFileSystem.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Asset/MeshAsset.h \
-  RHI/RHIHandleTypes.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\vma\vk_mem_alloc.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\RHI\Vulkan\VK_VmaMemory.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Asset\FileSystem\BasicFileSystem.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Asset\FileSystem\Win\WinFileSystem.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Asset\MeshAsset.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\future \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\condition_variable \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\mutex \
@@ -247,113 +229,174 @@ parser_header.o: \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\pplinterface.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\ppltaskscheduler.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\pplcancellation_token.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Asset/TextureAsset.h \
-  Platform/FileSystem.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Tool/BufferUtils.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Tool/ComputeUtils.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Tool/MeshLoader.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Tool/ShaderLibrary.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Tool/TextureLoader.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Tool/ToolUtils.h \
-  Render/Core/RenderGraphDefinition.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/RmlUI/Binding/RmlUIDataModelMacros.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/RmlUI/Binding/RmlUIEventListener.h \
-  RmlUi/Core/EventListener.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/RmlUI/RmlUIFileInterface.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/RmlUI/RmlUIInputBridge.h \
-  Input/InputKeys.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/RmlUI/RmlUIManager.h \
-  UI/UIBase.h UI/UIHandleTypes.h RmlUi/Core/DataModelHandle.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/RmlUI/RmlUIRenderer.h \
-  UI/UIRenderer.h UI/UIDrawBuffer.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/RmlUI/RmlUIRenderInterface.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/RmlUI/RmlUISystemInterface.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/UIBase.h imgui.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/UIDrawBuffer.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/UIHandleTypes.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/UIRenderer.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/UI/UIRenderPass.h \
-  Render/Core/RenderGraph.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Application/Android/TouchOrbitCamera.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Application/CameraController.h \
-  Render/View/SceneView.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Application/SampleApp.h \
-  Render/RenderInterface.h \
-  D:/Project/GameDevelop/MyRenderer/src/Runtime/Application/Window.h \
-  Render/Core/RenderFrameSync.h MTScheduler.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/12-RmlUI/RmlUIDemo.h \
-  Application/SampleApp.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/4-Reflect/ReflectTestClass.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/Activation.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/Layer.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/Tensor.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/AttentionLayer.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/ConvLayer.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/Initializer.h \
-  D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\random \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/LRScheduler.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/MNISTDataLoader.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/Model.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/Optimizer.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/Normalization.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/ResidualBlock.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/ShaderHelper.h \
-  D:/Project/GameDevelop/MyRenderer/src/Sample/6-NeuralNetwork/Trainer.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/EditorRender/EditorUI.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/EditorRender/Render.h \
-  Render/Core/RenderFrameData.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/ThirdParty/imgui_node_editor/crude_json.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Asset\TextureAsset.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Tool\BufferUtils.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Tool\ComputeUtils.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Tool\MeshLoader.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Tool\ShaderLibrary.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Tool\TextureLoader.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Tool\ToolUtils.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Render\Core\RenderGraphDefinition.h \
+  D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\variant \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\UI\RmlUI\Binding\RmlUIDataModelMacros.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\UI\RmlUI\Binding\RmlUIEventListener.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\EventListener.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Event.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Dictionary.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Header.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Platform.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Variant.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Animation.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\ID.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Tween.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Types.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\..\Config\Config.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\map \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\xtree \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\..\Config\..\Core\Containers\itlib\flat_map.hpp \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\..\Config\..\Core\Containers\itlib\flat_set.hpp \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\..\Config\..\Core\Containers\robin_hood.h \
+  D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\string_view \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Traits.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Debug.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Colour.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Colour.inl \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Matrix4.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Math.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Vector4.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Vector3.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Vector3.inl \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Vector4.inl \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Matrix4.inl \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\ObserverPtr.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Rectangle.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Vector2.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Vector2.inl \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Span.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\TypeConverter.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Log.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\StringUtilities.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\TypeConverter.inl \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Variant.inl \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\ScriptInterface.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\UI\RmlUI\RmlUIFileInterface.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\UI\RmlUI\RmlUIInputBridge.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Input\InputKeys.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\UI\RmlUI\RmlUIManager.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\UI\UIHandleTypes.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\DataModelHandle.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\DataStructHandle.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\DataTypeRegister.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\DataTypes.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\DataVariable.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Utilities.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\ElementDocument.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Element.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Box.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Core.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\StyleTypes.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Property.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\NumericValue.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Unit.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\RenderBox.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\ScrollTypes.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Transform.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\TransformPrimitive.h \
+  D:\Project\GameDevelop\MyRenderer\src\ThirdParty\RmlUi\Include\RmlUi\Core\Element.inl \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\UI\RmlUI\RmlUIRenderer.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\UI\UIRenderer.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\UI\UIDrawBuffer.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\UI\RmlUI\RmlUIRenderInterface.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\UI\RmlUI\RmlUISystemInterface.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\UI\UIBase.h imgui.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\UI\UIRenderPass.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Render\Core\RenderGraph.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Render\Core\RenderGraphPass.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Render\Core\RenderGraphResource.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Render\Core\RenderGraphResourceImplementation.h \
+  nlohmann\json.hpp \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Render\Core\RenderGraphBlackboard.h \
+  D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\any \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Render\Core\RenderGraphCompileConfig.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Application\Android\TouchOrbitCamera.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Application\CameraController.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Render\View\SceneView.h \
+  glm\gtc\matrix_transform.hpp \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Application\SampleApp.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Render\RenderInterface.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Application\Window.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Render\Core\RenderFrameSync.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Render\Core\RenderFrameData.h \
+  MTScheduler.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\12-RmlUI\RmlUIDemo.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\4-Reflect\ReflectTestClass.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\6-NeuralNetwork\Activation.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\6-NeuralNetwork\Layer.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\6-NeuralNetwork\Tensor.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\6-NeuralNetwork\AttentionLayer.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\6-NeuralNetwork\ConvLayer.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\6-NeuralNetwork\Initializer.h \
+  D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\random \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\6-NeuralNetwork\LRScheduler.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\6-NeuralNetwork\MNISTDataLoader.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\6-NeuralNetwork\Model.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\6-NeuralNetwork\Optimizer.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\6-NeuralNetwork\Normalization.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\6-NeuralNetwork\ResidualBlock.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\6-NeuralNetwork\ShaderHelper.h \
+  D:\Project\GameDevelop\MyRenderer\src\Sample\6-NeuralNetwork\Trainer.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\EditorRender\EditorUI.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\EditorRender\Render.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\ThirdParty\imgui_node_editor\crude_json.h \
   D:\App\VisualStudio\VC\Tools\MSVC\14.51.36231\include\cassert \
   C:\Program\ Files\ (x86)\Windows\ Kits\10\Include\10.0.26100.0\ucrt\assert.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/ThirdParty/imgui_node_editor/imgui_bezier_math.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/ThirdParty/imgui_node_editor/imgui_extra_math.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\ThirdParty\imgui_node_editor\imgui_bezier_math.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\ThirdParty\imgui_node_editor\imgui_extra_math.h \
   imgui_internal.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/ThirdParty/imgui_node_editor/imgui_extra_math.inl \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/ThirdParty/imgui_node_editor/imgui_bezier_math.inl \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/ThirdParty/imgui_node_editor/imgui_canvas.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/ThirdParty/imgui_node_editor/imgui_node_editor.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/ThirdParty/imgui_node_editor/imgui_node_editor_internal.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/ThirdParty/imgui_node_editor/imgui_node_editor_internal.inl \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/BaseItem.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/EditorItemHandle.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/BaseLink.h \
-  UI/RenderGraphEditor/Core/RenderGraphNodeColors.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/BaseNode.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/BasePanel.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/BasePin.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/EditorItemRegistry.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/CommandHistory.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/CompositeCmd.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/CreateLinkCmd.h \
-  UI/RenderGraphEditor/Commands/CommandHistory.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/CreateNodeCmd.h \
-  UI/EditorItemHandle.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/DeleteLinkCmd.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/DeleteNodeCmd.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/EditorCommandQueue.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/ModifyPinCmd.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/MoveNodeCmd.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/NewGraphCmd.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/OpenGraphCmd.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Commands/RenameCmd.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Core/RenderGraphNodeColors.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Nodes/RenderGraphPassNode.h \
-  UI/BaseNode.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Nodes/RenderGraphResourceNode.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Panels/OutlinePanel.h \
-  UI/BasePanel.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Panels/PropertiesPanel.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Panels/RenderGraphPanel.h \
-  UI/RenderGraphEditor/Commands/EditorCommandQueue.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/RenderGraphSubGraphNode.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Services/AutoSaveService.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Services/EditorEventBus.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Services/GraphValidator.h \
-  Render/Core/RenderGraphValidator.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Services/RenderGraphConnectionValidator.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Services/SearchService.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Templates/PassTemplate.h \
-  D:/Project/GameDevelop/MyRenderer/src/Editor/UI/RenderGraphEditor/Templates/TemplateLibrary.h \
-  UI/RenderGraphEditor/Templates/PassTemplate.h
+  D:\Project\GameDevelop\MyRenderer\src\Editor\ThirdParty\imgui_node_editor\imgui_extra_math.inl \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\ThirdParty\imgui_node_editor\imgui_bezier_math.inl \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\ThirdParty\imgui_node_editor\imgui_canvas.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\ThirdParty\imgui_node_editor\imgui_node_editor.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\ThirdParty\imgui_node_editor\imgui_node_editor_internal.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\ThirdParty\imgui_node_editor\imgui_node_editor_internal.inl \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\BaseItem.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\EditorItemHandle.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\BaseLink.h \
+  UI\RenderGraphEditor\Core\RenderGraphNodeColors.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\BaseNode.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\BasePanel.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\BasePin.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\EditorItemRegistry.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Commands\CommandHistory.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Commands\CompositeCmd.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Commands\CreateLinkCmd.h \
+  UI\RenderGraphEditor\Commands\CommandHistory.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Commands\CreateNodeCmd.h \
+  UI\EditorItemHandle.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Commands\DeleteLinkCmd.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Commands\DeleteNodeCmd.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Commands\EditorCommandQueue.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Commands\ModifyPinCmd.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Commands\MoveNodeCmd.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Commands\NewGraphCmd.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Commands\OpenGraphCmd.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Commands\RenameCmd.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Core\RenderGraphNodeColors.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Nodes\RenderGraphPassNode.h \
+  UI\BaseNode.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Nodes\RenderGraphResourceNode.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Panels\OutlinePanel.h \
+  UI\BasePanel.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Panels\PropertiesPanel.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Panels\RenderGraphPanel.h \
+  UI\RenderGraphEditor\Commands\EditorCommandQueue.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\RenderGraphSubGraphNode.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Services\AutoSaveService.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Services\EditorEventBus.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Services\GraphValidator.h \
+  D:\Project\GameDevelop\MyRenderer\src\Runtime\Render\Core\RenderGraphValidator.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Services\RenderGraphConnectionValidator.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Services\SearchService.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Templates\PassTemplate.h \
+  D:\Project\GameDevelop\MyRenderer\src\Editor\UI\RenderGraphEditor\Templates\TemplateLibrary.h \
+  UI\RenderGraphEditor\Templates\PassTemplate.h

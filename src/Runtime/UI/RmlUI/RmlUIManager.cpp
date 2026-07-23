@@ -22,18 +22,6 @@ MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 MYRENDERER_BEGIN_NAMESPACE(RmlUI)
 
-// Internal registry types (defined in .cpp, not exposed to headers)
-namespace {
-	struct ModelEntry {
-		String name;
-		Rml::DataModelConstructor ctor;
-		Rml::DataModelHandle handle;
-	};
-	struct DocEntry {
-		Rml::ElementDocument* doc;
-	};
-}
-
 RmlUIManager* RmlUIManager::s_instance = nullptr;
 
 RmlUIManager* RmlUIManager::Get()
@@ -45,7 +33,9 @@ RmlUIManager* RmlUIManager::Get()
 
 RmlUIManager::~RmlUIManager()
 {
-	Shutdown();
+	// NO-OP: Shutdown must be called explicitly as a static method
+	// before vkDestroyDevice.  Instance dtors run too late (after RHI
+	// has been shut down) and would trip buffer-leak asserts.
 }
 
 void RmlUIManager::Init(RHI::Viewport* viewport)
@@ -76,7 +66,7 @@ void RmlUIManager::Init(RHI::Viewport* viewport)
 		return;
 	}
 
-	auto* ctx = static_cast<Rml::Context*>(m_context);
+	auto* ctx = m_context;
 	std::cout << "[RmlUIManager] Initialized — context \"" << ctx->GetName()
 		<< "\" " << dims.x << "x" << dims.y << std::endl;
 
@@ -94,22 +84,36 @@ void RmlUIManager::Init(RHI::Viewport* viewport)
 
 void RmlUIManager::Shutdown()
 {
-	if (!m_initialized) return;
+	if (!s_instance || !s_instance->m_initialized) return;
+	auto* mgr = s_instance;
 
-	m_context = nullptr;
+	// 1. Rml::Shutdown() — calls back render interface's ReleaseGeometry/ReleaseTexture.
+	//    Renderer and interface MUST still be alive.
 	Rml::Shutdown();
-	TeardownInterfaces();
 
-	delete m_input_bridge; m_input_bridge = nullptr;
-	delete m_render_interface; m_render_interface = nullptr;
-	delete m_renderer; m_renderer = nullptr;
+	// 2. Release render interface
+	delete mgr->m_render_interface; mgr->m_render_interface = nullptr;
 
-	delete static_cast<Map<GenericHandle, ModelEntry>*>(m_model_registry);
-	m_model_registry = nullptr;
-	delete static_cast<Map<GenericHandle, DocEntry>*>(m_doc_registry);
-	m_doc_registry = nullptr;
+	// 3. Release renderer (GPU resources — GPU stopped by now, safe to delete)
+	delete mgr->m_renderer; mgr->m_renderer = nullptr;
 
-	m_initialized = false;
+	// 4. Release input bridge
+	delete mgr->m_input_bridge; mgr->m_input_bridge = nullptr;
+
+	// 5. Teardown system/file interfaces
+	mgr->TeardownInterfaces();
+
+	// 6. Delete registries
+	delete mgr->m_model_registry; mgr->m_model_registry = nullptr;
+	delete mgr->m_doc_registry;   mgr->m_doc_registry = nullptr;
+
+	mgr->m_initialized = false;
+	mgr->m_context = nullptr;
+
+	// 7. Destroy singleton
+	delete s_instance;
+	s_instance = nullptr;
+
 	std::cout << "[RmlUIManager] Shutdown complete." << std::endl;
 }
 
@@ -120,7 +124,7 @@ void RmlUIManager::ProcessInput()
 
 void RmlUIManager::Update(Float32 dt)
 {
-	auto* ctx = static_cast<Rml::Context*>(m_context);
+	auto* ctx = m_context;
 	if (!ctx) return;
 
 	auto size = m_viewport->GetViewportSize();
@@ -130,7 +134,7 @@ void RmlUIManager::Update(Float32 dt)
 
 void RmlUIManager::Render(RHI::CommandList* cmd)
 {
-	auto* ctx = static_cast<Rml::Context*>(m_context);
+	auto* ctx = m_context;
 	if (!ctx || !m_renderer) return;
 
 	m_renderer->BeginFrame(cmd);
@@ -143,14 +147,14 @@ void RmlUIManager::Render(RHI::CommandList* cmd)
 // -----------------------------------------------------------------------
 RmlModelHandle RmlUIManager::CreateDataModel(CONST String& name, bool allow_missing)
 {
-	auto* ctx = static_cast<Rml::Context*>(m_context);
+	auto* ctx = m_context;
 	if (!ctx) return {};
 
 	auto ctor = ctx->CreateDataModel(name, nullptr, allow_missing);
 	if (!ctor) return {};
 
 	RmlModelHandle h; h.value = m_next_model_handle++;
-	auto* reg = static_cast<Map<GenericHandle, ModelEntry>*>(m_model_registry);
+	auto* reg = m_model_registry;
 	ModelEntry entry;
 	entry.name = name;
 	entry.ctor = ctor;
@@ -168,7 +172,7 @@ void RmlUIManager::BindEventCallback(RmlModelHandle model, CONST String& name,
 
 void RmlUIManager::DirtyVariable(RmlModelHandle model, CONST String& name)
 {
-	auto* reg = static_cast<Map<GenericHandle, ModelEntry>*>(m_model_registry);
+	auto* reg = m_model_registry;
 	if (!reg) return;
 	auto it = reg->find(model.value);
 	if (it != reg->end())
@@ -177,12 +181,12 @@ void RmlUIManager::DirtyVariable(RmlModelHandle model, CONST String& name)
 
 void RmlUIManager::RemoveDataModel(RmlModelHandle model)
 {
-	auto* reg = static_cast<Map<GenericHandle, ModelEntry>*>(m_model_registry);
+	auto* reg = m_model_registry;
 	if (!reg) return;
 	auto it = reg->find(model.value);
 	if (it != reg->end())
 	{
-		auto* ctx = static_cast<Rml::Context*>(m_context);
+		auto* ctx = m_context;
 		if (ctx) ctx->RemoveDataModel(it->second.name);
 		reg->erase(it);
 	}
@@ -190,7 +194,7 @@ void RmlUIManager::RemoveDataModel(RmlModelHandle model)
 
 Rml::DataModelConstructor* RmlUIManager::GetModelConstructor(RmlModelHandle model)
 {
-	auto* reg = static_cast<Map<GenericHandle, ModelEntry>*>(m_model_registry);
+	auto* reg = m_model_registry;
 	if (!reg) return nullptr;
 	auto it = reg->find(model.value);
 	if (it != reg->end())
@@ -203,7 +207,7 @@ Rml::DataModelConstructor* RmlUIManager::GetModelConstructor(RmlModelHandle mode
 // -----------------------------------------------------------------------
 RmlDocHandle RmlUIManager::LoadDocument(CONST String& path)
 {
-	auto* ctx = static_cast<Rml::Context*>(m_context);
+	auto* ctx = m_context;
 	if (!ctx) return {};
 
 	auto* doc = ctx->LoadDocument(path);
@@ -214,14 +218,14 @@ RmlDocHandle RmlUIManager::LoadDocument(CONST String& path)
 	}
 
 	RmlDocHandle h; h.value = m_next_doc_handle++;
-	auto* reg = static_cast<Map<GenericHandle, DocEntry>*>(m_doc_registry);
+	auto* reg = m_doc_registry;
 	(*reg)[h.value] = { doc };
 	return h;
 }
 
 void RmlUIManager::ShowDocument(RmlDocHandle doc)
 {
-	auto* reg = static_cast<Map<GenericHandle, DocEntry>*>(m_doc_registry);
+	auto* reg = m_doc_registry;
 	if (!reg) return;
 	auto it = reg->find(doc.value);
 	if (it != reg->end() && it->second.doc)
@@ -230,7 +234,7 @@ void RmlUIManager::ShowDocument(RmlDocHandle doc)
 
 void RmlUIManager::HideDocument(RmlDocHandle doc)
 {
-	auto* reg = static_cast<Map<GenericHandle, DocEntry>*>(m_doc_registry);
+	auto* reg = m_doc_registry;
 	if (!reg) return;
 	auto it = reg->find(doc.value);
 	if (it != reg->end() && it->second.doc)
@@ -239,7 +243,7 @@ void RmlUIManager::HideDocument(RmlDocHandle doc)
 
 void RmlUIManager::CloseDocument(RmlDocHandle doc)
 {
-	auto* reg = static_cast<Map<GenericHandle, DocEntry>*>(m_doc_registry);
+	auto* reg = m_doc_registry;
 	if (!reg) return;
 	auto it = reg->find(doc.value);
 	if (it != reg->end() && it->second.doc)
@@ -267,7 +271,7 @@ bool RmlUIManager::LoadFontFace(CONST String& file_path)
 
 bool RmlUIManager::IsMouseInteracting() CONST
 {
-	auto* ctx = static_cast<Rml::Context*>(m_context);
+	auto* ctx = m_context;
 	if (!ctx) return false;
 	return ctx->IsMouseInteracting();
 }

@@ -45,8 +45,16 @@ std::vector<MetaInfo::Property> MetaInfo::extractProperties(const Cursor& cursor
         {
             continue;
         }
-        ret_list.emplace_back(temp_string,
-                              item_details.size() > 1 ? Utils::trim(item_details[1], white_space_string) : "");
+        // Join remaining parts as value (annotations have colons in value string)
+        std::string value;
+        if (item_details.size() > 1)
+        {
+            value = item_details[1];
+            for (size_t k = 2; k < item_details.size(); ++k)
+                value += ":" + item_details[k];
+            value = Utils::trim(value, white_space_string);
+        }
+        ret_list.emplace_back(temp_string, value);
     }
     return ret_list;
 }

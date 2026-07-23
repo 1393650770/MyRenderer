@@ -3,10 +3,10 @@
 #define _RMLUIMANAGER_
 
 #include "Core/ConstDefine.h"
-#include "UI/UIBase.h"
 #include "UI/UIHandleTypes.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
+#include <RmlUi/Core/ElementDocument.h>
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
@@ -18,6 +18,9 @@ class RenderGraph;
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 
+// RmlUI forward declarations (avoid heavy includes in header)
+namespace Rml { class Context; }
+
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
 class UIRenderer;
@@ -26,6 +29,16 @@ class RmlUISystemInterface;
 class RmlUIFileInterface;
 class RmlUIInputBridge;
 class RmlUIRenderInterface;
+
+// Internal registry types (moved from .cpp for type-safe members)
+struct ModelEntry {
+	String name;
+	Rml::DataModelConstructor ctor;
+	Rml::DataModelHandle handle;
+};
+struct DocEntry {
+	Rml::ElementDocument* doc;
+};
 
 /**
  * RmlUI Manager — singleton that owns the RmlUI lifecycle.
@@ -59,7 +72,7 @@ public:
 	void METHOD(Init)(RHI::Viewport* viewport);
 
 	/// Shutdown RmlUI, release all resources.
-	void METHOD(Shutdown)();
+	static void METHOD(Shutdown)();
 
 	/// Process accumulated input events for this frame.
 	void METHOD(ProcessInput)();
@@ -133,8 +146,14 @@ private:
 	void METHOD(SetupInterfaces)();
 	void METHOD(TeardownInterfaces)();
 
-	/// Internal: get constructor for a model handle. Returns nullptr if invalid.
+public:
+	/// Get the constructor for a model handle. Returns nullptr if invalid.
+	/// Used with generated Bind*() functions:
+	///   auto* ctor = mgr->GetModelConstructor(hud);
+	///   Generated::BindRmlUIDemoApp(*ctor, &data);
 	Rml::DataModelConstructor* METHOD(GetModelConstructor)(RmlModelHandle model);
+protected:
+private:
 #pragma endregion
 
 #pragma region MEMBER
@@ -148,8 +167,8 @@ private:
 	RmlUIFileInterface*   m_file_interface = nullptr;
 	RmlUIInputBridge*     m_input_bridge = nullptr;
 
-	// RmlUI context (internal, not exposed to upper layers)
-	void* m_context = nullptr; // Rml::Context*, type-erased to avoid header dependency
+	// RmlUI context
+	Rml::Context* m_context = nullptr;
 
 	// Renderer
 	UI::UIRenderer* m_renderer = nullptr;
@@ -160,11 +179,9 @@ private:
 
 	bool m_initialized = false;
 
-	// Internal data model registry (handle → constructor)
-	void* m_model_registry = nullptr; // Map<GenericHandle, ModelEntry>*, allocated in .cpp
-
-	// Internal document registry (handle → ElementDocument*)
-	void* m_doc_registry = nullptr;
+	// Registries (allocated in Init, freed in Shutdown)
+	Map<GenericHandle, ModelEntry>* m_model_registry = nullptr;
+	Map<GenericHandle, DocEntry>*    m_doc_registry = nullptr;
 
 	// Next handles
 	UInt32 m_next_model_handle = 1;

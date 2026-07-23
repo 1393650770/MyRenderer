@@ -3,74 +3,74 @@
 #define _RMLUIDATAMODELMACROS_
 
 /**
- * RmlUI DataModel binding macros.
+ * RmlUI DataModel binding macros — zero-dependency, no MetaParser required.
  *
- * These macros define a code-generation annotation system that works with
- * the MetaParser to auto-generate Rml::DataModelConstructor Bind/BindEventCallback
- * calls for C++ structs.
+ * == Quick start (in your .cpp) ==
  *
- * Usage:
- *   In a .h file, declare your data model struct and annotate it:
+ *   auto ctor = ctx->CreateDataModel("hud");
+ *   RMLUI_BIND_MODEL(ctor, &app,
+ *       RMLUI_FIELD(m_hp,  "hp"),
+ *       RMLUI_FIELD(m_score, "score"),
+ *       RMLUI_FIELD(m_timer, "timer")
+ *   );
  *
- *   struct PlayerHUD {
- *       int hp = 100;
- *       String name;
- *       void on_click(Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&) {}
- *   };
+ * == MetaParser mode (future) ==
  *
- *   // Define bindings (after the struct definition)
- *   RMLUI_BIND_FIELD(PlayerHUD, hp);
- *   RMLUI_BIND_FIELD_AS(PlayerHUD, name, "display_name");
- *   RMLUI_BIND_ACTION(PlayerHUD, on_click, "click");
- *
- *   Then include the generated file and call:
- *   MXRender::UI::RmlUI::Generated::BindPlayerHUD(ctor, &player);
- *
- * When __REFLECTION_PARSER__ is defined (MetaParser mode), these macros emit
- * __attribute__((annotate(...))) on stub structs that the parser recognizes.
+ * When __REFLECTION_PARSER__ is defined, RMLUI_BIND_FIELD / RMLUI_BIND_FIELD_AS
+ * emit annotation stubs that the MetaParser's rmlui_generator consumes to
+ * auto-generate Bind*() functions.  Once the MetaParser environment is working
+ * (libclang >= 20, all package include paths visible), the generated file at
+ * _Generated/RmlUI/AllRmlDataModel.h replaces manual RMLUI_BIND_MODEL calls.
  */
 
-#if defined(__REFLECTION_PARSER__)
-	// MetaParser mode: emit annotation stubs
+// ── Always-available inline helpers (no MetaParser needed) ──────────────
 
-	#define RMLUI_INTERNAL_ANNOTATE(annotation) \
-		struct __attribute__((annotate(annotation)))
+// Bind a single field.  Works in any scope (needs Rml::DataModelConstructor in scope).
+#define RMLUI_FIELD(data_member, display_name) \
+	ctor.Bind(display_name, &data_member)
+
+// Bind an event callback.
+#define RMLUI_ACTION(method_name, display_name) \
+	ctor.BindEventCallback(display_name, \
+		[&](Rml::DataModelHandle h, Rml::Event& e, const Rml::VariantList& a) { \
+			method_name(h, e, a); \
+		})
+
+// Bulk-bind multiple fields / actions in one statement.
+// Usage: RMLUI_BIND_MODEL(ctor, data_ptr, RMLUI_FIELD(...), RMLUI_FIELD(...), ...)
+#define RMLUI_BIND_MODEL(ctor_expr, data_ptr, ...) \
+	do { \
+		auto& ctor = (ctor_expr); \
+		auto* data = (data_ptr); \
+		(void)ctor; (void)data; \
+		__VA_ARGS__; \
+	} while(0)
+
+
+// ── MetaParser annotation stubs ─────────────────────────────────────────
+// Only active when MetaParser runs (__REFLECTION_PARSER__ defined).
+// Emit named structs with "All" flag so shouldCompile() includes them.
+
+#if defined(__REFLECTION_PARSER__)
 
 	#define RMLUI_BIND_FIELD(T, field) \
-		RMLUI_INTERNAL_ANNOTATE("RmlBindField:" #T ":" #field ":" #field) {}
+		struct __attribute__((annotate("RmlBindField:" #T ":" #field ":" #field), annotate("All"))) \
+		RmlBindField_##T##_##field {}
 
 	#define RMLUI_BIND_FIELD_AS(T, field, name) \
-		RMLUI_INTERNAL_ANNOTATE("RmlBindField:" #T ":" #field ":" #name) {}
+		struct __attribute__((annotate("RmlBindField:" #T ":" #field ":" #name), annotate("All"))) \
+		RmlBindField_##T##_##field {}
 
 	#define RMLUI_BIND_ACTION(T, method, name) \
-		RMLUI_INTERNAL_ANNOTATE("RmlBindAction:" #T ":" #method ":" #name) {}
+		struct __attribute__((annotate("RmlBindAction:" #T ":" #method ":" #name), annotate("All"))) \
+		RmlBindAction_##T##_##method {}
 
 #else
-	// Normal compilation: macros are no-ops. The generated file provides the actual binding code.
 
 	#define RMLUI_BIND_FIELD(T, field)
 	#define RMLUI_BIND_FIELD_AS(T, field, name)
 	#define RMLUI_BIND_ACTION(T, method, name)
 
 #endif // __REFLECTION_PARSER__
-
-/**
- * Convenience macro: manually bind a field without code generation.
- * Use this when you don't want to run MetaParser.
- *
- * Usage:
- *   RMLUI_BIND(ctor, &player.hp, "hp");
- */
-#define RMLUI_BIND(ctor, ptr, name) \
-	ctor.Bind(name, ptr)
-
-/**
- * Convenience macro: manually bind an event callback without code generation.
- *
- * Usage:
- *   RMLUI_BIND_EVENT(ctor, "click", [&](auto h, auto& e, auto& a) { ... });
- */
-#define RMLUI_BIND_EVENT(ctor, name, lambda) \
-	ctor.BindEventCallback(name, lambda)
 
 #endif // !_RMLUIDATAMODELMACROS_

@@ -40,6 +40,10 @@ namespace Generator
             if (!class_temp->shouldCompileFields())
                 continue;
 
+            std::string cn = class_temp->getClassName();
+            if (cn.find("RmlBindField_") == 0 || cn.find("RmlBindAction_") == 0)
+                continue;
+
             Mustache::data class_def;
             genClassRenderData(class_temp, class_def);
 

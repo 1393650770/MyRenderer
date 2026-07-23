@@ -158,7 +158,7 @@ function CompileFunc()
         end
         file:close()
     end
-    os.exec("$(projectdir)/src/Reflect/MetaParser.exe $(projectdir)/src/Reflect/precompile.info  $(projectdir)/src/Reflect/parser_header.h $(projectdir)/src * MXRender 0")
+    os.exec("$(projectdir)/src/Reflect/MetaParser.exe $(projectdir)/src/Reflect/precompile.info  $(projectdir)/src/Reflect/parser_header.h \"$(projectdir)/src;$(projectdir)/src/Runtime;$(projectdir)/src/ThirdParty;$(projectdir)/src/ThirdParty/RmlUi/Include\" * MXRender 0")
     print("----\n")
     
     print("[compile shader] shader to spirv..")
