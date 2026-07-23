@@ -70,11 +70,8 @@ void RmlUIDemoApp::OnInitScene()
 void RmlUIDemoApp::OnShutdownScene()
 {
 	std::cout << "[RmlUIDemo] OnShutdownScene" << std::endl;
-	if (m_manager)
-	{
-		m_manager->Shutdown();
-		m_manager = nullptr;
-	}
+	if (m_manager) m_manager->Shutdown();
+	m_manager = nullptr;
 }
 
 void RmlUIDemoApp::OnUpdate(float dt)

@@ -41,6 +41,8 @@ device(in_device)
 	Bool pooled = !is_staging && device->GetMemoryManager()->AllocateBufferPooled(
 		allocation, buffer_desc.size, min_alignment, usage_flags, mem_flags, meta_type);
 
+	is_dedicated_buffer = !pooled;
+
 	if (pooled)
 	{
 		// Use the shared pool VkBuffer; offset is pool-internal (allocation.offset)
@@ -76,9 +78,10 @@ void VK_Buffer::Destroy()
 	{
 		VK_MemoryManager* memory_manager = device->GetMemoryManager();
 		memory_manager->FreeAllocation(allocation);
-		// Only destroy the VkBuffer if it's a dedicated buffer (not a shared pool buffer).
-		// Shared pool buffers have allocation.GetBufferHandle() == buffer.
-		if (allocation.GetBufferHandle() != buffer)
+		// Only destroy the VkBuffer if it's a dedicated buffer (not pooled).
+		// Pooled buffers share the page's VkBuffer; destroying it here would
+		// double-free after defrag replaces the pool VkBuffer (Bug D2c).
+		if (is_dedicated_buffer)
 		{
 			vkDestroyBuffer(device->GetDevice(), buffer, VULKAN_CPU_ALLOCATOR);
 		}
@@ -222,7 +225,14 @@ VK_Buffer::~VK_Buffer()
 
 VkBuffer VK_Buffer::GetBuffer() CONST
 {
-	return buffer;
+	// Dedicated buffers: the cached 'buffer' member is the ground truth
+	// (allocation.vulkan_handle is not set for dedicated allocations).
+	// Pooled buffers: read allocation.GetBufferHandle() dynamically — after
+	// defrag moves sub-allocations to a new pool VkBuffer, the cached value
+	// would be stale (Bug D2b).
+	if (is_dedicated_buffer)
+		return buffer;
+	return allocation.GetBufferHandle();
 }
 
 UInt32 VK_Buffer::GetOffset() CONST

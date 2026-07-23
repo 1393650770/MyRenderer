@@ -1,4 +1,5 @@
 #include "RenderGraphResource.h"
+#include <mutex>
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(Render)
@@ -13,10 +14,12 @@ struct DeferredItem
 
 static Vector<DeferredItem> g_deferred_queue;
 static UInt64 g_deferred_frame_counter = 0;
+static std::mutex g_deferred_mutex;
 
 void PushDeferredDestruction(std::unique_ptr<MXRender::RHI::RenderResource>&& resource)
 {
 	if (!resource) return;
+	std::lock_guard<std::mutex> lock(g_deferred_mutex);
 	g_deferred_queue.push_back({std::move(resource), g_deferred_frame_counter});
 }
 
@@ -31,6 +34,7 @@ void ProcessDeferredDestruction()
 		return;
 	UInt64 safe_boundary = g_deferred_frame_counter - DEFERRED_FRAME_DEPTH;
 
+	std::lock_guard<std::mutex> lock(g_deferred_mutex);
 	for (Int i = (Int)g_deferred_queue.size() - 1; i >= 0; --i)
 	{
 		if (g_deferred_queue[i].frame_number <= safe_boundary)

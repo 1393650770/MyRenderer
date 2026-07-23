@@ -45,10 +45,11 @@ RmlUIRenderer::~RmlUIRenderer()
 	Shutdown();
 }
 
-void RmlUIRenderer::Initialize(RHI::CommandList* cmd_list, RHI::Texture* backbuffer_rtv, RHI::Texture* backbuffer_dsv, UInt32 viewport_h)
+void RmlUIRenderer::Initialize(RHI::CommandList* cmd_list, RHI::Texture* backbuffer_rtv, RHI::Texture* backbuffer_dsv, UInt32 viewport_w, UInt32 viewport_h)
 {
 	m_backbuffer_rtv = backbuffer_rtv;
 	m_backbuffer_dsv = backbuffer_dsv;
+	m_viewport_w = viewport_w;
 	m_viewport_h = viewport_h;
 
 	for (int i = 0; i < 16; i++)
@@ -91,6 +92,13 @@ void RmlUIRenderer::BeginFrame(RHI::CommandList* cmd)
 	m_stats = {};
 	m_scissor_enabled = false;
 	m_clip_mask_enabled = false;
+
+	// Refresh viewport dimensions from backbuffer (handles window resize)
+	if (m_backbuffer_rtv)
+	{
+		m_viewport_w = m_backbuffer_rtv->GetTextureDesc().width;
+		m_viewport_h = m_backbuffer_rtv->GetTextureDesc().height;
+	}
 	// Transition any textures created outside render loop (font loading)
 	for (auto* t : m_pending_transitions)
 		m_current_cmd->TransitionTextureState(t, ENUM_RESOURCE_STATE::ShaderResource);
@@ -404,13 +412,35 @@ void RmlUIRenderer::UploadPerDrawData()
 {
 	if (!m_per_draw_buf) return;
 
+	// Orthographic projection: pixel coords [0,w]x[0,h] -> Vulkan NDC [-1,1]^2 (Y-flip)
+	float w = (float)(m_viewport_w > 0 ? m_viewport_w : 1);
+	float h = (float)(m_viewport_h > 0 ? m_viewport_h : 1);
+	float proj[16] = {
+		2.0f/w,  0,      0, 0,
+		0,      2.0f/h,  0, 0,
+		0,       0,      0, 0,
+		-1.0f, -1.0f,    0, 1
+	};
+
+	// final = proj x m_transform  (both column-major)
+	float a[16]; memcpy(a, proj, sizeof(a));
+	float b[16]; memcpy(b, m_transform, sizeof(b));
+	float final[16] = {};
+	for (int col = 0; col < 4; ++col) {
+		for (int row = 0; row < 4; ++row) {
+			final[row + col * 4] =
+				a[row + 0 * 4] * b[0 + col * 4] +
+				a[row + 1 * 4] * b[1 + col * 4] +
+				a[row + 2 * 4] * b[2 + col * 4] +
+				a[row + 3 * 4] * b[3 + col * 4];
+		}
+	}
+
 	PerDrawData data;
-	memcpy(data.transform, m_transform, sizeof(data.transform));
+	memcpy(data.transform, final, sizeof(data.transform));
 	data.translation[0] = m_translation[0];
 	data.translation[1] = m_translation[1];
 
-	// BufferUtils::Upload handles both bypass and record modes
-	// (UE EnqueueLambda pattern: data copied by value in record mode)
 	Tool::BufferUtils::Upload(m_per_draw_buf, &data, sizeof(data));
 }
 

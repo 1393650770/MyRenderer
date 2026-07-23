@@ -182,8 +182,11 @@ void* VulkanRHI::MapBuffer(Buffer* buffer, ENUM_MAP_TYPE map_type, ENUM_MAP_FLAG
 		shadow.resize(STATIC_CAST(buffer, VK_Buffer)->GetBufferDesc().size);
 		return shadow.data();
 	}
-	// Bypass mode: direct GPU Map with Discard (orphans old allocation, safe per-draw)
-	return STATIC_CAST(buffer, VK_Buffer)->Map(map_type, ENUM_MAP_FLAG::Discard);
+	// Bypass mode: respect caller's map_flag.
+	// Discard orphans old allocation (safe for pre-allocation), None reuses the
+	// same sub-allocation (safe for per-frame uploads on pre-bound descriptors,
+	// per UE's PersistentMapping pattern — offset unchanged, descriptor valid).
+	return STATIC_CAST(buffer, VK_Buffer)->Map(map_type, map_flag);
 }
 
 void VulkanRHI::UnmapBuffer(Buffer* buffer)

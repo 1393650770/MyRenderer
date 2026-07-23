@@ -221,6 +221,10 @@ void VK_Texture::UpdateTextureData(CONST TextureDataPayload& texture_data_payloa
 	command_buffer->MemoryBarrier(VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 	texture_image_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	command_buffer->CopyBufferToImage(staging_buffer->GetBuffer(), texture_image, texture_image_layout, buffer_copy_regions.size(), buffer_copy_regions.data());
+	// Update the desc to reflect the actual VkImage layout (TRANSFER_DST) before
+	// calling TransitionTextureState. Otherwise the Replay path checks stale desc
+	// (ShaderResource) vs required (ShaderResource) → falsely skips the barrier.
+	texture_desc.resource_state = ENUM_RESOURCE_STATE::CopyDest;
 	command_buffer->TransitionTextureState(this, ENUM_RESOURCE_STATE::ShaderResource);
 	command_buffer->End();
 	device->GetQueue(ENUM_QUEUE_TYPE::TRANSFER)->Submit(command_buffer);

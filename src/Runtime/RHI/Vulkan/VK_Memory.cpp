@@ -6,6 +6,7 @@
 #include "Core/TypeHash.h"
 #include "VK_CommandBuffer.h"
 #include "VK_Queue.h"
+#include <mutex>
 #ifdef _MSC_VER
 #include <xutility>
 #endif
@@ -13,6 +14,42 @@
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(RHI)
 MYRENDERER_BEGIN_NAMESPACE(Vulkan)
+
+// Deferred VkBuffer destruction (Bug D2a).
+// DefragTick moves live sub-allocations to a new pool VkBuffer and must
+// NOT destroy the old one immediately — the transfer-queue copy may still
+// be executing, and VK_Buffer objects still cache the old handle.
+namespace {
+	struct DeferredVkBuffer { VkBuffer buffer; VkDeviceMemory memory; UInt64 frame; };
+	Vector<DeferredVkBuffer> g_deferred_vk_buffers;
+	std::mutex g_deferred_vk_mutex;
+} // anon namespace
+
+static void DeferredDestroyVkBuffer(VkDevice device, VkBuffer buf, VkDeviceMemory mem = VK_NULL_HANDLE)
+{
+	if (buf == VK_NULL_HANDLE) return;
+	std::lock_guard<std::mutex> lock(g_deferred_vk_mutex);
+	g_deferred_vk_buffers.push_back({buf, mem, g_frame_number_render_thread});
+}
+
+void ProcessDeferredVkBuffers(VkDevice device)
+{
+	std::lock_guard<std::mutex> lock(g_deferred_vk_mutex);
+	UInt64 safe = g_frame_number_render_thread >= 3
+		? g_frame_number_render_thread - 3 : 0;
+	for (Int i = (Int)g_deferred_vk_buffers.size() - 1; i >= 0; --i)
+	{
+		if (g_deferred_vk_buffers[i].frame <= safe)
+		{
+			vkDestroyBuffer(device, g_deferred_vk_buffers[i].buffer, VULKAN_CPU_ALLOCATOR);
+			if (g_deferred_vk_buffers[i].memory != VK_NULL_HANDLE)
+				vkFreeMemory(device, g_deferred_vk_buffers[i].memory, VULKAN_CPU_ALLOCATOR);
+			g_deferred_vk_buffers[i] = g_deferred_vk_buffers.back();
+			g_deferred_vk_buffers.pop_back();
+		}
+	}
+}
+
 
 #define VK_MEMORY_MAX_SUB_ALLOCATION (64llu << 20llu) //64MB?
 #define VK_MEMORY_KEEP_FREELIST_SORTED	1
@@ -1349,6 +1386,9 @@ UInt32 VK_MemoryResourceFragmentAllocator::DefragTick(VK_Device& device, VK_Comm
 			allocation_refs[i]->vulkan_handle = (UInt64)new_buffer;
 			allocation_refs[i]->offset = aligned;
 		}
+		// Sync internal tracking - without this Free() adds the old
+		// offset back to free_list, overlapping with live allocations.
+		info.allocation_offset = aligned;
 		new_offset = aligned + info.allocation_size;
 		++moved;
 	}
@@ -1357,17 +1397,19 @@ UInt32 VK_MemoryResourceFragmentAllocator::DefragTick(VK_Device& device, VK_Comm
 	cmd->End();
 	device.GetQueue(ENUM_QUEUE_TYPE::TRANSFER)->Submit(cmd);
 
-	// Swap in the new buffer
-	buffer = new_buffer;
-	max_size = (UInt32)new_mem->GetSize();
+		// Swap in the new buffer — free old backing memory (deferred)
+		// The old buffer/memory must stay alive until the GPU finishes the
+		// transfer-queue copy submitted above (Bug D2a/D2b).
+		VK_DeviceMemoryAllocation* old_mem = memory_allocation;
+		memory_allocation = new_mem;
+		buffer = new_buffer;
+		max_size = (UInt32)new_mem->GetSize();
 
-	// Free old backing memory (deferred)
-	// The old buffer's allocations now point to new_buffer, old buffer can be destroyed
-	vkDestroyBuffer(device.GetDevice(), old_buffer, VULKAN_CPU_ALLOCATOR);
+		DeferredDestroyVkBuffer(device.GetDevice(), old_buffer, old_mem->GetMemory());
 
-	is_locked = false;
-	return moved;
-}
+		is_locked = false;
+		return moved;
+	}
 
 void VK_MemoryResourceHeap::DefragTick(VK_Device& device, UInt32 count)
 {
@@ -1464,6 +1506,7 @@ void VK_MemoryManager::ReleaseFreedPages()
 	ReleaseFreedResources(false);
 	device_memory_manager->TrimMemory(false);
 	DefragTick();
+	ProcessDeferredVkBuffers(device->GetDevice());
 }
 
 void VK_MemoryManager::DestroyResourceAllocations()

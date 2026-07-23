@@ -40,7 +40,7 @@ public:
 	VIRTUAL ~RmlUIRenderer();
 
 	/// Initialize Vulkan resources (shaders, PSOs). Must be called after RHI is ready.
-	void METHOD(Initialize)(RHI::CommandList* cmd_list, RHI::Texture* backbuffer_rtv, RHI::Texture* backbuffer_dsv, UInt32 viewport_h);
+	void METHOD(Initialize)(RHI::CommandList* cmd_list, RHI::Texture* backbuffer_rtv, RHI::Texture* backbuffer_dsv, UInt32 viewport_w, UInt32 viewport_h);
 
 	/// Release all Vulkan resources.
 	void METHOD(Shutdown)();
@@ -109,6 +109,7 @@ private:
 	RHI::CommandList* m_current_cmd = nullptr;
 
 	// Viewport height for scissor Y-flip
+	UInt32 m_viewport_w = 0;
 	UInt32 m_viewport_h = 0;
 
 	// Geometry handle → buffer mapping

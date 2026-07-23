@@ -27,8 +27,11 @@ RHI::Buffer* BufferUtils::CreateDynamicParamBuffer(UInt32 in_size_bytes)
 
 void BufferUtils::Upload(RHI::Buffer* in_buffer, CONST void* in_data, UInt32 in_size_bytes, UInt32 in_dst_offset)
 {
-	// MapBuffer/UnmapBuffer now handle both bypass (direct Map) and record (shadow memory) modes
-	void* mapped = g_render_rhi->MapBuffer(in_buffer, ENUM_MAP_TYPE::Write, ENUM_MAP_FLAG::Discard);
+	// Per-frame uploads on pre-bound buffers use Map(None) to keep the same
+	// sub-allocation offset (UE PersistentMapping pattern). The descriptor was
+	// written once at init — changing the offset would make it stale.
+	// In record mode, MapBuffer returns shadow memory (offset unchanged anyway).
+	void* mapped = g_render_rhi->MapBuffer(in_buffer, ENUM_MAP_TYPE::Write, ENUM_MAP_FLAG::None);
 	std::memcpy((UInt8*)mapped + in_dst_offset, in_data, in_size_bytes);
 	g_render_rhi->UnmapBuffer(in_buffer);
 }

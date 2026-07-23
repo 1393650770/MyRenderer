@@ -87,7 +87,7 @@ void RmlUIManager::Init(RHI::Viewport* viewport)
 	auto* cmd = RHIGetImmediateCommandList();
 	auto* bb_rtv = viewport->GetCurrentBackBufferRTV();
 	auto* bb_dsv = viewport->GetCurrentBackBufferDSV();
-	static_cast<RmlUIRenderer*>(m_renderer)->Initialize(cmd, bb_rtv, bb_dsv, size[1]);
+	static_cast<RmlUIRenderer*>(m_renderer)->Initialize(cmd, bb_rtv, bb_dsv, size[0], size[1]);
 
 	m_initialized = true;
 }

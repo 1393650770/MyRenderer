@@ -49,6 +49,7 @@ protected:
 	VK_Device* device = nullptr;
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VK_Allocation allocation;
+	Bool is_dedicated_buffer = false;  // true for non-pooled buffers (Bug D2c)
 
 	enum class LockState : UInt8
 	{

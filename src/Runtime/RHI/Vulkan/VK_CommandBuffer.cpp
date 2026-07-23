@@ -1244,10 +1244,20 @@ void VK_CommandBuffer::Replay()
 			auto* c = static_cast<RHICmdUpdateBuffer*>(cmd.get());
 			VK_Buffer* vk_buf = STATIC_CAST(c->buffer, VK_Buffer);
 			if (vk_buf) {
-				// None (not Discard): reuse same sub-allocation so descriptor offset stays valid.
-				// Safe because GPU executes draws+uploads sequentially within one submit.
-				void* ptr = vk_buf->Map(ENUM_MAP_TYPE::Write, ENUM_MAP_FLAG::None);
-				if (ptr) { std::memcpy((UInt8*)ptr + c->offset, c->data.data(), c->size); vk_buf->Unmap(); }
+				UInt32 buf_offset = vk_buf->GetOffset() + c->offset;
+				vkCmdUpdateBuffer(command_buffer, vk_buf->GetBuffer(),
+					buf_offset, c->size, c->data.data());
+				VkBufferMemoryBarrier barrier{};
+				barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+				barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+				barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				barrier.buffer = vk_buf->GetBuffer();
+				barrier.offset = buf_offset;
+				barrier.size = c->size;
+				vkCmdPipelineBarrier(command_buffer,
+					VK_PIPELINE_STAGE_TRANSFER_BIT,
+					VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+					0, 0, nullptr, 1, &barrier, 0, nullptr);
 			}
 			break;
 		}
