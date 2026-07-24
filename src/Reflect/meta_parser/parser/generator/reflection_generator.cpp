@@ -51,6 +51,11 @@ namespace Generator
             if (!class_temp->shouldCompile())
                 continue;
 
+            // Skip classes that only pass shouldCompile() due to UIBind
+            // annotations (no RTTR registration needed).
+            if (!class_temp->shouldCompileFields() && !class_temp->shouldCompileMethods())
+                continue;
+
             // Skip RmlUI binding stubs (handled by RmluiGenerator)
             std::string cn = class_temp->getClassName();
             if (cn.find("RmlBindField_") == 0 || cn.find("RmlBindAction_") == 0)

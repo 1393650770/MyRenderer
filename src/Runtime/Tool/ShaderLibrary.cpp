@@ -46,6 +46,20 @@ Vector<UInt32> ShaderLibrary::ReadSpirv(CONST String& in_filename)
 	return buffer;
 }
 
+#if PLATFORM_WGPU
+String ShaderLibrary::ReadWgsl(CONST String& in_filename)
+{
+	std::ifstream file(in_filename, std::ios::ate);
+	CHECK_WITH_LOG(!file.is_open(), ("Tool Error: fail to open the WGSL shader file: " + in_filename).c_str())
+	size_t file_size = (size_t)file.tellg();
+	String source(file_size, '\0');
+	file.seekg(0);
+	file.read(&source[0], file_size);
+	file.close();
+	return source;
+}
+#endif
+
 RHI::Shader* ShaderLibrary::LoadShader(ENUM_SHADER_STAGE in_stage, CONST String& in_filename)
 {
 	RHI::ShaderDesc desc;
@@ -53,7 +67,20 @@ RHI::Shader* ShaderLibrary::LoadShader(ENUM_SHADER_STAGE in_stage, CONST String&
 	desc.shader_name = in_filename;
 	desc.entry_name = "main";
 	RHI::ShaderDataPayload payload;
+#if PLATFORM_WGPU
+	// WebGPU path: load .wgsl text (filename convention: "Shader/xxx.vert.spv" → "Shader/xxx.vert.wgsl")
+	// The build pipeline (tint) converts GLSL→SPIR-V→WGSL at compile time.
+	String wgsl_path = in_filename;
+	const String spv_ext = ".spv";
+	if (wgsl_path.size() >= spv_ext.size() &&
+		wgsl_path.compare(wgsl_path.size() - spv_ext.size(), spv_ext.size(), spv_ext) == 0)
+	{
+		wgsl_path.replace(wgsl_path.size() - spv_ext.size(), spv_ext.size(), ".wgsl");
+	}
+	payload.wgsl_source = ReadWgsl(wgsl_path);
+#else
 	payload.data = ReadSpirv(in_filename);
+#endif
 	return RHICreateShader(desc, payload);
 }
 

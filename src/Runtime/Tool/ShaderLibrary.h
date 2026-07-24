@@ -30,6 +30,10 @@ public:
 	// Read a compiled .spv binary (path relative to the working directory,
 	// e.g. "Shader/xxx.vert.spv"). Keep filenames ASCII to avoid GBK/ACP issues.
 	static Vector<UInt32> METHOD(ReadSpirv)(CONST String& in_filename);
+#if PLATFORM_WGPU
+	// Read a .wgsl text file (WebGPU only). Returns UTF-8 WGSL source.
+	static String METHOD(ReadWgsl)(CONST String& in_filename);
+#endif
 	// Create a shader of any stage. shader_name is set to the file path so the
 	// PSO cache hash stays unique per shader (the cache hashes shader_name).
 	static RHI::Shader* METHOD(LoadShader)(ENUM_SHADER_STAGE in_stage, CONST String& in_filename);

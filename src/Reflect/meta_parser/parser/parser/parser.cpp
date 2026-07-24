@@ -5,6 +5,7 @@
 #include "generator/reflection_generator.h"
 #include "generator/serializer_generator.h"
 #include "generator/rmlui_generator.h"
+#include "generator/ui_widget_generator.h"
 
 #include "parser.h"
 
@@ -56,7 +57,9 @@ MetaParser::MetaParser(const std::string project_input_file,
         m_work_paths[0], std::bind(&MetaParser::getIncludeFile, this, std::placeholders::_1)));
     m_generators.emplace_back(new Generator::ReflectionGenerator(
 		m_work_paths[0], std::bind(&MetaParser::getIncludeFile, this, std::placeholders::_1)));
-	m_generators.emplace_back(new Generator::RmluiGenerator(
+	m_generators.emplace_back(new Generator::UIWidgetGenerator(
+			m_work_paths[0], std::bind(&MetaParser::getIncludeFile, this, std::placeholders::_1)));
+		m_generators.emplace_back(new Generator::RmluiGenerator(
 		m_work_paths[0], std::bind(&MetaParser::getIncludeFile, this, std::placeholders::_1)));
 }
 

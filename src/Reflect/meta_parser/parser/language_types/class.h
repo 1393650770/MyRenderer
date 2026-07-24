@@ -26,6 +26,7 @@ public:
 
     bool shouldCompileFields(void) const;
     bool shouldCompileMethods(void) const;
+    bool hasUIBindAnnotations(void) const;
 
     template<typename T>
     using SharedPtrVector = std::vector<std::shared_ptr<T>>;

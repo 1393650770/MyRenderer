@@ -63,6 +63,9 @@ public:
 	MYRENDERER_END_STRUCT
 	Vector<ShaderBindingOverrides> shader_binding_overrides;
 	Vector<UInt32> data;
+	// WebGPU path: WGSL source text (UTF-8). Empty on Vulkan/Windows builds.
+	// Filled by ShaderLibrary::ReadWgsl on PLATFORM_WGPU; ignored by VK backend.
+	String wgsl_source;
 MYRENDERER_END_STRUCT
 
 MYRENDERER_BEGIN_STRUCT(ShaderDesc)

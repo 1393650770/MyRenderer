@@ -4,6 +4,7 @@
 
 #include "Core/ConstDefine.h"
 #include "Input/InputKeys.h"
+#include "UI/UIInputBridge.h"  // abstract base
 
 namespace Rml {
 class Context;
@@ -14,44 +15,35 @@ MYRENDERER_BEGIN_NAMESPACE(UI)
 MYRENDERER_BEGIN_NAMESPACE(RmlUI)
 
 /**
- * Platform-neutral input bridge: InputSystem/PlatformWindow → RmlUI Context.
+ * RmlUI-specific input bridge — implements the UIInputBridge interface.
  *
- * Uses the engine's InputSystem for modifier state and EKey for key identifiers.
- * No GLFW or platform-specific types in the API — follows convention 14.2.
- *
- * v1: Polling-based mouse/scroll/keyboard.
- * v2: Add ProcessTouch for mobile (uses PlatformWindow::GetTouchState).
+ * Routes platform InputSystem events to Rml::Context.  Application code
+ * accesses this through the UIInputBridge* returned by UIManager and
+ * never includes this header directly.
  */
-MYRENDERER_BEGIN_CLASS(RmlUIInputBridge)
+MYRENDERER_BEGIN_CLASS_WITH_DERIVE(RmlUIInputBridge, public UIInputBridge)
 
 #pragma region METHOD
 public:
 	RmlUIInputBridge() MYDEFAULT;
 	VIRTUAL ~RmlUIInputBridge() MYDEFAULT;
 
+	// --- UIInputBridge interface ---
+	VIRTUAL void METHOD(ProcessMouseMove)(Int x, Int y) OVERRIDE FINAL;
+	VIRTUAL void METHOD(ProcessMouseButton)(Int button, bool pressed) OVERRIDE FINAL;
+	VIRTUAL void METHOD(ProcessMouseScroll)(Float32 dx, Float32 dy) OVERRIDE FINAL;
+	VIRTUAL void METHOD(ProcessMouseLeave)() OVERRIDE FINAL;
+	VIRTUAL void METHOD(ProcessKey)(CONST MXRender::Input::Key& key, bool pressed) OVERRIDE FINAL;
+	VIRTUAL void METHOD(ProcessChar)(UInt32 codepoint) OVERRIDE FINAL;
+	VIRTUAL bool METHOD(IsMouseInteracting)() CONST OVERRIDE FINAL;
+
+	// --- Backend-specific ---
+	/// Set the RmlUI context.  Called by RmlUIManager during Init.
+	/// Not part of the UIInputBridge interface — RmlUI-internal only.
 	void METHOD(SetContext)(Rml::Context* context);
-
-	// Mouse (window coordinates, origin top-left)
-	void METHOD(ProcessMouseMove)(Int x, Int y);
-	void METHOD(ProcessMouseButton)(Int button, bool pressed);
-	void METHOD(ProcessMouseScroll)(Float32 dx, Float32 dy);
-	void METHOD(ProcessMouseLeave)();
-
-	// Keyboard — uses platform-neutral EKey
-	void METHOD(ProcessKey)(CONST MXRender::Input::Key& key, bool pressed);
-
-	// Text input (Unicode codepoint from GLFW char callback)
-	// Note: text input still requires the platform layer to forward
-	// GLFW's char callback to this method. That forwarding lives in
-	// DesktopWindow, not in Sample code.
-	void METHOD(ProcessChar)(UInt32 codepoint);
-
-	bool METHOD(IsMouseInteracting)() CONST;
 
 protected:
 private:
-	Rml::Context* m_context = nullptr;
-
 	Int  METHOD(BuildModifiers)() CONST;
 	static Int METHOD(MapKey)(CONST MXRender::Input::Key& key);
 #pragma endregion
@@ -60,12 +52,13 @@ private:
 public:
 protected:
 private:
+	Rml::Context* m_context = nullptr;
 #pragma endregion
 
 MYRENDERER_END_CLASS
 
-MYRENDERER_END_NAMESPACE
-MYRENDERER_END_NAMESPACE
-MYRENDERER_END_NAMESPACE
+MYRENDERER_END_NAMESPACE // RmlUI
+MYRENDERER_END_NAMESPACE // UI
+MYRENDERER_END_NAMESPACE // MXRender
 
-#endif
+#endif // !_RMLUIINPUTBRIDGE_

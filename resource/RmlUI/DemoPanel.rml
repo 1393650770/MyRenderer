@@ -5,7 +5,7 @@
 </head>
 <body data-model="hud" id="main-body">
 	<div id="hud-container">
-		<!-- HP Bar -->
+		<!-- HP Bar (UI_BIND_FIELD_AS: custom RML name) -->
 		<div id="hp-panel">
 			<div id="hp-label">HP</div>
 			<div id="hp-bar-bg">
@@ -14,13 +14,24 @@
 			<div id="hp-text">{{ hp }} / 100</div>
 		</div>
 
-		<!-- Score & Timer -->
+		<!-- Score & Timer (UI_BIND_FIELD_AS) -->
 		<div id="info-panel">
 			<div id="score-text">Score: {{ score }}</div>
 			<div id="timer-text">Time: {{ timer }}</div>
 		</div>
 
-		<!-- Action Buttons -->
+		<!-- Player Name (UI_BIND_FIELD: field name == RML name) -->
+		<div id="player-panel">
+			<div id="player-label">Player: {{ m_player_name }}</div>
+		</div>
+
+		<!-- Volume Slider (UI_BIND_TWO_WAY: field m_volume, RML name == field name) -->
+		<div id="volume-panel">
+			<div id="volume-label">Volume: {{ m_volume }}</div>
+			<input type="range" data-value="m_volume" min="0" max="100" step="1"/>
+		</div>
+
+		<!-- Action Buttons (UI_BIND_EVENT: heal callback) -->
 		<div id="action-panel">
 			<button id="heal-btn" data-event-click="on_heal()">Heal +10</button>
 		</div>
@@ -28,7 +39,7 @@
 		<!-- Title -->
 		<div id="title-panel">
 			<h2>MyRenderer RmlUI Demo</h2>
-			<p>Game UI with retained-mode framework</p>
+			<p>All 4 UI_BIND_* macros: AS / FIELD / TWO_WAY / EVENT</p>
 		</div>
 	</div>
 </body>

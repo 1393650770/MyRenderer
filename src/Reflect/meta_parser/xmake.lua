@@ -3,9 +3,10 @@
 
 
 target("MetaParser")
-    set_kind("binary")  
-    set_languages("clatest", "cxx20") 
+    set_kind("binary")
+    set_languages("clatest", "cxx20")
     set_group("Reflect")
+    set_targetdir("$(projectdir)/src/Reflect")
 
     add_files("parser/main.cpp")
 

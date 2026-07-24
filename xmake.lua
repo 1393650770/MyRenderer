@@ -4,26 +4,33 @@ end
 if is_plat("android") then
     add_requires("glm","tinyobjloader","nlohmann_json","gli","optick","rttr")
     add_syslinks("vulkan", "android") -- libvulkan.so + libandroid.so on device
+elseif is_plat("wasm") then
+    -- WebGPU/Emscripten: only header-only or wasm-compatible packages
+    add_requires("glm","nlohmann_json","rttr")
 else
     add_requires("vulkansdk", "glm","tinyobjloader","nlohmann_json","gli","optick","rttr")
 end
-if not is_plat("android") then
+if not is_plat("android","wasm") then
     add_requires("assimp","lz4")
 end
 if is_plat("android") then
     add_requires("imgui v1.89.9-docking", {configs = { debug = true, shared = true }})
+elseif is_plat("wasm") then
+    add_requires("imgui v1.89.9-docking", {configs = { debug = true }})
 else
     add_requires("imgui v1.89.9-docking", {configs = { glfw_vulkan = true, debug = true, shared = true }})
 end
 add_requires("flatbuffers v1.12.0")
-if not is_plat("android") then
+if not is_plat("android","wasm") then
     add_requires("boost",{ version = "1.84.0",configs = {shared = true,debug=true,cmake=false}})
 end
 if is_plat("windows") then
     add_requires("glfw 3.4", {configs = {shared = true,debug=true}})
 end
-add_requires("glslang", {configs = {binaryonly = true}})
-if not is_plat("android") then
+if not is_plat("wasm") then
+    add_requires("glslang", {configs = {binaryonly = true}})
+end
+if not is_plat("android","wasm") then
 	add_requires("freetype")
 end
 add_rules("mode.debug", "mode.release", "mode.releasedbg")
@@ -68,6 +75,10 @@ function PlatformSettings()
         add_defines("PLATFORM_ANDROID", "_XOPEN_SOURCE=700")
         add_cxflags("-Wno-c++11-narrowing")
         add_ldflags("-Wl,--unresolved-symbols=ignore-in-shared-libs", {force = true})
+    elseif is_plat("wasm") then
+        add_defines("PLATFORM_WGPU")
+        add_cxflags("-Wno-c++11-narrowing")
+        add_ldflags("-sUSE_WEBGPU=1", "-sASYNCIFY=1", "-sALLOW_MEMORY_GROWTH=1", {force = true})
     end
 end
 
@@ -82,8 +93,17 @@ function CommonLibrarySetting()
         remove_files("src/Runtime/Application/Android/TouchOrbitCamera.cpp")
         remove_files("src/Runtime/Tool/MeshLoader.cpp")
         remove_files("src/Runtime/Asset/MeshAsset.cpp")
+    elseif is_plat("wasm") then
+        remove_files("src/Runtime/RHI/Vulkan/**")
+        remove_files("src/Runtime/Platform/Win/**")
+        remove_files("src/Runtime/Platform/Android/**")
+        remove_files("src/Runtime/Platform/Desktop/**.cpp")
+        remove_files("src/Runtime/Tool/MeshLoader.cpp")
+        remove_files("src/Runtime/Asset/MeshAsset.cpp")
     else
         remove_files("src/Runtime/Platform/Android/**.cpp")
+        remove_files("src/Runtime/Platform/WGPU/**.cpp")
+        remove_files("src/Runtime/RHI/WebGPU/**")
     end
     -- Platform-specific file dialog: exclude the wrong platform implementation
     if is_plat("windows") then
@@ -100,7 +120,7 @@ function CommonLibrarySetting()
     add_files("src/ThirdParty/RmlUi/Source/Core/**.cpp")
     add_files("src/ThirdParty/RmlUi/Source/Core/Elements/**.cpp")
     add_files("src/ThirdParty/RmlUi/Source/Core/Layout/**.cpp")
-    if not is_plat("android") then
+    if not is_plat("android","wasm") then
         add_files("src/ThirdParty/RmlUi/Source/Core/FontEngineDefault/**.cpp")
         add_defines("RMLUI_FONT_ENGINE_FREETYPE")
     end
@@ -114,17 +134,23 @@ function CommonLibrarySetting()
         add_files("src/ThirdParty/TaskScheduler/Scheduler/Include/Platform/Windows/**.cpp")
     elseif is_plat("android") then
         add_files("src/ThirdParty/TaskScheduler/Scheduler/Include/Platform/Posix/**.cpp")
+    elseif is_plat("wasm") then
+        add_files("src/ThirdParty/TaskScheduler/Scheduler/Include/Platform/Posix/**.cpp")
     end
-    if not is_plat("android") then
+    if not is_plat("android","wasm") then
         add_packages("vulkansdk")
     end
-    add_packages("glm","tinyobjloader","imgui","nlohmann_json","gli","optick","flatbuffers","rttr")
-if not is_plat("android") then
-	        add_packages("assimp","lz4","boost","freetype")
-	    end
-	    if is_plat("windows") then
-	        add_packages("glfw")
-	    end
+    if is_plat("wasm") then
+        add_packages("glm","nlohmann_json","imgui","flatbuffers","rttr")
+    else
+        add_packages("glm","tinyobjloader","imgui","nlohmann_json","gli","optick","flatbuffers","rttr")
+    end
+    if not is_plat("android","wasm") then
+        add_packages("assimp","lz4","boost","freetype")
+    end
+    if is_plat("windows") then
+        add_packages("glfw")
+    end
 end
 
 
@@ -162,12 +188,41 @@ function CompileFunc()
     print("----\n")
     
     print("[compile shader] shader to spirv..")
-    local vulkan_sdk = find_package("vulkansdk")
-    if vulkan_sdk then
-        local glslang_validator_dir = vulkan_sdk["bindir"].."\\glslangValidator.exe"
-        for _, shader_path in ipairs(os.files("$(projectdir)/resource/Shader/**|**.spv|**.bat|**.exe|**.h|**.glsl")) do
-            print("[compile shader] : "..shader_path)
-            os.runv(glslang_validator_dir,{"-V", "-g", shader_path,"-o", shader_path..".spv"})
+    if not is_plat("wasm") then
+        local vulkan_sdk = find_package("vulkansdk")
+        if vulkan_sdk then
+            local glslang_validator_dir = vulkan_sdk["bindir"].."\\glslangValidator.exe"
+            for _, shader_path in ipairs(os.files("$(projectdir)/resource/Shader/**|**.spv|**.bat|**.exe|**.h|**.glsl|**.wgsl")) do
+                print("[compile shader] : "..shader_path)
+                os.runv(glslang_validator_dir,{"-V", "-g", shader_path,"-o", shader_path..".spv"})
+            end
+        end
+    else
+        -- wasm target: browser WebGPU needs WGSL (SPIR-V not directly usable).
+        -- WGSL files are hand-written (resource/Shader/**.wgsl) or converted via
+        -- tint. GLSL->SPIR-V via host glslangValidator (VULKAN_SDK env), then
+        -- tint SPIR-V->WGSL for shaders lacking a hand-written .wgsl.
+        local vk_sdk = os.getenv("VULKAN_SDK")
+        if vk_sdk and vk_sdk ~= "" then
+            local glslang = path.join(vk_sdk, "Bin", "glslangValidator.exe")
+            if os.isfile(glslang) then
+                for _, shader_path in ipairs(os.files("$(projectdir)/resource/Shader/**|**.spv|**.bat|**.exe|**.h|**.glsl|**.wgsl")) do
+                    print("[compile shader] : "..shader_path)
+                    os.runv(glslang, {"-V", "-g", shader_path, "-o", shader_path..".spv"})
+                end
+            end
+        end
+        local tint_exe = os.getenv("TINT_PATH")
+        if tint_exe and os.isfile(tint_exe) then
+            for _, spv_path in ipairs(os.files("$(projectdir)/resource/Shader/**.spv")) do
+                local wgsl_path = spv_path:gsub("%.spv$", ".wgsl")
+                if not os.isfile(wgsl_path) then
+                    print("[compile shader] tint: "..spv_path.." -> "..wgsl_path)
+                    os.runv(tint_exe, {spv_path, "-o", wgsl_path})
+                end
+            end
+        else
+            print("[compile shader] wasm: tint not found (set TINT_PATH env); using hand-written .wgsl files")
         end
     end
 
@@ -221,6 +276,11 @@ function MoveResource(target)
         print("[copy shader] done :"..gen_shader_pth)
         os.cp(gen_shader_pth, root_taget_shader_path)
     end
+    -- WebGPU/wasm: copy .wgsl shader sources (hand-written or tint-converted)
+    for _, wgsl_pth in ipairs(os.files("$(projectdir)/resource/Shader/**.wgsl")) do
+        print("[copy wgsl] done :"..wgsl_pth)
+        os.cp(wgsl_pth, root_taget_shader_path)
+    end
     os.cp("$(projectdir)/resource/Texture", root_taget_texture_path)
     if os.isdir("$(projectdir)/resource/Mesh") then
         os.cp("$(projectdir)/resource/Mesh", root_taget_path .. "/Mesh")
@@ -253,18 +313,23 @@ function CommonProjectSetting()
     add_includedirs("src/_Generated", {public = true})
     add_includedirs("src/Runtime", {public = true})
     add_includedirs("src/ThirdParty", {public = true})
-    if not is_plat("android") then
+    if not is_plat("android","wasm") then
         add_packages("vulkansdk")
     end
-    add_packages("glm","tinyobjloader","imgui","flatbuffers","rttr","nlohmann_json")
-    if not is_plat("android") then
+    if is_plat("wasm") then
+        add_packages("glm","imgui","flatbuffers","rttr","nlohmann_json")
+    else
+        add_packages("glm","tinyobjloader","imgui","flatbuffers","rttr","nlohmann_json")
+    end
+    if not is_plat("android","wasm") then
         add_packages("assimp","lz4","boost","glfw")
     end
 end
 
 target("CompileResource")
-    set_kind("binary")  
-    set_languages("clatest", "cxx20") 
+    set_kind("binary")
+    set_languages("clatest", "cxx20")
+    PlatformSettings()
     add_files("src/Runtime/GenCode/Schema/*.fbs", {rule = "flatbufferFile"})
     add_extrafiles("src/Runtime/GenCode/Schema/*.fbs", {build = false})
     add_extrafiles("resource/Shader/**|**.spv|**.bat|**.exe|**.glsl", {build = false})
@@ -286,7 +351,9 @@ target("Runtime")
         end)
     end
     add_rules("module")
-    add_packages("glslang")
+    if not is_plat("wasm") then
+        add_packages("glslang")
+    end
     add_rules("utils.glsl2spv", {outputdir = "$(projectdir)/src/Runtime/GenCode/Shader",bin2c = true})
     add_files("resource/Shader/**|**.spv|**.bat|**.exe|**.h|**.glsl", {build = false})
     set_group("Runtime")
@@ -440,6 +507,17 @@ target("RendererSample-RmlUI")
     CommonProjectSetting()
     add_files("src/Sample/12-RmlUI/RmlUIDemo.cpp")
     set_group("Sample")
+    -- Copy RmlUI resources unconditionally before every build (RML changes
+    -- don't trigger C++ recompilation; before_build ensures latest copy).
+    before_build(function (target)
+        local outdir = target:targetdir()
+        if os.isdir("$(projectdir)/resource/RmlUI") then
+            os.cp("$(projectdir)/resource/RmlUI", outdir .. "/RmlUI")
+        end
+        if os.isdir("$(projectdir)/resource/Font") then
+            os.cp("$(projectdir)/resource/Font", outdir .. "/Font")
+        end
+    end)
     after_build(MoveResource)
 
 

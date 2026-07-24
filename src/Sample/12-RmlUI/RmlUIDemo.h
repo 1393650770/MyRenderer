@@ -5,16 +5,22 @@
 #include "Core/ConstDefine.h"
 #include "Application/SampleApp.h"
 #include "UI/UIHandleTypes.h"
-#include "UI/RmlUI/Binding/RmlUIDataModelMacros.h"
+#include "UI/Widget/UIWidgetMacros.h"
 
-// No RmlUI headers here — everything is behind RmlUIManager
+// Zero RmlUI backend includes — only generic UI + UIWidget headers
+
+// Forward-declare Rml types for OnHeal method signature (zero headers).
+// DataModelHandle and Event are plain classes — safe to forward-declare.
+// VariantList is NOT used in the signature; the generated binding
+// lambda intercepts it and passes only (handle, event) to the method.
+namespace Rml {
+	class DataModelHandle;
+	class Event;
+}
 
 MYRENDERER_BEGIN_NAMESPACE(MXRender)
 MYRENDERER_BEGIN_NAMESPACE(UI)
-MYRENDERER_BEGIN_NAMESPACE(RmlUI)
-class RmlUIManager;
-namespace Generated { template<typename T> struct RmlBindingAccessor; }
-MYRENDERER_END_NAMESPACE
+class UIManager;
 MYRENDERER_END_NAMESPACE
 MYRENDERER_END_NAMESPACE
 
@@ -29,31 +35,41 @@ public:
 	VIRTUAL void METHOD(OnShutdownScene)() OVERRIDE;
 	VIRTUAL void METHOD(OnUpdate)(float dt) OVERRIDE;
 
+	/// UI_BIND_EVENT callback: heal +10 HP (replaces manual lambda)
+	void METHOD(OnHeal)(Rml::DataModelHandle handle, Rml::Event& event);
+
 protected:
 private:
 #pragma endregion
 
 #pragma region MEMBER
 public:
-	// Demo data — public so Generated::BindRmlUIDemoApp can access them
-	int m_hp = 100;
-	int m_score = 0;
+	// Class marker — enables MetaParser discovery of UIBind annotations
+
+	// ── OneWay fields ─────────────────────────────────────────
+	UI_BIND(Enable, FIELD_AS=hp, EVENT = OnHeal)
+	int   m_hp = 100;
+	UI_BIND(Enable, FIELD_AS=score)
+	int   m_score = 0;
+	UI_BIND(Enable, FIELD_AS=timer)
 	float m_timer = 0.0f;
-	int m_prev_hp = 100;
-	int m_prev_score = 0;
+
+	// UI_BIND_FIELD: display name == field name
+	UI_BIND(Enable)
+	String m_player_name = "Player";
+
+	// ── TwoWay field (RML range input ↔ C++) ──────────────────
+	UI_BIND(Enable,TWO_WAY)
+	int m_volume = 80;
+
+	// ── Previous values for manual diff ───────────────────────
+	int   m_prev_hp = 100;
+	int   m_prev_score = 0;
 	float m_prev_timer = 0.0f;
 protected:
 private:
-	MXRender::UI::RmlUI::RmlUIManager* m_manager = nullptr;
-
-	// Typed handles (ResourceHandle<Tag>) — no RmlUI types exposed
-	MXRender::UI::RmlUI::RmlModelHandle m_hud_model;
-	MXRender::UI::RmlUI::RmlDocHandle   m_hud_doc;
+	MXRender::UI::UIModelHandle m_hud_model;
+	MXRender::UI::UIDocHandle   m_hud_doc;
 #pragma endregion
 };
-
-RMLUI_BIND_FIELD_AS(RmlUIDemoApp, m_hp, "hp");
-RMLUI_BIND_FIELD_AS(RmlUIDemoApp, m_score, "score");
-RMLUI_BIND_FIELD_AS(RmlUIDemoApp, m_timer, "timer");
-
 #endif // !_RMLUIDEMO_

@@ -35,12 +35,23 @@ Class::Class(const Cursor& cursor, const Namespace& current_namespace) :
     }
 }
 
-bool Class::shouldCompile(void) const { return shouldCompileFields()|| shouldCompileMethods(); }
-
 bool Class::shouldCompileFields(void) const
 {
-    return m_meta_data.getFlag(NativeProperty::All) || m_meta_data.getFlag(NativeProperty::Fields) ||
-           m_meta_data.getFlag(NativeProperty::WhiteListFields);
+    if (m_meta_data.getFlag(NativeProperty::All) || m_meta_data.getFlag(NativeProperty::Fields) ||
+        m_meta_data.getFlag(NativeProperty::WhiteListFields))
+        return true;
+    return false;
+}
+
+bool Class::hasUIBindAnnotations(void) const {
+    for (const auto& f : m_fields)
+        if (f->getMetaData().getFlag("UIBind"))
+            return true;
+    return false;
+}
+
+bool Class::shouldCompile(void) const {
+    return shouldCompileFields() || shouldCompileMethods() || hasUIBindAnnotations();
 }
 
 bool Class::shouldCompileMethods(void) const{

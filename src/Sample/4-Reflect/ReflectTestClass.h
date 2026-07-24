@@ -11,17 +11,15 @@ namespace MXRender {
 
     MYRENDERER_BEGIN_CLASS(ReflectTest)
     MYRENDERER_REFLECTION_BODY(ReflectTest)
-
-
     public:
-        //META(Enable)
+        META(Enable)
             float test1{ 3.f };
-        //META(Enable)
+        META(Enable)
             float      test2{ 2.5f };
     private:
 
             std::string      test3 = "";
-        //META(Enable)
+        META(Enable)
             int testfunc(int i) { return i; }
 
     };
