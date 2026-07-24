@@ -56,7 +56,7 @@ public:
 
 	// UI_BIND_FIELD: display name == field name
 	UI_BIND(Enable)
-	String m_player_name = "Player";
+	String m_player_name = "Player2222";
 
 	// ── TwoWay field (RML range input ↔ C++) ──────────────────
 	UI_BIND(Enable,TWO_WAY)

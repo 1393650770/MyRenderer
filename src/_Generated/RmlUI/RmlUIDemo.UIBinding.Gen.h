@@ -21,7 +21,10 @@ struct UIWidgetBindingTraits<RmlUIDemoApp>
 		ctor.Bind("timer", &data->m_timer);
 		ctor.Bind("m_player_name", &data->m_player_name);
 		ctor.Bind("m_volume", &data->m_volume);
-	
+		ctor.BindEventCallback("on_heal",
+			[data](Rml::DataModelHandle handle, Rml::Event& event, const Rml::VariantList& /*arguments*/) {
+				data->OnHeal(handle, event);
+			});
 	}
 
 	static Vector<UIBindingEntry> GetBindingEntries(const rttr::type& type)

@@ -52,6 +52,13 @@ namespace Generator
 			if (class_temp->m_fields.empty()) continue;
 			std::string class_name = class_temp->getClassName();
 
+			auto trim_str = [](const std::string& s) {
+				size_t b = 0, e = s.size();
+				while (b < e && (s[b]==' '||s[b]=='\t')) ++b;
+				while (e > b && (s[e-1]==' '||s[e-1]=='\t')) --e;
+				return s.substr(b, e-b);
+			};
+
 			for (auto field : class_temp->m_fields)
 			{
 				const auto& props = field->getMetaData().getProperties();
@@ -61,17 +68,13 @@ namespace Generator
 				fb.field_name = field->m_name;
 				fb.rml_name   = field->m_name;
 
-				// Parse all props — keys may be "KEY=VALUE" (from annotate("KEY=VALUE"))
-				// or plain "FLAG" (from annotate("FLAG")).
 				for (const auto& kv : props) {
 					const std::string& raw = kv.first;
 					if (raw == "UIBind") continue;
-
-					// Split "KEY=VALUE" → key, val; or "FLAG" → flag
 					auto eq = raw.find('=');
 					if (eq != std::string::npos) {
-						std::string k = raw.substr(0, eq);
-						std::string v = raw.substr(eq + 1);
+						std::string k = trim_str(raw.substr(0, eq));
+						std::string v = trim_str(raw.substr(eq + 1));
 						if (k == "FIELD_AS") fb.rml_name = v;
 						else if (k == "EVENT") fb.event_method = v;
 					} else {
@@ -113,14 +116,21 @@ namespace Generator
 
 			for (auto& fb : fields)
 			{
+				// Event: generate callback (name derived from method: OnHeal→on_heal)
 				if (!fb.event_method.empty())
 				{
+					std::string en;
+					for (char c : fb.event_method) {
+						if (isupper(c) && !en.empty()) en += '_';
+						en += tolower(c);
+					}
 					Mustache::data ad;
 					ad.set("method_name", fb.event_method);
-					ad.set("display_name", fb.rml_name);
+					ad.set("display_name", en);
 					action_list.push_back(ad);
 				}
-				else if (fb.is_twoway)
+				// Field binding (always generated, even if also has event)
+				if (fb.is_twoway)
 				{
 					Mustache::data fd;
 					fd.set("field_name", fb.field_name);
