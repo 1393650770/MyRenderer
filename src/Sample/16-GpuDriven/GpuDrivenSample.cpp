@@ -972,7 +972,9 @@ static Int RunSelfTest()
 	Check(sizeof(GPUObjectData) == 96, "GPUObjectData is 96 bytes");
 	Check(sizeof(GPUMaterialData) == 48, "GPUMaterialData is 48 bytes");
 	Check(sizeof(GPUMeshMeta) == 48, "GPUMeshMeta is 48 bytes");
-	Check(sizeof(GPUSceneUniformsData) == 288, "GPUSceneUniformsData is 288 bytes");
+	// 304, not 288: lodParams (vec4) was appended for the LOD bands and now also
+	// carries the debug view selection in .z and the pyramid level in .w.
+	Check(sizeof(GPUSceneUniformsData) == 304, "GPUSceneUniformsData is 304 bytes");
 
 	// --- mesh pool: merging and index rebase ---
 	MeshPool pool;
