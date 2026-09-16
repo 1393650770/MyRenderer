@@ -641,7 +641,10 @@ target("GPUScene-SelfTest")
     add_files("src/Runtime/Render/GPUScene/MeshletBuilder.cpp")
     add_files("src/Runtime/Render/GPUScene/MeshletScene.cpp")
     add_includedirs("src/Runtime", {public = true})
-    add_packages("glm")
+    -- boost is listed even though these tests never use it: Core/ConstDefine.h
+    -- includes <boost/stacktrace.hpp> unconditionally, so every translation unit
+    -- in the engine needs boost's include path regardless of what it calls.
+    add_packages("glm", "boost")
     set_rundir("$(projectdir)")
 
 --   Volumetric Cloud + Atmosphere Demo (Hillaire sky LUTs + Nubis-style raymarched clouds)
